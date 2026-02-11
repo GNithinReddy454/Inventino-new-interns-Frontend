@@ -1,5 +1,7 @@
+import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { CartProvider } from "@/lib/cartContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import "./globals.css";
@@ -15,17 +17,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  title: "Inventino",
+  description: "Jewellery Store",
   title: "Inventino Jewels",
   description: "Premium Jewellery",
 };
 
 export default function Layout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <CartProvider>
+          {children}
+        </CartProvider>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
