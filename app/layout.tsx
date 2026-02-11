@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Inventino",
   description: "Jewellery Store",
-  title: "Inventino Jewels",
-  description: "Premium Jewellery",
+  // title: "Inventino Jewels",
+  // description: "Premium Jewellery",
 };
 
 export default function Layout({
@@ -31,12 +31,12 @@ export default function Layout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <CartProvider>
+        {/* <CartProvider>
           {children}
         </CartProvider>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
-      >
+      
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`} */}
+      
         {/* Navbar at the top */}
         <Navbar />
 
