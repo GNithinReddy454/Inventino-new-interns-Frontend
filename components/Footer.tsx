@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react"; // Added useState
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
 const Footer = () => {
-  // Logic for the Newsletter state
   const [email, setEmail] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
 
@@ -68,6 +67,8 @@ const Footer = () => {
                     href={
                       item === "Our Story" || item === "Blog" 
                         ? "/stories" 
+                        : item === "Craftsmanship" 
+                        ? "/craftsmanship" 
                         : "/about"
                     } 
                     className="relative text-gray-700 hover:text-pink-600 transition-colors
@@ -87,7 +88,12 @@ const Footer = () => {
               {["Contact Us","FAQs","Shipping","Returns"].map(item => (
                 <li key={item}>
                   <Link 
-                    href="/contact" 
+                    href={
+                      item === "Contact Us" ? "/contact" :
+                      item === "FAQs" ? "/faq" :
+                      item === "Shipping" ? "/shipping" :
+                      "/returns"
+                    } 
                     className="relative text-gray-700 hover:text-pink-600 transition-colors
                       after:absolute after:left-0 after:-bottom-0.5 after:w-full after:h-0.5 after:bg-pink-600 after:opacity-0 hover:after:opacity-100 after:transition-opacity"
                   >
