@@ -28,7 +28,8 @@ const Navbar = () => {
               alt="Inventino"
               width={120} // fits nicely
               height={40}
-              className="object-contain"
+              className="object-contain" // Tailwind class helps too
+              style={{ width: "auto", height: "auto" }}
             />
           </Link>
         </div>
