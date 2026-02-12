@@ -3,6 +3,7 @@
 import { products } from "@/lib/products";
 import { useCart } from "@/lib/cartContext";
 import ClientOnly from "./ClientOnly";
+import Image from 'next/image'; 
 
 export default function FeaturedCollection() {
   const { addToCart } = useCart();
@@ -30,9 +31,12 @@ export default function FeaturedCollection() {
             >
               {/* Product Image */}
               <div className="relative bg-gray-100 h-48 md:h-56 lg:h-64 overflow-hidden">
-                <img
+                {/* 2. Changed <img> to <Image /> here */}
+                <Image
                   src={product.image}
                   alt={product.name}
+                  width={500}
+                  height={500}
                   className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-500"
                 />
                 <span className="absolute top-4 right-4 bg-gradient-to-r from-pink-500 to-pink-600 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">
@@ -43,21 +47,13 @@ export default function FeaturedCollection() {
               {/* Product Info */}
               <div className="p-5">
                 <h3 className="font-semibold text-gray-900 text-sm mb-3 line-clamp-2">{product.name}</h3>
-                
-                {/* Rating */}
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex text-yellow-400 text-sm">{'★'.repeat(Math.floor(product.rating))}</div>
-                  <span className="text-xs text-gray-600">
-                    ({product.reviews})
-                  </span>
+                  <span className="text-xs text-gray-600">({product.reviews})</span>
                 </div>
-
-                {/* Price */}
                 <p className="text-pink-600 font-black text-lg mb-4">
                   ${product.price.toFixed(2)}
                 </p>
-
-                {/* Add to Cart Button */}
                 <ClientOnly>
                   <button
                     onClick={() => addToCart(product, 1)}
@@ -71,7 +67,6 @@ export default function FeaturedCollection() {
           ))}
         </div>
 
-        {/* View All Button */}
         <div className="text-center">
           <ClientOnly>
             <button className="bg-pink-500 hover:bg-pink-600 text-white px-8 py-3 rounded-full font-semibold transition-all duration-200 hover:shadow-lg">
