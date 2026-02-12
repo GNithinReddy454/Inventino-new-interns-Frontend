@@ -65,6 +65,7 @@ const Footer = () => {
                 <li key={item}>
                   <Link 
                     href={
+                      item === "Craftsmanship" ? "/craftsmanship" :
                       (item === "Our Story" || item === "Blog") 
                         ? "/stories" 
                         : "/about"
