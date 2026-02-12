@@ -71,8 +71,6 @@ export default function ProductsPage() {
               <div className="absolute left-1/4 right-0 h-1 bg-pink-500 rounded-full"></div>
               <div className="absolute left-1/4 top-1/2 -translate-y-1/2 w-4 h-4 bg-pink-500 rounded-full border-2 border-white shadow"></div>
             </div>
-             <h3 className="font-bold text-gray-900 mb-4">Price Range</h3>
-             <div className="h-1 bg-gray-200 rounded-full relative mt-6"><div className="absolute left-1/4 right-0 h-1 bg-pink-500 rounded-full"></div><div className="absolute left-1/4 top-1/2 -translate-y-1/2 w-4 h-4 bg-pink-500 rounded-full border-2 border-white shadow"></div></div>
           </div>
         </aside>
 
@@ -100,7 +98,6 @@ export default function ProductsPage() {
                 156 Products
               </span>
             </div>
-            <span className="bg-pink-500 text-white text-xs px-3 py-1.5 rounded-full font-medium shadow-sm shadow-pink-200">156 Products</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -123,8 +120,6 @@ export default function ProductsPage() {
             <span className="text-gray-400">...</span>
             <button className="w-8 h-8 flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 font-medium">12</button>
             <button className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"><ChevronRight size={16} /></button>
-            {MOCK_PRODUCTS.map((product) => <ProductCard key={product.id} product={product} />)}
-            {MOCK_PRODUCTS.map((product) => <ProductCard key={product.id + 'dup'} product={product} />)}
           </div>
         </main>
       </div>
@@ -149,9 +144,6 @@ function ProductCard({ product }: { product: Product }) {
   const [isHovered, setIsHovered] = useState(false);
   const { addToWishlist } = useWishlist();
 
-// CARD COMPONENT
-function ProductCard({ product }) {
-  const [isHovered, setIsHovered] = useState(false);
   return (
     <div
       className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col group transition-all duration-300 hover:shadow-xl hover:shadow-pink-100 hover:-translate-y-1"
@@ -165,14 +157,12 @@ function ProductCard({ product }) {
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
 
-        {/* Top Left Badge */}
         {product.badge && (
           <div className={`absolute top-3 left-3 px-2 py-1 text-[10px] font-bold tracking-wider rounded-full text-white ${product.badge.color}`}>
             {product.badge.text}
           </div>
         )}
 
-        {/* Top Right Actions */}
         <div className="absolute top-3 right-3 flex flex-col gap-2">
           <button
             onClick={() => addToWishlist(product)}
@@ -186,7 +176,6 @@ function ProductCard({ product }) {
           </button>
         </div>
 
-        {/* Carousel Dots Mock */}
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
           <div className="w-4 h-1.5 bg-white rounded-full"></div>
           <div className="w-1.5 h-1.5 bg-white/60 rounded-full"></div>
@@ -194,15 +183,16 @@ function ProductCard({ product }) {
         </div>
       </div>
 
-      {/* Product Info */}
       <div className="flex flex-col flex-1">
         <span className="text-[10px] text-gray-400 font-semibold tracking-wider mb-1 uppercase">{product.category}</span>
-        <h3 className="font-bold text-gray-900 text-sm leading-tight mb-2 line-clamp-2">{product.title}</h3>
+        <Link href={`/AllProducts/${product.id}`} className="hover:text-pink-500">
+          <h3 className="font-bold text-gray-900 text-sm leading-tight mb-2 line-clamp-2 cursor-pointer">{product.title}</h3>
+        </Link>
+
         <p className="text-xs text-gray-500 line-clamp-2 mb-3">{product.description}</p>
 
-        {/* Tags */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {product.tags.map(tag => (
+          {product.tags.map((tag) => (
             <span key={tag} className="text-[10px] font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-md border border-gray-200">
               {tag}
             </span>
@@ -221,18 +211,6 @@ function ProductCard({ product }) {
             ADD TO BAG
           </button>
         </div>
-        <Link href={`/AllProducts/${product.id}`} className="block w-full h-full">
-          <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
-        </Link>
-        {product.badge && <div className={`absolute top-3 left-3 px-2 py-1 text-[10px] font-bold tracking-wider rounded-full text-white ${product.badge.color}`}>{product.badge.text}</div>}
-        <button className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center text-gray-600 hover:text-pink-500"><Heart size={16}/></button>
-      </div>
-      <Link href={`/AllProducts/${product.id}`}>
-        <h3 className="font-bold text-gray-900 text-sm leading-tight mb-2 line-clamp-2 hover:text-pink-500 cursor-pointer">{product.title}</h3>
-      </Link>
-      <div className="mt-auto flex items-center justify-between">
-         <span className="text-lg font-bold text-pink-500">${product.price}</span>
-         <button className="bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold px-4 py-2 rounded-full shadow-md shadow-pink-200">ADD TO BAG</button>
       </div>
     </div>
   );
