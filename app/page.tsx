@@ -11,7 +11,6 @@ export default function Home() {
     <main>
       {/* The Hero usually takes full width, so we keep it outside the padding container */}
       <Hero />
-      
       {/* Wrap the rest of the sections in a container for consistent spacing */}
       <div className="px-6 md:px-16 py-12 space-y-16">
         <About />
@@ -22,6 +21,5 @@ export default function Home() {
         <CorporateGifting />
       </div>
     </main>
-
   );
 }
