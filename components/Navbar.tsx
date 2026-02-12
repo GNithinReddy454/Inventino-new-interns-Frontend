@@ -3,6 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Search, Heart, ShoppingBag, User } from "lucide-react";
+import { useAuth } from "@/components/authContext";
+import { useRouter } from "next/navigation";
 
 const Navbar = () => {
   return (
@@ -49,21 +51,21 @@ const Navbar = () => {
         <div className="flex items-center gap-4 md:gap-6">
           <nav className="hidden lg:flex gap-4 md:gap-6 text-gray-700 text-sm md:text-base">
             <Link href="/about" className="hover:text-pink-600 transition-colors">About</Link>
-            <Link href="/shop" className="hover:text-pink-600 transition-colors">Shop</Link>
+            <Link href="/AllProducts" className="hover:text-pink-600 transition-colors">All Products</Link>
             <Link href="/stories" className="hover:text-pink-600 transition-colors">Stories</Link>
             <Link href="/contact" className="hover:text-pink-600 transition-colors">Contact</Link>
           </nav>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <button className="btn btn-ghost btn-circle p-2">
+            <div className="btn btn-ghost btn-circle p-2">
               <Heart className="w-4 md:w-5 h-4 md:h-5" />
-            </button>
+            </div>
             <button className="btn btn-ghost btn-circle p-2">
               <ShoppingBag className="w-4 md:w-5 h-4 md:h-5" />
             </button>
-            <button className="btn btn-ghost btn-circle p-2">
-              <User className="w-4 md:w-5 h-4 md:h-5" />
-            </button>
+
+            {/* User / Auth actions */}
+            <AuthButtons />
           </div>
         </div>
       </div>
@@ -72,3 +74,37 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
+function AuthButtons() {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  if (user) {
+    return (
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => router.push("/profile")}
+          className="flex items-center gap-2 text-sm rounded-md px-3 py-1 bg-white border"
+        >
+          <User className="w-4 h-4" />
+          <span className="hidden md:inline">Hi, {user.name.split(" ")[0]}</span>
+        </button>
+        <button
+          onClick={() => logout()}
+          className="text-sm px-3 py-1 rounded-md bg-pink-500 text-white hover:bg-pink-600"
+        >
+          Logout
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Link href="/signup" className="btn btn-ghost btn-circle p-2">
+        <User className="w-4 md:w-5 h-4 md:h-5" />
+      </Link>
+      <Link href="/signup" className="hidden md:inline text-sm text-pink-600">Login</Link>
+    </div>
+  );
+}

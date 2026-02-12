@@ -40,7 +40,7 @@ const AboutPage: React.FC = () => {
           </Link>
 
           <Link 
-            href="/shop" 
+            href="/AllProducts" 
             className="flex items-center gap-2 px-6 py-2 bg-[#D63384] text-white rounded-full font-medium shadow-md hover:bg-[#b82a6f] transition-all"
           >
             Next to Shop
@@ -140,7 +140,7 @@ const AboutPage: React.FC = () => {
           {/* FINAL CTA BUTTON */}
           <div className="mt-20 text-center">
             <Link 
-              href="/shop" 
+              href="/AllProducts" 
               className="inline-flex items-center gap-3 px-10 py-4 bg-[#D63384] text-white rounded-full font-bold text-lg shadow-xl hover:bg-[#b82a6f] hover:scale-105 transition-all"
             >
               Explore Our Shop

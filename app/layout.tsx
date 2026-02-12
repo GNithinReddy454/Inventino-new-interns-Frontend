@@ -1,9 +1,11 @@
-import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CartProvider } from "@/lib/cartContext";
+import { WishlistProvider } from "@/components/wishlistContext";
+import { AuthProvider } from "@/components/authContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,28 +19,28 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Inventino Jewels",
-  description: "Premium Jewellery",
+  description: "Premium Jewellery Store",
 };
 
-export default function Layout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <CartProvider>
-          {/* Navbar at the top */}
-          <Navbar />
+          <WishlistProvider>
+            <AuthProvider>
+              {/* Navbar at the top */}
+              <Navbar />
 
-          {/* Main content stretches to push footer down */}
-          <main className="flex-1">{children}</main>
+              {/* Main content stretches to push footer down */}
+              <main className="flex-1">{children}</main>
 
-          {/* Footer at the bottom automatically */}
-          <Footer />
+              {/* Footer at the bottom */}
+              <Footer />
+            </AuthProvider>
+          </WishlistProvider>
         </CartProvider>
       </body>
     </html>

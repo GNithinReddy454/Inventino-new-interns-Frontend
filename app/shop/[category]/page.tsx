@@ -2,7 +2,7 @@
 
 import { products } from "@/lib/products";
 import { useCart } from "@/lib/cartContext";
-import Navbar from "@/app/components/Navbar";
+import Navbar from "@/components/Navbar";
 import AnnouncementBar from "@/app/components/AnnouncementBar";
 import ClientOnly from "@/app/components/ClientOnly";
 import Link from "next/link";
@@ -13,7 +13,7 @@ export default function ShopPage() {
   const { addToCart } = useCart();
 
   const categoryName = category === "all" ? "All Products" : category?.toString().split("-").join(" ").toUpperCase() || "Products";
-  
+
   const filteredProducts =
     category === "all"
       ? products
@@ -23,7 +23,7 @@ export default function ShopPage() {
     <>
       <AnnouncementBar />
       <Navbar />
-      
+
       <section className="w-full bg-gradient-to-b from-white to-pink-50 px-4 md:px-6 lg:px-12 py-12 md:py-16 lg:py-20">
         <div className="max-w-7xl mx-auto">
           {/* Breadcrumb */}
@@ -66,7 +66,7 @@ export default function ShopPage() {
                     <h3 className="font-semibold text-gray-900 text-sm md:text-base mb-1 md:mb-2 line-clamp-2">
                       {product.name}
                     </h3>
-                    
+
                     {/* Rating */}
                     <div className="flex items-center gap-2 mb-2 md:mb-3">
                       <span className="text-yellow-400 text-xs">★</span>
