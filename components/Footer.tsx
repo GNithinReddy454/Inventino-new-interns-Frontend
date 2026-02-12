@@ -37,16 +37,16 @@ const Footer = () => {
           </p>
         </div>
 
-        {/* CENTER: Shop + About + Support */}
+        {/* CENTER: Navigation Links */}
         <div className="flex-1 flex justify-between md:justify-around gap-6 w-full">
-          {/** Shop **/}
+          {/** Shop Section **/}
           <div>
             <h3 className="text-base font-semibold mb-2 text-pink-600">Shop</h3>
             <ul className="space-y-1 text-sm md:text-base">
               {["Rings","Necklaces","Bracelets","Earrings"].map(item => (
                 <li key={item}>
                   <Link 
-                    href="/shop" 
+                    href="/AllProducts" 
                     className="relative text-gray-700 hover:text-pink-600 transition-colors
                       after:absolute after:left-0 after:-bottom-0.5 after:w-full after:h-0.5 after:bg-pink-600 after:opacity-0 hover:after:opacity-100 after:transition-opacity"
                   >
@@ -57,7 +57,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/** About **/}
+          {/** About Section **/}
           <div>
             <h3 className="text-base font-semibold mb-2 text-pink-600">About</h3>
             <ul className="space-y-1 text-sm md:text-base">
@@ -65,10 +65,8 @@ const Footer = () => {
                 <li key={item}>
                   <Link 
                     href={
-                      item === "Our Story" || item === "Blog" 
+                      (item === "Our Story" || item === "Blog") 
                         ? "/stories" 
-                        : item === "Craftsmanship" 
-                        ? "/craftsmanship" 
                         : "/about"
                     } 
                     className="relative text-gray-700 hover:text-pink-600 transition-colors
@@ -81,7 +79,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/** Support **/}
+          {/** Support Section **/}
           <div>
             <h3 className="text-base font-semibold mb-2 text-pink-600">Support</h3>
             <ul className="space-y-1 text-sm md:text-base">
@@ -118,7 +116,7 @@ const Footer = () => {
           ) : (
             <>
               <p className="text-gray-700 text-sm mb-2">
-                Get the latest on new arrivals, special offers, and more.
+                Get the latest arrivals and special offers.
               </p>
               <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
                 <input
@@ -143,7 +141,7 @@ const Footer = () => {
       </div>
 
       <div className="mt-10 text-center text-gray-500 text-sm">
-        © 2026 GGST Innovations. All Rights Reserved.
+        © 2026 Inventino. All Rights Reserved.
       </div>
     </footer>
   );
