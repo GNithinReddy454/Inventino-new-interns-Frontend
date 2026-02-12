@@ -49,7 +49,7 @@ const Navbar = () => {
         <div className="flex items-center gap-4 md:gap-6">
           <nav className="hidden lg:flex gap-4 md:gap-6 text-gray-700 text-sm md:text-base">
             <Link href="/about" className="hover:text-pink-600 transition-colors">About</Link>
-            <Link href="/shop" className="hover:text-pink-600 transition-colors">Shop</Link>
+            <Link href="/AllProducts" className="hover:text-pink-600 transition-colors">All Products</Link>
             <Link href="/stories" className="hover:text-pink-600 transition-colors">Stories</Link>
             <Link href="/contact" className="hover:text-pink-600 transition-colors">Contact</Link>
           </nav>
