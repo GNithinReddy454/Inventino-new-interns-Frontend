@@ -65,7 +65,7 @@ export default function ProductDetailsPage() {
       
       {/* Back Button */}
       <div className="max-w-7xl mx-auto px-4 pt-6">
-        <Link href="/products" className="inline-flex items-center text-gray-500 hover:text-pink-500 transition-colors gap-2 text-sm font-bold">
+        <Link href="/AllProducts" className="inline-flex items-center text-gray-500 hover:text-pink-500 transition-colors gap-2 text-sm font-bold">
           <ChevronLeft size={16} /> Back to Products
         </Link>
       </div>
