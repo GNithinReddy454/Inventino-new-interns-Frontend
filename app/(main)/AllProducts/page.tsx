@@ -135,9 +135,11 @@ export default function ProductsPage() {
                <input type="range" min="0" max="600" value={priceRange[1]} onChange={(e) => handlePriceChange(e, 'max')} className="absolute w-full h-full opacity-0 cursor-pointer z-10"/>
                <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-pink-500 border-2 border-white rounded-full shadow-md pointer-events-none" style={{ left: `${(priceRange[0] / 600) * 100}%` }}></div>
                <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-pink-500 border-2 border-white rounded-full shadow-md pointer-events-none" style={{ left: `${(priceRange[1] / 600) * 100}%` }}></div>
+
             </div>
           </div>
         </aside>
+
 
         {/* ================= MAIN CONTENT ================= */}
         <main className="flex-1 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
@@ -202,11 +204,13 @@ export default function ProductsPage() {
               </div>
             </div>
           )}
+
         </main>
       </div>
     </div>
   );
 }
+
 
 // ================= SIMPLIFIED PRODUCT CARD =================
 function ProductCard({ product }: { product: any }) {
@@ -251,15 +255,18 @@ function ProductCard({ product }: { product: any }) {
                {tag}
              </span>
            ))}
+
         </div>
 
         <div className="mt-auto flex items-center justify-between">
           <div className="flex flex-col">
+
             <span className="text-lg font-bold text-pink-500">${product.price.toFixed(2)}</span>
             {product.originalPrice && <span className="text-xs text-gray-300 line-through">${product.originalPrice}</span>}
           </div>
           <button className="bg-pink-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-md shadow-pink-200 hover:bg-pink-600 transition-all active:scale-95 uppercase tracking-wide">
             Add to Bag
+
           </button>
         </div>
       </div>
