@@ -17,7 +17,6 @@ export default function LoginPage() {
     const newErrors = { email: "", password: "" };
     let hasError = false;
 
-    // Contextual Validation Messages
     if (!email) {
       newErrors.email = "Please enter your registered email";
       hasError = true;
@@ -97,19 +96,20 @@ export default function LoginPage() {
             </div>
 
             <div className="flex justify-end">
-              <button
-                type="button"
+              {/* Changed button to Link to point to the Forgot Password page */}
+              <Link
+                href="/forgot-password"
                 className="text-xs font-medium text-[#E15483] hover:underline"
               >
                 Forgot Password?
-              </button>
+              </Link>
             </div>
 
             <button
               type="submit"
               className="w-full rounded-full bg-[#E15483] text-white py-3.5 text-sm font-medium shadow-sm hover:bg-[#d14476] transition-colors"
             >
-              Sign In
+              Login
             </button>
 
             <button
@@ -121,7 +121,7 @@ export default function LoginPage() {
                 alt="Google"
                 className="w-5 h-5"
               />
-              <span className="text-gray-700">Sign in with Google</span>
+              <span className="text-gray-700">Login with Google</span>
             </button>
 
             <p className="text-center text-xs text-gray-600 mt-4">
