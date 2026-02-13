@@ -7,16 +7,16 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       {/* Navbar at the top for main store pages */}
       <Navbar />
 
-      {/* Main content area */}
+      {/* Main content area grows to push footer down */}
       <main className="flex-1">{children}</main>
 
-      {/* Footer at the bottom */}
+      {/* Footer stays at the bottom */}
       <Footer />
-    </>
+    </div>
   );
 }
 
