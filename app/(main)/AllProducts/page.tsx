@@ -49,6 +49,7 @@ export default function ProductsPage() {
       <div className="max-w-7xl mx-auto px-4 py-8 font-sans">
         <div className="flex flex-col lg:flex-row gap-8">
 
+<<<<<<< HEAD
           {/* ================= SIDEBAR ================= */}
 
           {/* SIDEBAR */}
@@ -59,6 +60,58 @@ export default function ProductsPage() {
                 <li className="flex justify-between text-pink-500 font-medium cursor-pointer">All Products <span className="bg-pink-100 text-pink-600 px-2 rounded-full text-xs">156</span></li>
                 {['Bracelets', 'Necklaces', 'Earrings', 'Rings'].map(cat => <li key={cat} className="text-gray-600 hover:text-pink-500 cursor-pointer">{cat}</li>)}
               </ul>
+=======
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-900 mb-4">Price Range</h3>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="border border-gray-200 rounded-lg px-3 py-2 w-full"><span className="text-xs text-gray-400 mr-1">$</span><input type="number" value={priceRange[0]} readOnly className="w-full text-sm font-bold text-gray-700 outline-none"/></div>
+              <span className="text-gray-300">-</span>
+              <div className="border border-gray-200 rounded-lg px-3 py-2 w-full"><span className="text-xs text-gray-400 mr-1">$</span><input type="number" value={priceRange[1]} readOnly className="w-full text-sm font-bold text-gray-700 outline-none"/></div>
+            </div>
+            <div className="relative h-1 bg-gray-200 rounded-full mb-2">
+               <div className="absolute h-full bg-pink-500 rounded-full" style={{ left: `${(priceRange[0] / 600) * 100}%`, right: `${100 - (priceRange[1] / 600) * 100}%` }}></div>
+               <input type="range" min="0" max="600" value={priceRange[0]} onChange={(e) => handlePriceChange(e, 'min')} className="absolute w-full h-full opacity-0 cursor-pointer z-10"/>
+               <input type="range" min="0" max="600" value={priceRange[1]} onChange={(e) => handlePriceChange(e, 'max')} className="absolute w-full h-full opacity-0 cursor-pointer z-10"/>
+               <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-pink-500 border-2 border-white rounded-full shadow-md pointer-events-none" style={{ left: `${(priceRange[0] / 600) * 100}%` }}></div>
+               <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-pink-500 border-2 border-white rounded-full shadow-md pointer-events-none" style={{ left: `${(priceRange[1] / 600) * 100}%` }}></div>
+
+            </div>
+          </div>
+        </aside>
+
+
+        {/* ================= MAIN CONTENT ================= */}
+        <main className="flex-1 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
+          
+          {/* --- HEADER CONTROLS (Updated) --- */}
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+            <h1 className="text-2xl font-bold text-gray-900">{selectedCategory}</h1>
+            
+            <div className="flex items-center gap-3">
+               {/* Sort By Dropdown */}
+               <div className="flex items-center gap-2 text-sm text-gray-600 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
+                 <span className="text-gray-400">Sort by:</span>
+                 <select 
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="bg-transparent font-bold text-gray-900 outline-none cursor-pointer hover:text-pink-500 transition-colors"
+                 >
+                   <option value="Featured">Featured</option>
+                   <option value="Price: Low to High">Price: Low to High</option>
+                   <option value="Price: High to Low">Price: High to Low</option>
+                 </select>
+               </div>
+
+               {/* Grid Icon */}
+               <button className="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-gray-900 hover:border-gray-300 transition-all shadow-sm">
+                  <LayoutGrid size={20} />
+               </button>
+               
+               {/* Product Count Badge */}
+               <button className="px-4 py-2.5 bg-pink-500 text-white rounded-xl shadow-md shadow-pink-200 transition-transform active:scale-95">
+                  <span className="font-bold text-xs tracking-wide">{filteredProducts.length} Products</span>
+               </button>
+>>>>>>> 42ffa9bdbd15dc7eef859d7fb4acf6b2e98acbea
             </div>
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <h3 className="font-bold text-gray-900 mb-4">Price Range</h3>
@@ -73,6 +126,7 @@ export default function ProductsPage() {
                 <div className="absolute left-1/4 top-1/2 -translate-y-1/2 w-4 h-4 bg-pink-500 rounded-full border-2 border-white shadow"></div>
               </div>
             </div>
+<<<<<<< HEAD
           </aside>
 
           {/* MAIN CONTENT */}
@@ -124,11 +178,17 @@ export default function ProductsPage() {
             </div>
           </main>
         </div>
+=======
+          )}
+
+        </main>
+>>>>>>> 42ffa9bdbd15dc7eef859d7fb4acf6b2e98acbea
       </div>
     </div>
   );
 }
 
+<<<<<<< HEAD
 interface Product {
   id: number;
   badge?: { text: string; color: string };
@@ -146,6 +206,11 @@ function ProductCard({ product }: { product: Product }) {
   const [isHovered, setIsHovered] = useState(false);
   const { addToWishlist } = useWishlist();
 
+=======
+
+// ================= SIMPLIFIED PRODUCT CARD =================
+function ProductCard({ product }: { product: any }) {
+>>>>>>> 42ffa9bdbd15dc7eef859d7fb4acf6b2e98acbea
   return (
     <div
       className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col group transition-all duration-300 hover:shadow-xl hover:shadow-pink-100 hover:-translate-y-1"
@@ -190,6 +255,7 @@ function ProductCard({ product }: { product: Product }) {
         <Link href={`/AllProducts/${product.id}`} className="hover:text-pink-500">
           <h3 className="font-bold text-gray-900 text-sm leading-tight mb-2 line-clamp-2 cursor-pointer">{product.title}</h3>
         </Link>
+<<<<<<< HEAD
 
         <p className="text-xs text-gray-500 line-clamp-2 mb-3">{product.description}</p>
 
@@ -199,10 +265,23 @@ function ProductCard({ product }: { product: Product }) {
               {tag}
             </span>
           ))}
+=======
+        
+        <p className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed">{product.description}</p>
+        
+        <div className="flex flex-wrap gap-1.5 mb-4">
+           {product.tags?.slice(0, 2).map((tag: string) => (
+             <span key={tag} className="text-[10px] bg-gray-50 border border-gray-100 text-gray-500 px-2 py-0.5 rounded">
+               {tag}
+             </span>
+           ))}
+
+>>>>>>> 42ffa9bdbd15dc7eef859d7fb4acf6b2e98acbea
         </div>
 
         <div className="mt-auto flex items-center justify-between">
           <div className="flex flex-col">
+<<<<<<< HEAD
             <span className="text-lg font-bold text-pink-500">${product.price}</span>
             {product.originalPrice && (
               <span className="text-xs text-gray-400 line-through">${product.originalPrice}</span>
@@ -211,9 +290,22 @@ function ProductCard({ product }: { product: Product }) {
 
           <button className="bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold px-4 py-2 rounded-full shadow-md shadow-pink-200 transition-colors">
             ADD TO BAG
+=======
+
+            <span className="text-lg font-bold text-pink-500">${product.price.toFixed(2)}</span>
+            {product.originalPrice && <span className="text-xs text-gray-300 line-through">${product.originalPrice}</span>}
+          </div>
+          <button className="bg-pink-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-md shadow-pink-200 hover:bg-pink-600 transition-all active:scale-95 uppercase tracking-wide">
+            Add to Bag
+
+>>>>>>> 42ffa9bdbd15dc7eef859d7fb4acf6b2e98acbea
           </button>
         </div>
       </div>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 42ffa9bdbd15dc7eef859d7fb4acf6b2e98acbea

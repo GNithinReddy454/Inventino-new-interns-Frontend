@@ -36,6 +36,7 @@ const getProductById = (id: number) => {
   };
 };
 
+
 export default function ProductDetailsPage() {
   const params = useParams(); 
   const [product, setProduct] = useState<any>(null);
@@ -81,22 +82,27 @@ export default function ProductDetailsPage() {
           <div className="grid grid-cols-4 gap-4">
             {product.images.map((img: string, idx: number) => (
               <button key={idx} onClick={() => setSelectedImage(idx)} className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${selectedImage === idx ? 'border-pink-500' : 'border-transparent'}`}>
+
                 <img src={img} alt="thumb" className="w-full h-full object-cover" />
+
               </button>
             ))}
           </div>
         </div>
+
 
         {/* RIGHT: Info */}
         <div className="flex flex-col gap-6">
            <div className="flex items-center gap-2">
              <span className="text-pink-500 text-xs font-bold uppercase">{product.category}</span>
              <div className="flex items-center text-yellow-400 text-xs ml-auto"><Star fill="currentColor" size={12} /> <span className="text-gray-500 ml-1 font-medium">{product.rating.toFixed(1)} ({product.reviews} reviews)</span></div>
+
            </div>
            
            <h1 className="text-4xl font-serif text-gray-900">{product.title}</h1>
            
            <div className="flex items-center gap-3">
+
              <span className="text-3xl font-bold text-pink-500">${product.price.toFixed(2)}</span>
              {product.originalPrice && <span className="text-lg text-gray-400 line-through">${product.originalPrice.toFixed(2)}</span>}
              <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">SALE</span>
@@ -116,6 +122,7 @@ export default function ProductDetailsPage() {
 
            {/* Add to Cart */}
            <div className="flex gap-4 pt-4 border-t border-gray-100">
+
               <div className="flex items-center border border-gray-200 rounded-xl">
                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3 text-gray-500 hover:text-pink-500"><Minus size={16}/></button>
                  <span className="font-bold text-gray-900 w-8 text-center">{quantity}</span>
@@ -126,7 +133,9 @@ export default function ProductDetailsPage() {
               </button>
            </div>
            
+
            {/* Trust Badges */}
+
            <div className="grid grid-cols-3 gap-4 pt-2 text-xs text-gray-500">
               <div className="flex items-center gap-2"><Truck size={16} className="text-pink-500"/> Free Shipping</div>
               <div className="flex items-center gap-2"><ShieldCheck size={16} className="text-pink-500"/> 2 Year Warranty</div>
@@ -136,7 +145,9 @@ export default function ProductDetailsPage() {
       </div>
 
       {/* ================= MIDDLE SECTION: THE STORY ================= */}
+
       <div className="bg-[#1a1a1a] text-white py-20 px-4 mt-12">
+
          <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
                <h2 className="text-3xl md:text-4xl font-serif mb-4">The Story Behind <span className="text-pink-500">This Treasure</span></h2>
@@ -166,10 +177,12 @@ export default function ProductDetailsPage() {
                   </div>
                </div>
             </div>
+
          </div>
       </div>
 
       {/* ================= BOTTOM SECTION: SIMILAR PRODUCTS ================= */}
+
       <div className="max-w-7xl mx-auto px-4 py-20">
          <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-serif text-gray-900">Similar Products</h3>
@@ -180,6 +193,7 @@ export default function ProductDetailsPage() {
              {/* Generate 3 "Similar" products by looking at the next 3 IDs */}
              {[1, 2, 3].map((offset) => (
                  <SimilarProductCard key={offset} product={getProductById(product.id + offset)} />
+
              ))}
          </div>
       </div>
@@ -187,6 +201,7 @@ export default function ProductDetailsPage() {
     </div>
   );
 }
+
 
 // ================= COMPONENT: SIMILAR PRODUCT CARD =================
 function SimilarProductCard({ product }: { product: any }) {
@@ -197,23 +212,28 @@ function SimilarProductCard({ product }: { product: any }) {
         <Link href={`/products/${product.id}`} className="block w-full h-full">
            <img 
              src={product.image} 
+
              alt={product.title} 
              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
            />
         </Link>
+
         <div className="absolute top-3 right-3 p-2 bg-white/90 rounded-full text-gray-600 shadow-sm hover:text-pink-500 cursor-pointer">
            <Heart size={16} />
         </div>
         {/* Randomly show badge based on ID logic to simulate variety */}
         {product.id % 3 === 0 && (
            <div className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-[10px] font-bold rounded-full uppercase tracking-wider">Sale</div>
+
         )}
       </div>
 
       {/* Details Area */}
       <div className="flex flex-col flex-1">
          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{product.category}</span>
+
          <Link href={`/products/${product.id}`}>
+
             <h4 className="font-bold text-gray-900 text-sm leading-tight mb-2 hover:text-pink-500 transition-colors line-clamp-2">
               {product.title}
             </h4>
@@ -221,13 +241,17 @@ function SimilarProductCard({ product }: { product: any }) {
          
          <div className="mt-auto flex items-center justify-between pt-2">
             <div className="flex flex-col">
+
                <span className="font-bold text-pink-500">${product.price.toFixed(2)}</span>
             </div>
             <button className="bg-pink-500 hover:bg-pink-600 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-md transition-colors uppercase tracking-wide">
                Add
+
             </button>
          </div>
       </div>
     </div>
   );
+
 }
+
