@@ -4,22 +4,28 @@ import { useState, useEffect, useMemo } from "react";
 import { Heart, Share2, Search, ChevronRight, ChevronLeft, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import productsData from "@/lib/products.json";
+import { useStore } from "@/lib/storeContext"; // Linked Logic
+import { Product } from "@/lib/products";
 
-// --- 1. DATA GENERATOR ---
+// --- 1. DATA GENERATOR (FIXED HYDRATION) ---
 const TOTAL_PRODUCTS = 156;
 const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accessories"];
 
 const ALL_PRODUCTS_LIST = Array.from({ length: TOTAL_PRODUCTS }).map((_, index) => {
-  const template = productsData[index % productsData.length];
+  const id = index + 1;
+  const template = productsData[index % productsData.length] as any;
   const randomCategory = CATEGORIES_LIST[index % CATEGORIES_LIST.length];
-  const randomPrice = Math.floor(Math.random() * (600 - 25 + 1)) + 25;
+  
+  // Use stable math based on ID to prevent 155 vs 156 hydration errors
+  const stablePrice = Math.floor(((id * 17) % 575) + 25);
 
   return {
     ...template,
-    id: index + 1,
+    id: id,
     category: randomCategory,
-    price: randomPrice + 0.99,
-    image: template.images[0] 
+    price: stablePrice + 0.99,
+    image: template.images ? template.images[0] : template.image,
+    name: template.name || template.title
   };
 });
 
@@ -27,31 +33,27 @@ export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState("All Products");
   const [priceRange, setPriceRange] = useState([0, 600]); 
-  const [sortBy, setSortBy] = useState("Featured"); // <--- NEW STATE FOR SORTING
+  const [sortBy, setSortBy] = useState("Featured"); 
+  const [isClient, setIsClient] = useState(false);
   
   const itemsPerPage = 9; 
 
-  // --- FILTERING & SORTING LOGIC ---
+  // Force mount to client to fix hydration freezes
+  useEffect(() => { setIsClient(true); }, []);
+
   const filteredProducts = useMemo(() => {
-    // 1. Filter
     let result = ALL_PRODUCTS_LIST.filter(product => {
       const categoryMatch = selectedCategory === "All Products" || product.category === selectedCategory;
       const priceMatch = product.price >= priceRange[0] && product.price <= priceRange[1];
       return categoryMatch && priceMatch;
     });
 
-    // 2. Sort
-    if (sortBy === "Price: Low to High") {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sortBy === "Price: High to Low") {
-      result.sort((a, b) => b.price - a.price);
-    } 
-    // "Featured" uses default order (no sorting needed)
+    if (sortBy === "Price: Low to High") result.sort((a, b) => a.price - b.price);
+    else if (sortBy === "Price: High to Low") result.sort((a, b) => b.price - a.price);
 
     return result;
-  }, [selectedCategory, priceRange, sortBy]); // <--- Re-run when sortBy changes
+  }, [selectedCategory, priceRange, sortBy]);
 
-  // --- PAGINATION ---
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const currentProducts = filteredProducts.slice(
     (currentPage - 1) * itemsPerPage,
@@ -63,44 +65,22 @@ export default function ProductsPage() {
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'min' | 'max') => {
     const value = parseInt(e.target.value);
-    if (type === 'min') {
-      setPriceRange([Math.min(value, priceRange[1] - 10), priceRange[1]]);
-    } else {
-      setPriceRange([priceRange[0], Math.max(value, priceRange[0] + 10)]);
-    }
+    if (type === 'min') setPriceRange([Math.min(value, priceRange[1] - 10), priceRange[1]]);
+    else setPriceRange([priceRange[0], Math.max(value, priceRange[0] + 10)]);
   };
 
-  // --- PAGINATION UI LOGIC ---
   const getPaginationRange = () => {
     if (totalPages <= 6) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    const sideWidth = 1; 
-    const leftSiblingIndex = Math.max(currentPage - sideWidth, 1);
-    const rightSiblingIndex = Math.min(currentPage + sideWidth, totalPages);
-    const showLeftDots = leftSiblingIndex > 2;
-    const showRightDots = rightSiblingIndex < totalPages - 1;
-
-    if (!showLeftDots && showRightDots) {
-      let leftItemCount = 3 + 2 * sideWidth;
-      let leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
-      return [...leftRange, "...", totalPages];
-    }
-    if (showLeftDots && !showRightDots) {
-      let rightItemCount = 3 + 2 * sideWidth;
-      let rightRange = Array.from({ length: rightItemCount }, (_, i) => totalPages - rightItemCount + i + 1);
-      return [1, "...", ...rightRange];
-    }
-    if (showLeftDots && showRightDots) {
-       let middleRange = Array.from({ length: (rightSiblingIndex - leftSiblingIndex) + 1 }, (_, i) => leftSiblingIndex + i);
-       return ["...", ...middleRange, "...", totalPages];
-    }
-    return [];
+    return [1, "...", currentPage, "...", totalPages];
   };
+
+  if (!isClient) return <div className="min-h-screen bg-white" />;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen">
       <div className="flex flex-col lg:flex-row gap-8">
         
-        {/* ================= SIDEBAR ================= */}
+        {/* SIDEBAR */}
         <aside className="w-full lg:w-64 flex-shrink-0 space-y-6 lg:sticky lg:top-32 h-fit">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-4">
@@ -135,138 +115,95 @@ export default function ProductsPage() {
                <input type="range" min="0" max="600" value={priceRange[1]} onChange={(e) => handlePriceChange(e, 'max')} className="absolute w-full h-full opacity-0 cursor-pointer z-10"/>
                <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-pink-500 border-2 border-white rounded-full shadow-md pointer-events-none" style={{ left: `${(priceRange[0] / 600) * 100}%` }}></div>
                <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-pink-500 border-2 border-white rounded-full shadow-md pointer-events-none" style={{ left: `${(priceRange[1] / 600) * 100}%` }}></div>
-
             </div>
           </div>
         </aside>
 
-
-        {/* ================= MAIN CONTENT ================= */}
         <main className="flex-1 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
-          
-          {/* --- HEADER CONTROLS (Updated) --- */}
           <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
             <h1 className="text-2xl font-bold text-gray-900">{selectedCategory}</h1>
-            
             <div className="flex items-center gap-3">
-               {/* Sort By Dropdown */}
                <div className="flex items-center gap-2 text-sm text-gray-600 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
                  <span className="text-gray-400">Sort by:</span>
-                 <select 
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="bg-transparent font-bold text-gray-900 outline-none cursor-pointer hover:text-pink-500 transition-colors"
-                 >
+                 <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-transparent font-bold text-gray-900 outline-none border-none cursor-pointer hover:text-pink-500 transition-colors">
                    <option value="Featured">Featured</option>
                    <option value="Price: Low to High">Price: Low to High</option>
                    <option value="Price: High to Low">Price: High to Low</option>
                  </select>
                </div>
-
-               {/* Grid Icon */}
-               <button className="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-gray-900 hover:border-gray-300 transition-all shadow-sm">
-                  <LayoutGrid size={20} />
-               </button>
-               
-               {/* Product Count Badge */}
-               <button className="px-4 py-2.5 bg-pink-500 text-white rounded-xl shadow-md shadow-pink-200 transition-transform active:scale-95">
-                  <span className="font-bold text-xs tracking-wide">{filteredProducts.length} Products</span>
-               </button>
+               <button className="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-gray-900 transition-all shadow-sm"><LayoutGrid size={20} /></button>
+               <button className="px-4 py-2.5 bg-pink-500 text-white rounded-xl shadow-md font-bold text-xs uppercase tracking-wide">{filteredProducts.length} Products</button>
             </div>
           </div>
 
-          {filteredProducts.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-               <Search size={48} className="text-gray-200 mb-4" />
-               <h3 className="text-lg font-bold text-gray-900">No products match your filters</h3>
-               <p className="text-gray-500">Try adjusting the price range or category.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {currentProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {currentProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
 
-          {/* ================= PAGINATION ================= */}
+          {/* PAGINATION */}
           {totalPages > 1 && (
             <div className="mt-auto flex justify-center pt-8 border-t border-gray-50 select-none">
               <div className="flex items-center gap-2">
-                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"><ChevronLeft size={14} /></button>
-                {getPaginationRange().map((item, index) => {
-                   if (item === "...") return <span key={`dots-${index}`} className="w-8 h-8 flex items-center justify-center text-gray-300 text-xs">...</span>;
-                   return (
-                     <button key={item} onClick={() => setCurrentPage(item as number)} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all border ${currentPage === item ? 'bg-pink-500 text-white border-pink-500 shadow-md shadow-pink-200' : 'bg-white text-gray-600 border-gray-100 hover:border-gray-300 hover:bg-gray-50'}`}>{item}</button>
-                   );
-                })}
-                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"><ChevronRight size={14} /></button>
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"><ChevronLeft size={14} /></button>
+                {getPaginationRange().map((item, index) => (
+                   <button key={index} onClick={() => typeof item === 'number' && setCurrentPage(item)} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all border ${currentPage === item ? 'bg-pink-500 text-white border-pink-500 shadow-md' : 'bg-white text-gray-600 border-gray-100 hover:border-gray-300'}`}>{item}</button>
+                ))}
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"><ChevronRight size={14} /></button>
               </div>
             </div>
           )}
-
         </main>
       </div>
     </div>
   );
 }
 
-
-// ================= SIMPLIFIED PRODUCT CARD =================
+// ================= PRODUCT CARD =================
 function ProductCard({ product }: { product: any }) {
+  const { handleBag, handleSaved, savedItems } = useStore(); // Linked Logic
+  const isSaved = savedItems.some(item => item.id === product.id);
+
   return (
-    // UPDATED: Tightened the pink shadow so it spreads less and stays closer to the bottom of the card.
     <div className="flex flex-col group bg-white rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 border border-transparent hover:shadow-[0_14px_24px_-10px_rgba(236,72,153,0.6)]">
-      
-      {/* 1. IMAGE SECTION */}
       <div className="relative aspect-square bg-gray-50">
-        <Link href={`/AllProducts/${product.id}`} className="block w-full h-full">
-          <img 
-            src={product.image} 
-            alt={product.title} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-          />
+        <Link href={`/AllProducts/${product.id}`} className="block w-full h-full relative z-0">
+          <img src={product.image} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
         </Link>
-        {product.badge && <span className={`absolute top-3 left-3 px-2 py-1 text-[10px] font-bold rounded text-white ${product.badge.color}`}>{product.badge.text}</span>}
-        <div className="absolute top-3 right-3 flex flex-col gap-2">
-           <button className="p-1.5 bg-white/90 rounded-full text-gray-400 hover:text-pink-500 hover:bg-white shadow-sm transition-colors"><Heart size={14} /></button>
-           <button className="p-1.5 bg-white/90 rounded-full text-gray-400 hover:text-pink-500 hover:bg-white shadow-sm transition-colors"><Share2 size={14} /></button>
+        <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+           {/* Wishlist Button */}
+           <button 
+              onClick={(e) => {
+                e.preventDefault(); 
+                e.stopPropagation(); // Stop click from opening product page
+                handleSaved(product as Product);
+              }}
+              className={`p-1.5 rounded-full shadow-sm transition-colors ${isSaved ? 'bg-pink-500 text-white' : 'bg-white/90 text-gray-400 hover:text-pink-500'}`}
+           >
+             <Heart size={14} fill={isSaved ? "currentColor" : "none"} />
+           </button>
+           <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="p-1.5 bg-white/90 rounded-full text-gray-400 hover:text-pink-500 shadow-sm transition-colors"><Share2 size={14} /></button>
         </div>
       </div>
 
-      {/* 2. DETAILS SECTION */}
       <div className="flex flex-col flex-1 px-4 pb-4 pt-1.5">
-        
-        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1 mt-1">
-          {product.category}
-        </span>
-        
-        <Link href={`/AllProducts/${product.id}`} className="mb-2">
-           <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 hover:text-pink-500 transition-colors">
-             {product.title}
-           </h3>
+        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1 mt-1">{product.category}</span>
+        <Link href={`/AllProducts/${product.id}`} className="mb-2 block z-0">
+           <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 hover:text-pink-500 transition-colors">{product.name || product.title}</h3>
         </Link>
-        
-        <p className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed">{product.description}</p>
-        
-        <div className="flex flex-wrap gap-1.5 mb-4">
-           {product.tags?.slice(0, 2).map((tag: string) => (
-             <span key={tag} className="text-[10px] bg-gray-50 border border-gray-100 text-gray-500 px-2 py-0.5 rounded">
-               {tag}
-             </span>
-           ))}
-
-        </div>
-
-        <div className="mt-auto flex items-center justify-between">
-          <div className="flex flex-col">
-
-            <span className="text-lg font-bold text-pink-500">${product.price.toFixed(2)}</span>
-            {product.originalPrice && <span className="text-xs text-gray-300 line-through">${product.originalPrice}</span>}
-          </div>
-          <button className="bg-pink-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-md shadow-pink-200 hover:bg-pink-600 transition-all active:scale-95 uppercase tracking-wide">
+        <div className="mt-auto flex items-center justify-between pt-2">
+          <span className="text-lg font-bold text-pink-500">${product.price.toFixed(2)}</span>
+          {/* Add to Bag Button */}
+          <button 
+            onClick={(e) => {
+              e.preventDefault(); 
+              e.stopPropagation(); // Stop click bubbling
+              handleBag(product as Product, 1);
+            }}
+            className="z-10 bg-pink-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-pink-600 transition-all active:scale-95 uppercase tracking-wide"
+          >
             Add to Bag
-
           </button>
         </div>
       </div>
