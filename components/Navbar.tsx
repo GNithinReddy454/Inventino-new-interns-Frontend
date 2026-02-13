@@ -4,26 +4,24 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search, Heart, ShoppingBag, User } from "lucide-react";
 import { useAuth } from "@/components/authContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; // Added usePathname
 import { useEffect, useRef, useState } from "react";
 
 const Navbar = () => {
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const pathname = usePathname(); // Get current page path
 
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY;
       const diff = currentY - lastScrollY.current;
 
-      // Always show near the very top of the page
       if (currentY < 50) {
         setIsVisible(true);
       } else if (diff > 4) {
-        // Scrolling down
         setIsVisible(false);
       } else if (diff < -4) {
-        // Scrolling up
         setIsVisible(true);
       }
 
@@ -33,6 +31,16 @@ const Navbar = () => {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Helper function to handle the active styling logic
+  const getLinkStyle = (path: string) => {
+    const isActive = pathname === path;
+    return `transition-all duration-300 pb-1 ${
+      isActive 
+        ? "text-pink-600 font-bold border-b-2 border-pink-600" // Active style from your screenshot
+        : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300" // Hover style
+    }`;
+  };
 
   return (
     <header
@@ -57,11 +65,11 @@ const Navbar = () => {
         <div className="shrink-0">
           <Link href="/">
             <Image
-              src="/logo.png" // place your logo in public/logo.png
+              src="/logo.png"
               alt="Inventino"
-              width={120} // fits nicely
+              width={120}
               height={40}
-              className="object-contain" // Tailwind class helps too
+              className="object-contain"
               style={{ width: "auto", height: "auto" }}
             />
           </Link>
@@ -81,19 +89,19 @@ const Navbar = () => {
 
         {/* RIGHT: LINKS + ICONS */}
         <div className="flex items-center gap-4 md:gap-6">
-          <nav className="hidden lg:flex gap-4 md:gap-6 text-gray-700 text-sm md:text-base">
-            <Link href="/about" className="hover:text-pink-600 transition-colors">About</Link>
-            <Link href="/AllProducts" className="hover:text-pink-600 transition-colors">All Products</Link>
-            <Link href="/stories" className="hover:text-pink-600 transition-colors">Stories</Link>
-            <Link href="/contact" className="hover:text-pink-600 transition-colors">Contact</Link>
+          <nav className="hidden lg:flex gap-4 md:gap-6 text-sm md:text-base items-center h-full">
+            <Link href="/about" className={getLinkStyle("/about")}>About</Link>
+            <Link href="/AllProducts" className={getLinkStyle("/AllProducts")}>All Products</Link>
+            <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
+            <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
           </nav>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <div className="btn btn-ghost btn-circle p-2">
-              <Heart className="w-4 md:w-5 h-4 md:h-5" />
+            <div className="btn btn-ghost btn-circle p-2 cursor-pointer">
+              <Heart className="w-4 md:w-5 h-4 md:h-5 hover:text-pink-500 transition-colors" />
             </div>
             <button className="btn btn-ghost btn-circle p-2">
-              <ShoppingBag className="w-4 md:w-5 h-4 md:h-5" />
+              <ShoppingBag className="w-4 md:w-5 h-4 md:h-5 hover:text-pink-500 transition-colors" />
             </button>
 
             {/* User / Auth actions */}
@@ -116,14 +124,14 @@ function AuthButtons() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => router.push("/profile")}
-          className="flex items-center gap-2 text-sm rounded-md px-3 py-1 bg-white border"
+          className="flex items-center gap-2 text-sm rounded-md px-3 py-1 bg-white border border-gray-200 hover:border-pink-300 transition-colors"
         >
           <User className="w-4 h-4" />
           <span className="hidden md:inline">Hi, {user.name.split(" ")[0]}</span>
         </button>
         <button
           onClick={() => logout()}
-          className="text-sm px-3 py-1 rounded-md bg-pink-500 text-white hover:bg-pink-600"
+          className="text-sm px-3 py-1 rounded-md bg-pink-500 text-white hover:bg-pink-600 transition-colors"
         >
           Logout
         </button>
@@ -134,9 +142,9 @@ function AuthButtons() {
   return (
     <div className="flex items-center gap-2">
       <Link href="/signup" className="btn btn-ghost btn-circle p-2">
-        <User className="w-4 md:w-5 h-4 md:h-5" />
+        <User className="w-4 md:w-5 h-4 md:h-5 hover:text-pink-600 transition-colors" />
       </Link>
-      <Link href="/signup" className="hidden md:inline text-sm text-pink-600">Login</Link>
+      <Link href="/login" className="hidden md:inline text-sm text-pink-600 font-semibold hover:underline">Login</Link>
     </div>
   );
 }
