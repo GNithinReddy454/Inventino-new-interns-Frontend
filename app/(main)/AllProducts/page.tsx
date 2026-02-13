@@ -266,3 +266,4 @@ function ProductCard({ product }: { product: any }) {
     </div>
   );
 }
+

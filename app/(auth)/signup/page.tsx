@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/components/authContext";
@@ -134,3 +135,4 @@ export default function SignupPage() {
     </div>
   );
 }
+
