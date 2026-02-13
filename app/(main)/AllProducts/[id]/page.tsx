@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Star, Truck, ShieldCheck, RefreshCw, Minus, Plus, Heart, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, Truck, ShieldCheck, RefreshCw, Minus, Plus, Heart, ShoppingBag } from "lucide-react";
 import { useParams } from "next/navigation"; 
 
 // --- FINAL STABLE MOCK DATA ---
@@ -157,7 +157,7 @@ export default function ProductDetailsPage() {
              </div>
            </div>
 
-           <div className="flex gap-4 pt-4 border-t border-gray-100">
+           <div className="flex gap-4 pt-2 border-t border-gray-100">
               <div className="flex items-center border border-gray-200 rounded-xl">
                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3 text-gray-500 hover:text-pink-500"><Minus size={16}/></button>
                  <span className="font-bold text-gray-900 w-8 text-center">{quantity}</span>
@@ -183,40 +183,9 @@ export default function ProductDetailsPage() {
                <h2 className="text-3xl md:text-4xl font-serif mb-4">The Story Behind <span className="text-pink-500">This Treasure</span></h2>
                <p className="text-gray-400 max-w-2xl mx-auto text-sm">Every piece we create carries a unique journey from concept to creation</p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-               <div className="relative aspect-square rounded-2xl overflow-hidden border-4 border-white/10">
-                  <img src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=800&auto=format&fit=crop" alt="Story" className="w-full h-full object-cover opacity-90" />
-                  <div className="absolute bottom-6 left-6 bg-white text-gray-900 px-4 py-2 rounded-lg flex items-center gap-3 shadow-lg">
-                     <div className="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-white font-bold text-xs">SA</div>
-                     <div>
-                       <p className="font-bold text-xs">Sarah Anderson</p>
-                       <p className="text-[10px] text-gray-500">Master Artisan</p>
-                     </div>
-                  </div>
-               </div>
-               
-               <div className="space-y-6">
-                  <p className="text-gray-300 leading-relaxed text-sm">This beautiful piece is the result of over 20 years of craftsmanship perfected by Sarah Anderson, a third-generation jewelry maker.</p>
-                  <p className="text-gray-300 leading-relaxed text-sm">Sarah learned the art of jewelry making from her grandmother, who passed down traditional techniques that have been refined over generations.</p>
-                  <blockquote className="border-l-4 border-pink-500 pl-4 py-2 my-6 bg-white/5 rounded-r-lg">
-                    <p className="italic text-gray-200 text-sm">"Every piece I create is infused with love and intention. I want the wearer to feel special and confident."</p>
-                  </blockquote>
-                  
-                  <div className="grid grid-cols-3 gap-4 pt-4">
-                     {[1,2,3].map(step => (
-                        <div key={step} className="bg-white/5 p-4 rounded-xl border border-white/10">
-                           <div className="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-white font-bold text-sm mb-3">0{step}</div>
-                           <h4 className="font-bold text-xs mb-1">{step === 1 ? 'Design' : step === 2 ? 'Craft' : 'Quality'}</h4>
-                           <p className="text-[10px] text-gray-400">Meticiulous attention to every detail.</p>
-                        </div>
-                     ))}
-                  </div>
-               </div>
-            </div>
          </div>
       </div>
-    
+
       {/* ================= BOTTOM SECTION: SIMILAR PRODUCTS ================= */}
       <div className="max-w-7xl mx-auto px-4 py-20 bg-gray-50">
          <h3 className="text-2xl font-serif text-gray-900 mb-8">Similar Products</h3>
@@ -284,3 +253,4 @@ function SimilarProductCard({ product }: { product: any }) {
     </div>
   );
 }
+

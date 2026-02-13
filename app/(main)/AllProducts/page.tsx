@@ -215,3 +215,4 @@ function ProductCard({ product }: { product: Product }) {
     </div>
   );
 }
+

@@ -3,8 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { CartProvider } from "@/lib/cartContext";
 import { WishlistProvider } from "@/components/wishlistContext";
 import { AuthProvider } from "@/components/authContext";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,7 +20,11 @@ export const metadata: Metadata = {
   description: "Premium Jewellery Store",
 };
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body
@@ -31,14 +33,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <CartProvider>
           <WishlistProvider>
             <AuthProvider>
-              {/* Navbar at the top */}
-              <Navbar />
-
               {/* Main content stretches to push footer down */}
-              <main className="flex-1">{children}</main>
-
-              {/* Footer at the bottom */}
-              <Footer />
+              <div className="flex-1">{children}</div>
             </AuthProvider>
           </WishlistProvider>
         </CartProvider>
