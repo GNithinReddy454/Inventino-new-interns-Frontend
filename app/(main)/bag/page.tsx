@@ -5,17 +5,18 @@ import { Minus, Plus, X, ShieldCheck, Truck, RotateCcw } from "lucide-react";
 import { useStore } from "@/lib/storeContext";
 
 export default function BagPage() {
-  const { bag, handleBag, removeItem } = useStore();
+  // FIXED: Removed 'removeItem' which caused the build error
+  const { bag, handleBag } = useStore();
 
   const subtotal = bag.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const shipping = subtotal > 500 ? 0 : 0.00; // Matching Figma "FREE" look
-  const estimatedTax = subtotal * 0.08; // 8% Tax simulation
+  const shipping = subtotal > 500 ? 0 : 0.00; 
+  const estimatedTax = subtotal * 0.08; 
   const total = subtotal + shipping + estimatedTax;
 
   if (bag.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-        <h2 className="text-3xl font-serif mb-4">Your Shopping Cart is Empty</h2>
+        <h2 className="text-3xl font-serif mb-4 text-gray-800">Your Shopping Cart is Empty</h2>
         <Link href="/AllProducts" className="text-pink-500 font-bold underline">Go back to shopping</Link>
       </div>
     );
@@ -29,7 +30,7 @@ export default function BagPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           
-          {/* LEFT: CART ITEMS & PROMO */}
+          {/* LEFT: CART ITEMS */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-xl shadow-sm border border-pink-100 overflow-hidden">
               <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-white">
@@ -47,11 +48,15 @@ export default function BagPage() {
                     <div>
                       <div className="flex justify-between">
                         <h3 className="font-bold text-gray-800 text-sm">{item.name}</h3>
-                        <button onClick={() => removeItem(item.id)} className="text-gray-300 hover:text-pink-500 flex items-center gap-1 text-[10px] uppercase font-bold">
+                        {/* FIXED: Uses handleBag with negative quantity to remove item */}
+                        <button 
+                          onClick={() => handleBag(item, -item.quantity)} 
+                          className="text-gray-300 hover:text-pink-500 flex items-center gap-1 text-[10px] uppercase font-bold transition-colors"
+                        >
                           <X size={12} /> Remove
                         </button>
                       </div>
-                      <p className="text-[10px] text-gray-400 font-medium">Color: <span className="text-gray-600 uppercase">{item.category}</span></p>
+                      <p className="text-[10px] text-gray-400 font-medium">Category: <span className="text-gray-600 uppercase">{item.category}</span></p>
                       <p className="text-pink-500 font-bold text-sm mt-1">${item.price.toFixed(2)}</p>
                     </div>
 
@@ -67,7 +72,7 @@ export default function BagPage() {
               ))}
             </div>
 
-            {/* PROMO CODE BOX (Matches image_f43d61.jpg bottom left) */}
+            {/* PROMO CODE */}
             <div className="bg-white p-6 rounded-xl border border-pink-100 flex gap-4 shadow-sm">
               <input 
                 type="text" 
@@ -80,7 +85,7 @@ export default function BagPage() {
             </div>
           </div>
 
-          {/* RIGHT: ORDER SUMMARY (Matches image_f43d61.jpg right panel) */}
+          {/* RIGHT: ORDER SUMMARY */}
           <div className="space-y-6">
             <div className="bg-white rounded-2xl p-8 border border-pink-100 shadow-sm sticky top-32">
               <h3 className="font-bold text-gray-800 mb-6">Order Summary</h3>
@@ -114,7 +119,7 @@ export default function BagPage() {
                 </Link>
               </div>
 
-              {/* TRUST ICONS (Matches bottom of Figma summary) */}
+              {/* TRUST ICONS */}
               <div className="mt-8 space-y-3">
                 <div className="flex items-center gap-3 text-[10px] text-gray-400 font-bold uppercase tracking-wide">
                   <ShieldCheck size={14} className="text-green-500" /> Secure checkout with SSL encryption
