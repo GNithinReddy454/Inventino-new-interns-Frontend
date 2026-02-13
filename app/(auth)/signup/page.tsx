@@ -2,137 +2,126 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useAuth } from "@/components/authContext";
 import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
-  const [mode, setMode] = useState<"signup" | "login">("signup");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState({ name: "", email: "", password: "" });
+  
   const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple client-side auth simulation
-    const userName = mode === "signup" ? name || email.split("@")[0] : email.split("@")[0];
+    
+    const newErrors = { name: "", email: "", password: "" };
+    let hasError = false;
+
+    // Specific Validation Messages
+    if (!name.trim()) { 
+      newErrors.name = "Please enter your full name"; 
+      hasError = true; 
+    }
+    
+    if (!email.includes("@")) { 
+      newErrors.email = "Please enter a valid email address"; 
+      hasError = true; 
+    }
+
+    if (password.length < 6) { 
+      newErrors.password = "Password must be at least 6 characters"; 
+      hasError = true; 
+    }
+
+    if (hasError) {
+      setErrors(newErrors);
+      return;
+    }
+
+    const userName = name || email.split("@")[0];
     login({ name: userName, email });
-    router.push("/");
+    router.push("/verify-otp");
   };
-
-  const rightImages = {
-    signup:
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=80",
-    // use the same (or highly similar) image for login to match signup visuals
-    // choose a different but visually similar jewellery image for login
-    login: "/loginImage.png",
-  };
-
-  const overlay = {
-    signup: {
-      title: "Shine With Style",
-      subtitle: "Join Inventino and explore timeless handcrafted bracelets.",
-    },
-    login: {
-      title: "Welcome Back",
-      subtitle: "Log in to continue shopping your favourite handcrafted pieces.",
-    },
-  } as const;
 
   return (
-    <div className="min-h-screen flex">
-      {/* LEFT SIDE - Form Card */}
-      <div className="w-1/2 bg-gray-100 flex items-center justify-center p-8">
-        <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl border border-pink-100 flex gap-4 items-stretch">
-          {/* Form area */}
-          <div className="flex-1">
-            <div className="flex justify-center mb-2">
-              <Image src="/logo.png" alt="Loo" width={140} height={40} className="object-contain" />
-            </div>
-            <p className="text-center text-sm text-gray-500 mb-4">
-              {mode === "signup" ? "Create Account" : "Login to your account"}
-            </p>
-
-            <form onSubmit={handleSubmit} className="space-y-3">
-              {mode === "signup" && (
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  type="text"
-                  placeholder="Full Name"
-                  className="w-full p-2 rounded-lg border border-pink-100 focus:ring-2 focus:ring-pink-300"
-                />
-              )}
-
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder="Email"
-                required
-                className="w-full p-2 rounded-lg border border-pink-100 focus:ring-2 focus:ring-pink-300"
-              />
-
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                placeholder="Password"
-                required
-                className="w-full p-2 rounded-lg border border-pink-100 focus:ring-2 focus:ring-pink-300"
-              />
-
-              {mode === "signup" && (
-                <input
-                  type="password"
-                  placeholder="Confirm Password"
-                  className="w-full p-2 rounded-lg border border-pink-100 focus:ring-2 focus:ring-pink-300"
-                />
-              )}
-
-              <button
-                type="submit"
-                className="w-full bg-pink-500 text-white py-2 rounded-lg hover:bg-pink-600 transition duration-300"
-              >
-                {mode === "signup" ? "Sign Up" : "Login"}
-              </button>
-
-              <p className="text-center text-sm mt-1">
-                {mode === "signup" ? "Already have an account?" : "Don't have an account?"}{" "}
-                <span
-                  className="text-pink-600 cursor-pointer"
-                  onClick={() => setMode((m) => (m === "signup" ? "login" : "signup"))}
-                >
-                  {mode === "signup" ? "Login" : "Sign Up"}
-                </span>
-              </p>
-            </form>
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+      {/* LEFT SIDE - FORM */}
+      <div className="flex items-center justify-center px-6 py-10 lg:px-16 bg-white">
+        <div className="w-full max-w-md">
+          <div className="flex justify-center mb-6">
+            <Image src="/logo.png" alt="Inventino" width={160} height={48} className="object-contain" priority />
           </div>
 
-          {/* thumbnail removed as requested */}
+          <div className="text-center mb-8">
+            <h1 className="text-xs tracking-[0.3em] text-gray-500 uppercase">Luxury Bracelets &amp; Jewelry</h1>
+            <h2 className="mt-2 text-2xl font-semibold text-[#E15483]">Create Account</h2>
+          </div>
+
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            
+            {/* FULL NAME */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Full Name *</label>
+              <input
+                value={name}
+                onChange={(e) => { setName(e.target.value); setErrors(prev => ({...prev, name: ""})); }}
+                type="text"
+                placeholder="Enter your full name"
+                className={`w-full rounded-[16px] bg-[#FFE6F0] border px-4 py-[15px] text-sm focus:outline-none focus:ring-2 transition-all ${
+                  errors.name ? "border-red-500 focus:ring-red-500" : "border-[#F7B9D0] focus:ring-[#E15483]/60"
+                }`}
+              />
+              {errors.name && <p className="text-[#D32F2F] text-xs mt-1 pl-2 font-medium">{errors.name}</p>}
+            </div>
+
+            {/* EMAIL */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Email *</label>
+              <input
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({...prev, email: ""})); }}
+                type="email"
+                placeholder="Enter your email"
+                className={`w-full rounded-[16px] bg-[#FFE6F0] border px-4 py-[15px] text-sm focus:outline-none focus:ring-2 transition-all ${
+                  errors.email ? "border-red-500 focus:ring-red-500" : "border-[#F7B9D0] focus:ring-[#E15483]/60"
+                }`}
+              />
+              {errors.email && <p className="text-[#D32F2F] text-xs mt-1 pl-2 font-medium">{errors.email}</p>}
+            </div>
+
+            {/* PASSWORD */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Password *</label>
+              <input
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({...prev, password: ""})); }}
+                type="password"
+                placeholder="Create a password"
+                className={`w-full rounded-[16px] bg-[#FFE6F0] border px-4 py-[15px] text-sm focus:outline-none focus:ring-2 transition-all ${
+                  errors.password ? "border-red-500 focus:ring-red-500" : "border-[#F7B9D0] focus:ring-[#E15483]/60"
+                }`}
+              />
+              {errors.password && <p className="text-[#D32F2F] text-xs mt-1 pl-2 font-medium">{errors.password}</p>}
+            </div>
+
+            <button type="submit" className="w-full rounded-full bg-[#E15483] text-white py-3.5 text-sm font-medium hover:bg-[#d14476] transition-colors mt-2">
+              Sign Up
+            </button>
+
+            <p className="text-center text-xs text-gray-600 mt-4">
+              Already have an account? <Link href="/login" className="text-[#E15483] font-medium hover:underline">Login</Link>
+            </p>
+          </form>
         </div>
       </div>
 
-      {/* RIGHT SIDE IMAGE (rounded card with overlay) */}
-      <div className="w-1/2 flex items-center justify-center p-8">
-        <div className="w-full h-[78vh] max-h-[900px] rounded-2xl overflow-hidden relative shadow-2xl border border-pink-100">
-          <img
-            src={mode === "signup" ? rightImages.signup : rightImages.login}
-            alt={overlay[mode].title}
-            className="w-full h-full object-cover"
-          />
-
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-pink-900/30 to-transparent flex items-end">
-            <div className="p-8 text-white w-full">
-              <h2 className="text-3xl font-semibold drop-shadow">{overlay[mode].title}</h2>
-              <p className="text-sm mt-2 max-w-md drop-shadow">{overlay[mode].subtitle}</p>
-            </div>
-          </div>
-        </div>
+      <div className="relative hidden lg:block">
+        <Image src="/images/signup-bg.jpg" alt="Shine With Style" fill priority className="object-cover" />
       </div>
     </div>
   );
 }
-
