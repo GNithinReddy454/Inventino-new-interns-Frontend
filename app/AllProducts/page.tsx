@@ -45,8 +45,9 @@ const MOCK_PRODUCTS = [
 
 export default function ProductsPage() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen">
-      <div className="flex flex-col lg:flex-row gap-8">
+    <div className="w-full bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 py-8 font-sans">
+        <div className="flex flex-col lg:flex-row gap-8">
 
         {/* ================= SIDEBAR ================= */}
         
@@ -122,6 +123,7 @@ export default function ProductsPage() {
             <button className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"><ChevronRight size={16} /></button>
           </div>
         </main>
+        </div>
       </div>
     </div>
   );

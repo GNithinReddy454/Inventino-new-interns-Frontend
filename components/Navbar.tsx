@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Heart, ShoppingBag, User } from "lucide-react";
+import { Search, Heart, ShoppingBag, User, Menu, X } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "@/components/authContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 const Navbar = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const isActive = (href: string) => {
+    if (!pathname) return false;
+    return pathname.toLowerCase().startsWith(href.toLowerCase());
+  };
   return (
     <header className="sticky top-0 z-50 w-full">
       {/* TOP ANNOUNCEMENT BAR */}
@@ -51,10 +58,30 @@ const Navbar = () => {
         {/* RIGHT: LINKS + ICONS */}
         <div className="flex items-center gap-4 md:gap-6">
           <nav className="hidden lg:flex gap-4 md:gap-6 text-gray-700 text-sm md:text-base">
-            <Link href="/about" className="hover:text-pink-600 transition-colors">About</Link>
-            <Link href="/AllProducts" className="hover:text-pink-600 transition-colors">All Products</Link>
-            <Link href="/stories" className="hover:text-pink-600 transition-colors">Stories</Link>
-            <Link href="/contact" className="hover:text-pink-600 transition-colors">Contact</Link>
+            <Link
+              href="/about"
+              className={isActive("/about") ? "text-pink-600 underline decoration-pink-500 underline-offset-4 font-semibold" : "hover:text-pink-600 transition-colors"}
+            >
+              About
+            </Link>
+            <Link
+              href="/AllProducts"
+              className={isActive("/AllProducts") ? "text-pink-600 underline decoration-pink-500 underline-offset-4 font-semibold" : "hover:text-pink-600 transition-colors"}
+            >
+              All Products
+            </Link>
+            <Link
+              href="/stories"
+              className={isActive("/stories") ? "text-pink-600 underline decoration-pink-500 underline-offset-4 font-semibold" : "hover:text-pink-600 transition-colors"}
+            >
+              Stories
+            </Link>
+            <Link
+              href="/contact"
+              className={isActive("/contact") ? "text-pink-600 underline decoration-pink-500 underline-offset-4 font-semibold" : "hover:text-pink-600 transition-colors"}
+            >
+              Contact
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2 md:gap-4">
@@ -67,9 +94,74 @@ const Navbar = () => {
 
             {/* User / Auth actions */}
             <AuthButtons />
+
+            {/* Mobile hamburger: placed to the right of login icon on small screens */}
+            <button
+              aria-label="Open menu"
+              onClick={() => setMenuOpen(true)}
+              className="lg:hidden p-2 rounded-md bg-white/0 hover:bg-white/50"
+            >
+              <Menu className="w-6 h-6 text-gray-700" />
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile full-screen menu overlay */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 bg-white/95 p-6 flex flex-col">
+          <div className="flex items-center justify-between">
+            <Link href="/">
+              <Image src="/logo.png" alt="Inventino" width={100} height={34} className="object-contain" />
+            </Link>
+            <button
+              aria-label="Close menu"
+              onClick={() => setMenuOpen(false)}
+              className="p-2 rounded-md"
+            >
+              <X className="w-6 h-6 text-gray-800" />
+            </button>
+          </div>
+
+          <nav className="mt-8 flex flex-col gap-6 text-lg">
+            <Link
+              href="/about"
+              onClick={() => setMenuOpen(false)}
+              className={isActive("/about") ? "text-pink-600 underline decoration-pink-500 underline-offset-4" : "text-gray-800"}
+            >
+              About
+            </Link>
+            <Link
+              href="/AllProducts"
+              onClick={() => setMenuOpen(false)}
+              className={isActive("/AllProducts") ? "text-pink-600 underline decoration-pink-500 underline-offset-4" : "text-gray-800"}
+            >
+              All Products
+            </Link>
+            <Link
+              href="/stories"
+              onClick={() => setMenuOpen(false)}
+              className={isActive("/stories") ? "text-pink-600 underline decoration-pink-500 underline-offset-4" : "text-gray-800"}
+            >
+              Stories
+            </Link>
+            <Link
+              href="/contact"
+              onClick={() => setMenuOpen(false)}
+              className={isActive("/contact") ? "text-pink-600 underline decoration-pink-500 underline-offset-4" : "text-gray-800"}
+            >
+              Contact
+            </Link>
+          </nav>
+
+          <div className="mt-auto">
+            <div className="flex gap-3">
+              <Link href="/signup" onClick={() => setMenuOpen(false)} className="px-4 py-2 bg-pink-500 text-white rounded-md">Sign up</Link>
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="px-4 py-2 border rounded-md">Login</Link>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
