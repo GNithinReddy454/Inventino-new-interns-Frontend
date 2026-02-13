@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Search, Heart, ShoppingBag, User, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/components/authContext";
+<<<<<<< HEAD
 import { useRouter, usePathname } from "next/navigation";
 
 const Navbar = () => {
@@ -14,8 +15,44 @@ const Navbar = () => {
     if (!pathname) return false;
     return pathname.toLowerCase().startsWith(href.toLowerCase());
   };
+=======
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
+const Navbar = () => {
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const diff = currentY - lastScrollY.current;
+
+      // Always show near the very top of the page
+      if (currentY < 50) {
+        setIsVisible(true);
+      } else if (diff > 4) {
+        // Scrolling down
+        setIsVisible(false);
+      } else if (diff < -4) {
+        // Scrolling up
+        setIsVisible(true);
+      }
+
+      lastScrollY.current = currentY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+>>>>>>> e291063f06935df18466541aac041349f33c7199
   return (
-    <header className="sticky top-0 z-50 w-full">
+    <header
+      className={`sticky top-0 z-50 w-full transition-transform duration-300 ease-out ${
+        isVisible ? "translate-y-0" : "-translate-y-full"
+      }`}
+    >
       {/* TOP ANNOUNCEMENT BAR */}
       <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center md:justify-between items-center">
         <p className="text-center md:text-left">
