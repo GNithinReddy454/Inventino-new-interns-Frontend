@@ -2,35 +2,26 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Heart, ShoppingBag, User, Menu, X } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { Search, Heart, ShoppingBag, User } from "lucide-react";
 import { useAuth } from "@/components/authContext";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; // Added usePathname
+import { useEffect, useRef, useState } from "react";
 
 const Navbar = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const pathname = usePathname();
-  const isActive = (href: string) => {
-    if (!pathname) return false;
-    return pathname.toLowerCase().startsWith(href.toLowerCase());
-  };
-
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const pathname = usePathname(); // Get current page path
 
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY;
       const diff = currentY - lastScrollY.current;
 
-      // Always show near the very top of the page
       if (currentY < 50) {
         setIsVisible(true);
       } else if (diff > 4) {
-        // Scrolling down
         setIsVisible(false);
       } else if (diff < -4) {
-        // Scrolling up
         setIsVisible(true);
       }
 
@@ -40,6 +31,15 @@ const Navbar = () => {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Helper function to handle the active styling logic
+  const getLinkStyle = (path: string) => {
+    const isActive = pathname === path;
+    return `transition-all duration-300 pb-1 ${isActive
+      ? "text-pink-600 font-bold border-b-2 border-pink-600" // Active style from your screenshot
+      : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300" // Hover style
+      }`;
+  };
 
   return (
     <header
@@ -63,11 +63,11 @@ const Navbar = () => {
         <div className="shrink-0">
           <Link href="/">
             <Image
-              src="/logo.png" // place your logo in public/logo.png
+              src="/logo.png"
               alt="Inventino"
-              width={120} // fits nicely
+              width={120}
               height={40}
-              className="object-contain" // Tailwind class helps too
+              className="object-contain"
               style={{ width: "auto", height: "auto" }}
             />
           </Link>
@@ -87,111 +87,26 @@ const Navbar = () => {
 
         {/* RIGHT: LINKS + ICONS */}
         <div className="flex items-center gap-4 md:gap-6">
-          <nav className="hidden lg:flex gap-4 md:gap-6 text-gray-700 text-sm md:text-base">
-            <Link
-              href="/about"
-              className={isActive("/about") ? "text-pink-600 underline decoration-pink-500 underline-offset-4 font-semibold" : "hover:text-pink-600 transition-colors"}
-            >
-              About
-            </Link>
-            <Link
-              href="/AllProducts"
-              className={isActive("/AllProducts") ? "text-pink-600 underline decoration-pink-500 underline-offset-4 font-semibold" : "hover:text-pink-600 transition-colors"}
-            >
-              All Products
-            </Link>
-            <Link
-              href="/stories"
-              className={isActive("/stories") ? "text-pink-600 underline decoration-pink-500 underline-offset-4 font-semibold" : "hover:text-pink-600 transition-colors"}
-            >
-              Stories
-            </Link>
-            <Link
-              href="/contact"
-              className={isActive("/contact") ? "text-pink-600 underline decoration-pink-500 underline-offset-4 font-semibold" : "hover:text-pink-600 transition-colors"}
-            >
-              Contact
-            </Link>
+          <nav className="hidden lg:flex gap-4 md:gap-6 text-sm md:text-base items-center h-full">
+
+            <Link href="/AllProducts" className={getLinkStyle("/AllProducts")}>All Products</Link>
+            <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
+            <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
           </nav>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <div className="btn btn-ghost btn-circle p-2">
-              <Heart className="w-4 md:w-5 h-4 md:h-5" />
+            <div className="btn btn-ghost btn-circle p-2 cursor-pointer">
+              <Heart className="w-4 md:w-5 h-4 md:h-5 hover:text-pink-500 transition-colors" />
             </div>
             <button className="btn btn-ghost btn-circle p-2">
-              <ShoppingBag className="w-4 md:w-5 h-4 md:h-5" />
+              <ShoppingBag className="w-4 md:w-5 h-4 md:h-5 hover:text-pink-500 transition-colors" />
             </button>
 
             {/* User / Auth actions */}
             <AuthButtons />
-
-            {/* Mobile hamburger: placed to the right of login icon on small screens */}
-            <button
-              aria-label="Open menu"
-              onClick={() => setMenuOpen(true)}
-              className="lg:hidden p-2 rounded-md bg-white/0 hover:bg-white/50"
-            >
-              <Menu className="w-6 h-6 text-gray-700" />
-            </button>
           </div>
         </div>
       </div>
-
-      {/* Mobile full-screen menu overlay */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 bg-white/95 p-6 flex flex-col">
-          <div className="flex items-center justify-between">
-            <Link href="/">
-              <Image src="/logo.png" alt="Inventino" width={100} height={34} className="object-contain" />
-            </Link>
-            <button
-              aria-label="Close menu"
-              onClick={() => setMenuOpen(false)}
-              className="p-2 rounded-md"
-            >
-              <X className="w-6 h-6 text-gray-800" />
-            </button>
-          </div>
-
-          <nav className="mt-8 flex flex-col gap-6 text-lg">
-            <Link
-              href="/about"
-              onClick={() => setMenuOpen(false)}
-              className={isActive("/about") ? "text-pink-600 underline decoration-pink-500 underline-offset-4" : "text-gray-800"}
-            >
-              About
-            </Link>
-            <Link
-              href="/AllProducts"
-              onClick={() => setMenuOpen(false)}
-              className={isActive("/AllProducts") ? "text-pink-600 underline decoration-pink-500 underline-offset-4" : "text-gray-800"}
-            >
-              All Products
-            </Link>
-            <Link
-              href="/stories"
-              onClick={() => setMenuOpen(false)}
-              className={isActive("/stories") ? "text-pink-600 underline decoration-pink-500 underline-offset-4" : "text-gray-800"}
-            >
-              Stories
-            </Link>
-            <Link
-              href="/contact"
-              onClick={() => setMenuOpen(false)}
-              className={isActive("/contact") ? "text-pink-600 underline decoration-pink-500 underline-offset-4" : "text-gray-800"}
-            >
-              Contact
-            </Link>
-          </nav>
-
-          <div className="mt-auto">
-            <div className="flex gap-3">
-              <Link href="/signup" onClick={() => setMenuOpen(false)} className="px-4 py-2 bg-pink-500 text-white rounded-md">Sign up</Link>
-              <Link href="/login" onClick={() => setMenuOpen(false)} className="px-4 py-2 border rounded-md">Login</Link>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 };
@@ -207,14 +122,14 @@ function AuthButtons() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => router.push("/profile")}
-          className="flex items-center gap-2 text-sm rounded-md px-3 py-1 bg-white border"
+          className="flex items-center gap-2 text-sm rounded-md px-3 py-1 bg-white border border-gray-200 hover:border-pink-300 transition-colors"
         >
           <User className="w-4 h-4" />
           <span className="hidden md:inline">Hi, {user.name.split(" ")[0]}</span>
         </button>
         <button
           onClick={() => logout()}
-          className="text-sm px-3 py-1 rounded-md bg-pink-500 text-white hover:bg-pink-600"
+          className="text-sm px-3 py-1 rounded-md bg-pink-500 text-white hover:bg-pink-600 transition-colors"
         >
           Logout
         </button>
@@ -225,9 +140,9 @@ function AuthButtons() {
   return (
     <div className="flex items-center gap-2">
       <Link href="/signup" className="btn btn-ghost btn-circle p-2">
-        <User className="w-4 md:w-5 h-4 md:h-5" />
+        <User className="w-4 md:w-5 h-4 md:h-5 hover:text-pink-600 transition-colors" />
       </Link>
-      <Link href="/signup" className="hidden md:inline text-sm text-pink-600">Login</Link>
+      <Link href="/login" className="hidden md:inline text-sm text-pink-600 font-semibold hover:underline">Login</Link>
     </div>
   );
 }
