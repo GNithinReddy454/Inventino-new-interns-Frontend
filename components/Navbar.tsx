@@ -34,8 +34,8 @@ const Navbar = () => {
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path;
     return `transition-all duration-300 pb-1 ${isActive
-        ? "text-pink-600 font-bold border-b-2 border-pink-600"
-        : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
+      ? "text-pink-600 font-bold border-b-2 border-pink-600"
+      : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
       }`;
   };
 
@@ -45,12 +45,11 @@ const Navbar = () => {
   return (
     <header className={`sticky top-0 z-50 w-full transition-transform duration-300 ease-out ${isVisible ? "translate-y-0" : "-translate-y-full"}`}>
       {/* TOP ANNOUNCEMENT BAR */}
-      <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center md:justify-between items-center">
-        <p className="text-center md:text-left">
+      <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center">
+        <p className="text-center">
           💖 Valentine's Day Special – Get 20% OFF on all handmade gifts!
           <span className="ml-2 underline cursor-pointer">Explore Now</span>
         </p>
-        <Link href="/about" className="hidden md:block whitespace-nowrap">Learn Our Story</Link>
       </div>
 
       {/* MAIN NAVBAR */}
@@ -74,7 +73,6 @@ const Navbar = () => {
 
         <div className="flex items-center gap-4">
           <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center">
-            <Link href="/about" className={getLinkStyle("/about")}>About</Link>
             <Link href="/AllProducts" className={getLinkStyle("/AllProducts")}>All Products</Link>
             <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
             <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
