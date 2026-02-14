@@ -7,16 +7,22 @@ import { useAuth } from "@/components/authContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/storeContext";
+import { useCart } from "@/lib/cartContext";
+
 
 const Navbar = () => {
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
   const pathname = usePathname();
-  const { bag, savedItems } = useStore();
+  const { savedItems } = useStore();
+  const { cart } = useCart();
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const bagCount = bag.reduce((total, item) => total + item.quantity, 0);
+  const bagCount = cart.reduce(
+    (total, item) => total + (item.quantity || 1),
+    0
+  );
 
   useEffect(() => {
     const handleScroll = () => {

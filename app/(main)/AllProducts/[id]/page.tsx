@@ -193,8 +193,9 @@ export default function ProductDetailsPage() {
 }
 
 // --- COMPONENT: SIMILAR PRODUCT CARD ---
-function SimilarProductCard({ product, addToCart , handleSaved, savedItems }: any) {
-  const isSaved = savedItems.some((item: any) => item.id === product.id);
+function SimilarProductCard({ product, addToCart, handleSaved, savedItems }: any) {
+  // Safe check: Ensure savedItems exists before calling .some()
+  const isSaved = Array.isArray(savedItems) ? savedItems.some((item: any) => item.id === product.id) : false;
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col group transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
@@ -217,12 +218,15 @@ function SimilarProductCard({ product, addToCart , handleSaved, savedItems }: an
          </Link>
          <div className="mt-auto flex items-center justify-between pt-2">
             <span className="font-bold text-pink-500">${product.price.toFixed(2)}</span>
+            
+            {/* --- FIX IS HERE: Correct arrow function syntax --- */}
             <button 
-              onClick={() = addToCart (product, 1)}
+              onClick={() => addToCart(product, 1)}
               className="bg-pink-500 text-white text-[10px] font-bold px-4 py-2 rounded-full hover:bg-pink-600 transition-all uppercase"
             >
                Add
             </button>
+            
          </div>
       </div>
     </div>
