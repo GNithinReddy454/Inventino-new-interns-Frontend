@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Heart, ShoppingCart, User, LogOut } from "lucide-react"; // Switched to ShoppingCart
+import { Search, Heart, ShoppingCart, User, LogOut } from "lucide-react";
 import { useAuth } from "@/components/authContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useStore } from "@/lib/storeContext"; 
+import { useStore } from "@/lib/storeContext";
 
 const Navbar = () => {
   const [isVisible, setIsVisible] = useState(true);
@@ -33,11 +33,10 @@ const Navbar = () => {
 
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path;
-    return `transition-all duration-300 pb-1 ${
-      isActive 
-        ? "text-pink-600 font-bold border-b-2 border-pink-600" 
-        : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
-    }`;
+    return `transition-all duration-300 pb-1 ${isActive
+      ? "text-pink-600 font-bold border-b-2 border-pink-600"
+      : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
+      }`;
   };
 
   // Standard circular style for buttons
@@ -46,12 +45,11 @@ const Navbar = () => {
   return (
     <header className={`sticky top-0 z-50 w-full transition-transform duration-300 ease-out ${isVisible ? "translate-y-0" : "-translate-y-full"}`}>
       {/* TOP ANNOUNCEMENT BAR */}
-      <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center md:justify-between items-center">
-        <p className="text-center md:text-left">
-          💖 Valentine’s Day Special – Get 20% OFF on all handmade gifts!
+      <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center">
+        <p className="text-center">
+          💖 Valentine's Day Special – Get 20% OFF on all handmade gifts!
           <span className="ml-2 underline cursor-pointer">Explore Now</span>
         </p>
-        <Link href="/about" className="hidden md:block whitespace-nowrap">Learn Our Story</Link>
       </div>
 
       {/* MAIN NAVBAR */}
@@ -75,7 +73,6 @@ const Navbar = () => {
 
         <div className="flex items-center gap-4">
           <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center">
-            <Link href="/about" className={getLinkStyle("/about")}>About</Link>
             <Link href="/AllProducts" className={getLinkStyle("/AllProducts")}>All Products</Link>
             <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
             <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
@@ -83,7 +80,7 @@ const Navbar = () => {
 
           {/* ACTION BUTTONS: Wishlist -> Cart -> User */}
           <div className="flex items-center gap-3">
-            
+
             {/* 1. Wishlist */}
             <Link href="/wishlist" className={iconCircleStyle}>
               <Heart size={18} />
@@ -114,8 +111,8 @@ const Navbar = () => {
                   <span className="text-sm font-bold text-gray-700 whitespace-nowrap">
                     Hi, {user.name.split(" ")[0]}
                   </span>
-                  <button 
-                    onClick={() => logout()} 
+                  <button
+                    onClick={() => logout()}
                     className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                     title="Logout"
                   >
