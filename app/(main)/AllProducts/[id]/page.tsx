@@ -39,7 +39,7 @@ const getProductById = (id: number) => {
 export default function ProductDetailsPage() {
   const params = useParams(); 
   // We add " = {}" and "savedItems = []" to prevent crashes if data is missing
-  const { handleBag } = useCart(); 
+  const { addToCart  } = useCart(); 
   const { handleSaved, savedItems = [] } = useStore();  const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState(0);
@@ -127,7 +127,7 @@ export default function ProductDetailsPage() {
                  <button onClick={() => setQuantity(quantity + 1)} className="p-3 text-gray-500 hover:text-pink-500"><Plus size={16}/></button>
               </div>
               <button 
-                onClick={() => handleBag(product, quantity)}
+                onClick={() => addToCart (product, quantity)}
                 className="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:scale-95"
               >
                  <ShoppingBag size={18} /> Add to Cart
@@ -174,7 +174,7 @@ export default function ProductDetailsPage() {
                  <SimilarProductCard 
                     key={offset} 
                     product={getProductById(product.id + offset)} 
-                    handleBag={handleBag}
+                    addToCart ={addToCart}
                     handleSaved={handleSaved}
                     savedItems={savedItems}
                  />
@@ -193,7 +193,7 @@ export default function ProductDetailsPage() {
 }
 
 // --- COMPONENT: SIMILAR PRODUCT CARD ---
-function SimilarProductCard({ product, handleBag, handleSaved, savedItems }: any) {
+function SimilarProductCard({ product, addToCart , handleSaved, savedItems }: any) {
   const isSaved = savedItems.some((item: any) => item.id === product.id);
 
   return (
@@ -218,7 +218,7 @@ function SimilarProductCard({ product, handleBag, handleSaved, savedItems }: any
          <div className="mt-auto flex items-center justify-between pt-2">
             <span className="font-bold text-pink-500">${product.price.toFixed(2)}</span>
             <button 
-              onClick={() => handleBag(product, 1)}
+              onClick={() = addToCart (product, 1)}
               className="bg-pink-500 text-white text-[10px] font-bold px-4 py-2 rounded-full hover:bg-pink-600 transition-all uppercase"
             >
                Add
