@@ -4,8 +4,13 @@ import { useStore } from "@/lib/storeContext";
 import { Heart, ShoppingBag, Trash2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
+import Image from "next/image";
+import { useCart } from "@/lib/cartContext";
+
 export default function WishlistPage() {
-  const { savedItems, handleSaved, handleBag } = useStore(); 
+  const { savedItems, handleSaved} = useStore(); //
+  const {handleBag} = useCart();
+
 
   return (
     /* FIXED: 

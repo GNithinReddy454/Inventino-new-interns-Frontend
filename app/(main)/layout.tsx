@@ -9,13 +9,13 @@ export default function MainLayout({
   return (
     <div className="flex min-h-screen flex-col">
       {/* Navbar at the top for main store pages */}
-      <Navbar />
+      {/* <Navbar /> */}
 
       {/* Main content area grows to push footer down */}
       <main className="flex-1">{children}</main>
 
       {/* Footer stays at the bottom */}
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }
