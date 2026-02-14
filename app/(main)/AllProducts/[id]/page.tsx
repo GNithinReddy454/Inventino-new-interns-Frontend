@@ -5,6 +5,7 @@ import { Star, Truck, ShieldCheck, RefreshCw, Minus, Plus, Heart, ShoppingBag, C
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import productsData from "@/lib/products.json"; 
+import ProductReviews from "@/app/components/ProductReviews";
 
 // --- CONSTANTS ---
 const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accessories"];
@@ -198,6 +199,12 @@ export default function ProductDetailsPage() {
          </div>
       </div>
 
+      {/* ================= REVIEWS SECTION ================= */}
+      <ProductReviews 
+        isLoggedIn={true} 
+        hasPurchased={true} 
+      />
+
     </div>
   );
 }
@@ -250,6 +257,15 @@ function SimilarProductCard({ product }: { product: any }) {
             </button>
          </div>
       </div>
+
+      {/* REVIEWS SECTION */}
+      {/* For testing, I've set isLoggedIn={true} and hasPurchased={true} so you can see the form */}
+      {/* <ProductReviews 
+        productId={product.id} 
+        isLoggedIn={true} 
+        hasPurchased={true} 
+      /> */}
+
     </div>
   );
 
