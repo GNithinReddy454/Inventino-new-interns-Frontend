@@ -6,6 +6,7 @@ import Link from "next/link";
 import productsData from "@/lib/products.json";
 import { useStore } from "@/lib/storeContext";
 import { Product } from "@/lib/products";
+import { useCart } from "@/lib/cartContext";
 
 // --- 1. DATA GENERATOR (FIXED HYDRATION) ---
 const TOTAL_PRODUCTS = 156;
@@ -158,7 +159,8 @@ export default function ProductsPage() {
 
 // ================= PRODUCT CARD =================
 function ProductCard({ product }: { product: any }) {
-  const { handleBag, handleSaved, savedItems } = useStore();
+const { handleSaved, savedItems } = useStore();
+const { addToCart } = useCart();
   const isSaved = savedItems.some(item => item.id === product.id);
 
   return (
@@ -195,7 +197,7 @@ function ProductCard({ product }: { product: any }) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              handleBag(product as Product, 1);
+              addToCart(product as Product, 1);
             }}
             className="z-10 bg-pink-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-pink-600 transition-all active:scale-95 uppercase tracking-wide"
           >
