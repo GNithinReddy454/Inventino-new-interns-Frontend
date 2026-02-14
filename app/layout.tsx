@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { CartProvider } from "@/lib/cartContext";
-import { WishlistProvider } from "@/components/wishlistContext";
+import { StoreProvider } from "@/lib/storeContext"; // Main logic file
 import { AuthProvider } from "@/components/authContext";
+import { CartProvider } from "@/lib/cartContext"; // FIXED: Added this to stop the runtime crash
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,13 +30,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
+        {/* We wrap everything in CartProvider first so the useCart hook works */}
         <CartProvider>
-          <WishlistProvider>
+          <StoreProvider>
             <AuthProvider>
               {/* Main content stretches to push footer down */}
               <div className="flex-1">{children}</div>
             </AuthProvider>
-          </WishlistProvider>
+          </StoreProvider>
         </CartProvider>
       </body>
     </html>
