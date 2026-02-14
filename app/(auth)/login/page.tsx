@@ -4,10 +4,12 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({ email: "", password: "" });
   const router = useRouter();
 
@@ -16,6 +18,7 @@ export default function LoginPage() {
     const newErrors = { email: "", password: "" };
     let hasError = false;
 
+    // Email validation
     if (!email) {
       newErrors.email = "Please enter your registered email";
       hasError = true;
@@ -24,8 +27,12 @@ export default function LoginPage() {
       hasError = true;
     }
 
+    // Password validation: Minimum 6 characters
     if (!password) {
       newErrors.password = "Please enter your password";
+      hasError = true;
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
       hasError = true;
     }
 
@@ -37,10 +44,15 @@ export default function LoginPage() {
   };
 
   return (
-    /* fixed inset-0 prevents mobile scrolling and keeps layout centered */
-    <div className="fixed inset-0 w-full h-full overflow-hidden grid grid-cols-1 lg:grid-cols-2 bg-white">
-      
-      {/* LEFT SIDE - FORM */}
+    <div className="fixed inset-0 w-full h-full overflow-hidden grid grid-cols-1 lg:grid-cols-2 bg-white font-inter">
+      {/* GLOBAL CSS FIX: Hides the default browser eye icon */}
+      <style jsx global>{`
+        input::-ms-reveal,
+        input::-ms-clear {
+          display: none;
+        }
+      `}</style>
+
       <div className="flex flex-col items-center justify-center px-6 py-4 lg:px-16 overflow-y-auto no-scrollbar">
         <div className="w-full max-w-md">
           
@@ -56,7 +68,7 @@ export default function LoginPage() {
           </div>
 
           <div className="text-center mb-4 lg:mb-6">
-            <h1 className="text-[10px] tracking-[0.2em] text-gray-400 uppercase">
+            <h1 className="text-[10px] tracking-[0.2em] text-gray-400 uppercase font-medium">
               Luxury Bracelets &amp; Jewelry
             </h1>
             <h2 className="mt-1 text-xl font-semibold text-[#E15483]">
@@ -64,9 +76,8 @@ export default function LoginPage() {
             </h2>
           </div>
 
-          <form onSubmit={handleSubmit} noValidate className="space-y-3 lg:space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div className="space-y-1">
-              {/* LABELS: EXACT FIGMA SPECS - 12.7px and #555555 */}
               <label className="text-[12.7px] font-normal text-[#555555] tracking-tight">Email *</label>
               <input
                 type="email"
@@ -81,17 +92,28 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-1">
-              {/* LABELS: EXACT FIGMA SPECS - 12.7px and #555555 */}
               <label className="text-[12.7px] font-normal text-[#555555] tracking-tight">Password *</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({...prev, password: ""})); }}
-                placeholder="Enter password"
-                className={`w-full rounded-[14px] bg-[#FFE6F0] border px-4 py-3 text-sm placeholder:text-gray-400 focus:outline-none transition-all ${
-                  errors.password ? "border-red-500" : "border-[#F7B9D0] focus:border-[#E15483]"
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({...prev, password: ""})); }}
+                  placeholder="Enter password"
+                  className={`w-full rounded-[14px] bg-[#FFE6F0] border px-4 py-3 pr-12 text-sm placeholder:text-gray-400 focus:outline-none transition-all ${
+                    errors.password ? "border-red-500" : "border-[#F7B9D0] focus:border-[#E15483]"
+                  }`}
+                />
+                {/* Smart Eye Toggle: Only visible when typing */}
+                {password.length > 0 && (
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#E15483] transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                )}
+              </div>
               {errors.password && <p className="text-red-500 text-[10px] mt-1 pl-1 font-medium">{errors.password}</p>}
             </div>
 
@@ -108,10 +130,7 @@ export default function LoginPage() {
               Login
             </button>
 
-            {/* GOOGLE LOGIN - Improved visibility without "Disabled" text */}
-            <div
-              className="w-full rounded-full border border-gray-300 bg-gray-50/50 py-3 text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed select-none transition-opacity"
-            >
+            <div className="w-full rounded-full border border-gray-300 bg-gray-50/50 py-3 text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed select-none">
               <Image
                 src="https://www.svgrepo.com/show/475656/google-color.svg"
                 alt="Google"
