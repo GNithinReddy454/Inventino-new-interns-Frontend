@@ -150,9 +150,11 @@ export default function BagPage() {
                 </span>
               </div>
 
+              <Link href="/checkout" className="w-full">
               <button className="w-full bg-pink-500 text-white py-4 rounded-full font-bold shadow-lg hover:bg-pink-600 transition-all active:scale-95">
                 Proceed to Checkout
               </button>
+              </Link>
             </div>
           </div>
 

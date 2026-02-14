@@ -4,9 +4,11 @@ import { useStore } from "@/lib/storeContext"; //
 import { Heart, ShoppingBag, Trash2, ChevronLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useCart } from "@/lib/cartContext";
 
 export default function WishlistPage() {
-  const { savedItems, handleSaved, handleBag } = useStore(); //
+  const { savedItems, handleSaved} = useStore(); //
+  const {handleBag} = useCart();
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-20 font-sans min-h-screen">
