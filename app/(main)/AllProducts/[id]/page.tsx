@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import productsData from "@/lib/products.json"; 
 import { useCart } from "@/lib/cartContext"; // FIXED: Imported useCart
 import ProductReviews from "@/app/components/ProductReviews"; // Imported Reviews
+import { useStore } from "@/lib/storeContext";
 
 // --- CONSTANTS ---
 const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accessories"];
@@ -38,10 +39,11 @@ const getProductById = (id: number) => {
 export default function ProductDetailsPage() {
   const params = useParams(); 
   // We add " = {}" and "savedItems = []" to prevent crashes if data is missing
-  const { handleBag = () => {}, handleSaved = () => {}, savedItems = [] } = useCart() || {};  const [product, setProduct] = useState<any>(null);
-  const [selectedImage, setSelectedImage] = useState(0);
+  const { handleBag } = useCart(); 
+  const { handleSaved, savedItems = [] } = useStore();  const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState(0);
+  const [product, setProduct] = useState<any>(null);
 
   useEffect(() => {
     if (params.id) {
