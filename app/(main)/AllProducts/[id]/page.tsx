@@ -5,7 +5,8 @@ import { Star, Truck, ShieldCheck, RefreshCw, Minus, Plus, Heart, ShoppingBag, C
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import productsData from "@/lib/products.json"; 
-import ProductReviews from "@/app/components/ProductReviews";
+import { useCart } from "@/lib/cartContext"; // FIXED: Imported useCart
+import ProductReviews from "@/app/components/ProductReviews"; // Imported Reviews
 
 // --- CONSTANTS ---
 const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accessories"];
@@ -17,6 +18,7 @@ const getProductById = (id: number) => {
   const categoryIndex = (id - 1) % CATEGORIES_LIST.length;
   const category = CATEGORIES_LIST[categoryIndex];
 
+  // Deterministic Math for Price
   const stablePrice = Math.floor(((id * 17) % 575) + 25);
 
   return {
@@ -35,8 +37,8 @@ const getProductById = (id: number) => {
 
 export default function ProductDetailsPage() {
   const params = useParams(); 
-  const { handleBag, handleSaved, savedItems } = useStore(); // ADDED: Destructure store functions
-  const [product, setProduct] = useState<any>(null);
+  // We add " = {}" and "savedItems = []" to prevent crashes if data is missing
+  const { handleBag = () => {}, handleSaved = () => {}, savedItems = [] } = useCart() || {};  const [product, setProduct] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState(0);
@@ -56,7 +58,7 @@ export default function ProductDetailsPage() {
     );
   }
 
-  const isSaved = savedItems.some(item => item.id === product.id);
+  const isSaved = savedItems.some((item: any) => item.id === product.id);
 
   return (
     <div className="bg-white font-sans">
@@ -70,12 +72,12 @@ export default function ProductDetailsPage() {
 
       {/* TOP SECTION: DETAILS */}
       <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-12">
+        {/* Left: Images */}
         <div className="flex flex-col gap-4">
           <div className="relative aspect-square bg-gray-50 rounded-3xl overflow-hidden border border-gray-100">
              <img src={product.images[selectedImage]} alt={product.name} className="w-full h-full object-cover"/>
-             {/* ADDED: Connected handleSaved here */}
              <button 
-                onClick={() => handleSaved(product as Product)}
+                onClick={() => handleSaved(product)}
                 className={`absolute top-4 right-4 p-2 rounded-full shadow-sm transition-colors ${isSaved ? 'bg-pink-500 text-white' : 'bg-white text-gray-400 hover:text-pink-500'}`}
              >
                <Heart size={20} fill={isSaved ? "currentColor" : "none"} />
@@ -90,6 +92,7 @@ export default function ProductDetailsPage() {
           </div>
         </div>
 
+        {/* Right: Info */}
         <div className="flex flex-col gap-6">
            <div className="flex items-center gap-2">
              <span className="text-pink-500 text-xs font-bold uppercase">{product.category}</span>
@@ -115,42 +118,44 @@ export default function ProductDetailsPage() {
              </div>
            </div>
 
-           {/* Add to Cart Section */}
            <div className="flex gap-4 pt-4 border-t border-gray-100">
               <div className="flex items-center border border-gray-200 rounded-xl">
                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3 text-gray-500 hover:text-pink-500"><Minus size={16}/></button>
                  <span className="font-bold text-gray-900 w-8 text-center">{quantity}</span>
                  <button onClick={() => setQuantity(quantity + 1)} className="p-3 text-gray-500 hover:text-pink-500"><Plus size={16}/></button>
               </div>
-              {/* ADDED: Connected handleBag here */}
               <button 
-                onClick={() => handleBag(product as Product, quantity)}
+                onClick={() => handleBag(product, quantity)}
                 className="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:scale-95"
               >
                  <ShoppingBag size={18} /> Add to Cart
               </button>
            </div>
-           
+
            <div className="grid grid-cols-3 gap-4 pt-2 text-xs text-gray-500">
-             <div className="flex items-center gap-2"><Truck size={16} className="text-pink-500"/> Free Shipping</div>
-             <div className="flex items-center gap-2"><ShieldCheck size={16} className="text-pink-500"/> 2 Year Warranty</div>
-             <div className="flex items-center gap-2"><RefreshCw size={16} className="text-pink-500"/> Easy Returns</div>
+              <div className="flex items-center gap-2"><Truck size={16} className="text-pink-500"/> Free Shipping</div>
+              <div className="flex items-center gap-2"><ShieldCheck size={16} className="text-pink-500"/> 2 Year Warranty</div>
+              <div className="flex items-center gap-2"><RefreshCw size={16} className="text-pink-500"/> Easy Returns</div>
            </div>
         </div>
       </div>
 
-      {/* RESTORED MIDDLE SECTION (Story) */}
+      {/* MIDDLE SECTION: STORY */}
       <div className="bg-[#1a1a1a] text-white py-20 px-4 mt-12">
-         <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-serif mb-4">The Story Behind <span className="text-pink-500">This Treasure</span></h2>
-            <p className="text-gray-400 max-w-2xl mx-auto text-sm mb-16">Every piece we create carries a unique journey from concept to creation</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center text-left">
+         <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+               <h2 className="text-3xl md:text-4xl font-serif mb-4">The Story Behind <span className="text-pink-500">This Treasure</span></h2>
+               <p className="text-gray-400 max-w-2xl mx-auto text-sm">Every piece we create carries a unique journey from concept to creation</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                <div className="relative aspect-square rounded-2xl overflow-hidden border-4 border-white/10">
                   <img src={product.images[0]} alt="Story" className="w-full h-full object-cover opacity-90" />
                </div>
                <div className="space-y-6">
                   <p className="text-gray-300 leading-relaxed text-sm">This beautiful piece is the result of over 20 years of craftsmanship perfected by Sarah Anderson.</p>
-                  <blockquote className="border-l-4 border-pink-500 pl-4 py-2 bg-white/5 italic text-gray-200">"Every piece I create is infused with love and intention."</blockquote>
+                  <blockquote className="border-l-4 border-pink-500 pl-4 py-2 my-6 bg-white/5 rounded-r-lg">
+                    <p className="italic text-gray-200 text-sm">"Every piece I create is infused with love and intention."</p>
+                  </blockquote>
                </div>
             </div>
          </div>
@@ -167,15 +172,15 @@ export default function ProductDetailsPage() {
                  <SimilarProductCard 
                     key={offset} 
                     product={getProductById(product.id + offset)} 
-                    handleBag={handleBag} 
-                    handleSaved={handleSaved} 
-                    savedItems={savedItems} 
+                    handleBag={handleBag}
+                    handleSaved={handleSaved}
+                    savedItems={savedItems}
                  />
              ))}
          </div>
       </div>
 
-      {/* ================= REVIEWS SECTION ================= */}
+      {/* REVIEWS SECTION - PLACED HERE AT THE BOTTOM */}
       <ProductReviews 
         isLoggedIn={true} 
         hasPurchased={true} 
@@ -192,7 +197,6 @@ function SimilarProductCard({ product, handleBag, handleSaved, savedItems }: any
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col group transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
       <div className="relative aspect-square rounded-xl overflow-hidden mb-4 bg-gray-50">
-        {/* FIXED: Link points to /AllProducts/${id} */}
         <Link href={`/AllProducts/${product.id}`} className="block w-full h-full">
            <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700"/>
         </Link>
@@ -215,12 +219,10 @@ function SimilarProductCard({ product, handleBag, handleSaved, savedItems }: any
               onClick={() => handleBag(product, 1)}
               className="bg-pink-500 text-white text-[10px] font-bold px-4 py-2 rounded-full hover:bg-pink-600 transition-all uppercase"
             >
-              Add
+               Add
             </button>
          </div>
       </div>
-
-
     </div>
   );
 }
