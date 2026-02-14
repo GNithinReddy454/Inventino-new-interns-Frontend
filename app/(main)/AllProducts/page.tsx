@@ -92,9 +92,25 @@ export default function ProductsPage() {
               <li onClick={() => setSelectedCategory("All Products")} className={`flex justify-between cursor-pointer font-medium ${selectedCategory === "All Products" ? "text-pink-500" : "text-gray-600 hover:text-pink-500"}`}>
                 All Products <span className="bg-pink-100 text-pink-600 px-2 rounded-full text-xs">{TOTAL_PRODUCTS}</span>
               </li>
-              {CATEGORIES_LIST.map(cat => (
-                <li key={cat} onClick={() => setSelectedCategory(cat)} className={`cursor-pointer ${selectedCategory === cat ? "text-pink-500 font-medium" : "text-gray-600 hover:text-pink-500"}`}>{cat}</li>
-              ))}
+              {CATEGORIES_LIST.map(cat => {
+                // 1. Calculate the count for this category
+                const count = ALL_PRODUCTS_LIST.filter(p => p.category === cat).length;
+                
+                return (
+                  <li 
+                    key={cat} 
+                    onClick={() => setSelectedCategory(cat)} 
+                    // Updated class to use flexbox for spacing
+                    className={`flex justify-between items-center cursor-pointer transition-colors ${selectedCategory === cat ? "text-pink-500 font-bold" : "text-gray-600 hover:text-pink-500"}`}
+                  >
+                    <span>{cat}</span>
+                    {/* 2. Display the count badge */}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedCategory === cat ? "bg-pink-100 text-pink-600" : "bg-gray-100 text-gray-400"}`}>
+                      {count}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
