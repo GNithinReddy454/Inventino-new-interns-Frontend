@@ -5,8 +5,7 @@ import { Star, Truck, ShieldCheck, RefreshCw, Minus, Plus, Heart, ShoppingBag, C
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import productsData from "@/lib/products.json"; 
-import { useStore } from "@/lib/storeContext"; // ADDED: Link your store logic
-import { Product } from "@/lib/products";
+import ProductReviews from "@/app/components/ProductReviews";
 
 // --- CONSTANTS ---
 const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accessories"];
@@ -175,6 +174,13 @@ export default function ProductDetailsPage() {
              ))}
          </div>
       </div>
+
+      {/* ================= REVIEWS SECTION ================= */}
+      <ProductReviews 
+        isLoggedIn={true} 
+        hasPurchased={true} 
+      />
+
     </div>
   );
 }
@@ -213,6 +219,8 @@ function SimilarProductCard({ product, handleBag, handleSaved, savedItems }: any
             </button>
          </div>
       </div>
+
+
     </div>
   );
 }
