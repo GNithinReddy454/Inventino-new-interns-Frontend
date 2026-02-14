@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Star, ThumbsUp, CheckCircle, User } from "lucide-react";
+import Toast from "./toast";
 
 // --- MOCK DATA ---
 const MOCK_REVIEWS = [
@@ -49,6 +50,9 @@ export default function ProductReviews({
 }) {
   const [reviews, setReviews] = useState(MOCK_REVIEWS);
   const [visibleReviews, setVisibleReviews] = useState(3);
+
+//   ADD TOAST STATE
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
   
   // Form State
   const [rating, setRating] = useState(0);
@@ -72,11 +76,23 @@ export default function ProductReviews({
     };
     setReviews([newReview, ...reviews]);
     setRating(0); setTitle(""); setContent(""); setName("");
-    alert("Review submitted!");
+    // SHOW TOAST INSTEAD OF ALERT
+    setShowSuccessToast(true);
   };
 
   return (
-    <div className="bg-white py-16 border-t border-gray-100">
+    <div className="bg-white py-16 border-t border-gray-100 relative">
+
+      {/* 4. RENDER TOAST COMPONENT */}
+      {showSuccessToast && (
+        <Toast 
+          title="Success!" 
+          message="Review submitted successfully" 
+          type="success"
+          onClose={() => setShowSuccessToast(false)} 
+        />
+      )}  
+
       <div className="max-w-6xl mx-auto px-4">
         
         {/* HEADER */}
