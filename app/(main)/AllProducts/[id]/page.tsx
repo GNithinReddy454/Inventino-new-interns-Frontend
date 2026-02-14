@@ -30,7 +30,7 @@ const getProductById = (id: number) => {
     rating: 4.5 + (id % 5) * 0.1,
     reviews: 50 + (id * 3),
     name: template.name || template.title
-  };
+    };
 };
 
 export default function ProductDetailsPage() {
@@ -130,11 +130,11 @@ export default function ProductDetailsPage() {
                  <ShoppingBag size={18} /> Add to Cart
               </button>
            </div>
-           
+
            <div className="grid grid-cols-3 gap-4 pt-2 text-xs text-gray-500">
-             <div className="flex items-center gap-2"><Truck size={16} className="text-pink-500"/> Free Shipping</div>
-             <div className="flex items-center gap-2"><ShieldCheck size={16} className="text-pink-500"/> 2 Year Warranty</div>
-             <div className="flex items-center gap-2"><RefreshCw size={16} className="text-pink-500"/> Easy Returns</div>
+              <div className="flex items-center gap-2"><Truck size={16} className="text-pink-500"/> Free Shipping</div>
+              <div className="flex items-center gap-2"><ShieldCheck size={16} className="text-pink-500"/> 2 Year Warranty</div>
+              <div className="flex items-center gap-2"><RefreshCw size={16} className="text-pink-500"/> Easy Returns</div>
            </div>
         </div>
       </div>
@@ -142,7 +142,7 @@ export default function ProductDetailsPage() {
       {/* RESTORED MIDDLE SECTION (Story) */}
       <div className="bg-[#1a1a1a] text-white py-20 px-4 mt-12">
          <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-serif mb-4">The Story Behind <span className="text-pink-500">This Treasure</span></h2>
+               <h2 className="text-3xl md:text-4xl font-serif mb-4">The Story Behind <span className="text-pink-500">This Treasure</span></h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-sm mb-16">Every piece we create carries a unique journey from concept to creation</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center text-left">
                <div className="relative aspect-square rounded-2xl overflow-hidden border-4 border-white/10">
@@ -210,12 +210,12 @@ function SimilarProductCard({ product, handleBag, handleSaved, savedItems }: any
             <h4 className="font-bold text-gray-900 text-sm leading-tight mb-2 hover:text-pink-500 line-clamp-2">{product.name}</h4>
          </Link>
          <div className="mt-auto flex items-center justify-between pt-2">
-            <span className="font-bold text-pink-500">${product.price.toFixed(2)}</span>
+               <span className="font-bold text-pink-500">${product.price.toFixed(2)}</span>
             <button 
               onClick={() => handleBag(product, 1)}
               className="bg-pink-500 text-white text-[10px] font-bold px-4 py-2 rounded-full hover:bg-pink-600 transition-all uppercase"
             >
-              Add
+               Add
             </button>
          </div>
       </div>
