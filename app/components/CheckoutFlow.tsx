@@ -9,6 +9,7 @@ import { TrackingScreen } from './TrackingScreen';
 import { OrderSidebar } from './OrderSidebar';
 import { CheckoutStep, ShippingAddress, PaymentMethod, OrderResponse } from '@/lib/types';
 import { placeOrder } from '@/lib/hooks';
+import { useEffect } from 'react';
 
 export default function CheckoutFlow() {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('shipping');
@@ -16,6 +17,15 @@ export default function CheckoutFlow() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  //Load razorpay script
+  useEffect(() => {
+  const script = document.createElement("script");
+  script.src = "https://checkout.razorpay.com/v1/checkout.js";
+  script.async = true;
+  document.body.appendChild(script);
+}, []);
+
 
   const handleShippingSubmit = (address: ShippingAddress) => {
     setShippingAddress(address);
@@ -27,32 +37,57 @@ export default function CheckoutFlow() {
 
     setIsProcessing(true);
     try {
-      const response = await placeOrder(shippingAddress, paymentMethod, cardDetails);
-      setOrderResponse(response);
-      
-      if (response.status === 'success') {
-        setCurrentStep('success');
-      } else {
-        setCurrentStep('failed');
-      }
-    } catch (error) {
-      setCurrentStep('failed');
-      setOrderResponse({
-        orderId: '',
-        orderNumber: '',
-        orderDate: new Date().toISOString(),
-        transactionId: '',
-        paymentMethod: paymentMethod,
-        totalAmount: 0,
-        status: 'failed',
-        errorCode: 'PAYMENT_DECLINED_4001',
-        errorMessage: 'Insufficient funds or invalid card',
-        shippingAddress: shippingAddress,
-      });
-    } finally {
-      setIsProcessing(false);
+
+    if (!(window as any).Razorpay) {
+      throw new Error("Razorpay SDK not loaded");
     }
-  };
+
+    const options = {
+      //Razorpaay test key
+      key: process.env.NEXT_PUBLIC_SSK_RAZORPAY_KEY,
+      amount: 50000, // Replace with dynamic total later
+      currency: "INR",
+      name: "Inventino Jewels",
+      description: "Order Payment",
+
+      handler: function (response: any) {
+
+        setOrderResponse({
+          orderId: response.razorpay_payment_id,
+          orderNumber: "INV-" + Date.now(),
+          orderDate: new Date().toISOString(),
+          transactionId: response.razorpay_payment_id,
+          paymentMethod: paymentMethod,
+          totalAmount: 500,
+          status: "success",
+          shippingAddress: shippingAddress
+        });
+
+        setCurrentStep("success");
+      },
+
+      modal: {
+        ondismiss: function () {
+          setCurrentStep("failed");
+        }
+      },
+
+      theme: {
+        color: "#ec4899"
+      }
+    };
+
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
+
+  } catch (error) {
+
+    setCurrentStep("failed");
+
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   const handleViewTracking = () => {
     setCurrentStep('tracking');
