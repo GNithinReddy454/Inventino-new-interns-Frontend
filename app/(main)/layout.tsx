@@ -1,22 +1,22 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+// app/(main)/layout.tsx
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import BackToTop from "./components/BackToTop";
 
-export default function MainLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Navbar at the top for main store pages */}
-      {/* <Navbar /> */}
-
-      {/* Main content area grows to push footer down */}
-      <main className="flex-1">{children}</main>
-
-      {/* Footer stays at the bottom */}
-      {/* <Footer /> */}
+    <div className="flex flex-col min-h-screen">
+      {/* Navigation only for shopping pages */}
+      <Navbar />
+      
+      <main className="flex-1">
+        {children}
+      </main>
+      
+      {/* Only appears after scrolling 300px */}
+      <BackToTop /> 
+      
+      <Footer />
     </div>
   );
 }
-

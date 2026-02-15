@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { StoreProvider } from "@/lib/storeContext"; // Main logic file
-import { AuthProvider } from "@/components/authContext";
+import { AuthProvider } from "@/app/(main)/components/authContext";
 import { CartProvider } from "@/lib/cartContext"; // FIXED: Added this to stop the runtime crash
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,10 +34,7 @@ export default function RootLayout({
         <CartProvider>
           <StoreProvider>
             <AuthProvider>
-            <Navbar />
-              {/* Main content stretches to push footer down */}
-              <div className="flex-1">{children}</div>
-            <Footer />
+              {children}
             </AuthProvider>
           </StoreProvider>
         </CartProvider>

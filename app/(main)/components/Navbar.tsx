@@ -3,12 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Search, Heart, ShoppingCart, User, LogOut, Menu, X } from "lucide-react";
-import { useAuth } from "@/components/authContext";
+import { useAuth } from "@/app/(main)/components/authContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/storeContext";
 import { useCart } from "@/lib/cartContext";
-
 
 const Navbar = () => {
   const [isVisible, setIsVisible] = useState(true);
@@ -40,11 +39,7 @@ const Navbar = () => {
   }, [isMenuOpen]);
 
   useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
-    }
+    document.body.style.overflow = isMenuOpen ? "hidden" : "auto";
   }, [isMenuOpen]);
 
   const getLinkStyle = (path: string) => {
@@ -63,16 +58,15 @@ const Navbar = () => {
       }`;
   };
 
-  // Standard circular style for buttons - responsive sizing
   const iconCircleStyle = "w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white text-gray-800 shadow-sm border border-pink-50 hover:text-pink-500 transition-all relative";
 
   return (
     <>
       <header className={`sticky top-0 z-50 w-full transition-transform duration-300 ease-out ${isVisible ? "translate-y-0" : "-translate-y-full"}`}>
         {/* TOP ANNOUNCEMENT BAR */}
-        <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center">
+        <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center font-sans">
           <p className="text-center">
-            💖 Valentine's Day Special – Get 20% OFF on all handmade gifts!
+            💖 Valentine&apos;s Day Special – Get 20% OFF on all handmade gifts!
             <Link href="/AllProducts" className="ml-2 underline cursor-pointer">Explore Now</Link>
           </p>
         </div>
@@ -103,16 +97,13 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center">
+            <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center font-bold">
               <Link href="/AllProducts" className={getLinkStyle("/AllProducts")}>All Products</Link>
               <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
               <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
             </nav>
 
-            {/* ACTION BUTTONS: Wishlist -> Cart -> User */}
             <div className="flex items-center gap-1.5 sm:gap-3">
-
-              {/* 1. Wishlist */}
               <Link href="/wishlist" className={iconCircleStyle}>
                 <Heart size={18} />
                 {savedItems.length > 0 && (
@@ -122,7 +113,6 @@ const Navbar = () => {
                 )}
               </Link>
 
-              {/* 2. Shopping Cart */}
               <Link href="/bag" className={iconCircleStyle}>
                 <ShoppingCart size={18} />
                 {bagCount > 0 && (
@@ -132,13 +122,16 @@ const Navbar = () => {
                 )}
               </Link>
 
-              {/* 3. User Icon / Status */}
+              {/* DESKTOP USER ICON: Links to Profile if logged in */}
               <div className="flex items-center gap-2 ml-1">
-                <Link href={user ? "/profile" : "/login"} className={iconCircleStyle}>
+                <Link 
+                  href={user ? "/profile" : "/login"} 
+                  className={iconCircleStyle}
+                >
                   <User size={18} />
                 </Link>
                 {user && (
-                  <div className="hidden lg:flex items-center gap-2">
+                  <div className="hidden lg:flex items-center gap-2 font-sans">
                     <span className="text-sm font-bold text-gray-700 whitespace-nowrap">
                       Hi, {user.name.split(" ")[0]}
                     </span>
@@ -153,9 +146,8 @@ const Navbar = () => {
                 )}
               </div>
 
-              {/* Hamburger Menu Button - Moved inside the same group for better alignment */}
               <button
-                className="lg:hidden w-9 h-9 flex items-center justify-center text-gray-800 hover:text-pink-600 transition-all flex-shrink-0"
+                className="lg:hidden w-9 h-9 flex items-center justify-center text-gray-800"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 aria-label="Toggle Menu"
               >
@@ -164,68 +156,51 @@ const Navbar = () => {
             </div>
           </div>
         </div>
-
       </header>
 
-      {/* MOBILE MENU DRAWER - Moved outside header to escape transform context and cover full viewport */}
+      {/* MOBILE MENU DRAWER */}
       <div className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-md"
-          onClick={() => setIsMenuOpen(false)}
-        ></div>
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={() => setIsMenuOpen(false)}></div>
 
-        {/* Drawer Content */}
-        <div className={`absolute right-0 top-0 h-full w-[60%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}>
+        <div className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}>
           <div className="flex justify-between items-center mb-8 pb-4">
-            <span className="font-bold text-pink-600">Menu</span>
-            <button
-              onClick={() => setIsMenuOpen(false)}
-              className="p-1 hover:bg-pink-50 rounded-full transition-colors"
-            >
+            <span className="font-bold text-pink-600 text-xl font-serif">Menu</span>
+            <button onClick={() => setIsMenuOpen(false)} className="p-1 hover:bg-pink-50 rounded-full transition-colors">
               <X size={24} className="text-gray-500" />
             </button>
           </div>
 
           <nav className="flex flex-col gap-6">
-            <Link
-              href="/AllProducts"
-              className={getMobileLinkStyle("/AllProducts")}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              All Products
-            </Link>
-            <Link
-              href="/stories"
-              className={getMobileLinkStyle("/stories")}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Stories
-            </Link>
-            <Link
-              href="/contact"
-              className={getMobileLinkStyle("/contact")}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Contact
-            </Link>
+            <Link href="/AllProducts" className={getMobileLinkStyle("/AllProducts")} onClick={() => setIsMenuOpen(false)}>All Products</Link>
+            <Link href="/stories" className={getMobileLinkStyle("/stories")} onClick={() => setIsMenuOpen(false)}>Stories</Link>
+            <Link href="/contact" className={getMobileLinkStyle("/contact")} onClick={() => setIsMenuOpen(false)}>Contact</Link>
+            
+            {/* MOBILE PROFILE LINK: Links to Profile if logged in */}
+            {user && (
+              <Link 
+                href="/profile" 
+                className={getMobileLinkStyle("/profile")} 
+                onClick={() => setIsMenuOpen(false)}
+              >
+                My Profile
+              </Link>
+            )}
           </nav>
 
-          {/* Footer with Login/Signup or User Profile */}
           <div className="mt-auto pt-6 border-t border-gray-100">
             {!user ? (
+              /* RESTORED FIGMA ALIGNMENT: Side-by-side buttons */
               <div className="flex justify-between items-center gap-4">
                 <Link
                   href="/login"
-                  className="flex items-center gap-2 text-gray-700 font-semibold hover:text-pink-600 transition-colors"
+                  className="flex items-center gap-2 text-gray-700 font-bold"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  <User size={20} />
-                  <span>Login</span>
+                  <User size={20} /> Login
                 </Link>
                 <Link
                   href="/signup"
-                  className="bg-pink-600 text-white px-5 py-2.5 rounded-full font-bold hover:bg-pink-700 transition-all shadow-md active:scale-95"
+                  className="bg-pink-600 text-white px-5 py-2.5 rounded-full font-bold shadow-md"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sign Up
@@ -233,24 +208,25 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3 p-2 bg-pink-50 rounded-xl">
-                  <div className="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 font-bold">
+                {/* Linked Profile Card for mobile */}
+                <Link 
+                  href="/profile" 
+                  className="flex items-center gap-3 p-3 bg-pink-50 rounded-2xl border border-pink-100"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 font-bold shadow-sm">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex flex-col overflow-hidden">
                     <span className="text-sm font-bold text-gray-800 truncate">{user.name}</span>
-                    <span className="text-xs text-gray-500 truncate">{user.email}</span>
+                    <span className="text-xs text-gray-400 truncate">{user.email}</span>
                   </div>
-                </div>
+                </Link>
                 <button
-                  onClick={() => {
-                    logout();
-                    setIsMenuOpen(false);
-                  }}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-red-100 text-red-600 font-semibold hover:bg-red-50 transition-colors mt-2"
+                  onClick={() => { logout(); setIsMenuOpen(false); }}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-red-50 text-red-500 font-bold hover:bg-red-50 transition-colors"
                 >
-                  <LogOut size={18} />
-                  Logout
+                  <LogOut size={18} /> Logout
                 </button>
               </div>
             )}

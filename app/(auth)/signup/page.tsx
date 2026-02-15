@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useAuth } from "@/components/authContext";
+import { useAuth } from "@/app/(main)/components/authContext";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react"; // Added Lucide icons
 

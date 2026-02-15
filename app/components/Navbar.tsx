@@ -1,3 +1,3 @@
 "use client";
 
-export { default } from "@/components/Navbar";
+export { default } from "@/app/(main)/components/Navbar";
