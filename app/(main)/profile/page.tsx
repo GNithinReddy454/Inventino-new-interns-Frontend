@@ -6,7 +6,7 @@ import { useAuth } from "@/app/(main)/components/authContext";
 import {
   User, Package, MapPin, CreditCard, Settings,
   ChevronRight, LogOut, ShieldCheck, Heart, Mail,
-  Clock, CheckCircle2, Truck
+  Clock, CheckCircle2, Truck, Plus
 } from "lucide-react";
 import Link from "next/link";
 
@@ -28,7 +28,7 @@ export default function ProfilePage() {
         <div className="max-w-3xl mx-auto">
           <div className="flex justify-center mb-4">
             <h1 className="inline-block px-8 py-3 bg-white border-2 border-pink-100 rounded-full text-2xl font-serif font-bold text-[#D94F7A] shadow-sm">
-              Personal Information
+              Profile Information
             </h1>
           </div>
           <div className="bg-white rounded-[2.5rem] p-6 md:p-10 border border-pink-50 shadow-sm min-h-[400px]">
@@ -51,14 +51,14 @@ export default function ProfilePage() {
                       <p className="text-sm font-bold mt-3">Your Orders</p>
                     </Link>
 
-                    <Link href="/contact" className="bg-white p-4 rounded-2xl text-center shadow-sm border border-gray-100">
-                      <div className="flex items-center justify-center w-10 h-10 bg-gray-50 rounded-lg mx-auto text-pink-600"><Mail size={18} /></div>
-                      <p className="text-sm font-bold mt-3">Help & Support</p>
-                    </Link>
-
                     <Link href="/wishlist" className="bg-white p-4 rounded-2xl text-center shadow-sm border border-gray-100">
                       <div className="flex items-center justify-center w-10 h-10 bg-gray-50 rounded-lg mx-auto text-pink-600"><Heart size={18} /></div>
                       <p className="text-sm font-bold mt-3">Your Wishlist</p>
+                    </Link>
+
+                    <Link href="/contact" className="bg-white p-4 rounded-2xl text-center shadow-sm border border-gray-100">
+                      <div className="flex items-center justify-center w-10 h-10 bg-gray-50 rounded-lg mx-auto text-pink-600"><Mail size={18} /></div>
+                      <p className="text-sm font-bold mt-3">Help & Support</p>
                     </Link>
                   </div>
                 </div>
