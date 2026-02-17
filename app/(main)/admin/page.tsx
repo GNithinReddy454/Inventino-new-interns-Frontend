@@ -8,7 +8,7 @@ import {
 import { useState } from "react";
 import AddProduct from "./AddProduct"; 
 
-// --- MOCK DATA ---
+// ---- MOCK DATA ----
 const RECENT_ORDERS = [
   { id: "#ORD-2024-001", customer: "Sarah Miller", product: "Rose Gold Bracelet", amount: "$89.99", status: "Completed", date: "Feb 6, 2026" },
   { id: "#ORD-2024-002", customer: "John Davis", product: "Pearl Necklace Set", amount: "$129.99", status: "Processing", date: "Feb 6, 2026" },
