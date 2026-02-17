@@ -47,8 +47,8 @@ export default function SettingsPage() {
                                 key={item.id}
                                 onClick={() => setActiveTab(item.id)}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === item.id
-                                        ? 'bg-[#D94F7A] text-white shadow-md shadow-pink-100'
-                                        : 'bg-white text-gray-600 hover:bg-pink-50 hover:text-pink-600'
+                                    ? 'bg-[#D94F7A] text-white shadow-md shadow-pink-100'
+                                    : 'bg-white text-gray-600 hover:bg-pink-50 hover:text-pink-600'
                                     }`}
                             >
                                 <item.icon size={18} />
@@ -210,7 +210,7 @@ export default function SettingsPage() {
                         )}
 
                         {/* 4. Appearance */}
-                        {activeTab === 'appearance' && (activeTab === 'appearance' && (
+                        {activeTab === 'appearance' && (
                             <div className="animate-in fade-in slide-in-from-right-4 duration-300 bg-white rounded-[2.5rem] p-6 md:p-8 border border-pink-50 shadow-sm">
                                 <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                                     <Palette size={20} className="text-pink-600" /> Appearance
@@ -224,10 +224,16 @@ export default function SettingsPage() {
                                                 { id: 'light', label: 'Light', icon: Sun },
                                                 { id: 'dark', label: 'Dark', icon: Moon },
                                                 { id: 'system', label: 'System', icon: Laptop },
-                                            ].map((theme) => (
-                                                <button key={theme.id} className={`flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all ${theme.id === 'light' ? 'border-pink-200 bg-pink-50/30 text-pink-600' : 'border-gray-100 bg-white text-gray-400 hover:border-pink-100'}`}>
-                                                    <theme.icon size={24} />
-                                                    <span className="text-xs font-bold">{theme.label}</span>
+                                            ].map((t) => (
+                                                <button
+                                                    key={t.id}
+                                                    className={`flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all ${t.id === 'light'
+                                                        ? 'border-[#D94F7A] bg-pink-50/30 text-[#D94F7A]'
+                                                        : 'border-gray-100 bg-white text-gray-400 hover:border-pink-100'
+                                                        }`}
+                                                >
+                                                    <t.icon size={24} />
+                                                    <span className="text-xs font-bold">{t.label}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -253,7 +259,7 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                        )}
 
                     </div>
                 </div>
