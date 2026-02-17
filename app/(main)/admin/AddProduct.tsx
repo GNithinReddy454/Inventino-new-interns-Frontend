@@ -24,7 +24,7 @@ export default function AddProduct() {
     <div className="max-w-6xl mx-auto font-sans">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* --- LEFT COLUMN: BASIC INFORMATION --- */}
+        {/* ---- LEFT COLUMN: BASIC INFORMATION ---- */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Basic Information</h3>
@@ -150,4 +150,4 @@ export default function AddProduct() {
       </div>
     </div>
   );
-}
+}     
