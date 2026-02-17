@@ -7,6 +7,7 @@ import productsData from "@/lib/products.json";
 import { useStore } from "@/lib/storeContext";
 import { Product } from "@/lib/products";
 import { useCart } from "@/lib/cartContext";
+import { useProducts, addToCart } from "@/lib/hooks";
 
 // --- 1. DATA GENERATOR (FIXED HYDRATION) ---
 const TOTAL_PRODUCTS = 156;
@@ -67,7 +68,7 @@ export default function ProductsPage() {
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [currentPage]);
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'min' | 'max') => {
-    const value = parseInt(e.target.value);
+    const value = parseInt(e.target.value) || 0;
     if (type === 'min') setPriceRange([Math.min(value, priceRange[1] - 10), priceRange[1]]);
     else setPriceRange([priceRange[0], Math.max(value, priceRange[0] + 10)]);
   };
@@ -131,6 +132,55 @@ export default function ProductsPage() {
                 );
               })}
             </ul>
+
+            {/* --- NEW PRICE RANGE SECTION STARTS HERE --- */}
+            <hr className="my-6 border-gray-100" />
+            
+            <div className="space-y-4">
+              <h3 className="font-bold text-gray-900">Price Range</h3>
+              
+              {/* Price Inputs */}
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                  <input
+                    type="number"
+                    value={priceRange[0]}
+                    onChange={(e) => handlePriceChange(e, 'min')}
+                    className="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
+                  />
+                </div>
+                <span className="text-gray-300">-</span>
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                  <input
+                    type="number"
+                    value={priceRange[1]}
+                    onChange={(e) => handlePriceChange(e, 'max')}
+                    className="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Slider (Controls Max Price) */}
+              <div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1000"
+                  step="10"
+                  value={priceRange[1]}
+                  onChange={(e) => handlePriceChange(e, 'max')}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#D94F7A]"
+                />
+                <div className="flex justify-between mt-2 text-[10px] text-gray-400 font-medium">
+                  <span>$0</span>
+                  <span>$1000+</span>
+                </div>
+              </div>
+            </div>
+            {/* --- NEW PRICE RANGE SECTION ENDS HERE --- */}
+
           </div>
         </aside>
 
