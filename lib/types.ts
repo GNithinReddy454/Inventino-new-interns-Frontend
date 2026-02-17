@@ -33,8 +33,8 @@ export interface Product {
   slug: string;
   images: ProductImage[];
   isActive?: boolean;
-  quantity?: number; // UI helper
-  color?: string;    // UI helper
+  quantity?: number; // Added for Cart compatibility
+  color?: string;    // Added for UI compatibility
 }
 
 export interface ProductResponse {
@@ -52,24 +52,26 @@ export interface ProductResponse {
 }
 
 // --- ADDRESS ---
-// We export 'Address' AND 'ShippingAddress' to satisfy both Backend and Frontend files
+// Backend calls it "Address", Frontend Checkout calls it "ShippingAddress"
+// We export both to satisfy both files.
 export interface Address {
   _id?: string;
-  fullName: string;
-  firstName?: string; // UI uses this
-  lastName?: string;  // UI uses this
+  fullName: string; // Backend expects fullName
+  firstName?: string; // Frontend form uses these
+  lastName?: string;
   phone: string;
-  street: string;
-  streetAddress?: string; // UI uses this
+  street: string;     // Backend
+  streetAddress?: string; // Frontend
   city: string;
   state: string;
-  pincode: string;
-  zipCode?: string;   // UI uses this
+  pincode: string;    // Backend
+  zipCode?: string;   // Frontend
   country?: string;
   isDefault?: boolean;
 }
 
-export type ShippingAddress = Address; // Alias so CheckoutFlow doesn't break
+// Alias Address as ShippingAddress so CheckoutFlow doesn't break
+export type ShippingAddress = Address; 
 
 // --- CART ---
 export interface CartItem {
@@ -86,7 +88,7 @@ export interface CartResponse {
   };
 }
 
-// --- ORDERS ---
+// --- ORDERS (Placeholder for CheckoutFlow) ---
 export interface OrderResponse {
   status: 'success' | 'failed';
   orderId: string;
