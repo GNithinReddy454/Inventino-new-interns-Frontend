@@ -1,6 +1,7 @@
 import useSWR from 'swr';
 import { apiClient, fetcher } from './api';
 import { ProductResponse, CartResponse, Address, OrderResponse, PaymentMethod } from './types';
+import { console } from 'inspector';
 
 // --- PRODUCTS ---
 export const useProducts = () => {
