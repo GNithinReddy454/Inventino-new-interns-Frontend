@@ -51,10 +51,10 @@ export default function ProductReviews({
   const [reviews, setReviews] = useState(MOCK_REVIEWS);
   const [visibleReviews, setVisibleReviews] = useState(3);
 
-//   ADD TOAST STATE
+  // ADD TOAST STATE
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   
-  // Form State
+  // Form State (Kept for logic stability but UI removed)
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [title, setTitle] = useState("");
@@ -76,14 +76,12 @@ export default function ProductReviews({
     };
     setReviews([newReview, ...reviews]);
     setRating(0); setTitle(""); setContent(""); setName("");
-    // SHOW TOAST INSTEAD OF ALERT
     setShowSuccessToast(true);
   };
 
   return (
     <div className="bg-white py-16 border-t border-gray-100 relative">
 
-      {/* 4. RENDER TOAST COMPONENT */}
       {showSuccessToast && (
         <Toast 
           title="Success!" 
@@ -106,7 +104,7 @@ export default function ProductReviews({
            <div className="text-center md:text-left min-w-[200px]">
               <div className="text-6xl font-bold text-pink-500 mb-2">4.9</div>
               <div className="flex justify-center md:justify-start gap-1 text-yellow-400 mb-2">
-                 {[1,2,3,4,5].map(s => <Star key={s} size={20} fill="currentColor" />)}
+                  {[1,2,3,4,5].map(s => <Star key={s} size={20} fill="currentColor" />)}
               </div>
               <p className="text-sm text-gray-500">Based on 128 reviews</p>
            </div>
@@ -131,45 +129,7 @@ export default function ProductReviews({
            </div>
         </div>
 
-        {/* WRITE REVIEW FORM (Restricted Access) */}
-        {isLoggedIn && hasPurchased ? (
-          <div className="bg-white border border-gray-200 rounded-3xl p-8 mb-16 shadow-sm">
-            <h3 className="font-bold text-lg mb-6">Write a Review</h3>
-            <form onSubmit={handleSubmit} className="space-y-6">
-               <div>
-                 <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Rating</label>
-                 <div className="flex gap-2">
-                    {[1,2,3,4,5].map(star => (
-                      <button type="button" key={star} onClick={() => setRating(star)} onMouseEnter={() => setHoverRating(star)} onMouseLeave={() => setHoverRating(0)}>
-                         <Star size={24} className={star <= (hoverRating || rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"} />
-                      </button>
-                    ))}
-                 </div>
-               </div>
-               <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Review Title</label>
-                    <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm" placeholder="Summarize your experience" required />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Your Name</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm" placeholder="Name as displayed" required />
-                  </div>
-               </div>
-               <div>
-                  <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Review</label>
-                  <textarea value={content} onChange={e => setContent(e.target.value)} rows={4} className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm" placeholder="Share your details..." required />
-               </div>
-               <button type="submit" className="bg-pink-500 text-white font-bold py-3 px-8 rounded-xl shadow-md hover:bg-pink-600 transition-all">Submit Review</button>
-            </form>
-          </div>
-        ) : (
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 text-center mb-16">
-             <p className="text-gray-500 text-sm">
-                {!isLoggedIn ? "Please log in to write a review." : "Only verified buyers can review this product."}
-             </p>
-          </div>
-        )}
+        {/* WRITE REVIEW FORM & LOGIN PROMPT REMOVED FROM HERE */}
 
         {/* REVIEW LIST */}
         <div className="grid md:grid-cols-2 gap-6">
