@@ -103,27 +103,30 @@ export default function BagPage() {
                           : "opacity-100 translate-x-0 translate-y-0"
                       }`}
                     >
+                      {/* ── Image — same aspect-square + object-cover as ProductCard ── */}
                       <Link href={`/AllProducts/${item.id}`} className="block group shrink-0 mx-auto md:mx-0">
-                        <div className="w-32 h-32 md:w-28 md:h-28 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500 shadow-inner">
+                        <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         </div>
                       </Link>
 
                       <div className="flex-1 flex flex-col justify-between overflow-hidden">
                         <div className="text-center md:text-left">
-                          <div className="flex flex-col md:flex-row md:justify-between gap-4">
-                            <Link href={`/AllProducts/${item.id}`} className="text-gray-900 hover:text-[#D94F7A] transition-colors duration-300">
-                              <h3 className="font-bold text-lg md:text-xl leading-tight font-sans truncate">{item.name}</h3>
+
+
+                          <div className="flex flex-col md:flex-row md:justify-between gap-2">
+                            <Link href={`/AllProducts/${item.id}`} className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300">
+                              <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-2">{item.name}</h3>
                             </Link>
 
-                            <div className="flex items-center justify-center md:justify-start gap-4 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300">
-                              {/* ── Renamed: Back to Wishlist ── */}
+                            {/* Back to Wishlist | Remove */}
+                            <div className="flex items-center justify-center md:justify-start gap-4 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300 shrink-0">
                               <Link
                                 href="/wishlist"
                                 onClick={() => handleAction(item, "wishlist")}
-                                className="hover:text-[#D94F7A] flex items-center gap-1.5 transition-all"
+                                className="hover:text-[#E8456A] flex items-center gap-1.5 transition-all"
                               >
-                                <Heart size={12} className={isAnimating && actionType === "wishlist" ? "fill-[#D94F7A]" : ""} />
+                                <Heart size={12} className={isAnimating && actionType === "wishlist" ? "fill-[#E8456A]" : ""} />
                                 Back to Wishlist
                               </Link>
                               <span className="h-3 w-[1px] bg-gray-200" />
@@ -135,7 +138,15 @@ export default function BagPage() {
                               </button>
                             </div>
                           </div>
-                          <p className="text-gray-900 font-black text-xl mt-3 md:mt-1 font-sans">${item.price.toFixed(2)}</p>
+
+
+                          {/* Price — pink like ProductCard, with strikethrough if originalPrice exists */}
+                          <div className="flex items-baseline gap-2 mt-2 justify-center md:justify-start">
+                            <span className="text-[#E8456A] font-black text-xl">${item.price.toFixed(2)}</span>
+                            {(item as any).originalPrice && (item as any).originalPrice > item.price && (
+                              <span className="text-gray-400 line-through text-sm">${(item as any).originalPrice.toFixed(2)}</span>
+                            )}
+                          </div>
                         </div>
 
                         <div className="flex justify-center md:justify-end mt-6 md:mt-2">
