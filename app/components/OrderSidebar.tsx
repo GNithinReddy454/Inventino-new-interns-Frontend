@@ -7,12 +7,12 @@ import { Input } from './ui/input';
 import { CheckoutStep, PaymentMethod } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
-interface OrderSidebarProps {
+type OrderSidebarProps = {
   currentStep: CheckoutStep;
   paymentMethod: PaymentMethod;
   onPlaceOrder: (method: PaymentMethod) => void;
   isProcessing: boolean;
-}
+};
 
 export function OrderSidebar({ currentStep, paymentMethod, onPlaceOrder, isProcessing }: OrderSidebarProps) {
   const { cartItems: cart, isLoading: cartLoading } = useCart();
