@@ -2,6 +2,8 @@ import useSWR from 'swr';
 import { apiClient, fetcher } from './api';
 import { ProductResponse, CartResponse, Address, OrderResponse, PaymentMethod } from './types';
 
+
+
 // --- PRODUCTS ---
 export const useProducts = () => {
   const { data, error, isLoading } = useSWR<ProductResponse>('/api/products', fetcher);
