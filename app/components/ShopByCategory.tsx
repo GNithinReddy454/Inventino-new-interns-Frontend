@@ -1,45 +1,77 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
 
+const categories = [
+  { name: "Rings", count: "150+ Products", image: "/images/red-charm.jpg", slug: "rings" },
+  { name: "Necklaces", count: "200+ Products", image: "/images/diary-charm.jpg", slug: "necklaces" },
+  { name: "Bracelets", count: "180+ Products", image: "/images/bracelets-charm.jpg", slug: "bracelets" },
+  { name: "Earrings", count: "220+ Products", image: "/images/HairAccesories.jpg", slug: "earrings" },
+  { name: "Bag Charms", count: "80+ Products", image: "/images/bag-charm.jpg", slug: "bag-charms" },
+  { name: "Kids", count: "60+ Products", image: "/images/kids-jelwelry.jpg", slug: "kids-jewelry" },
+];
+
 export default function ShopByCategory() {
-  const categories = [
-    { name: "Hair Accessories", count: "50+ Products", icon: "💇‍♀️", slug: "hair-accessories" },
-    { name: "Bracelets", count: "120+ Products", icon: "💫", slug: "bracelets" },
-    { name: "Bag Charms", count: "80+ Products", icon: "👜", slug: "bag-charms" },
-    { name: "Kids Jewelry", count: "60+ Products", icon: "🎀", slug: "kids-jewelry" },
-    { name: "Shoe Charms", count: "45+ Products", icon: "👠", slug: "shoe-charms" },
-  ];
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (dir: "left" | "right") => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: dir === "right" ? 300 : -300, behavior: "smooth" });
+  };
 
   return (
-    <section className="w-full bg-gradient-to-b from-white to-pink-50 px-4 md:px-6 lg:px-12 py-12 md:py-16 lg:py-24">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-8 md:mb-12">
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 mb-2">
-            Shop by Category
-          </h2>
-          <div className="h-1 w-16 bg-gradient-to-r from-pink-400 to-pink-300 rounded-full mx-auto mb-3"></div>
-          <p className="text-center text-gray-600 text-xs md:text-sm">
-            Find the perfect handmade piece for every occasion
-          </p>
+    <section className="w-full bg-pink-100 px-6 md:px-16 py-14 md:py-20">
+      <div className="max-w-6xl mx-auto">
+
+        {/* Heading */}
+        <div className="text-center mb-10">
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">Shop by Category</h2>
+          <p className="text-sm text-gray-500">Find the perfect handmade piece for every occasion</p>
         </div>
 
-        {/* Categories Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
-          {categories.map((category, index) => (
-            <Link
-              key={index}
-              href={`/shop/${category.slug}`}
-              className="group bg-white rounded-2xl p-6 md:p-8 text-center shadow-md hover:shadow-xl transition-all duration-500 cursor-pointer hover:scale-105 border border-pink-100/40 hover:border-pink-300 hover:bg-gradient-to-br hover:from-white hover:to-pink-50"
-            >
-              <div className="text-4xl md:text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">{category.icon}</div>
-              <h3 className="text-sm md:text-base font-bold text-gray-900 mb-2">
-                {category.name}
-              </h3>
-              <p className="text-gray-500 text-xs group-hover:text-pink-600 transition-colors duration-300 font-semibold">{category.count}</p>
-            </Link>
-          ))}
+        {/* Scrollable cards + arrow */}
+        <div className="relative flex items-center gap-3">
+
+          {/* Card row */}
+          <div
+            ref={scrollRef}
+            className="flex gap-4 overflow-x-auto scroll-smooth flex-1"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {categories.map((cat) => (
+              <Link
+                key={cat.slug}
+                href={`/AllProducts`}
+                className="group flex-shrink-0 w-44 bg-white rounded-2xl p-5 flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all duration-300 border border-white hover:border-pink-300 hover:scale-105"
+              >
+                {/* Circular image */}
+                <div className="w-16 h-16 rounded-full overflow-hidden mb-4 border-2 border-pink-50 group-hover:border-pink-300 transition-colors">
+                  <img
+                    src={cat.image}
+                    alt={cat.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                </div>
+
+                <h3 className="font-bold text-gray-900 text-sm mb-1 group-hover:text-pink-600 transition-colors">
+                  {cat.name}
+                </h3>
+                <p className="text-[11px] text-gray-400">{cat.count}</p>
+              </Link>
+            ))}
+          </div>
+
+          {/* Right scroll arrow */}
+          <button
+            onClick={() => scroll("right")}
+            className="flex-shrink-0 w-9 h-9 rounded-full bg-white shadow border border-gray-200 flex items-center justify-center text-gray-500 text-sm hover:bg-pink-50 hover:border-pink-300 transition-all"
+            aria-label="Scroll right"
+          >
+            ❯
+          </button>
         </div>
+
       </div>
     </section>
   );

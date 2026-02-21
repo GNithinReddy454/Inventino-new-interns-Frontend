@@ -402,39 +402,16 @@ export default function ProductDetailsPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-20 relative group/similar">
          <h3 className="text-2xl font-serif text-gray-900 mb-8">Similar Products</h3>
-         
-         <div className="relative">
-            <button 
-              onClick={() => scrollSimilar('left')}
-              className="absolute -left-6 top-1/2 -translate-y-1/2 z-30 p-4 bg-white border border-gray-100 rounded-full shadow-2xl hover:bg-gray-50 transition-all opacity-0 group-hover/similar:opacity-100 hidden md:flex items-center justify-center scale-110 active:scale-95"
-              aria-label="Previous Products"
-            >
-              <ChevronLeft size={28} className="text-gray-700" />
-            </button>
-
-            <button 
-              onClick={() => scrollSimilar('right')}
-              className="absolute -right-6 top-1/2 -translate-y-1/2 z-30 p-4 bg-white border border-gray-100 rounded-full shadow-2xl hover:bg-gray-50 transition-all opacity-0 group-hover/similar:opacity-100 hidden md:flex items-center justify-center scale-110 active:scale-95"
-              aria-label="Next Products"
-            >
-              <ChevronRight size={28} className="text-gray-700" />
-            </button>
-            
-            <div 
-                ref={similarProductsRef}
-                className="flex gap-6 overflow-x-auto pb-8 snap-x no-scrollbar scroll-smooth"
-            >
-                {[1, 2, 3, 4, 5, 6].map((offset) => (
-                  <div key={offset} className="min-w-70 md:min-w-[320px] snap-start">
-                    <SimilarProductCard 
-                        product={getProductById(product.id + offset)} 
-                        addToCart={addToCart}
-                        handleSaved={handleSaved}
-                        savedItems={savedItems as unknown as Product[]}
-                    />
-                  </div>
-                ))}
-            </div>
+         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-8">
+            {[1, 2, 3].map((offset) => (
+               <SimilarProductCard 
+                  key={offset} 
+                  product={getProductById(product.id + offset)} 
+                  addToCart={addToCart}
+                  handleSaved={handleSaved}
+                  savedItems={savedItems}
+               />
+            ))}
          </div>
       </div>
 

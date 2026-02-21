@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { StoreProvider } from "@/lib/storeContext"; // Main logic file
+import { StoreProvider } from "@/lib/storeContext";
 import { AuthProvider } from "@/app/(main)/components/authContext";
-import { CartProvider } from "@/lib/cartContext"; // FIXED: Added this to stop the runtime crash
+import { CartProvider } from "@/lib/cartContext";
+import { ReduxProvider } from "@/redux/provider";  // ← new
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,15 +31,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        {/* We wrap everything in CartProvider first so the useCart hook works */}
-        <CartProvider>
-          <StoreProvider>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
-          </StoreProvider>
-        </CartProvider>
-        
+        <ReduxProvider>        {/* ← wraps everything so Redux is available globally */}
+          <CartProvider>
+            <StoreProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </StoreProvider>
+          </CartProvider>
+        </ReduxProvider>
       </body>
     </html>
   );
