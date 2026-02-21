@@ -5,13 +5,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { useAppDispatch } from "@/redux/store";          // ← ADD
+import { loginSuccess }   from "@/redux/authslice";      // ← ADD
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({ email: "", password: "" });
-  const router = useRouter();
+  const router   = useRouter();
+  const dispatch = useAppDispatch();                     // ← ADD
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +41,13 @@ export default function LoginPage() {
       setErrors(newErrors);
       return;
     }
+
+    // ✅ Store the logged-in user in Redux so Settings page can read it
+    dispatch(loginSuccess({
+      name:  email.split("@")[0],   // derive a display name from email until you have a real API
+      email: email,
+    }));
+
     router.push("/");
   };
 

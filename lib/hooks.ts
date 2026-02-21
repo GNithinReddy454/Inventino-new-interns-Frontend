@@ -149,7 +149,6 @@ export const placeOrder = async (
 export const useOrderSummary = () => {
   const { cartTotal, isLoading } = useCart();
 
-  // Logic: Free shipping if total > 500, else 50. Tax 18%.
   const shipping = cartTotal > 500 ? 0 : 50;
   const tax = cartTotal * 0.18;
   const discount = 0;
@@ -169,7 +168,6 @@ export const useOrderSummary = () => {
 
 // --- PROMO CODE (Mock Implementation) ---
 export const applyPromoCode = async (code: string) => {
-  // Simulate API delay
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       if (code.toUpperCase() === 'SAVE10') {

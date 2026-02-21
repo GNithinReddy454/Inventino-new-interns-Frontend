@@ -1,3 +1,183 @@
+/* ─── Roboto font import ─────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
+
+/* ─── Scrollbar hide for category horizontal scroll (mobile) ─────────────── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Dual-range slider thumb — pink style ────────────────────────────────── */
+.range-thumb-pink::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #D94F7A;
+  border: 2px solid white;
+  box-shadow: 0 1px 6px rgba(217, 79, 122, 0.5);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.range-thumb-pink::-webkit-slider-thumb:hover,
+.range-thumb-pink::-webkit-slider-thumb:active {
+  transform: scale(1.2);
+  box-shadow: 0 2px 10px rgba(217, 79, 122, 0.6);
+}
+.range-thumb-pink::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #D94F7A;
+  border: 2px solid white;
+  box-shadow: 0 1px 6px rgba(217, 79, 122, 0.5);
+  cursor: pointer;
+}
+.range-thumb-pink::-webkit-slider-runnable-track { background: transparent; }
+.range-thumb-pink::-moz-range-track { background: transparent; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FIGMA DESIGN-SYSTEM INPUT COMPONENTS
+   Matches the component-system page exactly:
+   • .input-basic       → default pink-tinted field
+   • .input-active      → focused state (auto via :focus)
+   • .input-disabled    → read-only / disabled field
+   • .input-error       → validation error state
+   • .input-select      → same as basic but for <select> elements
+   • .form-label        → standard field label
+   • .form-label-req    → required asterisk
+   • .form-hint         → helper text below field
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Base input (Input-basic) ────────────────────────────────────────────── */
+.input-basic {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1.5px solid #f5c6d8;
+  background-color: #fff5f8;
+  font-size: 13.5px;
+  font-family: 'Roboto', sans-serif;
+  color: #374151;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.input-basic::placeholder {
+  color: #9ca3af;
+}
+
+/* ── Active / focused state (Input-active) ───────────────────────────────── */
+.input-basic:focus {
+  border-color: #D94F7A;
+  box-shadow: 0 0 0 3px rgba(217, 79, 122, 0.15);
+}
+
+/* ── Validation error state (Input-with-validation) ─────────────────────── */
+.input-error {
+  border-color: #f87171 !important;
+  background-color: #fff5f8;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15) !important;
+}
+
+/* ── Disabled / read-only state (Input-disabled) ────────────────────────── */
+.input-disabled {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  background-color: #f9fafb;
+  font-size: 13.5px;
+  font-family: 'Roboto', sans-serif;
+  color: #9ca3af;
+  cursor: not-allowed;
+  outline: none;
+  box-sizing: border-box;
+}
+
+/* ── Select dropdown (same pink style + hides native arrow) ─────────────── */
+.input-select {
+  width: 100%;
+  height: 44px;
+  padding: 0 36px 0 14px;
+  border-radius: 8px;
+  border: 1.5px solid #f5c6d8;
+  background-color: #fff5f8;
+  font-size: 13.5px;
+  font-family: 'Roboto', sans-serif;
+  color: #374151;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.input-select::placeholder {
+  color: #9ca3af;
+}
+
+.input-select:focus {
+  border-color: #D94F7A;
+  box-shadow: 0 0 0 3px rgba(217, 79, 122, 0.15);
+}
+
+/* Placeholder option colour for selects */
+.input-select.placeholder-active {
+  color: #9ca3af;
+}
+
+/* ── Form label ──────────────────────────────────────────────────────────── */
+.form-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #4B5563;
+  margin-bottom: 6px;
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Required asterisk */
+.form-label-req {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+/* Optional tag */
+.form-label-opt {
+  color: #9CA3AF;
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+/* ── Helper / hint text below field ─────────────────────────────────────── */
+.form-hint {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 4px;
+  font-family: 'Roboto', sans-serif;
+}
+
+/* ── Select wrapper (positions the custom chevron) ──────────────────────── */
+.select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.select-wrapper .select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #9ca3af;
+  width: 13px;
+  height: 13px;
+}
+
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 @custom-variant dark (&:is(.dark *));

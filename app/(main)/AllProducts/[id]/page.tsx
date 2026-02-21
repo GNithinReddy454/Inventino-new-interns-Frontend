@@ -181,7 +181,7 @@ export default function ProductDetailsPage() {
       {/* SIMILAR PRODUCTS */}
       <div className="max-w-7xl mx-auto px-4 py-20">
          <h3 className="text-2xl font-serif text-gray-900 mb-8">Similar Products</h3>
-         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-8">
             {[1, 2, 3].map((offset) => (
                <SimilarProductCard 
                   key={offset} 

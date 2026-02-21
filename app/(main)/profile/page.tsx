@@ -2,16 +2,11 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/app/(main)/components/authContext";
-import {
-  User, Package, MapPin, CreditCard, Settings,
-  ChevronRight, LogOut, ShieldCheck, Heart, Mail,
-  Clock, CheckCircle2, Truck, Plus
-} from "lucide-react";
+import { User, Package, MapPin, CreditCard, Settings } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState("personal");
 
   return (
     <div className="bg-background min-h-screen pt-4 md:pt-8 pb-20 font-sans">
@@ -88,6 +83,44 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Responsive styles */}
+      <style>{`
+        .profile-layout {
+          display: flex;
+          flex-direction: row;
+          align-items: stretch;
+        }
+        .profile-sidebar {
+          width: 220px;
+          flex-shrink: 0;
+          border-right: 1px solid #fce7f3;
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px 48px;
+        }
+        @media (max-width: 640px) {
+          .profile-layout {
+            flex-direction: column;
+          }
+          .profile-sidebar {
+            width: 100%;
+            border-right: none;
+            border-bottom: 1px solid #fce7f3;
+            padding: 20px;
+          }
+          .info-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+        }
+      `}</style>
     </div>
   );
 }

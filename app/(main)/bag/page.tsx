@@ -2,34 +2,47 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Minus, Plus, X, Heart, ShoppingBag, ArrowRight } from "lucide-react";
+import { Minus, Plus, X, Heart, ShoppingBag, ArrowRight, Tag } from "lucide-react";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 
 export default function BagPage() {
   const { cart = [], removeFromCart, updateQuantity, cartTotal = 0 } = useCart();
   const { handleSaved, savedItems = [] } = useStore();
-  
+
   const [isLoaded, setIsLoaded] = useState(false);
-  const [animatingItem, setAnimatingItem] = useState<{id: number, type: 'wishlist' | 'remove'} | null>(null);
+  const [animatingItem, setAnimatingItem] = useState<{ id: number; type: "wishlist" | "remove" } | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoError, setPromoError] = useState("");
 
-  useEffect(() => {
-    setIsLoaded(true);
-  }, []);
+  useEffect(() => { setIsLoaded(true); }, []);
 
-  const handleAction = (item: any, type: 'wishlist' | 'remove') => {
+  const handleAction = (item: any, type: "wishlist" | "remove") => {
     setAnimatingItem({ id: item.id, type });
-    
     setTimeout(() => {
-      if (type === 'wishlist') {
-        if (!savedItems.some((si: any) => si.id === item.id)) {
-          handleSaved(item);
-        }
+      if (type === "wishlist") {
+        if (!savedItems.some((si: any) => si.id === item.id)) handleSaved(item);
       }
       removeFromCart(item.id);
       setAnimatingItem(null);
     }, 400);
   };
+
+  const handleApplyPromo = () => {
+    if (promoCode.trim().toUpperCase() === "SAVE10") {
+      setPromoApplied(true);
+      setPromoError("");
+    } else {
+      setPromoApplied(false);
+      setPromoError("Invalid promo code. Try SAVE10.");
+    }
+  };
+
+  const discount = promoApplied ? cartTotal * 0.1 : 0;
+  const discountedTotal = cartTotal - discount;
+  const tax = discountedTotal * 0.08;
+  const finalTotal = discountedTotal + tax;
 
   if (!isLoaded) return null;
 
@@ -112,7 +125,7 @@ export default function BagPage() {
                               onClick={() => handleAction(item, 'remove')} 
                               className="hover:text-destructive flex items-center gap-1.5 transition-all"
                             >
-                              <X size={12} /> Remove
+                              <Plus size={14} strokeWidth={3} />
                             </button>
                           </div>
                         </div>
@@ -138,11 +151,41 @@ export default function BagPage() {
                           </button>
                         </div>
                       </div>
-
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Promo Code — matches Figma ── */}
+            <div className="bg-white rounded-[2rem] border border-dashed border-gray-200 shadow-sm p-6 md:p-8">
+              <div className="flex items-center gap-2 mb-4">
+                <Tag size={15} className="text-[#D94F7A]" />
+                <span className="text-sm font-bold text-gray-700 uppercase tracking-widest text-[10px]">Promo Code</span>
+              </div>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Enter Promo Code"
+                  value={promoCode}
+                  onChange={(e) => { setPromoCode(e.target.value); setPromoError(""); setPromoApplied(false); }}
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
+                />
+                <button
+                  onClick={handleApplyPromo}
+                  className="bg-[#D94F7A] hover:bg-[#b83d63] text-white px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
+                >
+                  Apply Code
+                </button>
+              </div>
+              {promoApplied && (
+                <p className="text-green-500 text-xs font-bold mt-2 flex items-center gap-1">
+                  ✓ Promo applied! 10% discount added.
+                </p>
+              )}
+              {promoError && (
+                <p className="text-red-400 text-xs font-medium mt-2">{promoError}</p>
+              )}
             </div>
           </div>
 
@@ -170,8 +213,25 @@ export default function BagPage() {
             <Link href="/checkout" className="block">
                 <button className="w-full bg-primary text-primary-foreground py-4 md:py-5 rounded-2xl md:rounded-[2rem] font-bold shadow-xl shadow-pink-200 hover:bg-primary-dark transition-all active:scale-[0.98] uppercase text-[10px] md:text-xs tracking-widest">
                 Proceed to Checkout
-                </button>
+              </button>
             </Link>
+
+            {/* Continue Shopping */}
+            <Link href="/AllProducts" className="block">
+              <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-pink-50 transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
+                Continue Shopping
+              </button>
+            </Link>
+
+            {/* Trust badges */}
+            <div className="mt-6 space-y-2">
+              {["Secure checkout with SSL encryption", "Shipped with care and love", "30-day returns policy"].map((text) => (
+                <div key={text} className="flex items-center gap-2 text-[11px] text-gray-400">
+                  <span className="text-green-400">✓</span>
+                  {text}
+                </div>
+              ))}
+            </div>
           </div>
 
         </div>
