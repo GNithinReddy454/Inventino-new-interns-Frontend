@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { CreditCard, Plus, Trash2, Edit2, ShieldCheck } from "lucide-react";
+import { CreditCard, Plus, Trash2, Edit2, ShieldCheck, ArrowLeft } from "lucide-react";
 
 interface Card {
   id: number;
@@ -42,9 +42,14 @@ export default function PaymentMethodsPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Manage your saved payment cards</p>
+          <div className="flex items-center gap-4">
+            <Link href="/profile" className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-pink-600 shadow-sm border border-pink-50 hover:bg-pink-50 transition-colors">
+              <ArrowLeft size={20} />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
+              <p className="text-sm text-gray-400 mt-0.5">Manage your saved payment cards</p>
+            </div>
           </div>
           <button
             onClick={() => setShowForm(true)}

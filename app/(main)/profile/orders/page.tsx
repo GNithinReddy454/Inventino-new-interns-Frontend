@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { FileText, RotateCcw, Star, Truck, MapPin, XCircle, Phone, Eye } from "lucide-react";
+import { FileText, RotateCcw, Star, Truck, MapPin, XCircle, Phone, Eye, ArrowLeft } from "lucide-react";
 
 type TabType = "all" | "delivered" | "cancelled";
 type OrderStatus = "Delivered" | "Shipped" | "Processing" | "Cancelled";
@@ -91,8 +91,15 @@ export default function OrdersPage() {
     <div style={{ background: "#fdf8f9", minHeight: "100vh", paddingBottom: 80, fontFamily: "Roboto, sans-serif" }}>
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
 
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111", marginBottom: 4 }}>My Orders</h1>
-        <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 24 }}>Track, manage, and view all your orders</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+          <Link href="/profile" style={{ width: 36, height: 36, borderRadius: "50%", background: "#fff", border: "1px solid #fce7f0", display: "flex", alignItems: "center", justifyContent: "center", color: "#D94F7A", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", flexShrink: 0 }}>
+            <ArrowLeft size={17} />
+          </Link>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111", marginBottom: 4 }}>My Orders</h1>
+            <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>Track, manage, and view all your orders</p>
+          </div>
+        </div>
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
