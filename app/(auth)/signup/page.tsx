@@ -45,7 +45,7 @@ export default function LoginPage() {
     <div className="fixed inset-0 w-full h-full overflow-hidden grid grid-cols-1 lg:grid-cols-2 bg-background font-inter">
       <div className="flex flex-col items-center justify-center px-6 py-4 lg:px-16 overflow-y-auto no-scrollbar">
         <div className="w-full max-w-md">
-          
+
           <div className="flex justify-center mb-2 lg:mb-4">
             <Image
               src="/logo.png"
@@ -72,11 +72,10 @@ export default function LoginPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({...prev, email: ""})); }}
+                onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: "" })); }}
                 placeholder="Enter your email"
-                className={`w-full rounded-2xl bg-accent border px-4 py-3 text-sm placeholder:text-gray-400 focus:outline-none transition-all ${
-                  errors.email ? "border-destructive focus:border-destructive" : "border-primary/30 focus:border-primary"
-                }`}
+                className={`w-full rounded-2xl bg-accent border px-4 py-3 text-sm placeholder:text-gray-400 focus:outline-none transition-all ${errors.email ? "border-destructive focus:border-destructive" : "border-primary/30 focus:border-primary"
+                  }`}
               />
               {errors.email && <p className="text-destructive text-[10px] mt-1 pl-1 font-medium">{errors.email}</p>}
             </div>
@@ -87,14 +86,13 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({...prev, password: ""})); }}
+                  onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: "" })); }}
                   placeholder="Enter password"
-                  className={`w-full rounded-2xl bg-accent border px-4 py-3 pr-12 text-sm placeholder:text-gray-400 focus:outline-none transition-all ${
-                    errors.password ? "border-destructive focus:border-destructive" : "border-primary/30 focus:border-primary"
-                  }`}
+                  className={`w-full rounded-2xl bg-accent border px-4 py-3 pr-12 text-sm placeholder:text-gray-400 focus:outline-none transition-all ${errors.password ? "border-destructive focus:border-destructive" : "border-primary/30 focus:border-primary"
+                    }`}
                 />
                 {password.length > 0 && (
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
@@ -107,7 +105,7 @@ export default function LoginPage() {
             </div>
 
             <div className="flex justify-end pt-1">
-              <Link href="/forgot-password" size={12} className="text-xs font-semibold text-primary hover:underline">
+              <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
                 Forgot Password?
               </Link>
             </div>

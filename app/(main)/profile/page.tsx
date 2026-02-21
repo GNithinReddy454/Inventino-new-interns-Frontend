@@ -2,11 +2,12 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/app/(main)/components/authContext";
-import { User, Package, MapPin, CreditCard, Settings } from "lucide-react";
+import { User, Package, MapPin, CreditCard, Settings, Heart, Mail, ShieldCheck, ChevronRight, LogOut } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
+  const [activeTab] = useState("personal");
 
   return (
     <div className="bg-background min-h-screen pt-4 md:pt-8 pb-20 font-sans">
@@ -18,7 +19,7 @@ export default function ProfilePage() {
               Profile Information
             </h1>
           </div>
-          
+
           <div className="bg-card rounded-[2.5rem] p-6 md:p-10 border border-border shadow-sm min-h-[400px]">
             {activeTab === "personal" && (
               <div className="animate-in fade-in duration-500">

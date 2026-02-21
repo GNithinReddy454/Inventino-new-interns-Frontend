@@ -15,7 +15,7 @@ interface OrderSidebarProps {
 }
 
 export function OrderSidebar({ currentStep, paymentMethod, onPlaceOrder, isProcessing }: OrderSidebarProps) {
-  const { cart, isLoading: cartLoading } = useCart();
+  const { cartItems: cart, isLoading: cartLoading } = useCart();
   const { summary, isLoading: summaryLoading } = useOrderSummary();
   const [promoCode, setPromoCode] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
@@ -23,7 +23,7 @@ export function OrderSidebar({ currentStep, paymentMethod, onPlaceOrder, isProce
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
-    
+
     setApplyingPromo(true);
     setPromoError('');
     try {
@@ -62,20 +62,20 @@ export function OrderSidebar({ currentStep, paymentMethod, onPlaceOrder, isProce
 
       {/* Cart Items with Product Cards */}
       <div className="space-y-4 mb-6">
-        {cart?.map((item) => (
-          <div key={item.id} className="flex gap-3 items-start">
+        {cart?.map((item, index) => (
+          <div key={item.product?._id || index} className="flex gap-3 items-start">
             {/* Product Image Box */}
-            <div 
-              className={`w-20 h-20 bg-gradient-to-br ${getGradient(item.color)} rounded-xl flex-shrink-0 shadow-sm`}
+            <div
+              className={`w-20 h-20 bg-gradient-to-br ${getGradient(item.product?.color)} rounded-xl flex-shrink-0 shadow-sm`}
             />
-            
+
             {/* Product Details */}
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-gray-900 mb-1">{item.name}</h3>
+              <h3 className="font-semibold text-sm text-gray-900 mb-1">{item.product?.name}</h3>
               <p className="text-xs text-gray-500 mb-1">
-                Qty: {item.quantity} • {item.color}
+                Qty: {item.quantity} • {item.product?.color}
               </p>
-              <p className="text-sm font-bold text-pink-600">${item.price.toFixed(2)}</p>
+              <p className="text-sm font-bold text-pink-600">${item.product?.price.toFixed(2)}</p>
             </div>
           </div>
         ))}

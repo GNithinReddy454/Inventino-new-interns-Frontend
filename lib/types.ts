@@ -56,22 +56,23 @@ export interface ProductResponse {
 // We export both to satisfy both files.
 export interface Address {
   _id?: string;
-  fullName: string; // Backend expects fullName
+  fullName?: string;  // Backend expects fullName (optional on frontend)
   firstName?: string; // Frontend form uses these
   lastName?: string;
+  email?: string;     // Frontend shipping form
   phone: string;
-  street: string;     // Backend
+  street?: string;    // Backend (optional on frontend)
   streetAddress?: string; // Frontend
   city: string;
   state: string;
-  pincode: string;    // Backend
+  pincode?: string;   // Backend (optional on frontend)
   zipCode?: string;   // Frontend
   country?: string;
   isDefault?: boolean;
 }
 
 // Alias Address as ShippingAddress so CheckoutFlow doesn't break
-export type ShippingAddress = Address; 
+export type ShippingAddress = Address;
 
 // --- CART ---
 export interface CartItem {
