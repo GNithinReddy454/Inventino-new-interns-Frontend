@@ -33,6 +33,15 @@ export default function ShopByCategory() {
         {/* Scrollable cards + arrow */}
         <div className="relative flex items-center gap-3">
 
+          {/* Left scroll arrow */}
+          <button
+            onClick={() => scroll("left")}
+            className="flex-shrink-0 w-9 h-9 rounded-full bg-white shadow border border-gray-200 flex items-center justify-center text-gray-500 text-sm hover:bg-pink-50 hover:border-pink-300 transition-all"
+            aria-label="Scroll left"
+          >
+            ❮
+          </button>
+
           {/* Card row */}
           <div
             ref={scrollRef}

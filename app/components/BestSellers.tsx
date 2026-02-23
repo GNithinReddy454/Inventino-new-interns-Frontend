@@ -47,9 +47,10 @@ export default function BestSellers() {
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             {bestSellerProducts.map((product) => (
-              <div
+              <Link
+                href={`/AllProducts/${product.id}`}
                 key={product.id}
-                className="group flex-shrink-0 w-60 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-pink-50"
+                className="group flex-shrink-0 w-60 block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-pink-50"
               >
                 <div className="relative aspect-square overflow-hidden bg-pink-50">
                   {product.badge && (
@@ -73,7 +74,7 @@ export default function BestSellers() {
                   </div>
                   <p className="text-pink-600 font-black text-base">${product.price.toFixed(2)}</p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
