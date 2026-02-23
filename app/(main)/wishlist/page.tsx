@@ -169,7 +169,7 @@ export default function WishlistPage() {
             <h3 className="text-lg sm:text-xl font-bold text-gray-900">Your wishlist is empty</h3>
             <p className="text-gray-400 text-sm mt-2 mb-7">Save items you love and come back anytime.</p>
             <Link
-              href="/AllProducts"
+              href="/all-products"
               className="inline-block bg-[#E8456A] text-white px-8 py-2.5 rounded-2xl font-bold hover:bg-[#c73358] transition-all shadow-md shadow-pink-100 uppercase tracking-widest text-xs"
             >
               Explore Treasures
