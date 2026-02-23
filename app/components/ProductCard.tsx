@@ -146,7 +146,8 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
         </div>
 
         {/* Images — fully covers container */}
-        <Link href={`/AllProducts/${product.id}`} className="absolute inset-0 block">
+        {/* UPDATED PATH: Changed to lowercase /all-products */}
+        <Link href={`/all-products/${product.id}`} className="absolute inset-0 block">
           {images.map((img, idx) => (
             <img
               key={idx}
@@ -191,7 +192,8 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
         </div>
 
         {/* Title */}
-        <Link href={`/AllProducts/${product.id}`}>
+        {/* UPDATED PATH: Changed to lowercase /all-products */}
+        <Link href={`/all-products/${product.id}`}>
           <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 hover:text-[#E8456A] transition-colors mb-1.5">
             {productName}
           </h3>

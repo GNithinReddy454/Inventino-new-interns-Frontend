@@ -48,7 +48,7 @@ export default function BestSellers() {
           >
             {bestSellerProducts.map((product) => (
               <Link
-                href={`/AllProducts/${product.id}`}
+                href={`/all-products/${product.id}`}
                 key={product.id}
                 className="group flex-shrink-0 w-60 block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-pink-50"
               >

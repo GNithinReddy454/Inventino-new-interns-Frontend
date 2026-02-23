@@ -17,7 +17,6 @@ const Navbar = () => {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // State and Ref for the Dropdown
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -30,7 +29,6 @@ const Navbar = () => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "auto";
   }, [isMenuOpen]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -65,7 +63,8 @@ const Navbar = () => {
       <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center font-sans">
         <p className="text-center">
           💖 Valentine&apos;s Day Special – Get 20% OFF on all handmade gifts!
-          <Link href="/AllProducts" className="ml-2 underline cursor-pointer">Explore Now</Link>
+          {/* UPDATED: Path changed to all-products */}
+          <Link href="/all-products" className="ml-2 underline cursor-pointer">Explore Now</Link>
         </p>
       </div>
 
@@ -97,6 +96,7 @@ const Navbar = () => {
 
           <div className="flex items-center gap-2 sm:gap-4">
             <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center font-bold">
+              {/* UPDATED: Path changed to all-products */}
               <Link href="/all-products" className={getLinkStyle("/all-products")}>All Products</Link>
               <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
               <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
@@ -121,7 +121,6 @@ const Navbar = () => {
                 )}
               </Link>
 
-              {/* USER SECTION WITH DROPDOWN */}
               <div className="relative flex items-center gap-2 ml-1" ref={dropdownRef}>
                 <button
                   onClick={() => user ? setShowDropdown(!showDropdown) : router.push("/login")}
@@ -143,7 +142,6 @@ const Navbar = () => {
                   </div>
                 )}
 
-                {/* DROPDOWN MENU */}
                 {user && showDropdown && (
                   <div 
                     className="absolute right-0 top-full mt-2 w-64 bg-white border border-pink-100 rounded-3xl shadow-xl z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
@@ -179,7 +177,6 @@ const Navbar = () => {
                         <ChevronRight size={14} className="text-gray-400 group-hover:translate-x-1 transition-transform" />
                       </Link>
 
-                      {/* ADDED: Settings Link */}
                       <Link href="/profile/settings" className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group" onClick={() => setShowDropdown(false)}>
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700"><Settings size={16} /></div>
@@ -224,7 +221,8 @@ const Navbar = () => {
           </div>
 
           <nav className="flex flex-col gap-6">
-            <Link href="/AllProducts" className={getMobileLinkStyle("/AllProducts")} onClick={() => setIsMenuOpen(false)}>All Products</Link>
+            {/* UPDATED: Path changed to all-products */}
+            <Link href="/all-products" className={getMobileLinkStyle("/all-products")} onClick={() => setIsMenuOpen(false)}>All Products</Link>
             <Link href="/stories" className={getMobileLinkStyle("/stories")} onClick={() => setIsMenuOpen(false)}>Stories</Link>
             <Link href="/contact" className={getMobileLinkStyle("/contact")} onClick={() => setIsMenuOpen(false)}>Contact</Link>
 

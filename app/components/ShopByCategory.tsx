@@ -51,7 +51,8 @@ export default function ShopByCategory() {
             {categories.map((cat) => (
               <Link
                 key={cat.slug}
-                href={`/all-products`}
+                /* UPDATED: Added category query parameter for deep-linking */
+                href={`/all-products?category=${cat.name}`}
                 className="group flex-shrink-0 w-44 bg-white rounded-2xl p-5 flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all duration-300 border border-white hover:border-pink-300 hover:scale-105"
               >
                 {/* Circular image */}
