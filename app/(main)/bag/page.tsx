@@ -163,17 +163,17 @@ export default function BagPage() {
               <Tag size={15} className="text-[#D94F7A]" />
               <span className="text-sm font-bold text-gray-700 uppercase tracking-widest text-[10px]">Promo Code</span>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 placeholder="Enter Promo Code"
                 value={promoCode}
                 onChange={(e) => { setPromoCode(e.target.value); setPromoError(""); setPromoApplied(false); }}
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
               />
               <button
                 onClick={handleApplyPromo}
-                className="bg-[#D94F7A] hover:bg-[#b83d63] text-white px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
+                className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-primary-foreground px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
               >
                 Apply Code
               </button>
@@ -189,7 +189,8 @@ export default function BagPage() {
           </div>
         </div>
 
-        <div className="bg-card rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 border border-border shadow-sm lg:sticky lg:top-32 h-fit mb-10 overflow-hidden">
+        {/* ── Order Summary — mt-8 added to create space from the grid above ── */}
+        <div className="mt-8 bg-card rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 border border-border shadow-sm lg:sticky lg:top-32 h-fit mb-10 overflow-hidden">
           <h3 className="font-bold text-foreground mb-6 md:mb-8 font-serif text-2xl text-center md:text-left">Order Summary</h3>
           <div className="space-y-4 mb-8 border-b border-border pb-8 text-sm md:text-base">
             <div className="flex justify-between text-muted-foreground font-medium">
@@ -211,13 +212,13 @@ export default function BagPage() {
           </div>
 
           <Link href="/checkout" className="block">
-            <button className="w-full bg-primary text-primary-foreground py-4 md:py-5 rounded-2xl md:rounded-[2rem] font-bold shadow-xl shadow-pink-200 hover:bg-primary-dark transition-all active:scale-[0.98] uppercase text-[10px] md:text-xs tracking-widest">
+            <button className="w-full bg-primary text-primary-foreground py-4 md:py-5 rounded-2xl md:rounded-[2rem] font-bold shadow-xl shadow-pink-200 hover:bg-primary-dark transition-all active:scale-[0.98] uppercase text-sm tracking-widest">
               Proceed to Checkout
             </button>
           </Link>
 
-          {/* Continue Shopping */}
-          <Link href="/AllProducts" className="block">
+          {/* Added mt-3 gap between the two buttons */}
+          <Link href="/AllProducts" className="block mt-3">
             <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-pink-50 transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
               Continue Shopping
             </button>
