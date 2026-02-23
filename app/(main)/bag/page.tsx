@@ -96,16 +96,15 @@ export default function BagPage() {
                   return (
                     <div
                       key={item.id}
-                      className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${
-                        isAnimating
+                      className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${isAnimating
                           ? actionType === "wishlist"
                             ? "opacity-0 -translate-y-16 scale-90"
                             : "opacity-0 -translate-x-full"
                           : "opacity-100 translate-x-0 translate-y-0"
-                      }`}
+                        }`}
                     >
                       {/* ── Image — same aspect-square + object-cover as ProductCard ── */}
-                      <Link href={`/AllProducts/${item.id}`} className="block group shrink-0 mx-auto md:mx-0">
+                      <Link href={`/all-products/${item.id}`} className="block group shrink-0 mx-auto md:mx-0">
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         </div>
@@ -116,7 +115,7 @@ export default function BagPage() {
 
 
                           <div className="flex flex-col md:flex-row md:justify-between gap-2">
-                            <Link href={`/AllProducts/${item.id}`} className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300">
+                            <Link href={`/all-products/${item.id}`} className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300">
                               <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-2">{item.name}</h3>
                             </Link>
 
@@ -245,7 +244,7 @@ export default function BagPage() {
             </Link>
 
             {/* Continue Shopping */}
-            <Link href="/AllProducts" className="block">
+            <Link href="/all-products" className="block">
               <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-pink-50 transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
                 Continue Shopping
               </button>

@@ -27,19 +27,19 @@ const AboutPage: React.FC = () => {
     <div className="bg-card">
       {/* 1. HERO SECTION */}
       <section className="relative h-[60vh] flex items-center justify-center bg-background overflow-hidden border-b border-border">
-        
+
         {/* NAVIGATION BUTTONS */}
         <div className="absolute top-8 left-8 right-8 flex justify-between items-center z-20">
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className="flex items-center gap-2 px-4 py-2 bg-card/80 backdrop-blur-sm text-primary-dark rounded-full font-medium shadow-sm hover:bg-card hover:shadow-md transition-all border border-border"
           >
             <ArrowLeft size={18} />
             Back to Home
           </Link>
 
-          <Link 
-            href="/AllProducts" 
+          <Link
+            href="/all-products"
             className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-full font-medium shadow-md hover:bg-primary-dark transition-all"
           >
             Next to Shop
@@ -50,10 +50,10 @@ const AboutPage: React.FC = () => {
         <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0 bg-[radial-gradient(var(--color-primary)_1px,transparent_1px)] [background-size:20px_20px]"></div>
         </div>
-        
+
         <div className="relative z-10 text-center px-4">
           <h1 className="text-4xl md:text-6xl font-serif font-bold text-foreground mb-4">
-            Crafted with <span className="text-primary-dark">Love</span>,<br /> 
+            Crafted with <span className="text-primary-dark">Love</span>,<br />
             Designed for You
           </h1>
           <p className="max-w-xl mx-auto text-muted-foreground text-lg">
@@ -72,12 +72,12 @@ const AboutPage: React.FC = () => {
                 <span className="text-primary-dark">They're Memories</span>
               </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Every piece in our collection is carefully handcrafted with passion and dedication. 
-                We believe that the items you wear and cherish should carry meaning, tell your story, 
+                Every piece in our collection is carefully handcrafted with passion and dedication.
+                We believe that the items you wear and cherish should carry meaning, tell your story,
                 and connect you to the artisans who made them.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                From the first sketch to the final polish, every step is a labor of love. We work with 
+                From the first sketch to the final polish, every step is a labor of love. We work with
                 talented artisans who use techniques passed down through generations.
               </p>
             </div>
@@ -91,8 +91,8 @@ const AboutPage: React.FC = () => {
 
           <div className="flex-1 relative">
             <div className="rounded-[2rem] overflow-hidden shadow-2xl border-8 border-card">
-              <img 
-                src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&q=80&w=800" 
+              <img
+                src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&q=80&w=800"
                 alt="Handcrafting jewelry"
                 className="w-full h-[500px] object-cover"
               />
@@ -138,8 +138,8 @@ const AboutPage: React.FC = () => {
 
           {/* FINAL CTA BUTTON */}
           <div className="mt-20 text-center">
-            <Link 
-              href="/AllProducts" 
+            <Link
+              href="/all-products"
               className="inline-flex items-center gap-3 px-10 py-4 bg-primary text-primary-foreground rounded-full font-bold text-lg shadow-xl shadow-pink-200 hover:bg-primary-dark hover:scale-105 transition-all"
             >
               Explore Our Shop
