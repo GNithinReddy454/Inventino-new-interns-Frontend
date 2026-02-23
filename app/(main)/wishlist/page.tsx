@@ -98,9 +98,8 @@ export default function WishlistPage() {
     <div className="w-full bg-[#FFF9FD] font-sans min-h-screen">
 
       {/* ── Toast ── */}
-      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${
-        toast.show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
-      }`}>
+      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${toast.show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+        }`}>
         <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-[200px] max-w-[88vw]">
           <div className="bg-[#E8456A] w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0">
             <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} />
@@ -119,7 +118,7 @@ export default function WishlistPage() {
 
         {/* ── Back ── */}
         <Link
-          href="/AllProducts"
+          href="/all-products"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9E7EA8] hover:text-[#E8456A] transition-colors group mb-4"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
@@ -189,15 +188,14 @@ export default function WishlistPage() {
               return (
                 <div
                   key={item.id}
-                  className={`relative bg-white rounded-2xl overflow-hidden border flex flex-col shadow-sm transition-all duration-300 hover:shadow-[0_6px_24px_rgba(232,69,106,0.13)] ${
-                    isSelected
+                  className={`relative bg-white rounded-2xl overflow-hidden border flex flex-col shadow-sm transition-all duration-300 hover:shadow-[0_6px_24px_rgba(232,69,106,0.13)] ${isSelected
                       ? "ring-2 ring-[#E8456A] ring-offset-1 border-transparent"
                       : "border-gray-100 hover:border-pink-100"
-                  }`}
+                    }`}
                 >
                   {/* ── Image ── */}
                   <div className="relative aspect-square overflow-hidden bg-gray-50">
-                    <Link href={`/AllProducts/${item.id}`} className="absolute inset-0">
+                    <Link href={`/all-products/${item.id}`} className="absolute inset-0">
                       <img
                         src={image}
                         alt={name}
@@ -237,11 +235,10 @@ export default function WishlistPage() {
                           onChange={() => toggleSelect(item.id)}
                           className="sr-only peer"
                         />
-                        <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 shadow transition-all flex items-center justify-center ${
-                          isSelected
+                        <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 shadow transition-all flex items-center justify-center ${isSelected
                             ? "border-[#E8456A] bg-[#E8456A]"
                             : "border-white/80 bg-black/10 hover:bg-white/90 hover:border-[#E8456A]"
-                        }`}>
+                          }`}>
                           <svg
                             className={`w-2.5 h-2.5 text-white transition-opacity ${isSelected ? "opacity-100" : "opacity-0"}`}
                             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}
@@ -270,7 +267,7 @@ export default function WishlistPage() {
                     </div>
 
                     {/* Name */}
-                    <Link href={`/AllProducts/${item.id}`}>
+                    <Link href={`/all-products/${item.id}`}>
                       <h3 className="font-bold text-gray-900 text-[11px] sm:text-sm leading-snug line-clamp-2 hover:text-[#E8456A] transition-colors mt-1 mb-1.5">
                         {name}
                       </h3>
