@@ -92,7 +92,7 @@ export default function BestSellers() {
         <div className="text-center mt-10">
           <ClientOnly>
             <Link
-              href="/AllProducts"
+              href="/all-products"
               className="inline-block bg-pink-500 hover:bg-pink-600 text-white px-8 py-3 rounded-full font-semibold text-sm transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95"
             >
               View All Products

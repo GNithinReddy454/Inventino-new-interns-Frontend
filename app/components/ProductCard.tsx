@@ -17,6 +17,7 @@ export interface ProductCardProduct extends Product {
 interface ProductCardProps {
   product: ProductCardProduct;
   onAdd?: (name: string) => void;
+  buttonBg?: string; // ← new prop
 }
 
 // ── Star Rating ───────────────────────────────────────────────────────────────
@@ -52,7 +53,7 @@ function getBadgeText(badge: any): string | null {
   return null;
 }
 
-export default function ProductCard({ product, onAdd }: ProductCardProps) {
+export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: ProductCardProps) {
   const { handleSaved, savedItems } = useStore();
   const { addToCart } = useCart();
   const isSaved = savedItems.some((item) => item.id === product.id);
@@ -228,7 +229,7 @@ export default function ProductCard({ product, onAdd }: ProductCardProps) {
             </span>
           )}
 
-          {/* Add to Bag — pushed to far right */}
+          {/* Add to Bag — pushed to far right, uses buttonBg prop */}
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -236,7 +237,8 @@ export default function ProductCard({ product, onAdd }: ProductCardProps) {
               addToCart(cartProduct, 1);
               onAdd?.(productName);
             }}
-            className="ml-auto shrink-0 bg-[#E8456A] hover:bg-[#c73358] text-white text-[10px] font-bold px-3 py-2 rounded-lg uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-sm whitespace-nowrap"
+            style={{ backgroundColor: buttonBg }}
+            className="ml-auto shrink-0 text-white text-[10px] font-bold px-3 py-2 rounded-lg uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-sm whitespace-nowrap hover:opacity-90"
           >
             Add to Bag
           </button>
