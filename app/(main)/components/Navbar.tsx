@@ -83,7 +83,7 @@ const Navbar = () => {
 
           <div className="flex items-center gap-2 sm:gap-4">
             <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center font-bold">
-              <Link href="/AllProducts" className={getLinkStyle("/AllProducts")}>All Products</Link>
+              <Link href="/all-products" className={getLinkStyle("/all-products")}>All Products</Link>
               <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
               <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
             </nav>
