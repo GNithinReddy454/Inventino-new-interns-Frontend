@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // CHANGE THIS to your actual backend URL (e.g., http://localhost:8080)
-const BASE_URL = "";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

@@ -5,13 +5,12 @@ import Image from "next/image";
 import { Search, Heart, ShoppingCart, User, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "@/app/(main)/components/authContext";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/lib/storeContext";
 import { useCart } from "@/lib/cartContext";
 
 const Navbar = () => {
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollY = useRef(0);
+
   const pathname = usePathname();
   const { savedItems } = useStore();
   const { cart } = useCart();
@@ -23,20 +22,6 @@ const Navbar = () => {
     (total, item) => total + (item.quantity || 1),
     0
   );
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (isMenuOpen) return;
-      const currentY = window.scrollY;
-      const diff = currentY - lastScrollY.current;
-      if (currentY < 50) setIsVisible(true);
-      else if (diff > 4) setIsVisible(false);
-      else if (diff < -4) setIsVisible(true);
-      lastScrollY.current = currentY;
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isMenuOpen]);
 
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "auto";
@@ -62,16 +47,16 @@ const Navbar = () => {
 
   return (
     <>
-      <header className={`sticky top-0 z-50 w-full transition-transform duration-300 ease-out ${isVisible ? "translate-y-0" : "-translate-y-full"}`}>
-        {/* TOP ANNOUNCEMENT BAR */}
-        <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center font-sans">
-          <p className="text-center">
-            💖 Valentine&apos;s Day Special – Get 20% OFF on all handmade gifts!
-            <Link href="/AllProducts" className="ml-2 underline cursor-pointer">Explore Now</Link>
-          </p>
-        </div>
+      {/* TOP ANNOUNCEMENT BAR – scrolls away naturally */}
+      <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center font-sans">
+        <p className="text-center">
+          💖 Valentine&apos;s Day Special – Get 20% OFF on all handmade gifts!
+          <Link href="/AllProducts" className="ml-2 underline cursor-pointer">Explore Now</Link>
+        </p>
+      </div>
 
-        {/* MAIN NAVBAR */}
+      {/* MAIN NAVBAR – always sticky */}
+      <header className="sticky top-0 z-50 w-full">
         <div className="bg-pink-100 px-3 sm:px-6 md:px-12 py-2 sm:py-3 flex justify-between items-center">
           <div className="shrink-0">
             <Link href="/">
@@ -124,8 +109,8 @@ const Navbar = () => {
 
               {/* DESKTOP USER ICON: Links to Profile if logged in */}
               <div className="flex items-center gap-2 ml-1">
-                <Link 
-                  href={user ? "/profile" : "/login"} 
+                <Link
+                  href={user ? "/profile" : "/login"}
                   className={iconCircleStyle}
                 >
                   <User size={18} />
@@ -174,12 +159,12 @@ const Navbar = () => {
             <Link href="/AllProducts" className={getMobileLinkStyle("/AllProducts")} onClick={() => setIsMenuOpen(false)}>All Products</Link>
             <Link href="/stories" className={getMobileLinkStyle("/stories")} onClick={() => setIsMenuOpen(false)}>Stories</Link>
             <Link href="/contact" className={getMobileLinkStyle("/contact")} onClick={() => setIsMenuOpen(false)}>Contact</Link>
-            
+
             {/* MOBILE PROFILE LINK: Links to Profile if logged in */}
             {user && (
-              <Link 
-                href="/profile" 
-                className={getMobileLinkStyle("/profile")} 
+              <Link
+                href="/profile"
+                className={getMobileLinkStyle("/profile")}
                 onClick={() => setIsMenuOpen(false)}
               >
                 My Profile
@@ -209,8 +194,8 @@ const Navbar = () => {
             ) : (
               <div className="flex flex-col gap-4">
                 {/* Linked Profile Card for mobile */}
-                <Link 
-                  href="/profile" 
+                <Link
+                  href="/profile"
                   className="flex items-center gap-3 p-3 bg-pink-50 rounded-2xl border border-pink-100"
                   onClick={() => setIsMenuOpen(false)}
                 >
