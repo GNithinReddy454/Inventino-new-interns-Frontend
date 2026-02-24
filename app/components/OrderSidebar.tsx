@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useCart, useOrderSummary, applyPromoCode } from '@/lib/hooks';
+import { useFetch, useMutate, swrMutate } from '@/hooks/useApi';
+import { cartService } from '@/services/cart.service';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { CheckoutStep, PaymentMethod } from '@/lib/types';
@@ -15,8 +16,19 @@ type OrderSidebarProps = {
 };
 
 export function OrderSidebar({ currentStep, paymentMethod, onPlaceOrder, isProcessing }: OrderSidebarProps) {
-  const { cartItems: cart, isLoading: cartLoading } = useCart();
-  const { summary, isLoading: summaryLoading } = useOrderSummary();
+  // Fetch cart data with SWR caching
+  const { data: cartData, isLoading: cartLoading } = useFetch('/api/cart');
+  const cart = cartData?.items || [];
+  
+  // Calculate summary from cart data
+  const summary = {
+    subtotal: cart.reduce((sum:any, item:any) => sum + (item.price * item.quantity), 0),
+    shipping: 0, // Default free shipping
+    discount: cartData?.discount || 0,
+    tax: cartData?.tax || 0,
+    total: cartData?.total || 0,
+  };
+  
   const [promoCode, setPromoCode] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
   const [promoError, setPromoError] = useState('');
@@ -27,7 +39,8 @@ export function OrderSidebar({ currentStep, paymentMethod, onPlaceOrder, isProce
     setApplyingPromo(true);
     setPromoError('');
     try {
-      await applyPromoCode(promoCode);
+      await cartService.applyPromoCode(promoCode);
+      swrMutate('/api/cart'); // Refresh cart data after applying promo
       setPromoCode('');
     } catch (error) {
       setPromoError('Invalid promo code');
@@ -36,7 +49,7 @@ export function OrderSidebar({ currentStep, paymentMethod, onPlaceOrder, isProce
     }
   };
 
-  if (cartLoading || summaryLoading) {
+  if (cartLoading) {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-6">
         <div className="flex items-center justify-center h-64">
@@ -62,7 +75,7 @@ export function OrderSidebar({ currentStep, paymentMethod, onPlaceOrder, isProce
 
       {/* Cart Items with Product Cards */}
       <div className="space-y-4 mb-6">
-        {cart?.map((item, index) => (
+        {cart?.map((item:any, index:any) => (
           <div key={item.product?._id || index} className="flex gap-3 items-start">
             {/* Product Image Box */}
             <div

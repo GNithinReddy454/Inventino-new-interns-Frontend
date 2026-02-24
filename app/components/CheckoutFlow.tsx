@@ -8,7 +8,6 @@ import { FailedScreen } from './FailedScreen';
 import { TrackingScreen } from './TrackingScreen';
 import { OrderSidebar } from './OrderSidebar';
 import { CheckoutStep, ShippingAddress, PaymentMethod, OrderResponse } from '@/lib/types';
-import { placeOrder } from '@/lib/hooks';
 import { useEffect } from 'react';
 
 export default function CheckoutFlow() {

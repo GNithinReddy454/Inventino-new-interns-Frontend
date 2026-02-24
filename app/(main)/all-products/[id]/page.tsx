@@ -9,7 +9,6 @@ import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import ProductReviews from "@/app/components/ProductReviews";
 
-import { products as staticProducts } from "@/lib/products";
 
 // --- TYPES ---
 interface Product {
@@ -77,7 +76,10 @@ const getProductById = (id: number): Product => {
 
 export default function ProductDetailsPage() {
   const params = useParams();
+
   const { addToCart } = useCart();
+
+
   const { handleSaved, savedItems = [] } = useStore();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
