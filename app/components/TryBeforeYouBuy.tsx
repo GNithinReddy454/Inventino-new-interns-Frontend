@@ -1,37 +1,38 @@
 'use client';
 
 import ClientOnly from './ClientOnly';
+import { Camera, Home, MessageCircle, Sparkles } from 'lucide-react';
 
 const features = [
   {
     title: "Virtual Try-On",
     description: "Use your camera to see how it looks on you in real-time.",
-    icon: "🪞",
+    icon: <Camera className="w-7 h-7 text-pink-500" strokeWidth={1.5} />,
     cta: "Comming Soon",
   },
   {
     title: "Book Try at Home",
     description: "Schedule a doorstep trial of your favorite jewellery.",
-    icon: "🏠",
+    icon: <Home className="w-7 h-7 text-pink-500" strokeWidth={1.5} />,
     cta: "Comming Soon",
   },
   {
     title: "Talk to an Expert",
     description: "Need guidance? Speak to our jewellery consultant.",
-    icon: "💬",
+    icon: <MessageCircle className="w-7 h-7 text-pink-500" strokeWidth={1.5} />,
     cta: "Comming Soon",
   },
   {
     title: "Live Styling Help",
     description: "Talk to a jewellery stylist via video call.",
-    icon: "✨",
+    icon: <Sparkles className="w-7 h-7 text-pink-500" strokeWidth={1.5} />,
     cta: "Comming Soon",
   },
 ];
 
 export default function TryBeforeYouBuy() {
   return (
-    <section className="w-full bg-white px-6 md:px-16 py-14 md:py-20">
+    <section className="w-full bg-white px-6 md:px-16 py-10 md:py-16">
       <div className="max-w-6xl mx-auto">
 
         {/* Heading */}

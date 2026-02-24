@@ -39,24 +39,6 @@ const Footer = () => {
 
         {/* CENTER: Navigation Links */}
         <div className="flex-1 flex justify-between md:justify-around gap-6 w-full">
-          {/** Shop Section **/}
-          <div>
-            <h3 className="text-base font-semibold mb-2 text-white">Shop</h3>
-            <ul className="space-y-1 text-sm md:text-base">
-              {["Rings", "Necklaces", "Bracelets", "Earrings"].map(item => (
-                <li key={item}>
-                  <Link
-                    // UPDATED: Path changed from /AllProducts to /all-products
-                    href="/all-products"
-                    className="relative text-gray-400 hover:text-white transition-colors
-                      after:absolute after:left-0 after:-bottom-0.5 after:w-full after:h-0.5 after:bg-white after:opacity-0 hover:after:opacity-100 after:transition-opacity"
-                  >
-                    {item}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
 
           {/** About Section **/}
           <div>
@@ -120,18 +102,18 @@ const Footer = () => {
               <p className="text-gray-400 text-sm mb-2">
                 Get the latest arrivals and special offers.
               </p>
-              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
+              <form onSubmit={handleSubmit} className="flex flex-row items-stretch mt-2 group focus-within:ring-2 focus-within:ring-pink-400 rounded-xl bg-transparent sm:bg-[#1E293B] border border-pink-300 overflow-hidden w-full max-w-sm">
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Your email"
-                  className="flex-1 px-3 py-2 rounded-md border border-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 placeholder-gray-400"
+                  className="flex-1 px-4 py-3 bg-transparent border-none focus:outline-none focus:ring-0 text-gray-200 placeholder-gray-400 min-h-[48px]"
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-md transition-colors flex items-center justify-center"
+                  className="px-6 bg-pink-600 hover:bg-pink-700 text-white transition-colors flex items-center justify-center shrink-0 border-l border-pink-600"
                 >
                   <ArrowRight size={20} />
                 </button>
