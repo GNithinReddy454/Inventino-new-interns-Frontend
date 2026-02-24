@@ -1,86 +1,101 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useAuth } from "@/app/(main)/components/authContext";
-import { User, Package, MapPin, CreditCard, Settings, Heart, Mail, ShieldCheck, ChevronRight, LogOut } from "lucide-react";
+import { User, Package, MapPin, CreditCard, Settings } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
-  const [activeTab] = useState("personal");
+
+  const initials = user?.name
+    ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "JD";
+
+  const menuItems = [
+    { label: "Profile Info", icon: User, href: "/profile", active: true },
+    { label: "My Orders", icon: Package, href: "/profile/orders" },
+    { label: "Saved Addresses", icon: MapPin, href: "/profile/addresses" },
+    { label: "Payment Methods", icon: CreditCard, href: "/profile/payments" },
+    { label: "Settings", icon: Settings, href: "/profile/settings" },
+  ];
+
+  const dob =
+    user?.dobDay && user?.dobMonth && user?.dobYear
+      ? `${user.dobMonth} ${user.dobDay}, ${user.dobYear}`
+      : "—";
 
   return (
-    <div className="bg-background min-h-screen pt-4 md:pt-8 pb-20 font-sans">
-      <div className="max-w-6xl mx-auto px-4">
+    <div style={{ background: "#fdf8f9", minHeight: "100vh", paddingBottom: 80, fontFamily: "Roboto, sans-serif" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 16px" }}>
 
-        <div className="max-w-3xl mx-auto">
-          <div className="flex justify-center mb-4">
-            <h1 className="inline-block px-8 py-3 bg-card border-2 border-border rounded-full text-2xl font-serif font-bold text-primary-dark shadow-sm">
-              Profile Information
-            </h1>
-          </div>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111", marginBottom: 24 }}>Profile Settings</h1>
 
-          <div className="bg-card rounded-[2.5rem] p-6 md:p-10 border border-border shadow-sm min-h-[400px]">
-            {activeTab === "personal" && (
-              <div className="animate-in fade-in duration-500">
-                <div className="bg-card p-6 rounded-[2rem] border border-border shadow-sm mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-accent rounded-2xl flex items-center justify-center text-primary-dark">
-                      <User size={32} />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-foreground">{user?.name || "Guest User"}</p>
-                      <p className="text-sm text-muted-foreground">{user?.email || "-"}</p>
-                    </div>
-                  </div>
+        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #fce7f3", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflow: "hidden" }}>
 
-                  <div className="mt-6 grid grid-cols-3 gap-3">
-                    <Link href="/profile/orders" className="bg-card p-4 rounded-2xl text-center shadow-sm border border-border hover:border-primary/50 transition-colors">
-                      <div className="flex items-center justify-center w-10 h-10 bg-accent rounded-lg mx-auto text-primary-dark"><Package size={18} /></div>
-                      <p className="text-sm font-bold mt-3">Your Orders</p>
-                    </Link>
+          {/* Responsive wrapper — row on desktop, column on mobile */}
+          <div className="profile-layout">
 
-                    <Link href="/wishlist" className="bg-card p-4 rounded-2xl text-center shadow-sm border border-border hover:border-primary/50 transition-colors">
-                      <div className="flex items-center justify-center w-10 h-10 bg-accent rounded-lg mx-auto text-primary-dark"><Heart size={18} /></div>
-                      <p className="text-sm font-bold mt-3">Your Wishlist</p>
-                    </Link>
-
-                    <Link href="/contact" className="bg-card p-4 rounded-2xl text-center shadow-sm border border-border hover:border-primary/50 transition-colors">
-                      <div className="flex items-center justify-center w-10 h-10 bg-accent rounded-lg mx-auto text-primary-dark"><Mail size={18} /></div>
-                      <p className="text-sm font-bold mt-3">Help & Support</p>
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                  {[
-                    { label: "Your Wishlist", icon: Heart, href: "/wishlist" },
-                    { label: "Help & Support", icon: Mail, href: "/contact" },
-                    { label: "Saved Addresses", icon: MapPin, href: "/profile/addresses" },
-                    { label: "Rewards", icon: ShieldCheck, href: "/rewards" },
-                    { label: "Payment Management", icon: CreditCard, href: "/profile/payments" },
-                    { label: "Settings", icon: Settings, href: "/profile/settings" },
-                  ].map((it) => (
-                    <Link key={it.label} href={it.href} className="flex items-center justify-between p-4 border-b border-border last:border-b-0 hover:bg-accent/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center text-primary-dark"><it.icon size={18} /></div>
-                        <p className="font-medium text-foreground">{it.label}</p>
-                      </div>
-                      <ChevronRight size={18} className="text-muted-foreground" />
-                    </Link>
-                  ))}
-                </div>
-
-                <div className="pt-6">
-                  <button
-                    onClick={logout}
-                    className="w-full flex items-center justify-center gap-3 px-4 py-4 rounded-2xl font-bold text-sm text-destructive bg-card border border-destructive/20 hover:bg-destructive/5 transition-colors shadow-sm"
-                  >
-                    <LogOut size={18} /> Logout
-                  </button>
-                </div>
+            {/* ── Sidebar ── */}
+            <div className="profile-sidebar">
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#D94F7A", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 24, fontWeight: 700, marginBottom: 10, flexShrink: 0 }}>
+                {initials}
               </div>
-            )}
+              <p style={{ fontWeight: 600, fontSize: 14, color: "#111", textAlign: "center" }}>{user?.name || "John Doe"}</p>
+              <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 2, marginBottom: 20, textAlign: "center" }}>{user?.email || "john.doe@example.com"}</p>
+              <nav style={{ width: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
+                {menuItems.map((item) => (
+                  <Link key={item.label} href={item.href} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 12px", borderRadius: 8,
+                    fontSize: 13, fontWeight: 500, textDecoration: "none",
+                    background: item.active ? "#D94F7A" : "transparent",
+                    color: item.active ? "#fff" : "#6b7280",
+                  }}>
+                    <item.icon size={14} />
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+
+            {/* ── Personal Info ── */}
+            <div style={{ flex: 1, padding: "28px 24px", minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+                <h2 style={{ fontSize: 15, fontWeight: 600, color: "#111" }}>Personal Information</h2>
+                <Link href="/profile/edit" style={{ padding: "6px 14px", borderRadius: 8, border: "1.5px solid #D94F7A", color: "#D94F7A", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                  Edit Profile
+                </Link>
+              </div>
+
+              <div className="info-grid">
+                {[
+                  { label: "Full Name", value: user?.name || "—" },
+                  { label: "Email Address", value: user?.email || "—" },
+                  { label: "Phone Number", value: user?.phone || "—" },
+                  { label: "Date of Birth", value: dob },
+                  { label: "Gender", value: user?.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : "—" },
+                  { label: "Member Since", value: user?.memberSince || "—" },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9ca3af", marginBottom: 4 }}>{label}</p>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: "#1f2937" }}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <hr style={{ margin: "24px 0", borderColor: "#fce7f3" }} />
+
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <button onClick={logout} style={{ padding: "9px 22px", borderRadius: 8, background: "#D94F7A", color: "#fff", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  Logout
+                </button>
+                <button style={{ padding: "9px 22px", borderRadius: 8, background: "transparent", color: "#6b7280", border: "1.5px solid #e5e7eb", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+                  Delete Account
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import ClientOnly from './ClientOnly';
 
 export default function CorporateGifting() {
   return (
-    <section className="w-full py-20 px-6" style={{ background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 40%, #db2777 100%)' }}>
+    <section className="w-full py-16 px-6" style={{ background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 40%, #db2777 100%)' }}>
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
           Corporate Gifting
