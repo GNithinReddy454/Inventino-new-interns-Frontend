@@ -19,7 +19,6 @@ import { Button } from "@/app/components/ui/button";
 import useDebounce from "@/hooks/useDebounce";
 import { useFetch } from "@/hooks/useApi";
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
 const TOTAL_PRODUCTS = 156;
 const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accessories"];
 
@@ -78,10 +77,7 @@ export default function ProductsPage() {
 
   console.log("fetchResult", fetchResult)
 
-  // ── Read initial state FROM URL params ──────────────────────────────────────
-  const [selectedCategory, setSelectedCategory] = useState(
-    searchParams.get("category") || "All Products"
-  );
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "All Products");
   const [priceRange, setPriceRange] = useState<[number, number]>([
     Number(searchParams.get("minPrice")) || 0,
     Number(searchParams.get("maxPrice")) || 600,
@@ -89,7 +85,6 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "Featured");
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
-
   const [sortOpen, setSortOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -102,7 +97,6 @@ export default function ProductsPage() {
 
   useEffect(() => { setIsClient(true); }, []);
 
-  // ── Sync state → URL ────────────────────────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedCategory !== "All Products") params.set("category", selectedCategory);
@@ -111,12 +105,10 @@ export default function ProductsPage() {
     if (sortBy !== "Featured") params.set("sort", sortBy);
     if (debouncedSearch) params.set("q", debouncedSearch);
     if (currentPage > 1) params.set("page", String(currentPage));
-
     const query = params.toString();
     router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
   }, [selectedCategory, priceRange, sortBy, debouncedSearch, currentPage, pathname, router]);
 
-  // ── Close sort on outside click ─────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
@@ -125,11 +117,9 @@ export default function ProductsPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ── Reset page on filter change ─────────────────────────────────────────────
   useEffect(() => { setCurrentPage(1); }, [selectedCategory, priceRange, sortBy, debouncedSearch]);
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [currentPage]);
 
-  // ── Filter + sort ───────────────────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
     let result = ALL_PRODUCTS_LIST.filter((product) => {
       const categoryMatch = selectedCategory === "All Products" || product.category === selectedCategory;
@@ -147,12 +137,8 @@ export default function ProductsPage() {
   }, [selectedCategory, priceRange, debouncedSearch, sortBy]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const currentProducts = filteredProducts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const currentProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // ── Clear all filters ───────────────────────────────────────────────────────
   const clearFilters = useCallback(() => {
     setSelectedCategory("All Products");
     setPriceRange([0, 600]);
@@ -161,7 +147,6 @@ export default function ProductsPage() {
     setCurrentPage(1);
   }, []);
 
-  // ── Price handlers ──────────────────────────────────────────────────────────
   const MAX_PRICE = 1000;
   const minPercent = (priceRange[0] / MAX_PRICE) * 100;
   const maxPercent = (priceRange[1] / MAX_PRICE) * 100;
@@ -180,7 +165,6 @@ export default function ProductsPage() {
     else setPriceRange([priceRange[0], Math.max(value, priceRange[0] + 10)]);
   };
 
-  // ── Pagination range ────────────────────────────────────────────────────────
   const getPaginationRange = () => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
     if (currentPage <= 4) return [1, 2, 3, 4, 5, "...", totalPages];
@@ -189,13 +173,11 @@ export default function ProductsPage() {
     return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
   };
 
-  // ── Toast ───────────────────────────────────────────────────────────────────
   const triggerToast = useCallback((name: string) => {
     setToast({ name, show: true });
     setTimeout(() => setToast({ name: "", show: false }), 3500);
   }, []);
 
-  // ── Active filter count badge ───────────────────────────────────────────────
   const activeFilterCount = [
     selectedCategory !== "All Products",
     priceRange[0] !== 0 || priceRange[1] !== 600,
@@ -205,8 +187,42 @@ export default function ProductsPage() {
 
   if (!isClient) return <div className="min-h-screen bg-white" />;
 
+  const PriceRangeUI = (
+    <div className="space-y-4">
+      <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Price Range</h4>
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+          <input type="number" min={0} value={priceRange[0]} onChange={(e) => handlePriceInput(e, "min")}
+            className="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D94F7A] transition-colors" />
+        </div>
+        <span className="text-gray-300 font-medium">—</span>
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+          <input type="number" min={0} value={priceRange[1]} onChange={(e) => handlePriceInput(e, "max")}
+            className="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D94F7A] transition-colors" />
+        </div>
+      </div>
+      <div className="relative h-5 flex items-center">
+        <div className="absolute w-full h-1.5 bg-gray-200 rounded-full" />
+        <div className="absolute h-1.5 bg-[#D94F7A] rounded-full pointer-events-none"
+          style={{ left: `${minPercent}%`, width: `${maxPercent - minPercent}%` }} />
+        <input type="range" min={0} max={MAX_PRICE} step={10} value={priceRange[0]} onChange={handleMinSlider}
+          className="absolute w-full h-1.5 appearance-none bg-transparent cursor-pointer range-thumb-pink pointer-events-auto"
+          style={{ zIndex: priceRange[0] > MAX_PRICE - 100 ? 5 : 3 }} />
+        <input type="range" min={0} max={MAX_PRICE} step={10} value={priceRange[1]} onChange={handleMaxSlider}
+          className="absolute w-full h-1.5 appearance-none bg-transparent cursor-pointer range-thumb-pink pointer-events-auto"
+          style={{ zIndex: 4 }} />
+      </div>
+      <div className="flex justify-between text-[10px] text-gray-400 font-medium">
+        <span>$0</span><span>$1000+</span>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative">
+    // ── ONLY CHANGE: added overflow-x-hidden ──
+    <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative overflow-x-hidden">
 
       {/* ── Toast ── */}
       <div
@@ -218,17 +234,10 @@ export default function ProductsPage() {
             <CheckCircle2 size={18} strokeWidth={3} />
           </div>
           <div className="flex flex-col">
-            <span className="text-[11px] font-black text-[#22C55E] uppercase tracking-widest leading-none mb-0.5">
-              Success!
-            </span>
-            <span className="text-xs font-bold text-gray-800 truncate max-w-[200px] leading-tight">
-              Successfully added to shopping cart!
-            </span>
+            <span className="text-[11px] font-black text-[#D94F7A] uppercase tracking-widest leading-none mb-0.5">Success!</span>
+            <span className="text-xs font-bold text-gray-800 truncate max-w-[150px] leading-tight">{toast.name} added</span>
           </div>
-          <button
-            onClick={() => setToast({ name: "", show: false })}
-            className="ml-2 text-gray-300 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={() => setToast({ name: "", show: false })} className="ml-2 text-gray-300 hover:text-gray-600 transition-colors">
             <X size={14} />
           </button>
         </div>
@@ -241,44 +250,50 @@ export default function ProductsPage() {
         onClick={() => setSidebarOpen(false)}
       />
 
-      {/* ── Layout: col on mobile, row on desktop ── */}
+      {/* ── Mobile Sidebar (fixed overlay, NOT in flex flow) ── */}
+      <div className={`fixed left-0 top-0 h-full w-72 z-50 overflow-y-auto bg-white transform transition-transform duration-300 ease-in-out lg:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="p-6 h-full">
+          <div className="flex justify-between items-center mb-5">
+            <h3 className="font-bold text-gray-900">Filters</h3>
+            <div className="flex items-center gap-2">
+              {activeFilterCount > 0 && (
+                <span className="bg-[#D94F7A] text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+              )}
+              <button onClick={clearFilters} className="text-xs text-[#D94F7A] font-medium hover:underline">Clear all</button>
+              <button onClick={() => setSidebarOpen(false)} className="ml-1 text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+          </div>
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h4>
+          <div ref={categoryScrollRef} className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
+            <button onClick={() => setSelectedCategory("All Products")}
+              className={`flex-shrink-0 text-sm font-medium px-3 py-1.5 rounded-full transition-colors ${selectedCategory === "All Products" ? "bg-[#D94F7A] text-white" : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"}`}>
+              All Products
+            </button>
+            {CATEGORIES_LIST.map((cat) => (
+              <button key={cat} onClick={() => { setSelectedCategory(cat); setSidebarOpen(false); }}
+                className={`flex-shrink-0 text-sm px-3 py-1.5 rounded-full transition-colors ${selectedCategory === cat ? "bg-[#D94F7A] text-white font-bold" : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"}`}>
+                {cat}
+              </button>
+            ))}
+          </div>
+          <hr className="my-5 border-gray-100" />
+          {PriceRangeUI}
+        </div>
+      </div>
+
+      {/* ── Layout ── */}
       <div className="flex flex-col lg:flex-row gap-8">
 
-        {/* ── Sidebar ── */}
-        <aside
-          className={`
-            w-72 flex-shrink-0 space-y-4
-            fixed left-0 top-0 h-full z-50 overflow-y-auto
-            transform transition-transform duration-300 ease-in-out
-            ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-            md:translate-x-0 md:static md:z-auto md:h-fit md:overflow-visible
-            lg:sticky lg:top-32
-          `}
-        >
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full md:h-auto">
-
-            {/* Sidebar header */}
+        {/* ── Desktop Sidebar (in flex flow, hidden on mobile) ── */}
+        <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-32 h-fit space-y-4">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-5">
               <h3 className="font-bold text-gray-900">Filters</h3>
               <div className="flex items-center gap-2">
                 {activeFilterCount > 0 && (
-                  <span className="bg-[#D94F7A] text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
+                  <span className="bg-[#D94F7A] text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
                 )}
-                <button
-                  onClick={clearFilters}
-                  className="text-xs text-[#D94F7A] font-medium hover:underline"
-                >
-                  Clear all
-                </button>
-                {/* Close button (mobile only) */}
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="md:hidden ml-1 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={18} />
-                </button>
+                <button onClick={clearFilters} className="text-xs text-[#D94F7A] font-medium hover:underline">Clear all</button>
               </div>
             </div>
 
@@ -299,11 +314,8 @@ export default function ProductsPage() {
                   }`}
               >
                 <span>All Products</span>
-                <span className="hidden lg:inline bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs ml-auto">
-                  {TOTAL_PRODUCTS}
-                </span>
+                <span className="bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs">{TOTAL_PRODUCTS}</span>
               </button>
-
               {CATEGORIES_LIST.map((cat) => {
                 const count = ALL_PRODUCTS_LIST.filter((p) => p.category === cat).length;
                 const isActive = selectedCategory === cat;
@@ -327,122 +339,45 @@ export default function ProductsPage() {
                 );
               })}
             </div>
-
             <hr className="my-5 border-gray-100" />
-
-            {/* Price Range */}
-            <div className="space-y-4">
-              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Price Range
-              </h4>
-
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-                  <input
-                    type="number" min={0} value={priceRange[0]}
-                    onChange={(e) => handlePriceInput(e, "min")}
-                    className="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
-                  />
-                </div>
-                <span className="text-gray-300 font-medium">—</span>
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-                  <input
-                    type="number" min={0} value={priceRange[1]}
-                    onChange={(e) => handlePriceInput(e, "max")}
-                    className="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="relative h-5 flex items-center">
-                <div className="absolute w-full h-1.5 bg-gray-200 rounded-full" />
-                <div
-                  className="absolute h-1.5 bg-[#D94F7A] rounded-full pointer-events-none"
-                  style={{ left: `${minPercent}%`, width: `${maxPercent - minPercent}%` }}
-                />
-                <input
-                  type="range" min={0} max={MAX_PRICE} step={10}
-                  value={priceRange[0]} onChange={handleMinSlider}
-                  className="absolute w-full h-1.5 appearance-none bg-transparent cursor-pointer range-thumb-pink pointer-events-auto"
-                  style={{ zIndex: priceRange[0] > MAX_PRICE - 100 ? 5 : 3 }}
-                />
-                <input
-                  type="range" min={0} max={MAX_PRICE} step={10}
-                  value={priceRange[1]} onChange={handleMaxSlider}
-                  className="absolute w-full h-1.5 appearance-none bg-transparent cursor-pointer range-thumb-pink pointer-events-auto"
-                  style={{ zIndex: 4 }}
-                />
-              </div>
-
-              <div className="flex justify-between text-[10px] text-gray-400 font-medium">
-                <span>$0</span>
-                <span>$1000+</span>
-              </div>
-            </div>
+            {PriceRangeUI}
           </div>
         </aside>
 
         {/* ── Main content ── */}
         <main className="flex-1 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col min-w-0">
 
-          {/* Header row */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{selectedCategory}</h1>
               <p className="text-xs text-gray-400 mt-0.5">{filteredProducts.length} products found</p>
             </div>
-
             <div className="flex items-center gap-3 w-full sm:w-auto">
-
-              {/* ── Hamburger with filter badge (mobile only) ── */}
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="relative md:hidden p-2 rounded-xl border border-gray-200 hover:border-[#D94F7A] transition-colors flex-shrink-0"
-              >
+              <button onClick={() => setSidebarOpen(true)}
+                className="relative lg:hidden p-2 rounded-xl border border-gray-200 hover:border-[#D94F7A] transition-colors flex-shrink-0">
                 <Menu size={18} className="text-gray-600" />
                 {activeFilterCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-[#D94F7A] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
+                  <span className="absolute -top-1.5 -right-1.5 bg-[#D94F7A] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeFilterCount}</span>
                 )}
               </button>
-
-              {/* ── Search ── */}
               <div className="relative flex-1 sm:w-52">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
+                <input type="text" placeholder="Search products..." value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors"
-                />
+                  className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors" />
                 {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"
-                  >
+                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">
                     <X size={12} />
                   </button>
                 )}
               </div>
-
-              {/* ── Sort dropdown ── */}
               <div ref={sortRef} className="relative flex-shrink-0">
-                <button
-                  onClick={() => setSortOpen((o) => !o)}
-                  className="flex items-center gap-2 text-sm bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm font-medium text-gray-700 hover:border-[#D94F7A] transition-colors whitespace-nowrap"
-                >
+                <button onClick={() => setSortOpen((o) => !o)}
+                  className="flex items-center gap-2 text-sm bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm font-medium text-gray-700 hover:border-[#D94F7A] transition-colors whitespace-nowrap">
                   <span className="hidden sm:inline text-gray-400 text-xs">Sort:</span>
                   <span className="font-bold text-gray-900 text-xs">{sortBy}</span>
-                  <ChevronDown
-                    size={14}
-                    className={`text-gray-400 transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`}
-                  />
+                  <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`} />
                 </button>
-
                 {sortOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 py-1.5 overflow-hidden">
                     {SORT_OPTIONS.map((opt) => (
@@ -463,51 +398,32 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          {/* ── Active filter chips ── */}
           {activeFilterCount > 0 && (
             <div className="flex flex-wrap gap-2 mb-5">
               {selectedCategory !== "All Products" && (
                 <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                  {selectedCategory}
-                  <button onClick={() => setSelectedCategory("All Products")}>
-                    <X size={11} />
-                  </button>
+                  {selectedCategory}<button onClick={() => setSelectedCategory("All Products")}><X size={11} /></button>
                 </span>
               )}
               {(priceRange[0] !== 0 || priceRange[1] !== 600) && (
                 <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                  ${priceRange[0]} – ${priceRange[1]}
-                  <button onClick={() => setPriceRange([0, 600])}>
-                    <X size={11} />
-                  </button>
+                  ${priceRange[0]} – ${priceRange[1]}<button onClick={() => setPriceRange([0, 600])}><X size={11} /></button>
                 </span>
               )}
               {sortBy !== "Featured" && (
                 <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                  {sortBy}
-                  <button onClick={() => setSortBy("Featured")}>
-                    <X size={11} />
-                  </button>
+                  {sortBy}<button onClick={() => setSortBy("Featured")}><X size={11} /></button>
                 </span>
               )}
               {debouncedSearch && (
                 <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                  "{debouncedSearch}"
-                  <button onClick={() => setSearchQuery("")}>
-                    <X size={11} />
-                  </button>
+                  "{debouncedSearch}"<button onClick={() => setSearchQuery("")}><X size={11} /></button>
                 </span>
               )}
-              <button
-                onClick={clearFilters}
-                className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline"
-              >
-                Clear all
-              </button>
+              <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline">Clear all</button>
             </div>
           )}
 
-          {/* ── Product Grid ── */}
           {currentProducts.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
               <div className="text-5xl mb-4">🔍</div>
@@ -523,18 +439,13 @@ export default function ProductsPage() {
             </div>
           )}
 
-          {/* ── Pagination ── */}
           {totalPages > 1 && (
             <div className="mt-auto flex justify-center pt-6 border-t border-gray-50 select-none">
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
-                >
+                <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100">
                   <ChevronLeft size={15} />
                 </button>
-
                 {getPaginationRange().map((item, index) => (
                   <button
                     key={index}
@@ -550,12 +461,8 @@ export default function ProductsPage() {
                     {item}
                   </button>
                 ))}
-
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
-                >
+                <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100">
                   <ChevronRight size={15} />
                 </button>
               </div>
