@@ -31,6 +31,7 @@ const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accesso
 
 const getProductById = (id: number): Product => {
 
+
   const staticMatch = staticProducts.find(p => p.id === id);
   if (staticMatch) {
     let badgeColor = "bg-[#E8456A]";
