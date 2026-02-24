@@ -8,6 +8,7 @@ import productsData from "@/lib/products.json";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import ProductReviews from "@/app/components/ProductReviews";
+import { products as staticProducts } from "@/lib/products";
 
 
 // --- TYPES ---
@@ -214,7 +215,7 @@ export default function ProductDetailsPage() {
 
   return (
     <div className="bg-white font-sans overflow-x-hidden min-h-screen relative pb-4 md:pb-0">
-      
+
       {/* Toast Notification */}
       <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] transition-all duration-700 ease-out ${isAdded ? 'opacity-100 translate-y-0 scale-100 animate-float' : 'opacity-0 translate-y-12 scale-95 pointer-events-none'}`}>
         <Link href="/bag" className="bg-[#1A1A1A]/95 backdrop-blur-md border border-white/10 text-white px-8 py-3.5 rounded-full shadow-2xl flex items-center gap-4 font-bold hover:bg-black transition-all group">
@@ -227,7 +228,7 @@ export default function ProductDetailsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 pt-6">
-        <Link href="/AllProducts" className="inline-flex items-center text-gray-500 hover:text-[#D94F7A] transition-colors gap-2 text-sm font-bold">
+        <Link href="/all-products" className="inline-flex items-center text-gray-500 hover:text-[#D94F7A] transition-colors gap-2 text-sm font-bold">
           <ChevronLeft size={16} /> Back to Products
         </Link>
       </div>
@@ -379,11 +380,11 @@ export default function ProductDetailsPage() {
             <span className="text-sm font-bold text-gray-900 uppercase tracking-widest">Choose Color</span>
             <div className="flex gap-4">
               {['#E0BFB8', '#FFD700', '#C0C0C0'].map((col, idx) => (
-                <button 
-                  key={idx} 
-                  onClick={() => setSelectedColor(idx)} 
-                  className={`w-9 h-9 rounded-full border-2 transition-all hover:scale-110 shadow-sm ${selectedColor === idx ? 'border-gray-900 scale-110' : 'border-gray-200'}`} 
-                  style={{ backgroundColor: col }} 
+                <button
+                  key={idx}
+                  onClick={() => setSelectedColor(idx)}
+                  className={`w-9 h-9 rounded-full border-2 transition-all hover:scale-110 shadow-sm ${selectedColor === idx ? 'border-gray-900 scale-110' : 'border-gray-200'}`}
+                  style={{ backgroundColor: col }}
                 />
               ))}
             </div>
