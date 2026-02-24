@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/(main)/components/authContext";
 
-import AuthLayout from "../_components/AuthLayout";
+import AuthLayout from "../_components/AuthSplitLayout";
 import AuthInput from "../_components/AuthInput";
 import PasswordInput from "../_components/PasswordInput";
 import AuthButton from "../_components/AuthButton";

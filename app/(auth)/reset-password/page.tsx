@@ -4,9 +4,11 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 
-import AuthLayout from "../_components/AuthLayout";
+import AuthLayout from "../_components/AuthCardLayout";
 import AuthButton from "../_components/AuthButton";
 import PasswordInput from "../_components/PasswordInput";
+
+import { resetPasswordSchema } from "../schema";
 
 interface ResetErrors {
   password: string;
@@ -32,34 +34,22 @@ export default function ResetPasswordPage() {
 
     e.preventDefault();
 
-    const newErrors: ResetErrors = {
-      password: "",
-      confirmPassword: "",
-    };
+    const result = resetPasswordSchema.safeParse({
+      password,
+      confirmPassword,
+    });
 
-    let hasError = false;
+    if (!result.success) {
 
-    if (!password) {
-      newErrors.password = "Please enter new password";
-      hasError = true;
-    }
-    else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-      hasError = true;
-    }
+      const fieldErrors = result.error.flatten().fieldErrors;
 
-    if (!confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
-      hasError = true;
-    }
-    else if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-      hasError = true;
-    }
+      setErrors({
+        password: fieldErrors.password?.[0] || "",
+        confirmPassword: fieldErrors.confirmPassword?.[0] || "",
+      });
 
-    if (hasError) {
-      setErrors(newErrors);
       return;
+
     }
 
     setShowToast(true);
@@ -76,7 +66,7 @@ export default function ResetPasswordPage() {
 
     <AuthLayout
       title="Reset Password"
-      bgImage="/images/login-bg.jpg"
+      subtitle="Enter your new password below"
     >
 
       {/* Toast */}
@@ -118,9 +108,7 @@ export default function ResetPasswordPage() {
       )}
 
 
-      {/* Form */}
       <form onSubmit={handleReset} className="space-y-4">
-
 
         <PasswordInput
           label="New Password *"
@@ -129,13 +117,9 @@ export default function ResetPasswordPage() {
           error={errors.password}
           onChange={(val) => {
             setPassword(val);
-            setErrors(prev => ({
-              ...prev,
-              password: "",
-            }));
+            setErrors(prev => ({ ...prev, password: "" }));
           }}
         />
-
 
         <PasswordInput
           label="Confirm Password *"
@@ -144,18 +128,13 @@ export default function ResetPasswordPage() {
           error={errors.confirmPassword}
           onChange={(val) => {
             setConfirmPassword(val);
-            setErrors(prev => ({
-              ...prev,
-              confirmPassword: "",
-            }));
+            setErrors(prev => ({ ...prev, confirmPassword: "" }));
           }}
         />
-
 
         <AuthButton>
           Reset Password
         </AuthButton>
-
 
       </form>
 

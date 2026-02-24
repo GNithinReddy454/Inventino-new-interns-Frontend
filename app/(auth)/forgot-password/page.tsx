@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
-import AuthLayout from "../_components/AuthLayout";
+import AuthLayout from "../_components/AuthCardLayout";
 import AuthInput from "../_components/AuthInput";
 import AuthButton from "../_components/AuthButton";
 
@@ -44,12 +44,8 @@ export default function ForgotPasswordPage() {
 
     <AuthLayout
       title="Forgot Password"
-      bgImage="/images/login-bg.jpg"
+      subtitle="Enter your registered email address and we'll send you a password reset link."
     >
-
-      <p className="text-sm text-gray-500 text-center mb-6">
-        Enter your registered email address and we&apos;ll send you a password reset link.
-      </p>
 
       <form onSubmit={handleSendLink} className="space-y-6">
 
@@ -73,7 +69,7 @@ export default function ForgotPasswordPage() {
 
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-[#E15483]"
+            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#E15483]"
           >
             <ArrowLeft size={16}/>
             Back to Login
