@@ -103,7 +103,6 @@ export default function BagPage() {
                           : "opacity-100 translate-x-0 translate-y-0"
                         }`}
                     >
-                      {/* ── Image — same aspect-square + object-cover as ProductCard ── */}
                       <Link href={`/all-products/${item.id}`} className="block group shrink-0 mx-auto md:mx-0">
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -112,23 +111,19 @@ export default function BagPage() {
 
                       <div className="flex-1 flex flex-col justify-between overflow-hidden">
                         <div className="text-center md:text-left">
-
-
                           <div className="flex flex-col md:flex-row md:justify-between gap-2">
                             <Link href={`/all-products/${item.id}`} className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300">
                               <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-2">{item.name}</h3>
                             </Link>
 
-                            {/* Back to Wishlist | Remove */}
                             <div className="flex items-center justify-center md:justify-start gap-4 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300 shrink-0">
-                              <Link
-                                href="/wishlist"
+                              <button
                                 onClick={() => handleAction(item, "wishlist")}
                                 className="hover:text-[#E8456A] flex items-center gap-1.5 transition-all"
                               >
                                 <Heart size={12} className={isAnimating && actionType === "wishlist" ? "fill-[#E8456A]" : ""} />
                                 Back to Wishlist
-                              </Link>
+                              </button>
                               <span className="h-3 w-[1px] bg-gray-200" />
                               <button
                                 onClick={() => handleAction(item, "remove")}
@@ -139,8 +134,6 @@ export default function BagPage() {
                             </div>
                           </div>
 
-
-                          {/* Price — pink like ProductCard, with strikethrough if originalPrice exists */}
                           <div className="flex items-baseline gap-2 mt-2 justify-center md:justify-start">
                             <span className="text-[#E8456A] font-black text-xl">${item.price.toFixed(2)}</span>
                             {(item as any).originalPrice && (item as any).originalPrice > item.price && (
@@ -173,23 +166,24 @@ export default function BagPage() {
               </div>
             </div>
 
-            {/* ── Promo Code — matches Figma ── */}
+            {/* ── Promo Code — FIXED FOR MOBILE ── */}
             <div className="bg-white rounded-[2rem] border border-dashed border-gray-200 shadow-sm p-6 md:p-8">
               <div className="flex items-center gap-2 mb-4">
                 <Tag size={15} className="text-[#D94F7A]" />
                 <span className="text-sm font-bold text-gray-700 uppercase tracking-widest text-[10px]">Promo Code</span>
               </div>
-              <div className="flex gap-3">
+              {/* Changed to flex-col on small mobile, flex-row on larger screens */}
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
                   placeholder="Enter Promo Code"
                   value={promoCode}
                   onChange={(e) => { setPromoCode(e.target.value); setPromoError(""); setPromoApplied(false); }}
-                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
+                  className="w-full sm:flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
                 />
                 <button
                   onClick={handleApplyPromo}
-                  className="bg-[#D94F7A] hover:bg-[#b83d63] text-white px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
+                  className="w-full sm:w-auto bg-[#D94F7A] hover:bg-[#b83d63] text-white px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
                 >
                   Apply Code
                 </button>
@@ -205,7 +199,7 @@ export default function BagPage() {
             </div>
           </div>
 
-          {/* ── RIGHT: Order Summary — matches Figma ── */}
+          {/* ── RIGHT: Order Summary ── */}
           <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 border border-gray-100 shadow-sm lg:sticky lg:top-8 h-fit">
             <h3 className="font-bold text-gray-900 mb-6 font-serif text-2xl">Order Summary</h3>
 
@@ -230,27 +224,23 @@ export default function BagPage() {
               </div>
             </div>
 
-            {/* Total row */}
             <div className="flex justify-between items-center py-5 border-t border-b border-gray-100 mb-6">
               <span className="font-bold text-gray-900 text-lg font-serif">Total</span>
               <span className="font-black text-[#D94F7A] text-2xl md:text-3xl tracking-tight">${finalTotal.toFixed(2)}</span>
             </div>
 
-            {/* Proceed to Checkout */}
             <Link href="/checkout" className="block mb-3">
               <button className="w-full bg-[#D94F7A] text-white py-4 rounded-2xl font-bold shadow-lg shadow-pink-100 hover:bg-[#b83d63] transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
                 Proceed to Checkout
               </button>
             </Link>
 
-            {/* Continue Shopping */}
             <Link href="/all-products" className="block">
               <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-pink-50 transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
                 Continue Shopping
               </button>
             </Link>
 
-            {/* Trust badges */}
             <div className="mt-6 space-y-2">
               {["Secure checkout with SSL encryption", "Shipped with care and love", "30-day returns policy"].map((text) => (
                 <div key={text} className="flex items-center gap-2 text-[11px] text-gray-400">
