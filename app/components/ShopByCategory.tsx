@@ -33,6 +33,15 @@ export default function ShopByCategory() {
         {/* Scrollable cards + arrow */}
         <div className="relative flex items-center gap-3">
 
+          {/* Left scroll arrow */}
+          <button
+            onClick={() => scroll("left")}
+            className="flex-shrink-0 w-9 h-9 rounded-full bg-white shadow border border-gray-200 flex items-center justify-center text-gray-500 text-sm hover:bg-pink-50 hover:border-pink-300 transition-all"
+            aria-label="Scroll left"
+          >
+            ❮
+          </button>
+
           {/* Card row */}
           <div
             ref={scrollRef}
@@ -42,7 +51,8 @@ export default function ShopByCategory() {
             {categories.map((cat) => (
               <Link
                 key={cat.slug}
-                href={`/AllProducts`}
+                /* UPDATED: Added category query parameter for deep-linking */
+                href={`/all-products?category=${cat.name}`}
                 className="group flex-shrink-0 w-44 bg-white rounded-2xl p-5 flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all duration-300 border border-white hover:border-pink-300 hover:scale-105"
               >
                 {/* Circular image */}

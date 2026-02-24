@@ -52,7 +52,7 @@ export default function VerifyOTP() {
 
   return (
     <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-[#fdf8f9] p-4 overflow-hidden">
-      
+
       {/* TOASTER: UPDATED WITH DESCRIPTIVE TEXT */}
       {showToast && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-[344px] bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-6 duration-500">
@@ -98,8 +98,8 @@ export default function VerifyOTP() {
           ))}
         </div>
 
-        <button 
-          onClick={() => otp.join("").length === 6 && router.push("/AllProducts")}
+        <button
+          onClick={() => otp.join("").length === 6 && router.push("/all-products")}
           className="w-full h-[52px] bg-[#E85D8A] text-white font-bold py-3.5 rounded-2xl transition-all mb-8 shadow-lg shadow-pink-100 hover:opacity-95 active:scale-95"
         >
           Verify OTP
@@ -107,14 +107,13 @@ export default function VerifyOTP() {
 
         <p className="text-[15px] font-medium text-[#444444] mb-8">
           Didn&apos;t receive the code?{" "}
-          <button 
+          <button
             onClick={handleResend}
             disabled={timer > 0 || isResending}
-            className={`font-bold ml-1 transition-colors ${
-              timer > 0 || isResending 
-                ? "text-gray-400 cursor-not-allowed" 
+            className={`font-bold ml-1 transition-colors ${timer > 0 || isResending
+                ? "text-gray-400 cursor-not-allowed"
                 : "text-[#E85D8A] hover:underline"
-            }`}
+              }`}
           >
             {isResending ? "..." : timer > 0 ? `Resend in ${timer}s` : "Resend OTP"}
           </button>

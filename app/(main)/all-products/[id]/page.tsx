@@ -196,7 +196,7 @@ export default function ProductDetailsPage() {
         </Link>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 pt-6">
+      <div className="max-w-7xl mx-auto px-4 pt-6">
         <Link href="/AllProducts" className="inline-flex items-center text-gray-500 hover:text-[#D94F7A] transition-colors gap-2 text-sm font-bold">
           <ChevronLeft size={16} /> Back to Products
         </Link>
@@ -505,6 +505,7 @@ function SimilarProductCard({ product, addToCart, handleSaved, savedItems }: {
     <div className="flex flex-col group transition-all relative h-full">
       <div className="relative aspect-square rounded-xl overflow-hidden mb-4 bg-gray-50 border border-gray-100">
         <Link href={`/AllProducts/${product.id}`} className="block w-full h-full">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" />
         </Link>
         <div className="absolute top-3 right-3 flex flex-col gap-2">
@@ -519,7 +520,9 @@ function SimilarProductCard({ product, addToCart, handleSaved, savedItems }: {
       <div className="flex flex-col flex-1 px-1">
         <span className="text-[10px] text-gray-400 font-bold uppercase mb-1">{product.category}</span>
         <Link href={`/AllProducts/${product.id}`}>
-          <h4 className="font-bold text-gray-900 text-sm mb-2 hover:text-[#D94F7A] line-clamp-2 transition-colors min-h-10">{product.name}</h4>
+          <h4 className="font-bold text-gray-900 text-sm mb-2 hover:text-[#D94F7A] line-clamp-2 transition-colors min-h-10">
+            {product.name}
+          </h4>
         </Link>
         <div className="mt-auto flex items-center justify-between pt-2">
           <span className="font-bold text-[#D94F7A] text-base">${product.price.toFixed(2)}</span>

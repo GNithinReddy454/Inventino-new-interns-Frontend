@@ -46,7 +46,8 @@ const Footer = () => {
               {["Rings", "Necklaces", "Bracelets", "Earrings"].map(item => (
                 <li key={item}>
                   <Link
-                    href="/AllProducts"
+                    // UPDATED: Path changed from /AllProducts to /all-products
+                    href="/all-products"
                     className="relative text-gray-400 hover:text-white transition-colors
                       after:absolute after:left-0 after:-bottom-0.5 after:w-full after:h-0.5 after:bg-white after:opacity-0 hover:after:opacity-100 after:transition-opacity"
                   >

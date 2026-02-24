@@ -620,7 +620,7 @@ function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-xl font-bold text-foreground">All Products</h2>
+                    <h2 className="text-xl font-bold text-foreground">ducts</h2>
                     <p className="text-xs text-muted-foreground mt-0.5">Complete product inventory and management</p>
                 </div>
                 <button
