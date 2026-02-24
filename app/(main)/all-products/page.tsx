@@ -14,7 +14,10 @@ import {
 import productsData from "@/lib/products.json";
 import { useStore } from "@/lib/storeContext";
 import { useCart } from "@/lib/cartContext";
-import { products as staticProducts } from "@/lib/products";
+import { Product } from "@/lib/products";
+import { Button } from "@/app/components/ui/button";
+import useDebounce from "@/hooks/useDebounce";
+import { useFetch } from "@/hooks/useApi";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const TOTAL_PRODUCTS = 156;
@@ -22,6 +25,7 @@ const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accesso
 
 const ALL_PRODUCTS_LIST = Array.from({ length: TOTAL_PRODUCTS }).map((_, index) => {
   const id = index + 1;
+
   const staticMatch = staticProducts.find((p) => p.id === id);
   if (staticMatch) {
     let badgeColor = "bg-[#E8456A]";
@@ -65,21 +69,14 @@ const ALL_PRODUCTS_LIST = Array.from({ length: TOTAL_PRODUCTS }).map((_, index) 
 
 const SORT_OPTIONS = ["Featured", "Price: Low to High", "Price: High to Low", "Newest First"];
 
-// ─── Debounce ─────────────────────────────────────────────────────────────────
-function useDebounce<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced;
-}
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ProductsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const fetchResult = useFetch("/products"); // Prefetch products for faster subsequent loads
+
+  console.log("fetchResult",fetchResult)
 
   // ── Read initial state FROM URL params ──────────────────────────────────────
   const [selectedCategory, setSelectedCategory] = useState(

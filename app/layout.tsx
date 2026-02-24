@@ -4,6 +4,8 @@ import { StoreProvider } from "@/lib/storeContext";
 import { AuthProvider } from "@/app/(main)/components/authContext";
 import { CartProvider } from "@/lib/cartContext";
 import { ReduxProvider } from "@/redux/provider";  // ← new
+import { SWRConfig } from 'swr';
+import { swrConfig, fetcher } from '@/hooks/useApi';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,7 +37,9 @@ export default function RootLayout({
           <CartProvider>
             <StoreProvider>
               <AuthProvider>
-                {children}
+                <SWRConfig value={{ ...swrConfig, fetcher }}>
+                  {children}
+                </SWRConfig>
               </AuthProvider>
             </StoreProvider>
           </CartProvider>
