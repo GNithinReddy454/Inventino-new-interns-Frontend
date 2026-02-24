@@ -9,6 +9,8 @@ import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import ProductReviews from "@/app/components/ProductReviews";
 
+import { products as staticProducts } from "@/lib/products";
+
 // --- TYPES ---
 interface Product {
   id: number;
@@ -29,6 +31,30 @@ interface Product {
 const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accessories"];
 
 const getProductById = (id: number): Product => {
+  const staticMatch = staticProducts.find(p => p.id === id);
+  if (staticMatch) {
+    let badgeColor = "bg-[#E8456A]";
+    if (staticMatch.badge) {
+      const upper = staticMatch.badge.toUpperCase();
+      if (upper === "BESTSELLER" || upper === "BEST SELLER") badgeColor = "bg-yellow-400 text-gray-900";
+      else if (upper === "SALE") badgeColor = "bg-red-500";
+    }
+    return {
+      id: staticMatch.id,
+      name: staticMatch.name,
+      title: staticMatch.name,
+      price: staticMatch.price,
+      originalPrice: staticMatch.price + 15,
+      image: staticMatch.image,
+      images: [staticMatch.image],
+      category: staticMatch.category,
+      description: staticMatch.description || "Beautiful handmade item",
+      rating: staticMatch.rating,
+      reviews: staticMatch.reviews,
+      badge: staticMatch.badge ? { text: staticMatch.badge, color: badgeColor } : undefined,
+    } as Product;
+  }
+
   const templateIndex = (id - 1) % productsData.length;
   // Use unknown as bridge to prevent type overlap errors
   const template = (productsData as any)[templateIndex];
