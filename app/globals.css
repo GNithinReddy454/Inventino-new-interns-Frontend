@@ -179,7 +179,7 @@
 }
 
 @import "tailwindcss";
-@plugin "tailwindcss-animate";
+/* @import "tailwindcss-animate"; */
 @custom-variant dark (&:is(.dark *));
 
 :root {
