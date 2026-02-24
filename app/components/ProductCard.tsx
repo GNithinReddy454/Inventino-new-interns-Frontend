@@ -118,11 +118,15 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (localQuantity > 0) {
-      addToCart(cartProduct, localQuantity);
-      onAdd?.(productName);
-      router.push("/bag");
-    }
+
+    // Default to 1 if localQuantity is 0
+    const finalQuantity = localQuantity > 0 ? localQuantity : 1;
+
+    addToCart(cartProduct, finalQuantity);
+    onAdd?.(productName);
+
+    // Optional: stay on page to see the success indicator
+    // router.push("/bag");
   };
 
   const handleIncrease = (e: React.MouseEvent) => {
