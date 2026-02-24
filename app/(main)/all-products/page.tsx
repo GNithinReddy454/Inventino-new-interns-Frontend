@@ -14,7 +14,7 @@ import {
 import productsData from "@/lib/products.json";
 import { useStore } from "@/lib/storeContext";
 import { useCart } from "@/lib/cartContext";
-import { Product } from "@/lib/products";
+import { Product, products as staticProducts } from "@/lib/products";
 import { Button } from "@/app/components/ui/button";
 import useDebounce from "@/hooks/useDebounce";
 import { useFetch } from "@/hooks/useApi";
@@ -75,7 +75,7 @@ export default function ProductsPage() {
   const searchParams = useSearchParams();
   const fetchResult = useFetch("/products"); // Prefetch products for faster subsequent loads
 
-  console.log("fetchResult",fetchResult)
+  console.log("fetchResult", fetchResult)
 
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "All Products");
   const [priceRange, setPriceRange] = useState<[number, number]>([
@@ -229,8 +229,8 @@ export default function ProductsPage() {
         className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${toast.show ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0 pointer-events-none"
           }`}
       >
-        <div className="bg-white rounded-full py-3 px-6 flex items-center gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-50 border-l-4 border-l-[#D94F7A]">
-          <div className="bg-[#D94F7A] p-1.5 rounded-full text-white flex-shrink-0">
+        <div className="bg-white rounded-full py-3 px-6 flex items-center gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-50 border-l-4 border-l-[#22C55E]">
+          <div className="bg-[#22C55E] p-1.5 rounded-full text-white flex-shrink-0">
             <CheckCircle2 size={18} strokeWidth={3} />
           </div>
           <div className="flex flex-col">
@@ -309,8 +309,8 @@ export default function ProductsPage() {
               <button
                 onClick={() => setSelectedCategory("All Products")}
                 className={`flex-shrink-0 lg:flex lg:justify-between lg:w-full text-sm font-medium px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${selectedCategory === "All Products"
-                    ? "bg-[#D94F7A] text-white lg:bg-transparent lg:text-[#D94F7A]"
-                    : "bg-gray-100 text-gray-600 lg:bg-transparent hover:text-[#D94F7A]"
+                  ? "bg-[#D94F7A] text-white lg:bg-transparent lg:text-[#D94F7A]"
+                  : "bg-gray-100 text-gray-600 lg:bg-transparent hover:text-[#D94F7A]"
                   }`}
               >
                 <span>All Products</span>
@@ -324,8 +324,8 @@ export default function ProductsPage() {
                     key={cat}
                     onClick={() => { setSelectedCategory(cat); setSidebarOpen(false); }}
                     className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${isActive
-                        ? "bg-[#D94F7A] text-white font-bold lg:bg-transparent lg:text-[#D94F7A]"
-                        : "bg-gray-100 text-gray-600 lg:bg-transparent hover:text-[#D94F7A]"
+                      ? "bg-[#D94F7A] text-white font-bold lg:bg-transparent lg:text-[#D94F7A]"
+                      : "bg-gray-100 text-gray-600 lg:bg-transparent hover:text-[#D94F7A]"
                       }`}
                   >
                     <span>{cat}</span>
@@ -385,8 +385,8 @@ export default function ProductsPage() {
                         key={opt}
                         onClick={() => { setSortBy(opt); setSortOpen(false); }}
                         className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${sortBy === opt
-                            ? "text-[#D94F7A] font-bold bg-pink-50"
-                            : "text-gray-700 hover:bg-gray-50"
+                          ? "text-[#D94F7A] font-bold bg-pink-50"
+                          : "text-gray-700 hover:bg-gray-50"
                           }`}
                       >
                         {opt}
@@ -452,10 +452,10 @@ export default function ProductsPage() {
                     onClick={() => typeof item === "number" && setCurrentPage(item)}
                     disabled={item === "..."}
                     className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${currentPage === item
-                        ? "bg-[#D94F7A] text-white border-[#D94F7A] shadow-md shadow-[#D94F7A]/30"
-                        : item === "..."
-                          ? "bg-transparent text-gray-300 border-transparent cursor-default"
-                          : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
+                      ? "bg-[#D94F7A] text-white border-[#D94F7A] shadow-md shadow-[#D94F7A]/30"
+                      : item === "..."
+                        ? "bg-transparent text-gray-300 border-transparent cursor-default"
+                        : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
                       }`}
                   >
                     {item}
