@@ -1,6 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import apiClient from "@/lib/api";
+import { useAppDispatch } from "@/redux/store";
+import { logout as logoutAction } from "@/redux/authslice";
 
 type User = {
   name: string;
@@ -25,12 +28,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("inventino_user");
-      if (raw) setUser(JSON.parse(raw));
-    } catch (e) {}
+    const init = async () => {
+      try {
+        const raw = localStorage.getItem("inventino_user");
+        if (raw) {
+          setUser(JSON.parse(raw));
+          return;
+        }
+
+        // If no local user but token exists, fetch profile from backend
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        if (token) {
+          try {
+            const resp = await apiClient.get("/users/me");
+            const serverUser = resp.data?.data;
+            if (serverUser) {
+              setUser(serverUser);
+              try {
+                localStorage.setItem("inventino_user", JSON.stringify(serverUser));
+              } catch (e) {}
+            }
+          } catch (e) {
+            // profile fetch failed (token invalid or network); ignore
+          }
+        }
+      } catch (e) {}
+    };
+
+    init();
   }, []);
 
   const login = (u: User) => {
@@ -44,6 +72,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     try {
       localStorage.removeItem("inventino_user");
+    } catch (e) {}
+
+    try {
+      // update redux state and let slice handle backend logout/token removal
+      dispatch(logoutAction());
     } catch (e) {}
   };
 

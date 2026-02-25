@@ -1,113 +1,49 @@
 import apiClient from "@/lib/api";
+import { AuthResponse, User } from "@/lib/types";
 
-/**
- * Auth Service - All authentication operations
- * 
- * Handles:
- * - User login
- * - User registration
- * - User logout
- * - Token refresh
- * - Password reset
- * - Email verification
- */
 export const authService = {
-  /**
-   * Login user with email/password
-   * Stores token in localStorage
-   */
-  async loginUser(credentials: any) {
-    const response = await apiClient.post("/api/auth/login", credentials);
+  // Uses User interface for credentials to avoid 'any'
+  async loginUser(credentials: Partial<User> & { password?: string }): Promise<AuthResponse> {
+    const response = await apiClient.post("/auth/login", credentials);
+    // Standard Practice: Pick JWT and store in localStorage for interceptors
     if (response.data?.data?.token) {
       localStorage.setItem("token", response.data.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.data.user));
     }
     return response.data;
   },
 
-  /**
-   * Register new user
-   * Stores token in localStorage
-   */
-  async registerUser(userData: any) {
-    const response = await apiClient.post("/api/auth/register", userData);
+  async registerUser(userData: Partial<User> & { password?: string }): Promise<AuthResponse> {
+    const response = await apiClient.post("/auth/register", userData);
     if (response.data?.data?.token) {
       localStorage.setItem("token", response.data.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.data.user));
     }
     return response.data;
   },
 
-  /**
-   * Logout user
-   * Clears local storage
-   */
-  async logoutUser() {
+  async logoutUser(): Promise<void> {
     localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    // Optional: Notify backend
     try {
-      await apiClient.post("/api/auth/logout");
-    } catch (error) {
-      // Logout from frontend even if backend fails
+      await apiClient.post("/auth/logout");
+    } catch {
+      // Logic continues even if backend logout fails
     }
   },
 
-  /**
-   * Refresh authentication token
-   */
-  async refreshToken() {
-    const response = await apiClient.post("/api/auth/refresh");
+  async verifyEmail(email: string, otp: string): Promise<AuthResponse> {
+    const response = await apiClient.post("/auth/verify-email", { email, otp });
     if (response.data?.data?.token) {
       localStorage.setItem("token", response.data.data.token);
     }
     return response.data;
   },
 
-  /**
-   * Verify email with OTP
-   */
-  async verifyEmail(email: string, otp: string) {
-    const response = await apiClient.post("/api/auth/verify-email", { email, otp });
+  async requestPasswordReset(email: string): Promise<any> {
+    const response = await apiClient.post("/auth/forgot-password", { email });
     return response.data;
   },
 
-  /**
-   * Request password reset
-   */
-  async requestPasswordReset(email: string) {
-    const response = await apiClient.post("/api/auth/reset-password-request", { email });
+  async resetPassword(data: { password: string; confirmPassword: string; email?: string; token?: string }): Promise<any> {
+    const response = await apiClient.post("/auth/reset-password", data);
     return response.data;
-  },
-
-  /**
-   * Reset password with token
-   */
-  async resetPassword(email: string, resetToken: string, newPassword: string) {
-    const response = await apiClient.post("/api/auth/reset-password", {
-      email,
-      resetToken,
-      newPassword,
-    });
-    return response.data;
-  },
-
-  /**
-   * Get current user profile
-   */
-  async getCurrentUser() {
-    const response = await apiClient.get("/api/auth/me");
-    return response.data;
-  },
-
-  /**
-   * Update user profile
-   */
-  async updateProfile(userData: any) {
-    const response = await apiClient.put("/api/auth/profile", userData);
-    if (response.data?.data?.user) {
-      localStorage.setItem("user", JSON.stringify(response.data.data.user));
-    }
-    return response.data;
-  },
+  }
 };

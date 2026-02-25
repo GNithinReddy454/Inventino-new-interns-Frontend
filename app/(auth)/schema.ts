@@ -9,6 +9,7 @@ export const loginSchema = z.object({
 // Signup schema extending login
 export const signupSchema = loginSchema.extend({
   name: z.string().min(2, "Full name must be at least 2 characters"),
+  phone: z.string().min(10, "Phone number must be 10 digits").max(10, "Phone number must be 10 digits"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
