@@ -4,6 +4,9 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, X } from "lucide-react";
+import { useAuth } from "@/app/(main)/components/authContext";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { verifyOtpAction } from "@/redux/authslice";
 
 import AuthLayout from "../_components/AuthCardLayout";
 import AuthButton from "../_components/AuthButton";
@@ -11,11 +14,15 @@ import AuthButton from "../_components/AuthButton";
 export default function VerifyOTP() {
 
   const router = useRouter();
+  const { user, login } = useAuth();
+  const dispatch = useAppDispatch();
+  const { loading } = useAppSelector((state) => state.auth);
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(0);
   const [isResending, setIsResending] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [otpError, setOtpError] = useState("");
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -76,12 +83,41 @@ export default function VerifyOTP() {
   };
 
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
 
     e.preventDefault();
 
-    if (otp.join("").length === 6) {
-      router.push("/all-products");
+    const otpCode = otp.join("");
+
+    if (otpCode.length !== 6) {
+      setOtpError("Please enter all 6 digits");
+      return;
+    }
+
+    if (!user?.email) {
+      setOtpError("Email not found. Please sign up again.");
+      return;
+    }
+
+    try {
+      const result = await dispatch(verifyOtpAction({ email: user.email, otp: otpCode }));
+
+      const serverUser = result.payload?.data?.user;
+      if (serverUser) {
+          // Persist server user in AuthContext so user stays logged in
+      }
+
+      if (result.payload) {
+        // If server returned user, update AuthContext
+        const srv = result.payload?.data?.user;
+        if (srv) {
+            login(srv as any);
+        }
+
+        router.push("/all-products");
+      }
+    } catch (err) {
+      console.error("OTP verification error:", err);
     }
 
   };
@@ -126,6 +162,12 @@ export default function VerifyOTP() {
 
       <form onSubmit={handleVerify} className="space-y-5">
 
+        {otpError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            {otpError}
+          </div>
+        )}
+
         {/* OTP inputs */}
         <div className="flex gap-2 sm:gap-3 justify-center">
 
@@ -157,8 +199,8 @@ export default function VerifyOTP() {
         </div>
 
 
-        <AuthButton>
-          Verify OTP
+        <AuthButton disabled={loading}>
+          {loading ? "Verifying..." : "Verify OTP"}
         </AuthButton>
 
 
