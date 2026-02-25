@@ -16,7 +16,7 @@ export const productService = {
    * @param params - Query parameters (page, limit, category, search, etc.)
    */
   async getAll(params?: any) {
-    const response = await apiClient.get("/api/products", { params });
+    const response = await apiClient.get("/products", { params });
     return response.data;
   },
 

@@ -11,7 +11,7 @@ import { productService } from "@/services/product.service";
 
 // --- TYPES ---
 interface Product {
-  id: string | number;
+  id: number;
   category: string;
   price: number;
   originalPrice: number | null;
@@ -21,11 +21,12 @@ interface Product {
   reviews: number;
   name: string;
   description?: string;
-  badge?: { text: string; color: string };
+  badge?: string;
 }
 
 export default function ProductDetailsPage() {
   const params = useParams();
+  const productId = params?.id as string;
   const { addToCart } = useCart();
   const { handleSaved, savedItems = [] } = useStore();
 
@@ -51,11 +52,11 @@ export default function ProductDetailsPage() {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const res = await productService.getById('6989bd15afc33ec9b4f538b9');
-        const data = res.data;
+        const res = await productService.getById(productId);
+        const data = res?.data;
 
         setProduct({
-          id: data._id,
+          id: typeof data._id === 'string' ? parseInt(data._id) : data._id,
           name: data.name,
           price: data.price,
           originalPrice: data.price + 150,
@@ -189,7 +190,7 @@ export default function ProductDetailsPage() {
               </button>
 
               <div className="absolute top-4 right-4 flex flex-col gap-3 z-20">
-                <button onClick={() => handleSaved(product)} className={`p-3 rounded-full shadow-md transition-all active:scale-90 ${isSaved ? 'bg-[#D94F7A] text-white' : 'bg-white/90 text-gray-400 hover:text-[#D94F7A]'}`}>
+                <button onClick={() => handleSaved(product as any)} className={`p-3 rounded-full shadow-md transition-all active:scale-90 ${isSaved ? 'bg-[#D94F7A] text-white' : 'bg-white/90 text-gray-400 hover:text-[#D94F7A]'}`}>
                   <Heart size={20} fill={isSaved ? "currentColor" : "none"} />
                 </button>
                 <button className="p-3 bg-white/90 text-gray-400 hover:text-[#D94F7A] rounded-full shadow-md transition-all"><Share2 size={20} /></button>
