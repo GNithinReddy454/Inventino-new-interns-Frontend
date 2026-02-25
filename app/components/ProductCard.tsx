@@ -1,5 +1,5 @@
 "use client";
-
+import { Roboto } from "next/font/google";
 import { useState, useRef, useCallback } from "react";
 import { Heart, Share2, Minus, Plus } from "lucide-react";
 import Link from "next/link";
@@ -271,7 +271,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
         )}
 
         {/* ── Price | ~~Original~~ | Add to Bag — column right ── */}
-        <div className="mt-auto pt-3 flex items-end justify-between gap-1 w-full">
+        <div className="mt-auto pt-3 flex items-end justify-between gap-10 w-full">
           {/* Prices wrapper */}
           <div className="flex flex-col gap-0.5 shrink-0 mb-[2px]">
             <span className="text-base font-black text-[#E8456A]">
@@ -282,19 +282,19 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
                 ${product.originalPrice!.toFixed(2)}
               </span>
             )}
-          </div>
-
-          {quantityInCart > 0 ? (
-            <div className="flex flex-col items-end gap-1.5 ml-auto shrink-0 w-max">
-              <span className="text-[10px] font-bold text-[#E8456A] uppercase tracking-widest px-1">In Bag</span>
-              <div className="flex items-center justify-between bg-pink-50 rounded-full h-8 w-[80px] px-1 border border-pink-100 shadow-sm ml-auto">
-                <button onClick={handleDecrease} className="w-6 h-6 flex items-center justify-center bg-white rounded-full text-[#E8456A] shadow-sm hover:scale-105 transition-transform"><Minus size={12} strokeWidth={3} /></button>
-                <span className="text-xs font-bold text-gray-900 w-4 text-center">{quantityInCart}</span>
-                <button onClick={handleIncrease} className="w-6 h-6 flex items-center justify-center bg-white rounded-full text-[#E8456A] shadow-sm hover:scale-105 transition-transform"><Plus size={12} strokeWidth={3} /></button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-end gap-1.5 ml-auto shrink-0 w-max">
+             </div>
+              <button
+                onClick={handleAdd}
+                style={{ backgroundColor: buttonBg }}
+                className="ml-auto text-white text-[10px] items-center justify-center flex font-bold px-3 py-2 rounded-lg uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-sm whitespace-nowrap hover:opacity-90 w-full"
+              >
+                Add to Bag
+              </button>
+              
+            
+            
+          
+            {/* <div className="flex flex-col items-end gap-1.5 ml-auto shrink-0 w-max">
               <div className="flex items-center justify-between bg-pink-50 rounded-full h-7 w-[72px] px-1 border border-pink-100 shadow-sm ml-auto">
                 <button onClick={handleDecreaseLocal} className="w-5 h-5 flex items-center justify-center bg-white rounded-full text-[#E8456A] shadow-sm hover:scale-105 transition-transform"><Minus size={10} strokeWidth={3} /></button>
                 <span className="text-[11px] font-bold text-gray-900 w-4 text-center">{localQuantity}</span>
@@ -308,8 +308,8 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
               >
                 Add to Bag
               </button>
-            </div>
-          )}
+            </div> */}
+        
         </div>
       </div>
     </div>

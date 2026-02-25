@@ -1,139 +1,93 @@
 import apiClient from "@/lib/api";
+import {
+  GetAllProductsParams,
+  ProductListResponse,
+  ProductDetailResponse,
+} from "@/types/products.type";
 
-/**
- * Product Service - All product operations
- * 
- * Handles:
- * - Fetching product lists
- * - Getting product details
- * - Searching products
- * - Filtering products
- * - Product CRUD (for admin)
- */
 export const productService = {
-  /**
-   * Get all products with optional pagination/filters
-   * @param params - Query parameters (page, limit, category, search, etc.)
-   */
-  async getAll(params?: any) {
-    const response = await apiClient.get("/api/products", { params });
+  async getAll(params?: GetAllProductsParams): Promise<ProductListResponse> {
+    const response = await apiClient.get<ProductListResponse>("/products", {
+      params: {
+        ...(params?.page     && { page:     params.page }),
+        ...(params?.limit    && { limit:    params.limit }),
+        ...(params?.sort     && { sort:     params.sort }),
+        ...(params?.category && { category: params.category }),
+        ...(params?.search   && { search:   params.search }),
+      },
+    });
     return response.data;
   },
 
-  /**
-   * Get single product by ID
-   * @param id - Product ID
-   */
-  async getById(id: string | number) {
-    const response = await apiClient.get(`/api/products/${id}`);
+  async getById(id: string): Promise<ProductDetailResponse> {
+    const response = await apiClient.get<ProductDetailResponse>(`/products/${id}`);
     return response.data;
   },
 
-  /**
-   * Search products
-   * @param query - Search query string
-   */
   async search(query: string) {
-    const response = await apiClient.get("/api/products/search", {
+    const response = await apiClient.get("/products/search", {
       params: { q: query },
     });
     return response.data;
   },
 
-  /**
-   * Get products by category
-   * @param category - Category name/ID
-   */
   async getByCategory(category: string) {
-    const response = await apiClient.get(`/api/products/category/${category}`);
+    const response = await apiClient.get(`/products/category/${category}`);
     return response.data;
   },
 
-  /**
-   * Get featured/trending products
-   */
   async getFeatured() {
-    const response = await apiClient.get("/api/products/featured");
+    const response = await apiClient.get("/products/featured");
     return response.data;
   },
 
-  /**
-   * Get best sellers
-   */
   async getBestSellers() {
-    const response = await apiClient.get("/api/products/best-sellers");
+    const response = await apiClient.get("/products/best-sellers");
     return response.data;
   },
 
-  /**
-   * Create new product (ADMIN)
-   */
   async create(data: any) {
-    const response = await apiClient.post("/api/products", data);
+    const response = await apiClient.post("/products", data);
     return response.data;
   },
 
-  /**
-   * Update product (ADMIN) - Full update
-   */
-  async update(id: string | number, data: any) {
-    const response = await apiClient.put(`/api/products/${id}`, data);
+  async update(id: string, data: any) {
+    const response = await apiClient.put(`/products/${id}`, data);
     return response.data;
   },
 
-  /**
-   * Partial update product (ADMIN)
-   */
-  async patch(id: string | number, data: any) {
-    const response = await apiClient.patch(`/api/products/${id}`, data);
+  async patch(id: string, data: any) {
+    const response = await apiClient.patch(`/products/${id}`, data);
     return response.data;
   },
 
-  /**
-   * Delete product (ADMIN)
-   */
-  async delete(id: string | number) {
-    const response = await apiClient.delete(`/api/products/${id}`);
+  async delete(id: string) {
+    const response = await apiClient.delete(`/products/${id}`);
     return response.data;
   },
 
-  /**
-   * Get product reviews
-   */
-  async getReviews(id: string | number) {
-    const response = await apiClient.get(`/api/products/${id}/reviews`);
+  async getReviews(id: string) {
+    const response = await apiClient.get(`/products/${id}/reviews`);
     return response.data;
   },
 
-  /**
-   * Add product review
-   */
-  async addReview(id: string | number, review: any) {
-    const response = await apiClient.post(`/api/products/${id}/reviews`, review);
+  async addReview(id: string, review: any) {
+    const response = await apiClient.post(`/products/${id}/reviews`, review);
     return response.data;
   },
 
-  /**
-   * Get product images
-   */
-  async getImages(id: string | number) {
-    const response = await apiClient.get(`/api/products/${id}/images`);
+  async getImages(id: string) {
+    const response = await apiClient.get(`/products/${id}/images`);
     return response.data;
   },
 
-  /**
-   * Get product inventory/stock
-   */
-  async getInventory(id: string | number) {
-    const response = await apiClient.get(`/api/products/${id}/inventory`);
+  async getInventory(id: string) {
+    const response = await apiClient.get(`/products/${id}/inventory`);
     return response.data;
   },
 
-  /**
-   * Get related products
-   */
-  async getRelated(id: string | number) {
-    const response = await apiClient.get(`/api/products/${id}/related`);
+  async getRelated(id: string) {
+    const response = await apiClient.get(`/products/${id}/related`);
     return response.data;
   },
 };
