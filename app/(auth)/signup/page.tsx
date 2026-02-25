@@ -40,9 +40,9 @@ export default function SignupPage() {
           phone: data.phone,
           password: data.password,
         })
-      );
+      ).unwrap();
 
-      const serverUser = result.payload?.data?.user;
+      const serverUser = result?.data?.user;
       if (serverUser) {
         login(serverUser as any);
         router.push("/verify-otp");

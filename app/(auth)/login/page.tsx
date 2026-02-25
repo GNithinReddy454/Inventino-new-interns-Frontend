@@ -35,12 +35,12 @@ export default function LoginPage() {
       console.error("Email or password missing");
       return;
     }
-    
+
     try {
-      const result = await dispatch(loginUserAction({ email: data.email, password: data.password }));
+      const result = await dispatch(loginUserAction({ email: data.email, password: data.password })).unwrap();
       console.log("Login result:", result);
 
-      const serverUser = result.payload?.data?.user;
+      const serverUser = result?.data?.user;
       if (serverUser) {
         login(serverUser as any);
         router.push("/");
