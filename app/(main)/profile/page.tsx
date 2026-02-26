@@ -4,8 +4,9 @@ import React from "react";
 import { useAuth } from "@/app/(main)/components/authContext";
 import { User, Package, MapPin, CreditCard, Settings } from "lucide-react";
 import Link from "next/link";
+import { withAuth } from "@/app/components/hoc/withAuth";
 
-export default function ProfilePage() {
+function ProfilePage() {
   const { user, logout } = useAuth();
 
   const initials = user?.name
@@ -140,3 +141,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+export default withAuth(ProfilePage);

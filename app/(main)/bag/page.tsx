@@ -6,10 +6,12 @@ import Link from "next/link";
 import { Minus, Plus, X, Heart, ShoppingBag, ArrowRight, Tag } from "lucide-react";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
+import { useRouter } from "next/navigation";
 
 export default function BagPage() {
   const { cart = [], removeFromCart, updateQuantity, cartTotal = 0 } = useCart();
   const { handleSaved, savedItems = [] } = useStore();
+  const router = useRouter();
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [animatingItem, setAnimatingItem] = useState<{ id: number; type: "wishlist" | "remove" } | null>(null);
@@ -97,10 +99,10 @@ export default function BagPage() {
                     <div
                       key={item.id}
                       className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${isAnimating
-                          ? actionType === "wishlist"
-                            ? "opacity-0 -translate-y-16 scale-90"
-                            : "opacity-0 -translate-x-full"
-                          : "opacity-100 translate-x-0 translate-y-0"
+                        ? actionType === "wishlist"
+                          ? "opacity-0 -translate-y-16 scale-90"
+                          : "opacity-0 -translate-x-full"
+                        : "opacity-100 translate-x-0 translate-y-0"
                         }`}
                     >
                       <Link href={`/all-products/${item.id}`} className="block group shrink-0 mx-auto md:mx-0">
@@ -229,11 +231,22 @@ export default function BagPage() {
               <span className="font-black text-[#D94F7A] text-2xl md:text-3xl tracking-tight">${finalTotal.toFixed(2)}</span>
             </div>
 
-            <Link href="/checkout" className="block mb-3">
-              <button className="w-full bg-[#D94F7A] text-white py-4 rounded-2xl font-bold shadow-lg shadow-pink-100 hover:bg-[#b83d63] transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
+            <div className="mb-3">
+              <button
+                onClick={() => {
+                  const rawUser = localStorage.getItem("inventino_user");
+                  const token = localStorage.getItem("token");
+                  if (rawUser && token) {
+                    router.push("/checkout");
+                  } else {
+                    router.push("/login?redirect=/checkout");
+                  }
+                }}
+                className="w-full bg-[#D94F7A] text-white py-4 rounded-2xl font-bold shadow-lg shadow-pink-100 hover:bg-[#b83d63] transition-all active:scale-[0.98] text-sm tracking-widest uppercase"
+              >
                 Proceed to Checkout
               </button>
-            </Link>
+            </div>
 
             <Link href="/all-products" className="block">
               <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-pink-50 transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
