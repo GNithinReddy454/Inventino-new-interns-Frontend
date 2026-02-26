@@ -18,7 +18,7 @@ export interface ProductCardProduct extends Product {
 interface ProductCardProps {
   product: ProductCardProduct;
   onAdd?: (name: string) => void;
-  buttonBg?: string; // ← new prop
+  buttonBg?: string;
 }
 
 // ── Star Rating ───────────────────────────────────────────────────────────────
@@ -54,6 +54,13 @@ function getBadgeText(badge: any): string | null {
   return null;
 }
 
+// ── Mock images for hover-scroll testing (remove once backend returns multiple images) ──
+const MOCK_IMAGES = [
+  "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400",
+  "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400",
+  "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400",
+];
+
 export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: ProductCardProps) {
   const { handleSaved, savedItems } = useStore();
   const { cart, addToCart, updateQuantity, removeFromCart } = useCart();
@@ -62,10 +69,13 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   const cartItem = cart.find((item) => item.id === product.id);
   const quantityInCart = cartItem?.quantity || 0;
 
+  // ── Use mock images if product has only 1 (or no) image ──────────────────
   const images: string[] =
-    product.images?.length
+    product.images?.length && product.images.length > 1
       ? product.images
-      : [product.image].filter(Boolean) as string[];
+      : product.image
+      ? [product.image, ...MOCK_IMAGES.slice(1)] // keep real image + add mocks
+      : MOCK_IMAGES;
 
   const router = useRouter();
   const [localQuantity, setLocalQuantity] = useState(0);
@@ -85,6 +95,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    setCurrentSlide(0); // reset to first image on mouse leave
   }, []);
 
   const productName = product.name || product.title || "";
@@ -119,14 +130,9 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     e.preventDefault();
     e.stopPropagation();
 
-    // Default to 1 if localQuantity is 0
     const finalQuantity = localQuantity > 0 ? localQuantity : 1;
-
     addToCart(cartProduct, finalQuantity);
     onAdd?.(productName);
-
-    // Optional: stay on page to see the success indicator
-    // router.push("/bag");
   };
 
   const handleIncrease = (e: React.MouseEvent) => {
@@ -165,7 +171,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
       onMouseEnter={startScroll}
       onMouseLeave={stopScroll}
     >
-      {/* ── Image Area — fills container fully ── */}
+      {/* ── Image Area ── */}
       <div className="relative aspect-[4/3] sm:aspect-square overflow-hidden rounded-t-2xl bg-gray-50 shrink-0">
 
         {/* Badge — top left */}
@@ -200,7 +206,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
         </div>
 
         {/* Images — fully covers container */}
-        <Link href={`/all-products/${product.id}`} className="absolute inset-0 block">
+        <Link href={`/products/${product.id}`} className="absolute inset-0 block">
           {images.map((img, idx) => {
             const isBraceletsCharm = img.includes('bracelets-charm');
             return (
@@ -246,7 +252,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
         </div>
 
         {/* Title */}
-        <Link href={`/all-products/${product.id}`}>
+        <Link href={`/products/${product.id}`}>
           <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 hover:text-[#E8456A] transition-colors mb-1.5">
             {productName}
           </h3>
@@ -270,9 +276,8 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           </div>
         )}
 
-        {/* ── Price | ~~Original~~ | Add to Bag — column right ── */}
+        {/* ── Price | Add to Bag ── */}
         <div className="mt-auto pt-3 flex items-end justify-between gap-10 w-full">
-          {/* Prices wrapper */}
           <div className="flex flex-col gap-0.5 shrink-0 mb-[2px]">
             <span className="text-base font-black text-[#E8456A]">
               ${product.price.toFixed(2)}
@@ -282,34 +287,14 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
                 ${product.originalPrice!.toFixed(2)}
               </span>
             )}
-             </div>
-              <button
-                onClick={handleAdd}
-                style={{ backgroundColor: buttonBg }}
-                className="ml-auto text-white text-[10px] items-center justify-center flex font-bold px-3 py-2 rounded-lg uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-sm whitespace-nowrap hover:opacity-90 w-full"
-              >
-                Add to Bag
-              </button>
-              
-            
-            
-          
-            {/* <div className="flex flex-col items-end gap-1.5 ml-auto shrink-0 w-max">
-              <div className="flex items-center justify-between bg-pink-50 rounded-full h-7 w-[72px] px-1 border border-pink-100 shadow-sm ml-auto">
-                <button onClick={handleDecreaseLocal} className="w-5 h-5 flex items-center justify-center bg-white rounded-full text-[#E8456A] shadow-sm hover:scale-105 transition-transform"><Minus size={10} strokeWidth={3} /></button>
-                <span className="text-[11px] font-bold text-gray-900 w-4 text-center">{localQuantity}</span>
-                <button onClick={handleIncreaseLocal} className="w-5 h-5 flex items-center justify-center bg-white rounded-full text-[#E8456A] shadow-sm hover:scale-105 transition-transform"><Plus size={10} strokeWidth={3} /></button>
-              </div>
-
-              <button
-                onClick={handleAdd}
-                style={{ backgroundColor: buttonBg }}
-                className="ml-auto text-white text-[10px] items-center justify-center flex font-bold px-3 py-2 rounded-lg uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-sm whitespace-nowrap hover:opacity-90 w-full"
-              >
-                Add to Bag
-              </button>
-            </div> */}
-        
+          </div>
+          <button
+            onClick={handleAdd}
+            style={{ backgroundColor: buttonBg }}
+            className="ml-auto text-white text-[10px] items-center justify-center flex font-bold px-3 py-2 rounded-lg uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-sm whitespace-nowrap hover:opacity-90 w-full"
+          >
+            Add to Bag
+          </button>
         </div>
       </div>
     </div>

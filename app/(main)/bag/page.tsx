@@ -58,7 +58,7 @@ export default function BagPage() {
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4 font-serif">Your cart is empty</h2>
           <p className="text-gray-500 mb-8 md:mb-10 max-w-sm mx-auto text-sm md:text-base font-sans">Looks like you haven't added any treasures yet.</p>
-          <Link href="/all-products" className="bg-[#D94F7A] text-white px-8 md:px-10 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold hover:bg-[#b83d63] transition-all inline-flex items-center gap-2 shadow-lg text-sm md:text-base">
+          <Link href="/products" className="bg-[#D94F7A] text-white px-8 md:px-10 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold hover:bg-[#b83d63] transition-all inline-flex items-center gap-2 shadow-lg text-sm md:text-base">
             Start Shopping <ArrowRight size={18} />
           </Link>
         </div>
@@ -105,7 +105,7 @@ export default function BagPage() {
                         : "opacity-100 translate-x-0 translate-y-0"
                         }`}
                     >
-                      <Link href={`/all-products/${item.id}`} className="block group shrink-0 mx-auto md:mx-0">
+                      <Link href={`/products/${item.id}`} className="block group shrink-0 mx-auto md:mx-0">
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         </div>
@@ -114,7 +114,7 @@ export default function BagPage() {
                       <div className="flex-1 flex flex-col justify-between overflow-hidden">
                         <div className="text-center md:text-left">
                           <div className="flex flex-col md:flex-row md:justify-between gap-2">
-                            <Link href={`/all-products/${item.id}`} className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300">
+                            <Link href={`/products/${item.id}`} className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300">
                               <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-2">{item.name}</h3>
                             </Link>
 
@@ -248,7 +248,7 @@ export default function BagPage() {
               </button>
             </div>
 
-            <Link href="/all-products" className="block">
+            <Link href="/products" className="block">
               <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-pink-50 transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
                 Continue Shopping
               </button>

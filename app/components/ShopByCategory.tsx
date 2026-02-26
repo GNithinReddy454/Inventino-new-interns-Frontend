@@ -87,7 +87,7 @@ export default function ShopByCategory() {
                 className="snap-center flex-shrink-0 w-full sm:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1.5rem)]"
               >
                 <Link
-                  href={`/all-products?category=${cat.name}`}
+                  href={`/products?category=${cat.name}`}
                   className="group block bg-white rounded-2xl p-5 md:p-6 shadow-sm hover:shadow-md transition-all duration-300 border border-white hover:border-pink-300 hover:-translate-y-1 h-full mx-auto text-center"
                 >
                   <div className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden mx-auto mb-4 border-2 border-pink-50 group-hover:border-pink-300 transition-colors">

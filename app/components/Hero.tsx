@@ -109,7 +109,7 @@ export default function Hero() {
           <ClientOnly>
             <div className="flex flex-row gap-3 md:gap-4">
               <Link
-                href="/all-products"
+                href="/products"
                 className="bg-pink-500 hover:bg-pink-600 text-white px-6 md:px-8 py-2.5 md:py-3 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 hover:shadow-xl hover:scale-105 active:scale-95"
               >
                 Shop Collection

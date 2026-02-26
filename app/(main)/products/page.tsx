@@ -17,7 +17,7 @@ import {
 import { Button } from "@/app/components/ui/button";
 import useDebounce from "@/hooks/useDebounce";
 import { productService } from "@/services/product.service";
-import{ normalize } from "@/utils/products.utils";
+import { normalize } from "@/utils/products.utils";
 import { NormalizedProduct } from "@/types/products.type";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -33,9 +33,6 @@ interface ApiProduct {
   images: { url: string }[];
 }
 
-// Shape expected by ProductCard
-
-
 interface Meta {
   total: number;
   page: number;
@@ -49,17 +46,12 @@ const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accesso
 const SORT_OPTIONS = ["Featured", "Price: Low to High", "Price: High to Low", "Newest First"];
 const ITEMS_PER_PAGE = 9;
 
-// Map our UI sort labels → API sort params
 const SORT_MAP: Record<string, string> = {
   "Featured": "featured",
   "Price: Low to High": "price_asc",
   "Price: High to Low": "price_desc",
   "Newest First": "newest",
 };
-
-
-
-
 
 // ─── Skeleton Card ─────────────────────────────────────────────────────────────
 
@@ -73,6 +65,57 @@ function SkeletonCard() {
         <div className="h-3 bg-gray-200 rounded w-1/2" />
         <div className="h-8 bg-gray-200 rounded-xl mt-3" />
       </div>
+    </div>
+  );
+}
+
+// ─── Price Inputs (reusable) ───────────────────────────────────────────────────
+
+function PriceInputs({
+  minPrice,
+  maxPrice,
+  minPriceFetched,
+  maxPriceFetched,
+  setMinPrice,
+  setMaxPrice,
+}: {
+  minPrice: number | undefined;
+  maxPrice: number | undefined;
+  minPriceFetched: number | undefined;
+  maxPriceFetched: number | undefined;
+  setMinPrice: (v: number | undefined) => void;
+  setMaxPrice: (v: number | undefined) => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      <input
+        type="number"
+        placeholder="Min"
+        value={minPrice ?? ""}
+        min={0}
+        max={maxPrice ?? maxPriceFetched ?? undefined}
+        onChange={(e) => {
+          if (e.target.value === "") { setMinPrice(undefined); return; }
+          const val = Number(e.target.value);
+          if (val < 0) return;
+          setMinPrice(val);
+        }}
+        className="flex-1 px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#D94F7A]"
+      />
+      <input
+        type="number"
+        placeholder="Max"
+        value={maxPrice ?? ""}
+        min={minPrice ?? 0}
+        max={maxPriceFetched ?? undefined}
+        onChange={(e) => {
+          if (e.target.value === "") { setMaxPrice(undefined); return; }
+          const val = Number(e.target.value);
+          if (val < 0) return;
+          setMaxPrice(val);
+        }}
+        className="flex-1 px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#D94F7A]"
+      />
     </div>
   );
 }
@@ -93,6 +136,12 @@ export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(
     Number(searchParams.get("page")) || 1
   );
+  const [minPrice, setMinPrice] = useState<number | undefined>(
+    searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : undefined
+  );
+  const [maxPrice, setMaxPrice] = useState<number | undefined>(
+    searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined
+  );
   const [sortOpen, setSortOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -106,16 +155,15 @@ export default function ProductsPage() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // category counts fetched once for sidebar
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+  const [minPriceFetched, setMinPriceFetched] = useState<number | undefined>(undefined);
+  const [maxPriceFetched, setMaxPriceFetched] = useState<number | undefined>(undefined);
 
   const sortRef = useRef<HTMLDivElement>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebounce(searchQuery, 350);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  useEffect(() => { setIsClient(true); }, []);
 
   // ── Sync URL params ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -123,10 +171,12 @@ export default function ProductsPage() {
     if (selectedCategory !== "All Products") params.set("category", selectedCategory);
     if (sortBy !== "Featured") params.set("sort", sortBy);
     if (debouncedSearch) params.set("q", debouncedSearch);
+    if (minPrice !== undefined) params.set("minPrice", String(minPrice));
+    if (maxPrice !== undefined) params.set("maxPrice", String(maxPrice));
     if (currentPage > 1) params.set("page", String(currentPage));
     const query = params.toString();
     router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
-  }, [selectedCategory, sortBy, debouncedSearch, currentPage, pathname, router]);
+  }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice, currentPage, pathname, router]);
 
   // ── Close sort dropdown on outside click ───────────────────────────────────
   useEffect(() => {
@@ -141,7 +191,7 @@ export default function ProductsPage() {
   // ── Reset to page 1 on filter change ───────────────────────────────────────
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, sortBy, debouncedSearch]);
+  }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice]);
 
   // ── Scroll to top on page change ───────────────────────────────────────────
   useEffect(() => {
@@ -161,16 +211,22 @@ export default function ProductsPage() {
           limit: ITEMS_PER_PAGE,
           sort: SORT_MAP[sortBy] ?? "featured",
         };
-        if (selectedCategory !== "All Products") params.category = selectedCategory;
+        if (selectedCategory === "All Products") {
+          params.type = "all";
+        } else {
+          params.type = selectedCategory;
+        }
         if (debouncedSearch) params.search = debouncedSearch;
+        if (minPrice !== undefined) params.price_min = minPrice;
+        if (maxPrice !== undefined) params.price_max = maxPrice;
 
-        const res = await productService.getAll();
-        console.log("API response:", res);
+        const res = await productService.getAll(params);
         if (cancelled) return;
 
         const items: ApiProduct[] = res.data.items ?? [];
         setProducts(items.map(normalize));
         setMeta(res.data.meta);
+        setCurrentPage(res.data.meta.page);
       } catch (err: any) {
         if (!cancelled) setError(err?.message || "Failed to load products.");
       } finally {
@@ -180,19 +236,25 @@ export default function ProductsPage() {
 
     fetchProducts();
     return () => { cancelled = true; };
-  }, [currentPage, sortBy, selectedCategory, debouncedSearch]);
+  }, [currentPage, sortBy, selectedCategory, debouncedSearch, minPrice, maxPrice]);
 
-  // ── Fetch category counts once (no filters) ────────────────────────────────
+  // ── Fetch category counts + price bounds once ──────────────────────────────
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const res = await productService.getAll({ limit: 999 });
+        const res = await productService.getAll({ limit: 999, type: "all" });
         const items: ApiProduct[] = res.data.items ?? [];
         const counts: Record<string, number> = {};
+        let min = Infinity;
+        let max = -Infinity;
         items.forEach((p) => {
           counts[p.category] = (counts[p.category] || 0) + 1;
+          if (p.price < min) min = p.price;
+          if (p.price > max) max = p.price;
         });
         setCategoryCounts(counts);
+        setMinPriceFetched(min === Infinity ? undefined : min);
+        setMaxPriceFetched(max === -Infinity ? undefined : max);
       } catch {
         // counts are non-critical — fail silently
       }
@@ -205,6 +267,8 @@ export default function ProductsPage() {
     setSelectedCategory("All Products");
     setSearchQuery("");
     setSortBy("Featured");
+    setMinPrice(undefined);
+    setMaxPrice(undefined);
     setCurrentPage(1);
   }, []);
 
@@ -220,6 +284,8 @@ export default function ProductsPage() {
     selectedCategory !== "All Products",
     sortBy !== "Featured",
     !!debouncedSearch,
+    minPrice !== undefined,
+    maxPrice !== undefined,
   ].filter(Boolean).length;
 
   const getPaginationRange = (): (number | "...")[] => {
@@ -232,7 +298,7 @@ export default function ProductsPage() {
 
   if (!isClient) return <div className="min-h-screen bg-white" />;
 
-  // ─── Sidebar category list (shared between desktop and mobile) ─────────────
+  // ─── Sidebar category list ─────────────────────────────────────────────────
   const CategoryList = ({ onSelect }: { onSelect?: () => void }) => (
     <div
       ref={categoryScrollRef}
@@ -281,7 +347,8 @@ export default function ProductsPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative overflow-x-hidden">
+    // ✅ FIX 1: Removed `overflow-x-hidden` — it breaks sticky positioning
+    <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative">
 
       {/* ── Toast ── */}
       <div className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${
@@ -337,10 +404,23 @@ export default function ProductsPage() {
               </button>
             </div>
           </div>
+
           <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">
             Categories
           </h4>
           <CategoryList onSelect={() => setSidebarOpen(false)} />
+
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">
+            Price
+          </h4>
+          <PriceInputs
+            minPrice={minPrice}
+            maxPrice={maxPrice}
+            minPriceFetched={minPriceFetched}
+            maxPriceFetched={maxPriceFetched}
+            setMinPrice={setMinPrice}
+            setMaxPrice={setMaxPrice}
+          />
         </div>
       </div>
 
@@ -348,7 +428,8 @@ export default function ProductsPage() {
       <div className="flex flex-col lg:flex-row gap-8">
 
         {/* ── Desktop Sidebar ── */}
-        <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-32 h-fit space-y-4">
+        {/* ✅ FIX: top-16 matches the sticky header height (~60px), announcement bar scrolls away */}
+        <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-16 h-fit space-y-4">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-5">
               <h3 className="font-bold text-gray-900">Filters</h3>
@@ -363,10 +444,23 @@ export default function ProductsPage() {
                 </button>
               </div>
             </div>
+
             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">
               Categories
             </h4>
             <CategoryList />
+
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">
+              Price
+            </h4>
+            <PriceInputs
+              minPrice={minPrice}
+              maxPrice={maxPrice}
+              minPriceFetched={minPriceFetched}
+              maxPriceFetched={maxPriceFetched}
+              setMinPrice={setMinPrice}
+              setMaxPrice={setMaxPrice}
+            />
           </div>
         </aside>
 
@@ -471,6 +565,18 @@ export default function ProductsPage() {
                   <button onClick={() => setSearchQuery("")}><X size={11} /></button>
                 </span>
               )}
+              {minPrice !== undefined && (
+                <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
+                  Min: ${minPrice}
+                  <button onClick={() => setMinPrice(undefined)}><X size={11} /></button>
+                </span>
+              )}
+              {maxPrice !== undefined && (
+                <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
+                  Max: ${maxPrice}
+                  <button onClick={() => setMaxPrice(undefined)}><X size={11} /></button>
+                </span>
+              )}
               <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline">
                 Clear all
               </button>
@@ -482,7 +588,7 @@ export default function ProductsPage() {
             <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-6 text-sm flex items-center gap-3">
               <span className="flex-1">{error}</span>
               <button
-                onClick={() => setCurrentPage((p) => p)} // re-trigger effect
+                onClick={() => setCurrentPage((p) => p)}
                 className="text-xs font-semibold underline shrink-0"
               >
                 Retry
