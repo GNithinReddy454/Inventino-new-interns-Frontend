@@ -3,7 +3,7 @@ import { Roboto } from "next/font/google";
 import { Button } from "@/app/components/ui/button";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Minus, Plus, X, Heart, ShoppingBag, ArrowRight, Tag } from "lucide-react";
+import { Minus, Plus, X, Heart, ShoppingBag, ArrowRight, Tag, ArrowLeft } from "lucide-react";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import { useRouter } from "next/navigation";
@@ -69,6 +69,15 @@ export default function BagPage() {
   return (
     <div className="bg-[#fafafa] min-h-screen w-full max-w-[100vw] overflow-x-hidden py-6 px-4 md:px-12 font-sans">
       <div className="max-w-7xl mx-auto">
+
+        {/* ── Back ── */}
+        <Link
+          href="/all-products"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9E7EA8] hover:text-[#D94F7A] transition-colors group mb-4"
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+          Back to Shop
+        </Link>
 
         <h1 className="text-3xl md:text-4xl font-serif text-gray-900 mb-1 font-bold tracking-tight text-center md:text-left">
           Your Shopping Cart
