@@ -118,7 +118,7 @@ export default function WishlistPage() {
 
         {/* ── Back ── */}
         <Link
-          href="/all-products"
+          href="/products"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9E7EA8] hover:text-[#E8456A] transition-colors group mb-4"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
@@ -168,7 +168,7 @@ export default function WishlistPage() {
             <h3 className="text-lg sm:text-xl font-bold text-gray-900">Your wishlist is empty</h3>
             <p className="text-gray-400 text-sm mt-2 mb-7">Save items you love and come back anytime.</p>
             <Link
-              href="/all-products"
+              href="/products"
               className="inline-block bg-[#E8456A] text-white px-8 py-2.5 rounded-2xl font-bold hover:bg-[#c73358] transition-all shadow-md shadow-pink-100 uppercase tracking-widest text-xs"
             >
               Explore Treasures
@@ -195,7 +195,7 @@ export default function WishlistPage() {
                 >
                   {/* ── Image ── */}
                   <div className="relative aspect-square overflow-hidden bg-gray-50">
-                    <Link href={`/all-products/${item.id}`} className="absolute inset-0">
+                    <Link href={`/products/${item.id}`} className="absolute inset-0">
                       <img
                         src={image}
                         alt={name}
@@ -267,7 +267,7 @@ export default function WishlistPage() {
                     </div>
 
                     {/* Name */}
-                    <Link href={`/all-products/${item.id}`}>
+                    <Link href={`/products/${item.id}`}>
                       <h3 className="font-bold text-gray-900 text-[11px] sm:text-sm leading-snug line-clamp-2 hover:text-[#E8456A] transition-colors mt-1 mb-1.5">
                         {name}
                       </h3>

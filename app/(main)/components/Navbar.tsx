@@ -58,9 +58,9 @@ const Navbar = () => {
     e.preventDefault();
     if (searchQuery.trim()) {
       setShowSearchResults(false);
-      router.push(`/all-products?q=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`);
     } else {
-      router.push("/all-products");
+      router.push("/products");
     }
   };
 
@@ -118,7 +118,7 @@ const Navbar = () => {
         <p className="text-center">
           💖 Valentine&apos;s Day Special – Get 20% OFF on all handmade gifts!
           {/* UPDATED: Path changed to all-products */}
-          <Link href="/all-products" className="ml-2 underline cursor-pointer">Explore Now</Link>
+          <Link href="/products" className="ml-2 underline cursor-pointer">Explore Now</Link>
         </p>
       </div>
 
@@ -166,7 +166,7 @@ const Navbar = () => {
                       </p>
                       {searchResults.map((p) => (
                         <Link
-                          href={`/all-products/${p.id}`}
+                          href={`/products/${p.id}`}
                           key={p.id}
                           onClick={() => {
                             setShowSearchResults(false);
@@ -210,7 +210,7 @@ const Navbar = () => {
           <div className="flex items-center gap-2 sm:gap-4">
             <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center font-bold">
               {/* UPDATED: Path changed to all-products */}
-              <Link href="/all-products" className={getLinkStyle("/all-products")}>All Products</Link>
+              <Link href="/products" className={getLinkStyle("/products")}>All Products</Link>
               <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
               <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
             </nav>
@@ -324,7 +324,7 @@ const Navbar = () => {
 
           <nav className="flex flex-col gap-6">
             {/* UPDATED: Path changed to all-products */}
-            <Link href="/all-products" className={getMobileLinkStyle("/all-products")} onClick={() => setIsMenuOpen(false)}>All Products</Link>
+            <Link href="/products" className={getMobileLinkStyle("/products")} onClick={() => setIsMenuOpen(false)}>All Products</Link>
             <Link href="/stories" className={getMobileLinkStyle("/stories")} onClick={() => setIsMenuOpen(false)}>Stories</Link>
             <Link href="/contact" className={getMobileLinkStyle("/contact")} onClick={() => setIsMenuOpen(false)}>Contact</Link>
 

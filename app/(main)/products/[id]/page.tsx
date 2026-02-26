@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import ProductReviews from "@/app/components/ProductReviews";
+import ProductCard from "@/app/components/ProductCard";
 import { productService } from "@/services/product.service";
 
 // --- TYPES ---
@@ -166,7 +167,7 @@ export default function ProductDetailsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 pt-6">
-        <Link href="/all-products" className="inline-flex items-center text-gray-500 hover:text-[#D94F7A] transition-colors gap-2 text-sm font-bold">
+        <Link href="/products" className="inline-flex items-center text-gray-500 hover:text-[#D94F7A] transition-colors gap-2 text-sm font-bold">
           <ChevronLeft size={16} /> Back to Products
         </Link>
       </div>
@@ -323,7 +324,7 @@ export default function ProductDetailsPage() {
         <div ref={similarProductsRef} className="flex gap-6 overflow-x-auto pb-8 no-scrollbar snap-x scroll-smooth">
           {[1, 2, 3, 4, 5, 6].map((offset) => (
             <div key={offset} className="min-w-[280px] md:min-w-[320px] snap-start">
-               <SimilarProductCard product={{...product, id: `sim-${offset}`} as any} addToCart={addToCart} handleSaved={handleSaved} savedItems={savedItems} />
+               <ProductCard product={{...product, id: offset, images: product.images, originalPrice: product.originalPrice || undefined}} />
             </div>
           ))}
         </div>
@@ -345,30 +346,4 @@ export default function ProductDetailsPage() {
   );
 }
 
-function SimilarProductCard({ product, addToCart, handleSaved, savedItems }: any) {
-  const isSaved = savedItems.some((item: any) => item.id === product.id);
-  const [isLocalAdded, setIsLocalAdded] = useState(false);
-  const onAdd = () => { addToCart(product, 1); setIsLocalAdded(true); setTimeout(() => setIsLocalAdded(false), 3000); };
 
-  return (
-    <div className="flex flex-col group transition-all relative h-full">
-      <div className="relative aspect-square rounded-xl overflow-hidden mb-4 bg-gray-50 border border-gray-100">
-        <Link href={`/AllProducts/${product.id}`} className="block w-full h-full"><img src={product.image} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" /></Link>
-        <div className="absolute top-3 right-3 flex flex-col gap-2">
-          <button onClick={() => handleSaved(product)} className={`p-2.5 rounded-full shadow-md transition-all active:scale-90 ${isSaved ? 'bg-[#D94F7A] text-white' : 'bg-white text-gray-600 hover:text-[#D94F7A]'}`}><Heart size={16} fill={isSaved ? "currentColor" : "none"} /></button>
-          <button className="p-2.5 bg-white text-gray-600 hover:text-[#D94F7A] rounded-full shadow-md transition-all active:scale-90"><Share2 size={16} /></button>
-        </div>
-      </div>
-      <div className="flex flex-col flex-1 px-1">
-        <span className="text-[10px] text-gray-400 font-bold uppercase mb-1">{product.category}</span>
-        <h4 className="font-bold text-gray-900 text-sm mb-2 hover:text-[#D94F7A] line-clamp-2 min-h-10 transition-colors">{product.name}</h4>
-        <div className="mt-auto flex items-center justify-between pt-2">
-          <span className="font-bold text-[#D94F7A] text-base">${product.price.toFixed(2)}</span>
-          <button onClick={onAdd} disabled={isLocalAdded} className={`text-[11px] font-bold px-5 py-2.5 rounded-full uppercase flex items-center gap-2 ${isLocalAdded ? 'bg-emerald-600 text-white' : 'bg-[#D94F7A] text-white hover:bg-[#b83d63]'}`}>
-            {isLocalAdded ? <><CheckCircle2 size={13} /> Added</> : <><ShoppingBag size={13} /> Add to Bag</>}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
