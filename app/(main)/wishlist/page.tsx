@@ -50,12 +50,12 @@ export default function WishlistPage() {
   const { savedItems, handleSaved } = useStore();
   const { addToCart } = useCart();
 
-  const [toast, setToast] = useState<{ message: string; show: boolean }>({ message: "", show: false });
+  const [toast, setToast] = useState<{ title?: string; message: string; show: boolean }>({ title: "Added to cart!", message: "", show: false });
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-  const triggerToast = useCallback((message: string) => {
-    setToast({ message, show: true });
-    setTimeout(() => setToast({ message: "", show: false }), 3000);
+  const triggerToast = useCallback((message: string, title: string = "Added to cart!") => {
+    setToast({ title, message, show: true });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
   }, []);
 
   const handleAddToCart = useCallback((item: any) => {
@@ -105,10 +105,10 @@ export default function WishlistPage() {
             <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">Added to cart!</p>
+            <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">{toast.title}</p>
             <p className="text-xs text-gray-400 truncate">{toast.message}</p>
           </div>
-          <button onClick={() => setToast({ message: "", show: false })} className="text-gray-300 hover:text-gray-500 flex-shrink-0 ml-1">
+          <button onClick={() => setToast(prev => ({ ...prev, show: false }))} className="text-gray-300 hover:text-gray-500 flex-shrink-0 ml-1">
             <X size={12} />
           </button>
         </div>
@@ -118,7 +118,7 @@ export default function WishlistPage() {
 
         {/* ── Back ── */}
         <Link
-          href="/all-products"
+          href="/products"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9E7EA8] hover:text-[#E8456A] transition-colors group mb-4"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
@@ -128,7 +128,7 @@ export default function WishlistPage() {
         {/* ── Header ── */}
         <div className="mb-4">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            My Wishlist <span>💗</span>
+            My Wishlist
           </h1>
           <p className="text-gray-400 mt-0.5 text-xs sm:text-sm">
             {savedItems.length} item{savedItems.length !== 1 ? "s" : ""} saved
@@ -164,11 +164,10 @@ export default function WishlistPage() {
         {/* ── Empty state ── */}
         {savedItems.length === 0 ? (
           <div className="text-center py-16 sm:py-24 bg-white rounded-[28px] border-2 border-dashed border-[#F3D6EE] px-6">
-            <Heart size={40} className="text-[#F3D6EE] mx-auto mb-4" />
             <h3 className="text-lg sm:text-xl font-bold text-gray-900">Your wishlist is empty</h3>
             <p className="text-gray-400 text-sm mt-2 mb-7">Save items you love and come back anytime.</p>
             <Link
-              href="/all-products"
+              href="/products"
               className="inline-block bg-[#E8456A] text-white px-8 py-2.5 rounded-2xl font-bold hover:bg-[#c73358] transition-all shadow-md shadow-pink-100 uppercase tracking-widest text-xs"
             >
               Explore Treasures
@@ -189,13 +188,13 @@ export default function WishlistPage() {
                 <div
                   key={item.id}
                   className={`relative bg-white rounded-2xl overflow-hidden border flex flex-col shadow-sm transition-all duration-300 hover:shadow-[0_6px_24px_rgba(232,69,106,0.13)] ${isSelected
-                      ? "ring-2 ring-[#E8456A] ring-offset-1 border-transparent"
-                      : "border-gray-100 hover:border-pink-100"
+                    ? "ring-2 ring-[#E8456A] ring-offset-1 border-transparent"
+                    : "border-gray-100 hover:border-pink-100"
                     }`}
                 >
                   {/* ── Image ── */}
                   <div className="relative aspect-square overflow-hidden bg-gray-50">
-                    <Link href={`/all-products/${item.id}`} className="absolute inset-0">
+                    <Link href={`/products/${item.id}`} className="absolute inset-0">
                       <img
                         src={image}
                         alt={name}
@@ -217,13 +216,26 @@ export default function WishlistPage() {
                         )}
                       </div>
 
-                      {/* Share — right side */}
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                        className="pointer-events-auto w-7 h-7 flex items-center justify-center rounded-full bg-white/90 shadow-md text-gray-400 hover:text-[#E8456A] hover:bg-white transition-all backdrop-blur-sm"
-                      >
-                        <Share2 size={11} strokeWidth={2} />
-                      </button>
+                      {/* Actions — right side */}
+                      <div className="flex flex-col gap-2 pointer-events-auto">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleSaved(item);
+                            triggerToast(`${name} removed from the wishlist`, "Removed from Wishlist");
+                          }}
+                          className="w-7 h-7 flex items-center justify-center rounded-full bg-[#E8456A] shadow-md text-white transition-all backdrop-blur-sm hover:bg-[#c73358] active:scale-95"
+                        >
+                          <Heart size={11} strokeWidth={2} fill="currentColor" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          className="w-7 h-7 flex items-center justify-center rounded-full bg-white/90 shadow-md text-gray-400 hover:text-[#E8456A] hover:bg-white transition-all backdrop-blur-sm"
+                        >
+                          <Share2 size={11} strokeWidth={2} />
+                        </button>
+                      </div>
                     </div>
 
                     {/* ── BOTTOM-LEFT: checkbox — away from badge ── */}
@@ -236,8 +248,8 @@ export default function WishlistPage() {
                           className="sr-only peer"
                         />
                         <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 shadow transition-all flex items-center justify-center ${isSelected
-                            ? "border-[#E8456A] bg-[#E8456A]"
-                            : "border-white/80 bg-black/10 hover:bg-white/90 hover:border-[#E8456A]"
+                          ? "border-[#E8456A] bg-[#E8456A]"
+                          : "border-white/80 bg-black/10 hover:bg-white/90 hover:border-[#E8456A]"
                           }`}>
                           <svg
                             className={`w-2.5 h-2.5 text-white transition-opacity ${isSelected ? "opacity-100" : "opacity-0"}`}
@@ -267,7 +279,7 @@ export default function WishlistPage() {
                     </div>
 
                     {/* Name */}
-                    <Link href={`/all-products/${item.id}`}>
+                    <Link href={`/products/${item.id}`}>
                       <h3 className="font-bold text-gray-900 text-[11px] sm:text-sm leading-snug line-clamp-2 hover:text-[#E8456A] transition-colors mt-1 mb-1.5">
                         {name}
                       </h3>

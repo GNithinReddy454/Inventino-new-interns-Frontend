@@ -3,13 +3,15 @@ import { Roboto } from "next/font/google";
 import { Button } from "@/app/components/ui/button";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Minus, Plus, X, Heart, ShoppingBag, ArrowRight, Tag } from "lucide-react";
+import { Minus, Plus, X, Heart, ShoppingBag, ArrowRight, Tag, ArrowLeft } from "lucide-react";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
+import { useRouter } from "next/navigation";
 
 export default function BagPage() {
   const { cart = [], removeFromCart, updateQuantity, cartTotal = 0 } = useCart();
   const { handleSaved, savedItems = [] } = useStore();
+  const router = useRouter();
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [animatingItem, setAnimatingItem] = useState<{ id: number; type: "wishlist" | "remove" } | null>(null);
@@ -56,7 +58,7 @@ export default function BagPage() {
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4 font-serif">Your cart is empty</h2>
           <p className="text-gray-500 mb-8 md:mb-10 max-w-sm mx-auto text-sm md:text-base font-sans">Looks like you haven't added any treasures yet.</p>
-          <Link href="/all-products" className="bg-[#D94F7A] text-white px-8 md:px-10 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold hover:bg-[#b83d63] transition-all inline-flex items-center gap-2 shadow-lg text-sm md:text-base">
+          <Link href="/products" className="bg-[#D94F7A] text-white px-8 md:px-10 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold hover:bg-[#b83d63] transition-all inline-flex items-center gap-2 shadow-lg text-sm md:text-base">
             Start Shopping <ArrowRight size={18} />
           </Link>
         </div>
@@ -67,6 +69,15 @@ export default function BagPage() {
   return (
     <div className="bg-[#fafafa] min-h-screen w-full max-w-[100vw] overflow-x-hidden py-6 px-4 md:px-12 font-sans">
       <div className="max-w-7xl mx-auto">
+
+        {/* ── Back ── */}
+        <Link
+          href="/all-products"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9E7EA8] hover:text-[#D94F7A] transition-colors group mb-4"
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+          Back to Shop
+        </Link>
 
         <h1 className="text-3xl md:text-4xl font-serif text-gray-900 mb-1 font-bold tracking-tight text-center md:text-left">
           Your Shopping Cart
@@ -97,13 +108,13 @@ export default function BagPage() {
                     <div
                       key={item.id}
                       className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${isAnimating
-                          ? actionType === "wishlist"
-                            ? "opacity-0 -translate-y-16 scale-90"
-                            : "opacity-0 -translate-x-full"
-                          : "opacity-100 translate-x-0 translate-y-0"
+                        ? actionType === "wishlist"
+                          ? "opacity-0 -translate-y-16 scale-90"
+                          : "opacity-0 -translate-x-full"
+                        : "opacity-100 translate-x-0 translate-y-0"
                         }`}
                     >
-                      <Link href={`/all-products/${item.id}`} className="block group shrink-0 mx-auto md:mx-0">
+                      <Link href={`/products/${item.id}`} className="block group shrink-0 mx-auto md:mx-0">
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         </div>
@@ -112,7 +123,7 @@ export default function BagPage() {
                       <div className="flex-1 flex flex-col justify-between overflow-hidden">
                         <div className="text-center md:text-left">
                           <div className="flex flex-col md:flex-row md:justify-between gap-2">
-                            <Link href={`/all-products/${item.id}`} className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300">
+                            <Link href={`/products/${item.id}`} className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300">
                               <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-2">{item.name}</h3>
                             </Link>
 
@@ -229,13 +240,24 @@ export default function BagPage() {
               <span className="font-black text-[#D94F7A] text-2xl md:text-3xl tracking-tight">${finalTotal.toFixed(2)}</span>
             </div>
 
-            <Link href="/checkout" className="block mb-3">
-              <button className="w-full bg-[#D94F7A] text-white py-4 rounded-2xl font-bold shadow-lg shadow-pink-100 hover:bg-[#b83d63] transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
+            <div className="mb-3">
+              <button
+                onClick={() => {
+                  const rawUser = localStorage.getItem("inventino_user");
+                  const token = localStorage.getItem("token");
+                  if (rawUser && token) {
+                    router.push("/checkout");
+                  } else {
+                    router.push("/login?redirect=/checkout");
+                  }
+                }}
+                className="w-full bg-[#D94F7A] text-white py-4 rounded-2xl font-bold shadow-lg shadow-pink-100 hover:bg-[#b83d63] transition-all active:scale-[0.98] text-sm tracking-widest uppercase"
+              >
                 Proceed to Checkout
               </button>
-            </Link>
+            </div>
 
-            <Link href="/all-products" className="block">
+            <Link href="/products" className="block">
               <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-pink-50 transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
                 Continue Shopping
               </button>
