@@ -8,25 +8,25 @@ const features = [
     title: "Virtual Try-On",
     description: "Use your camera to see how it looks on you in real-time.",
     icon: <Camera className="w-7 h-7 text-pink-500" strokeWidth={1.5} />,
-    cta: "Comming Soon",
+    cta: "Coming Soon",
   },
   {
     title: "Book Try at Home",
     description: "Schedule a doorstep trial of your favorite jewellery.",
     icon: <Home className="w-7 h-7 text-pink-500" strokeWidth={1.5} />,
-    cta: "Comming Soon",
+    cta: "Coming Soon",
   },
   {
     title: "Talk to an Expert",
     description: "Need guidance? Speak to our jewellery consultant.",
     icon: <MessageCircle className="w-7 h-7 text-pink-500" strokeWidth={1.5} />,
-    cta: "Comming Soon",
+    cta: "Coming Soon",
   },
   {
     title: "Live Styling Help",
     description: "Talk to a jewellery stylist via video call.",
     icon: <Sparkles className="w-7 h-7 text-pink-500" strokeWidth={1.5} />,
-    cta: "Comming Soon",
+    cta: "Coming Soon",
   },
 ];
 
