@@ -16,6 +16,12 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [announcementHeight, setAnnouncementHeight] = useState(40); // Default
+  const [navbarHeight, setNavbarHeight] = useState(64); // Default
+
+  const announcementRef = useRef<HTMLDivElement>(null);
+  const navbarRef = useRef<HTMLDivElement>(null);
 
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -24,6 +30,39 @@ const Navbar = () => {
     (total, item) => total + (item.quantity || 1),
     0
   );
+
+  // Measure actual heights on mount and resize
+  useEffect(() => {
+    const measureHeights = () => {
+      if (announcementRef.current) {
+        setAnnouncementHeight(announcementRef.current.offsetHeight);
+      }
+      if (navbarRef.current) {
+        setNavbarHeight(navbarRef.current.offsetHeight);
+      }
+    };
+
+    measureHeights();
+    window.addEventListener('resize', measureHeights);
+    
+    return () => window.removeEventListener('resize', measureHeights);
+  }, []);
+
+  // Handle scroll event with progress
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      
+      // Calculate progress (0 to 1) based on scroll through announcement bar
+      const progress = Math.min(scrollY / announcementHeight, 1);
+      setScrollProgress(progress);
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Call once to set initial state
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [announcementHeight]);
 
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "auto";
@@ -66,8 +105,6 @@ const Navbar = () => {
 
   // Build a unified searchable master list mapping from static and JSON products
   const masterProductList = [
-    // We import these inline to avoid circular issues, or use top level if available.
-    // For Next.js dynamic requires safely:
     ...require("@/lib/products").products.map((p: any) => ({
       id: p.id,
       name: p.name,
@@ -90,7 +127,7 @@ const Navbar = () => {
     ? masterProductList.filter(p => {
       const queryTerms = searchQuery.toLowerCase().split(" ").filter(Boolean);
       return queryTerms.every(term => p.searchString.includes(term));
-    }).slice(0, 5) // limit to top 5 hits for UI
+    }).slice(0, 5)
     : [];
 
   const getLinkStyle = (path: string) => {
@@ -111,20 +148,37 @@ const Navbar = () => {
 
   const iconCircleStyle = "w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white text-gray-800 shadow-sm border border-pink-50 hover:text-pink-500 transition-all relative";
 
+  // Calculate dynamic styles based on scroll progress
+  const navbarTop = announcementHeight - (scrollProgress * announcementHeight); // Moves from announcementHeight to 0px
+  const spacerHeight = navbarHeight + (announcementHeight * (1 - scrollProgress)); // Moves from announcementHeight+navbarHeight to navbarHeight
+  const announcementOpacity = 1 - scrollProgress;
+
   return (
     <>
-      {/* TOP ANNOUNCEMENT BAR */}
-      <div className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center font-sans">
+      {/* TOP ANNOUNCEMENT BAR - Fades out as you scroll */}
+      <div 
+        ref={announcementRef}
+        className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center font-sans fixed top-0 left-0 right-0 z-40 transition-opacity duration-150"
+        style={{ 
+          opacity: announcementOpacity,
+          pointerEvents: scrollProgress > 0.9 ? 'none' : 'auto'
+        }}
+      >
         <p className="text-center">
           💖 Valentine&apos;s Day Special – Get 20% OFF on all handmade gifts!
-          {/* UPDATED: Path changed to all-products */}
           <Link href="/products" className="ml-2 underline cursor-pointer">Explore Now</Link>
         </p>
       </div>
 
-      {/* MAIN NAVBAR */}
-      <header className="sticky top-0 z-50 w-full">
-        <div className="bg-pink-100 px-3 sm:px-6 md:px-12 py-2 sm:py-3 flex justify-between items-center">
+      {/* FIXED NAVBAR - Smoothly moves up as you scroll */}
+      <header 
+        className="fixed left-0 right-0 z-50 transition-none"
+        style={{ top: `${navbarTop}px` }}
+      >
+        <div 
+          ref={navbarRef}
+          className="bg-pink-100 px-3 sm:px-6 md:px-12 py-2 sm:py-3 flex justify-between items-center border-b border-pink-200"
+        >
           <div className="shrink-0">
             <Link href="/">
               <Image
@@ -209,7 +263,6 @@ const Navbar = () => {
 
           <div className="flex items-center gap-2 sm:gap-4">
             <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center font-bold">
-              {/* UPDATED: Path changed to all-products */}
               <Link href="/products" className={getLinkStyle("/products")}>All Products</Link>
               <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
               <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
@@ -242,7 +295,6 @@ const Navbar = () => {
                 >
                   <User size={18} />
                 </button>
-
 
                 {user && showDropdown && (
                   <div
@@ -310,6 +362,9 @@ const Navbar = () => {
         </div>
       </header>
 
+      {/* Dynamic spacer that smoothly adjusts based on actual heights */}
+      <div style={{ height: `${spacerHeight}px` }}></div>
+
       {/* MOBILE MENU DRAWER */}
       <div className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
         <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={() => setIsMenuOpen(false)}></div>
@@ -323,7 +378,6 @@ const Navbar = () => {
           </div>
 
           <nav className="flex flex-col gap-6">
-            {/* UPDATED: Path changed to all-products */}
             <Link href="/products" className={getMobileLinkStyle("/products")} onClick={() => setIsMenuOpen(false)}>All Products</Link>
             <Link href="/stories" className={getMobileLinkStyle("/stories")} onClick={() => setIsMenuOpen(false)}>Stories</Link>
             <Link href="/contact" className={getMobileLinkStyle("/contact")} onClick={() => setIsMenuOpen(false)}>Contact</Link>
