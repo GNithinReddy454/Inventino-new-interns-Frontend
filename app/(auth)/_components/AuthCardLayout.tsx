@@ -5,11 +5,17 @@ import React from "react";
 
 type Props = {
   title: string;
+  /**
+   * A short description shown below the title. Optional to keep
+   * existing usages (signup/login) unaffected.
+   */
+  subtitle?: string;
   children: React.ReactNode;
 };
 
 export default function AuthCardLayout({
   title,
+  subtitle,
   children,
 }: Props) {
 
@@ -67,6 +73,13 @@ export default function AuthCardLayout({
           ">
             {title}
           </h2>
+
+          {/* optional subtitle text */}
+          {subtitle && (
+            <p className="mt-2 text-sm text-gray-600 text-center">
+              {subtitle}
+            </p>
+          )}
 
         </div>
 

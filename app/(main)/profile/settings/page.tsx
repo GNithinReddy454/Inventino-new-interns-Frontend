@@ -202,7 +202,7 @@ function AccountTab() {
   const displayName  = account.name  || authUser?.name  || "";
   const displayEmail = account.email || authUser?.email || "";
   const displayPhone = account.phone || authUser?.phone || "";
-  const displayLocation = account.location || authUser?.location || "";
+  const displayLocation = "";
 
   // ✅ Avatar initial from auth name (always reflects login user)
   const avatarInitial = (authUser?.name || account.name || "?").charAt(0).toUpperCase();

@@ -1,7 +1,7 @@
 "use client";
 import { Roboto } from "next/font/google";
 import ProductCard from "@/app/components/ProductCard";
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react"; // Added Suspense
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   ChevronLeft,
@@ -21,7 +21,6 @@ import { normalize } from "@/utils/products.utils";
 import { NormalizedProduct } from "@/types/products.type";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-
 interface ApiProduct {
   _id: string;
   name: string;
@@ -41,7 +40,6 @@ interface Meta {
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-
 const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accessories"];
 const SORT_OPTIONS = ["Featured", "Price: Low to High", "Price: High to Low", "Newest First"];
 const ITEMS_PER_PAGE = 9;
@@ -54,7 +52,6 @@ const SORT_MAP: Record<string, string> = {
 };
 
 // ─── Skeleton Card ─────────────────────────────────────────────────────────────
-
 function SkeletonCard() {
   return (
     <div className="rounded-2xl overflow-hidden border border-gray-100 bg-white animate-pulse">
@@ -69,8 +66,7 @@ function SkeletonCard() {
   );
 }
 
-// ─── Price Inputs (reusable) ───────────────────────────────────────────────────
-
+// ─── Price Inputs ──────────────────────────────────────────────────────────────
 function PriceInputs({
   minPrice,
   maxPrice,
@@ -120,14 +116,16 @@ function PriceInputs({
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
-
-export default function ProductsPage() {
+/**
+ * ─── Inner Content Component ───────────────────────────────────────────────────
+ * All logic using useSearchParams moved here to be wrapped by Suspense.
+ */
+function ProductsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // ── Filter/sort state (initialised from URL) ────────────────────────────────
+  // Filter/sort state (initialized from URL)
   const [selectedCategory, setSelectedCategory] = useState(
     searchParams.get("category") || "All Products"
   );
@@ -150,7 +148,7 @@ export default function ProductsPage() {
     show: false,
   });
 
-  // ── API state ───────────────────────────────────────────────────────────────
+  // API state
   const [products, setProducts] = useState<NormalizedProduct[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -165,7 +163,7 @@ export default function ProductsPage() {
 
   useEffect(() => { setIsClient(true); }, []);
 
-  // ── Sync URL params ─────────────────────────────────────────────────────────
+  // Sync URL params
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedCategory !== "All Products") params.set("category", selectedCategory);
@@ -178,7 +176,7 @@ export default function ProductsPage() {
     router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
   }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice, currentPage, pathname, router]);
 
-  // ── Close sort dropdown on outside click ───────────────────────────────────
+  // Close sort dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (sortRef.current && !sortRef.current.contains(e.target as Node))
@@ -188,17 +186,17 @@ export default function ProductsPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ── Reset to page 1 on filter change ───────────────────────────────────────
+  // Reset to page 1 on filter change
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice]);
 
-  // ── Scroll to top on page change ───────────────────────────────────────────
+  // Scroll to top on page change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
 
-  // ── Fetch products from API ─────────────────────────────────────────────────
+  // Fetch products from API
   useEffect(() => {
     let cancelled = false;
 
@@ -238,7 +236,7 @@ export default function ProductsPage() {
     return () => { cancelled = true; };
   }, [currentPage, sortBy, selectedCategory, debouncedSearch, minPrice, maxPrice]);
 
-  // ── Fetch category counts + price bounds once ──────────────────────────────
+  // Fetch category counts + price bounds once
   useEffect(() => {
     const fetchCounts = async () => {
       try {
@@ -256,13 +254,12 @@ export default function ProductsPage() {
         setMinPriceFetched(min === Infinity ? undefined : min);
         setMaxPriceFetched(max === -Infinity ? undefined : max);
       } catch {
-        // counts are non-critical — fail silently
+        // fail silently
       }
     };
     fetchCounts();
   }, []);
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
   const clearFilters = useCallback(() => {
     setSelectedCategory("All Products");
     setSearchQuery("");
@@ -298,7 +295,6 @@ export default function ProductsPage() {
 
   if (!isClient) return <div className="min-h-screen bg-white" />;
 
-  // ─── Sidebar category list ─────────────────────────────────────────────────
   const CategoryList = ({ onSelect }: { onSelect?: () => void }) => (
     <div
       ref={categoryScrollRef}
@@ -347,10 +343,8 @@ export default function ProductsPage() {
   );
 
   return (
-    // ✅ FIX 1: Removed `overflow-x-hidden` — it breaks sticky positioning
     <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative">
-
-      {/* ── Toast ── */}
+      {/* Toast */}
       <div className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${
         toast.show ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0 pointer-events-none"
       }`}>
@@ -375,15 +369,13 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* ── Mobile Backdrop ── */}
+      {/* Mobile Sidebar */}
       <div
         className={`fixed inset-0 bg-black/30 z-40 md:hidden transition-opacity duration-300 ${
           sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={() => setSidebarOpen(false)}
       />
-
-      {/* ── Mobile Sidebar ── */}
       <div className={`fixed left-0 top-0 h-full w-72 z-50 overflow-y-auto bg-white transform transition-transform duration-300 ease-in-out lg:hidden ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       }`}>
@@ -404,15 +396,9 @@ export default function ProductsPage() {
               </button>
             </div>
           </div>
-
-          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">
-            Categories
-          </h4>
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h4>
           <CategoryList onSelect={() => setSidebarOpen(false)} />
-
-          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">
-            Price
-          </h4>
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price</h4>
           <PriceInputs
             minPrice={minPrice}
             maxPrice={maxPrice}
@@ -424,11 +410,9 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* ── Layout ── */}
+      {/* Layout */}
       <div className="flex flex-col lg:flex-row gap-8">
-
-        {/* ── Desktop Sidebar ── */}
-        {/* ✅ FIX: top-16 matches the sticky header height (~60px), announcement bar scrolls away */}
+        {/* Desktop Sidebar */}
         <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-16 h-fit space-y-4">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-5">
@@ -444,15 +428,9 @@ export default function ProductsPage() {
                 </button>
               </div>
             </div>
-
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">
-              Categories
-            </h4>
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h4>
             <CategoryList />
-
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">
-              Price
-            </h4>
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price</h4>
             <PriceInputs
               minPrice={minPrice}
               maxPrice={maxPrice}
@@ -464,10 +442,8 @@ export default function ProductsPage() {
           </div>
         </aside>
 
-        {/* ── Main Content ── */}
+        {/* Main Content */}
         <main className="flex-1 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col min-w-0">
-
-          {/* Header row */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{selectedCategory}</h1>
@@ -475,9 +451,7 @@ export default function ProductsPage() {
                 {loading ? "Loading…" : `${totalProducts} products found`}
               </p>
             </div>
-
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              {/* Mobile filter trigger */}
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="relative lg:hidden p-2 rounded-xl border border-gray-200 hover:border-[#D94F7A] transition-colors flex-shrink-0"
@@ -489,8 +463,6 @@ export default function ProductsPage() {
                   </span>
                 )}
               </button>
-
-              {/* Search */}
               <div className="relative flex-1 sm:w-52">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -501,16 +473,11 @@ export default function ProductsPage() {
                   className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors"
                 />
                 {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"
-                  >
+                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">
                     <X size={12} />
                   </button>
                 )}
               </div>
-
-              {/* Sort */}
               <div ref={sortRef} className="relative flex-shrink-0">
                 <button
                   onClick={() => setSortOpen((o) => !o)}
@@ -518,10 +485,7 @@ export default function ProductsPage() {
                 >
                   <span className="hidden sm:inline text-gray-400 text-xs">Sort:</span>
                   <span className="font-bold text-gray-900 text-xs">{sortBy}</span>
-                  <ChevronDown
-                    size={14}
-                    className={`text-gray-400 transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`}
-                  />
+                  <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`} />
                 </button>
                 {sortOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 py-1.5 overflow-hidden">
@@ -529,11 +493,7 @@ export default function ProductsPage() {
                       <button
                         key={opt}
                         onClick={() => { setSortBy(opt); setSortOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                          sortBy === opt
-                            ? "text-[#D94F7A] font-bold bg-pink-50"
-                            : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${sortBy === opt ? "text-[#D94F7A] font-bold bg-pink-50" : "text-gray-700 hover:bg-gray-50"}`}
                       >
                         {opt}
                       </button>
@@ -544,7 +504,7 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          {/* Active filter chips */}
+          {/* Active chips */}
           {activeFilterCount > 0 && (
             <div className="flex flex-wrap gap-2 mb-5">
               {selectedCategory !== "All Products" && (
@@ -577,9 +537,7 @@ export default function ProductsPage() {
                   <button onClick={() => setMaxPrice(undefined)}><X size={11} /></button>
                 </span>
               )}
-              <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline">
-                Clear all
-              </button>
+              <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline">Clear all</button>
             </div>
           )}
 
@@ -587,34 +545,25 @@ export default function ProductsPage() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-6 text-sm flex items-center gap-3">
               <span className="flex-1">{error}</span>
-              <button
-                onClick={() => setCurrentPage((p) => p)}
-                className="text-xs font-semibold underline shrink-0"
-              >
-                Retry
-              </button>
+              <button onClick={() => setCurrentPage((p) => p)} className="text-xs font-semibold underline shrink-0">Retry</button>
             </div>
           )}
 
           {/* Product grid */}
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
+              {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : products.length === 0 && !error ? (
             <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
               <div className="text-5xl mb-4">🔍</div>
               <h3 className="font-bold text-gray-900 text-lg mb-1">No products found</h3>
-              <p className="text-gray-400 text-sm mb-6">Try adjusting your filters or search term</p>
+              <p className="text-gray-400 text-sm mb-6">Try adjusting your filters</p>
               <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product as any} onAdd={triggerToast} />
-              ))}
+              {products.map((product) => <ProductCard key={product.id} product={product as any} onAdd={triggerToast} />)}
             </div>
           )}
 
@@ -629,7 +578,6 @@ export default function ProductsPage() {
                 >
                   <ChevronLeft size={15} />
                 </button>
-
                 {getPaginationRange().map((item, index) => (
                   <button
                     key={index}
@@ -646,7 +594,6 @@ export default function ProductsPage() {
                     {item}
                   </button>
                 ))}
-
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
@@ -660,5 +607,26 @@ export default function ProductsPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+/**
+ * ─── Main Wrapper ──────────────────────────────────────────────────────────────
+ * Provides the required Suspense boundary for useSearchParams build check.
+ */
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen bg-gray-50/50">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="animate-spin text-[#D94F7A]" size={48} />
+            <p className="text-sm font-medium text-gray-500">Loading your treasures...</p>
+          </div>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   );
 }
