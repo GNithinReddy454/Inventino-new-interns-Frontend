@@ -82,10 +82,43 @@ export default function VerifyOTP() {
 
   };
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
+
     e.preventDefault();
-    router.push("/products");
-    
+
+    const otpCode = otp.join("");
+
+    if (otpCode.length !== 6) {
+      setOtpError("Please enter all 6 digits");
+      return;
+    }
+
+    if (!user?.email) {
+      setOtpError("Email not found. Please sign up again.");
+      return;
+    }
+
+    try {
+      const result = await dispatch(verifyOtpAction({ email: user.email, otp: otpCode }));
+
+      const serverUser = result.payload?.data?.user;
+      if (serverUser) {
+        // Persist server user in AuthContext so user stays logged in
+      }
+
+      if (result.payload) {
+        // If server returned user, update AuthContext
+        const srv = result.payload?.data?.user;
+        if (srv) {
+          login(srv as any);
+        }
+
+        router.push("/products");
+      }
+    } catch (err) {
+      console.error("OTP verification error:", err);
+    }
+
   };
 
   return (
@@ -103,7 +136,7 @@ export default function VerifyOTP() {
 
             <div className="bg-green-500 rounded-full p-1.5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4">
-                <polyline points="20 6 9 17 4 12"/>
+                <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
 
@@ -118,7 +151,7 @@ export default function VerifyOTP() {
             onClick={() => setShowToast(false)}
             className="p-1 hover:bg-gray-100 rounded-full"
           >
-            <X size={18} className="text-gray-400"/>
+            <X size={18} className="text-gray-400" />
           </button>
 
         </div>
@@ -177,11 +210,10 @@ export default function VerifyOTP() {
             type="button"
             onClick={handleResend}
             disabled={timer > 0 || isResending}
-            className={`font-bold ml-1 ${
-              timer > 0 || isResending
-                ? "text-gray-400"
-                : "text-[#E15483] hover:underline"
-            }`}
+            className={`font-bold ml-1 ${timer > 0 || isResending
+              ? "text-gray-400"
+              : "text-[#E15483] hover:underline"
+              }`}
           >
             {isResending
               ? "Sending..."
@@ -197,7 +229,7 @@ export default function VerifyOTP() {
           href="/signup"
           className="flex items-center justify-center gap-2 text-gray-600 hover:text-[#E15483] text-sm font-semibold"
         >
-          <ArrowLeft size={18}/>
+          <ArrowLeft size={18} />
           Back to Signup
         </Link>
 

@@ -88,7 +88,7 @@ export default function AuthCardLayout({
 
       </div>
 
-    </div>
+    </div >
 
   );
 

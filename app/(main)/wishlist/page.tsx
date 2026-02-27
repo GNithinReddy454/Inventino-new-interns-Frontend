@@ -84,6 +84,24 @@ export default function WishlistPage() {
     setSelectedIds([]);
   };
 
+  const handleRemoveAll = () => {
+    savedItems.forEach((item) => handleSaved(item));
+    setSelectedIds([]);
+  };
+
+  const handleAddEntireWishlistToCart = () => {
+    if (!savedItems.length) return;
+    let count = 0;
+    savedItems.forEach((item) => {
+      addToCart(item as any, 1);
+      // Remove from wishlist at the same time
+      handleSaved(item);
+      count++;
+    });
+    triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart`);
+    setSelectedIds([]);
+  };
+
   const toggleSelectAll = () =>
     setSelectedIds(selectedIds.length === savedItems.length ? [] : savedItems.map((i) => i.id));
 
@@ -137,7 +155,7 @@ export default function WishlistPage() {
 
         {/* ── Compact Bulk Action Bar ── */}
         {savedItems.length > 0 && (
-          <div className="flex items-center gap-3 mb-4 sm:mb-5">
+          <div className="flex items-center gap-3 mb-4 sm:mb-5 flex-wrap">
 
             {/* Select All — compact inline style, not full width */}
             <label className="inline-flex items-center gap-2 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-[#E8456A] transition-colors">
@@ -149,6 +167,24 @@ export default function WishlistPage() {
               </div>
               <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Select All</span>
             </label>
+
+            {/* Remove All */}
+            <button
+              onClick={handleRemoveAll}
+              className="inline-flex items-center gap-1.5 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-red-300 hover:text-red-500 transition-colors text-xs font-semibold text-gray-700 group whitespace-nowrap"
+            >
+              <Trash2 size={14} className="text-gray-400 group-hover:text-red-500 transition-colors" />
+              Remove All
+            </button>
+
+            {/* Add All to Cart */}
+            <button
+              onClick={handleAddEntireWishlistToCart}
+              className="inline-flex items-center gap-1.5 cursor-pointer bg-[#E8456A] text-white rounded-xl px-3 py-2 shadow-sm hover:bg-[#c73358] transition-colors text-xs font-semibold whitespace-nowrap"
+            >
+              <ShoppingBag size={14} className="text-white" />
+              Add All to Cart
+            </button>
 
             {/* Count badge */}
             {selectedIds.length > 0 && (
