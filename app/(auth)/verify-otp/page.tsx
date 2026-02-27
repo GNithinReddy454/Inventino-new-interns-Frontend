@@ -82,46 +82,11 @@ export default function VerifyOTP() {
 
   };
 
-
-  const handleVerify = async (e: React.FormEvent) => {
-
+  const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const otpCode = otp.join("");
-
-    if (otpCode.length !== 6) {
-      setOtpError("Please enter all 6 digits");
-      return;
-    }
-
-    if (!user?.email) {
-      setOtpError("Email not found. Please sign up again.");
-      return;
-    }
-
-    try {
-      const result = await dispatch(verifyOtpAction({ email: user.email, otp: otpCode }));
-
-      const serverUser = result.payload?.data?.user;
-      if (serverUser) {
-          // Persist server user in AuthContext so user stays logged in
-      }
-
-      if (result.payload) {
-        // If server returned user, update AuthContext
-        const srv = result.payload?.data?.user;
-        if (srv) {
-            login(srv as any);
-        }
-
-        router.push("/all-products");
-      }
-    } catch (err) {
-      console.error("OTP verification error:", err);
-    }
-
+    router.push("/products");
+    
   };
-
 
   return (
 

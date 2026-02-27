@@ -5,12 +5,15 @@ import React from "react";
 
 type Props = {
   title: string;
+  /** optional descriptive text shown below title */
+  subtitle?: string;
   children: React.ReactNode;
   bgImage?: string; // ✅ optional
 };
 
 export default function AuthLayout({
   title,
+  subtitle,
   children,
   bgImage = "/auth-bg.jpg", // default image
 }: Props) {
@@ -48,7 +51,11 @@ export default function AuthLayout({
             <h2 className="mt-1 text-xl font-semibold text-[#E15483]">
               {title}
             </h2>
-
+            {subtitle && (
+              <p className="mt-2 text-sm text-gray-600 text-center">
+                {subtitle}
+              </p>
+            )}
           </div>
 
           {children}

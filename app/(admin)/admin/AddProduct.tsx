@@ -1,9 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, X, Eye, Upload } from "lucide-react";
+import { useState, useRef } from "react";
+import { ChevronDown, X, Eye, Upload, CheckCircle2 } from "lucide-react";
+// apiMethods removed - we will post FormData directly with fetch
+
 
 export default function AddProduct() {
+    // form toggle states and tag handling (existing)
+
+    // ProductPayload interface is no longer needed since we post multipart/form-data directly
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+    const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setSelectedFiles(Array.from(e.target.files));
+        }
+    }
     const [tags, setTags] = useState(["Handmade", "Rose Gold", "Bracelet"]);
     const [newTag, setNewTag] = useState("");
     const [isFeatured, setIsFeatured] = useState(true);
@@ -14,6 +28,15 @@ export default function AddProduct() {
     const [showBadge, setShowBadge] = useState(true);
     const [showTimeline, setShowTimeline] = useState(true);
     const [showQuote, setShowQuote] = useState(true);
+
+    // additional UI state for API integration
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string>("");
+    const [toast, setToast] = useState<{ message: string; type: "success" | "error"; show: boolean }>({
+        message: "",
+        type: "success",
+        show: false,
+    });
 
     const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter" && newTag.trim() !== "") {
@@ -26,8 +49,99 @@ export default function AddProduct() {
         setTags(tags.filter(tag => tag !== tagToRemove));
     };
 
+    const triggerToast = (message: string, type: "success" | "error" = "success") => {
+        setToast({ message, type, show: true });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    };
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (isLoading) return;
+        setError("");
+
+        const form = e.currentTarget as HTMLFormElement;
+        const name = (form.elements.namedItem("name") as HTMLInputElement)?.value.trim();
+        const description = (form.elements.namedItem("description") as HTMLTextAreaElement)?.value.trim();
+        const price = (form.elements.namedItem("price") as HTMLInputElement)?.value.trim();
+        const category = (form.elements.namedItem("category") as HTMLSelectElement)?.value.trim();
+        const material = (form.elements.namedItem("material") as HTMLInputElement)?.value.trim();
+        const stock = (form.elements.namedItem("stock") as HTMLInputElement)?.value.trim();
+
+        if (!name || !description || !price || !category || !material || !stock) {
+            setError("Please fill in all required fields marked with *");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("name", name);
+        formData.append("description", description);
+        formData.append("price", price);
+        formData.append("category", category);
+        formData.append("material", material);
+        formData.append("stock", stock);
+        selectedFiles.forEach(file => formData.append("images", file));
+
+        try {
+            setIsLoading(true);
+            const token = localStorage.getItem("token") || "";
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/products`, {
+                method: "POST",
+                headers: {
+                    Authorization: token ? `Bearer ${token}` : "",
+                },
+                body: formData,
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+                throw new Error(data?.message || `HTTP ${res.status}`);
+            }
+
+            triggerToast("Product added successfully", "success");
+            setError("");
+            form.reset();
+            setTags([]);
+            setIsFeatured(true);
+            setReviewsEnabled(false);
+            setFreeShipping(true);
+            setSelectedColor("rose");
+            setDisplayStory(true);
+            setShowBadge(true);
+            setShowTimeline(true);
+            setShowQuote(true);
+            setSelectedFiles([]);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err) || "Network error";
+            setError(msg);
+            triggerToast(msg, "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
-        <div className="max-w-6xl mx-auto font-sans pb-20">
+        <form onSubmit={handleSubmit} encType="multipart/form-data" className="max-w-6xl mx-auto font-sans pb-20">
+            {/* error message */}
+            {error && (
+                <div className="bg-red-100 text-red-700 p-3 rounded mb-6">{error}</div>
+            )}
+
+            {/* toast notification */}
+            <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${toast.show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
+                <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-[200px] max-w-[88vw]">
+                    <div className={`${toast.type === "success" ? "bg-green-500" : "bg-red-500"} w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0`}>
+                        {toast.type === "success" ? <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} /> : <X size={14} className="text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">{toast.type === "success" ? "Success" : "Error"}</p>
+                        <p className="text-xs text-gray-400 truncate">{toast.message}</p>
+                    </div>
+                    <button onClick={() => setToast(prev => ({ ...prev, show: false }))} className="text-gray-300 hover:text-gray-500 flex-shrink-0 ml-1">
+                        <X size={12} />
+                    </button>
+                </div>
+            </div>
+
             {/* --- SECTION 1 --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div className="lg:col-span-2 space-y-6">
@@ -37,21 +151,21 @@ export default function AddProduct() {
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-2">Product Name <span className="text-destructive">*</span></label>
-                                <input type="text" placeholder="e.g., Delicate Rose Bracelet" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-dark focus:ring-1 focus:ring-primary-dark transition-all" />
+                                <input name="name" type="text" required placeholder="e.g., Delicate Rose Bracelet" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-dark focus:ring-1 focus:ring-primary-dark transition-all" />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-2">Description <span className="text-destructive">*</span></label>
-                                <textarea rows={6} placeholder="Write a detailed description of your product..." className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-dark focus:ring-1 focus:ring-primary-dark transition-all resize-none" />
+                                <textarea name="description" rows={6} required placeholder="Write a detailed description of your product..." className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary-dark focus:ring-1 focus:ring-primary-dark transition-all resize-none" />
                                 <p className="text-[10px] text-muted-foreground mt-2">Minimum 50 characters recommended</p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-xs font-bold text-foreground mb-2">Category <span className="text-destructive">*</span></label>
                                     <div className="relative">
-                                        <select className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark appearance-none cursor-pointer">
-                                            <option>Select Category</option>
-                                            <option>Jewelry</option>
-                                            <option>Accessories</option>
+                                        <select name="category" required className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark appearance-none cursor-pointer">
+                                            <option value="">Select Category</option>
+                                            <option value="Jewelry">Jewelry</option>
+                                            <option value="Accessories">Accessories</option>
                                         </select>
                                         <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                                     </div>
@@ -59,10 +173,10 @@ export default function AddProduct() {
                                 <div>
                                     <label className="block text-xs font-bold text-foreground mb-2">Sub-Category</label>
                                     <div className="relative">
-                                        <select className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark appearance-none cursor-pointer">
-                                            <option>Select Sub-Category</option>
-                                            <option>Bracelets</option>
-                                            <option>Necklaces</option>
+                                        <select name="subCategory" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark appearance-none cursor-pointer">
+                                            <option value="">Select Sub-Category</option>
+                                            <option value="Bracelets">Bracelets</option>
+                                            <option value="Necklaces">Necklaces</option>
                                         </select>
                                         <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                                     </div>
@@ -129,11 +243,11 @@ export default function AddProduct() {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-2">Vendor/Brand</label>
-                                <input type="text" placeholder="e.g. Handmade By Sarah" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark transition-all" />
+                                <input name="vendor" type="text" placeholder="e.g. Handmade By Sarah" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark transition-all" />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-2">Collections</label>
-                                <textarea rows={3} className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark transition-all resize-none" placeholder="Search for collections..." />
+                                <textarea name="collections" rows={3} className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark transition-all resize-none" placeholder="Search for collections..." />
                                 <p className="text-[10px] text-muted-foreground mt-1">Hold Ctrl to select multiple</p>
                             </div>
                         </div>
@@ -150,22 +264,28 @@ export default function AddProduct() {
                         <div className="space-y-6">
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-xs font-bold text-foreground mb-2">Regular Price <span className="text-destructive">*</span></label>
-                                    <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span><input type="text" placeholder="0.00" className="w-full pl-8 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
+                                    <label className="block text-xs font-bold text-foreground mb-2">Price <span className="text-destructive">*</span></label>
+                                    <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span><input name="price" type="text" required placeholder="0.00" className="w-full pl-8 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-foreground mb-2">Sale Price</label>
-                                    <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span><input type="text" placeholder="0.00" className="w-full pl-8 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
+                                    <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span><input name="salePrice" type="text" placeholder="0.00" className="w-full pl-8 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-foreground mb-2">Material <span className="text-destructive">*</span></label>
+                                    <input name="material" type="text" required placeholder="e.g. beads" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-6">
-                                <div><label className="block text-xs font-bold text-foreground mb-2">SKU</label><input type="text" placeholder="SKU-001" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
-                                <div><label className="block text-xs font-bold text-foreground mb-2">Stock Quantity <span className="text-destructive">*</span></label><input type="text" placeholder="0" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
+                                <div><label className="block text-xs font-bold text-foreground mb-2">SKU</label><input name="sku" type="text" placeholder="SKU-001" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
+                                <div><label className="block text-xs font-bold text-foreground mb-2">Stock <span className="text-destructive">*</span></label><input name="stock" type="text" required placeholder="0" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-2">Stock Status <span className="text-destructive">*</span></label>
                                 <div className="relative">
-                                    <select className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm appearance-none cursor-pointer focus:outline-none focus:border-primary-dark"><option>In Stock</option><option>Out of Stock</option></select>
+                                    <select name="stockStatus" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm appearance-none cursor-pointer focus:outline-none focus:border-primary-dark"><option>In Stock</option><option>Out of Stock</option></select>
                                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={16} />
                                 </div>
                             </div>
@@ -201,12 +321,12 @@ export default function AddProduct() {
                     <div className="bg-card p-6 rounded-2xl shadow-sm border border-border">
                         <h3 className="text-sm font-bold text-card-foreground mb-4">Shipping</h3>
                         <div className="space-y-4">
-                            <div><label className="block text-xs font-bold text-foreground mb-2">Weight (kg)</label><input type="text" placeholder="0.00" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
+                            <div><label className="block text-xs font-bold text-foreground mb-2">Weight (kg)</label><input name="weight" type="text" placeholder="0.00" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-xs font-bold text-foreground mb-2">Length (cm)</label><input type="text" placeholder="0" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
-                                <div><label className="block text-xs font-bold text-foreground mb-2">Width (cm)</label><input type="text" placeholder="0" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
+                                <div><label className="block text-xs font-bold text-foreground mb-2">Length (cm)</label><input name="length" type="text" placeholder="0" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
+                                <div><label className="block text-xs font-bold text-foreground mb-2">Width (cm)</label><input name="width" type="text" placeholder="0" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
                             </div>
-                            <div><label className="block text-xs font-bold text-foreground mb-2">Height (cm)</label><input type="text" placeholder="0" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
+                            <div><label className="block text-xs font-bold text-foreground mb-2">Height (cm)</label><input name="height" type="text" placeholder="0" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /></div>
                             <div className="flex items-center gap-3 pt-2">
                                 <div onClick={() => setFreeShipping(!freeShipping)} className={`w-12 h-7 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${freeShipping ? 'bg-primary' : 'bg-gray-200'}`}><div className={`bg-white w-5 h-5 rounded-full shadow-sm transform transition-transform duration-300 ${freeShipping ? 'translate-x-5' : 'translate-x-0'}`} /></div>
                                 <label className="text-sm font-medium text-foreground cursor-pointer" onClick={() => setFreeShipping(!freeShipping)}>Free Shipping</label>
@@ -216,8 +336,8 @@ export default function AddProduct() {
                     <div className="bg-card p-6 rounded-2xl shadow-sm border border-border">
                         <h3 className="text-sm font-bold text-card-foreground mb-4">SEO</h3>
                         <div className="space-y-4">
-                            <div><label className="block text-xs font-bold text-foreground mb-2">Meta Title</label><input type="text" placeholder="Product meta title" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /><p className="text-[10px] text-muted-foreground mt-2">0/60 characters</p></div>
-                            <div><label className="block text-xs font-bold text-foreground mb-2">Meta Description</label><textarea rows={3} placeholder="Product meta description" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm resize-none focus:outline-none focus:border-primary-dark" /><p className="text-[10px] text-muted-foreground mt-2">0/160 characters</p></div>
+                            <div><label className="block text-xs font-bold text-foreground mb-2">Meta Title</label><input name="metaTitle" type="text" placeholder="Product meta title" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark" /><p className="text-[10px] text-muted-foreground mt-2">0/60 characters</p></div>
+                            <div><label className="block text-xs font-bold text-foreground mb-2">Meta Description</label><textarea name="metaDescription" rows={3} placeholder="Product meta description" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm resize-none focus:outline-none focus:border-primary-dark" /><p className="text-[10px] text-muted-foreground mt-2">0/160 characters</p></div>
                         </div>
                     </div>
                 </div>
@@ -232,11 +352,11 @@ export default function AddProduct() {
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-2">Story Title <span className="text-destructive">*</span></label>
-                                <input type="text" placeholder="The Story Behind This Treasure" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all" />
+                                <input name="storyTitle" type="text" placeholder="The Story Behind This Treasure" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all" />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-2">Story Content <span className="text-destructive">*</span></label>
-                                <textarea rows={5} placeholder="This beautiful rose gold bracelet is the result of..." className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all resize-none" />
+                                <textarea name="storyContent" rows={5} placeholder="This beautiful rose gold bracelet is the result of..." className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all resize-none" />
                             </div>
                         </div>
                     </div>
@@ -246,11 +366,11 @@ export default function AddProduct() {
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-2">Quote Text</label>
-                                <textarea rows={4} placeholder="Every piece I create is infused with love..." className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all resize-none" />
+                                <textarea name="quoteText" rows={4} placeholder="Every piece I create is infused with love..." className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all resize-none" />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-2">Quote Author</label>
-                                <input type="text" placeholder="Sarah Anderson, Master Artisan" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all" />
+                                <input name="quoteAuthor" type="text" placeholder="Sarah Anderson, Master Artisan" className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all" />
                             </div>
                         </div>
                     </div>
@@ -314,13 +434,13 @@ export default function AddProduct() {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-1">Story Tags</label>
-                                <input type="text" placeholder="handmade, artisan, jewelry" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:border-primary-dark outline-none" />
+                                <input name="storyTags" type="text" placeholder="handmade, artisan, jewelry" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:border-primary-dark outline-none" />
                                 <p className="text-[10px] text-muted-foreground mt-1">Separate tags with commas</p>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-foreground mb-1">Featured Story</label>
                                 <div className="relative">
-                                    <select className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm appearance-none outline-none focus:border-primary-dark"><option>No</option><option>Yes</option></select>
+                                    <select name="featuredStory" className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm appearance-none outline-none focus:border-primary-dark"><option>No</option><option>Yes</option></select>
                                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={14} />
                                 </div>
                             </div>
@@ -340,20 +460,33 @@ export default function AddProduct() {
                         </div>
                         <p className="text-sm font-bold text-foreground mb-1">Drag & drop images here</p>
                         <p className="text-xs text-muted-foreground mb-6">or click to browse</p>
-                        <button className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-primary-dark transition-all">Choose Files</button>
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-primary-dark transition-all">Choose Files</button>
+                        <input ref={fileInputRef} type="file" name="images" multiple className="hidden" onChange={handleFilesChange} />
                     </div>
                     <div className="flex gap-4 mt-8">
-                        <div className="w-24 h-24 bg-[#D6A681] rounded-xl"></div>
-                        <div className="w-24 h-24 bg-[#769383] rounded-xl"></div>
-                        <div className="w-24 h-24 bg-[#F2D694] rounded-xl"></div>
+                        {selectedFiles.length > 0 ? (
+                            selectedFiles.map((file, idx) => (
+                                <div key={idx} className="w-24 h-24 rounded-xl overflow-hidden">
+                                    <img src={URL.createObjectURL(file)} alt={file.name} className="object-cover w-full h-full" />
+                                </div>
+                            ))
+                        ) : (
+                            <>
+                                <div className="w-24 h-24 bg-[#D6A681] rounded-xl"></div>
+                                <div className="w-24 h-24 bg-[#769383] rounded-xl"></div>
+                                <div className="w-24 h-24 bg-[#F2D694] rounded-xl"></div>
+                            </>
+                        )}
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-4 italic">Upload up to 10 images. First image will be the main product image.</p>
                 </div>
                 <div className="flex gap-6 mt-12 justify-center">
                     <button className="w-full max-w-xs py-4 border-2 border-primary text-primary rounded-2xl text-sm font-bold bg-card hover:bg-muted transition-all">Preview</button>
-                    <button className="w-full max-w-xs py-4 bg-primary text-primary-foreground rounded-2xl text-sm font-bold shadow-lg hover:bg-primary-dark transition-all">Publish Product</button>
+                    <button type="submit" disabled={isLoading} className="w-full max-w-xs py-4 bg-primary text-primary-foreground rounded-2xl text-sm font-bold shadow-lg hover:bg-primary-dark transition-all disabled:opacity-50">
+                    {isLoading ? "Publishing..." : "Publish Product"}
+                </button>
                 </div>
             </div>
-        </div>
+        </form>
     );
 }

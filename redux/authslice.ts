@@ -2,8 +2,21 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { authService } from "@/services/auth.service";
 import { User } from "@/lib/types";
 
-// Async Thunks for Signup and Login
-export const signupUserAction = createAsyncThunk(
+/**
+ * 1. Define the Response interface based on your Postman docs [cite: 1, 13-17]
+ * This ensures 'action.payload.data' is recognized by TypeScript.
+ */
+export interface AuthResponse {
+  statusCode: number;
+  message: string;
+  data: {
+    user: User;
+    token: string;
+  };
+}
+
+// 2. Updated Thunks with <AuthResponse, ArgumentType>
+export const signupUserAction = createAsyncThunk<AuthResponse, any>(
   "auth/signup",
   async (userData: any, { rejectWithValue }) => {
     try {
@@ -14,7 +27,7 @@ export const signupUserAction = createAsyncThunk(
   }
 );
 
-export const loginUserAction = createAsyncThunk(
+export const loginUserAction = createAsyncThunk<AuthResponse, any>(
   "auth/login",
   async (credentials: any, { rejectWithValue }) => {
     try {
@@ -24,7 +37,6 @@ export const loginUserAction = createAsyncThunk(
       return await authService.loginUser(credentials);
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || err.message || "Login failed";
-      // Filter out technical axios errors
       if (errorMsg.includes("data") && errorMsg.includes("argument")) {
         return rejectWithValue("Unable to process request. Please check your credentials.");
       }
@@ -33,7 +45,7 @@ export const loginUserAction = createAsyncThunk(
   }
 );
 
-export const forgotPasswordAction = createAsyncThunk(
+export const forgotPasswordAction = createAsyncThunk<any, string>(
   "auth/forgotPassword",
   async (email: string, { rejectWithValue }) => {
     try {
@@ -44,10 +56,11 @@ export const forgotPasswordAction = createAsyncThunk(
   }
 );
 
-export const verifyOtpAction = createAsyncThunk(
+export const verifyOtpAction = createAsyncThunk<AuthResponse, { email: string; otp: string }>(
   "auth/verifyOtp",
   async ({ email, otp }: { email: string; otp: string }, { rejectWithValue }) => {
     try {
+      // Assuming this returns the same data structure as Login 
       return await authService.verifyEmail(email, otp);
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || err.message || "OTP verification failed");
@@ -55,7 +68,7 @@ export const verifyOtpAction = createAsyncThunk(
   }
 );
 
-export const resetPasswordAction = createAsyncThunk(
+export const resetPasswordAction = createAsyncThunk<any, { password: string; confirmPassword: string }>(
   "auth/resetPassword",
   async (data: { password: string; confirmPassword: string }, { rejectWithValue }) => {
     try {
@@ -69,7 +82,7 @@ export const resetPasswordAction = createAsyncThunk(
 interface AuthState {
   user: User | null;
   loading: boolean;
-  error: string | null; // This allows the string error message
+  error: string | null;
 }
 
 const initialState: AuthState = {
@@ -97,11 +110,11 @@ const authSlice = createSlice({
       })
       .addCase(signupUserAction.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.data?.user;
+        state.user = action.payload.data?.user; // Correctly typed [cite: 1, 16-17]
       })
       .addCase(signupUserAction.rejected, (state, action) => {
         state.loading = false;
-        state.error = (action.payload as string) || (action.error?.message as string) || "Signup failed";
+        state.error = (action.payload as string) || "Signup failed";
       })
       // Login
       .addCase(loginUserAction.pending, (state) => {
@@ -110,11 +123,11 @@ const authSlice = createSlice({
       })
       .addCase(loginUserAction.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.data?.user;
+        state.user = action.payload.data?.user; // Correctly typed [cite: 1, 39-40]
       })
       .addCase(loginUserAction.rejected, (state, action) => {
         state.loading = false;
-        state.error = (action.payload as string) || (action.error?.message as string) || "Login failed";
+        state.error = (action.payload as string) || "Login failed";
       })
       // Forgot Password
       .addCase(forgotPasswordAction.pending, (state) => {
@@ -127,7 +140,7 @@ const authSlice = createSlice({
       })
       .addCase(forgotPasswordAction.rejected, (state, action) => {
         state.loading = false;
-        state.error = (action.payload as string) || (action.error?.message as string) || "Failed to send reset link";
+        state.error = (action.payload as string) || "Failed to send reset link";
       })
       // Verify OTP
       .addCase(verifyOtpAction.pending, (state) => {
@@ -136,11 +149,11 @@ const authSlice = createSlice({
       })
       .addCase(verifyOtpAction.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.data?.user;
+        state.user = action.payload.data?.user; // Correctly typed [cite: 1, 16-17]
       })
       .addCase(verifyOtpAction.rejected, (state, action) => {
         state.loading = false;
-        state.error = (action.payload as string) || (action.error?.message as string) || "OTP verification failed";
+        state.error = (action.payload as string) || "OTP verification failed";
       })
       // Reset Password
       .addCase(resetPasswordAction.pending, (state) => {
@@ -154,7 +167,7 @@ const authSlice = createSlice({
       })
       .addCase(resetPasswordAction.rejected, (state, action) => {
         state.loading = false;
-        state.error = (action.payload as string) || (action.error?.message as string) || "Password reset failed";
+        state.error = (action.payload as string) || "Password reset failed";
       });
   },
 });
