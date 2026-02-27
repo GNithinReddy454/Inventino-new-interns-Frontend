@@ -1,15 +1,15 @@
 "use client";
 import { Roboto } from "next/font/google";
 import { Button } from "@/app/components/ui/button";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Minus, Plus, X, Heart, ShoppingBag, ArrowRight, Tag, ArrowLeft } from "lucide-react";
+import { Minus, Plus, X, Heart, ShoppingBag, ArrowRight, Tag, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import { useRouter } from "next/navigation";
 
 export default function BagPage() {
-  const { cart = [], removeFromCart, updateQuantity, cartTotal = 0 } = useCart();
+  const { cart = [], removeFromCart, updateQuantity, cartTotal = 0, clearCart } = useCart();
   const { handleSaved, savedItems = [] } = useStore();
   const router = useRouter();
 
@@ -18,8 +18,14 @@ export default function BagPage() {
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
+  const [toast, setToast] = useState<{ title?: string; message: string; show: boolean }>({ title: "Moved to Wishlist!", message: "", show: false });
 
   useEffect(() => { setIsLoaded(true); }, []);
+
+  const triggerToast = useCallback((message: string, title: string = "Moved to Wishlist!") => {
+    setToast({ title, message, show: true });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  }, []);
 
   const handleAction = (item: any, type: "wishlist" | "remove") => {
     setAnimatingItem({ id: item.id, type });
@@ -39,6 +45,27 @@ export default function BagPage() {
     } else {
       setPromoApplied(false);
       setPromoError("Invalid promo code. Try SAVE10.");
+    }
+  };
+
+  const handleAddAllToWishlist = () => {
+    let count = 0;
+    cart.forEach(item => {
+      if (!savedItems.some((si: any) => si.id === item.id)) {
+        handleSaved(item as any);
+        count++;
+      }
+    });
+    if (cart.length > 0) {
+      triggerToast(`${cart.length} item${cart.length > 1 ? "s" : ""} added to your wishlist`);
+    } else {
+      triggerToast("No items in cart to move", "Cart is empty");
+    }
+  };
+
+  const handleRemoveAllFromCart = () => {
+    if (clearCart) {
+      clearCart();
     }
   };
 
@@ -68,6 +95,24 @@ export default function BagPage() {
 
   return (
     <div className="bg-[#fafafa] min-h-screen w-full max-w-[100vw] overflow-x-hidden py-6 px-4 md:px-12 font-sans">
+
+      {/* ── Toast ── */}
+      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${toast.show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+        }`}>
+        <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-[200px] max-w-[88vw]">
+          <div className="bg-[#E8456A] w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">{toast.title}</p>
+            <p className="text-xs text-gray-400 truncate">{toast.message}</p>
+          </div>
+          <button onClick={() => setToast(prev => ({ ...prev, show: false }))} className="text-gray-300 hover:text-gray-500 flex-shrink-0 ml-1">
+            <X size={12} />
+          </button>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto">
 
         {/* ── Back ── */}
@@ -93,11 +138,31 @@ export default function BagPage() {
 
             {/* Cart Items */}
             <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-6 md:p-8 border-b border-gray-50 flex justify-between items-center">
-                <span className="font-bold text-gray-900 uppercase text-[10px] md:text-xs tracking-widest">Cart Items</span>
-                <span className="bg-pink-50 text-[#D94F7A] text-[10px] md:text-xs px-3 md:px-4 py-1.5 rounded-full font-black uppercase tracking-widest">
-                  {cart.length} {cart.length === 1 ? "Item" : "Items"}
-                </span>
+              <div className="p-6 md:p-8 border-b border-gray-50 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                <div className="flex items-center justify-between md:justify-start gap-4">
+                  <span className="font-bold text-gray-900 uppercase text-[10px] md:text-xs tracking-widest">Cart Items</span>
+                  <span className="bg-pink-50 text-[#D94F7A] text-[10px] md:text-xs px-3 md:px-4 py-1.5 rounded-full font-black uppercase tracking-widest">
+                    {cart.length} {cart.length === 1 ? "Item" : "Items"}
+                  </span>
+                </div>
+
+                {/* ── Bulk Actions ── */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleAddAllToWishlist}
+                    className="inline-flex items-center gap-1.5 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-[#D94F7A] hover:text-[#D94F7A] transition-colors text-[10px] sm:text-xs font-semibold text-gray-700 group whitespace-nowrap"
+                  >
+                    <Heart size={14} className="text-gray-400 group-hover:text-[#D94F7A] transition-colors" />
+                    Move All to Wishlist
+                  </button>
+                  <button
+                    onClick={handleRemoveAllFromCart}
+                    className="inline-flex items-center gap-1.5 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-red-300 hover:text-red-500 transition-colors text-[10px] sm:text-xs font-semibold text-gray-700 group whitespace-nowrap"
+                  >
+                    <X size={14} className="text-gray-400 group-hover:text-red-500 transition-colors" />
+                    Clear All
+                  </button>
+                </div>
               </div>
 
               <div className="divide-y divide-gray-50">
