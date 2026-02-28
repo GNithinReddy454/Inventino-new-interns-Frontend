@@ -17,19 +17,13 @@ export default function AuthLayout({
   children,
   bgImage = "/auth-bg.jpg", // default image
 }: Props) {
-
   return (
-
     <div className="fixed inset-0 w-full h-full grid grid-cols-1 lg:grid-cols-2 bg-white font-inter">
-
       {/* LEFT */}
       <div className="flex items-center justify-center px-6 lg:px-16 overflow-y-auto">
-
         <div className="w-full max-w-md">
-
           {/* LOGO */}
           <div className="flex justify-center mb-4">
-
             <Image
               src="/logo.png"
               alt="Inventino"
@@ -37,13 +31,10 @@ export default function AuthLayout({
               height={32}
               priority
             />
-
           </div>
-
 
           {/* HEADING */}
           <div className="text-center mb-6">
-
             <h1 className="text-[10px] tracking-[0.2em] text-gray-400 uppercase">
               Luxury Bracelets & Jewelry
             </h1>
@@ -59,15 +50,11 @@ export default function AuthLayout({
           </div>
 
           {children}
-
         </div>
-
       </div>
-
 
       {/* RIGHT IMAGE */}
       <div className="relative hidden lg:block">
-
         <Image
           src={bgImage}
           alt="Auth"
@@ -75,11 +62,7 @@ export default function AuthLayout({
           className="object-cover"
           priority
         />
-
       </div>
-
     </div>
-
   );
-
 }

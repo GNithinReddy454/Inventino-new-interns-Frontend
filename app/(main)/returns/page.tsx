@@ -1,29 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { Gem, Sparkles, ArrowRight, PackageCheck, Search, ClipboardCheck, Heart } from "lucide-react";
+import {
+  Gem,
+  Sparkles,
+  ArrowRight,
+  PackageCheck,
+  Search,
+  ClipboardCheck,
+  Heart,
+} from "lucide-react";
 
 const returnSteps = [
-  { 
-    title: "14-Day Grace Period", 
+  {
+    title: "14-Day Grace Period",
     desc: "We offer a 14-day return window for all unworn jewelry in its original Inventino signature packaging.",
-    icon: <PackageCheck className="text-pink-500" size={28} />
+    icon: <PackageCheck className="text-pink-500" size={28} />,
   },
-  { 
-    title: "Artisan Inspection", 
+  {
+    title: "Artisan Inspection",
     desc: "Every return is meticulously inspected by our master goldsmiths to ensure the piece remains in pristine condition.",
-    icon: <Search className="text-pink-500" size={28} />
+    icon: <Search className="text-pink-500" size={28} />,
   },
-  { 
-    title: "Seamless Refund", 
+  {
+    title: "Seamless Refund",
     desc: "Approved refunds are processed to your original payment method within 5-7 business days.",
-    icon: <ClipboardCheck className="text-pink-500" size={28} />
+    icon: <ClipboardCheck className="text-pink-500" size={28} />,
   },
-  { 
-    title: "Bespoke Items", 
+  {
+    title: "Bespoke Items",
     desc: "Please note that custom-engraved and personalized pieces are handcrafted for you and are final sale.",
-    icon: <Heart className="text-pink-500" size={28} />
-  }
+    icon: <Heart className="text-pink-500" size={28} />,
+  },
 ];
 
 export default function ReturnsPage() {
@@ -39,19 +47,27 @@ export default function ReturnsPage() {
         </h1>
         <div className="w-24 h-1 bg-pink-200 mx-auto mb-8 rounded-full"></div>
         <p className="text-gray-500 font-light text-lg max-w-2xl mx-auto leading-relaxed">
-          Your satisfaction is our priority. If your handmade treasure isn&apos;t perfect, our concierge team is here to assist.
+          Your satisfaction is our priority. If your handmade treasure
+          isn&apos;t perfect, our concierge team is here to assist.
         </p>
       </section>
 
       {/* 2. ICON GRID - Clean & Spaced */}
       <section className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {returnSteps.map((item, index) => (
-          <div key={index} className="group bg-white p-10 rounded-[32px] border border-pink-100/50 hover:border-pink-300 transition-all duration-500 hover:shadow-2xl hover:shadow-pink-100/30 text-center">
+          <div
+            key={index}
+            className="group bg-white p-10 rounded-[32px] border border-pink-100/50 hover:border-pink-300 transition-all duration-500 hover:shadow-2xl hover:shadow-pink-100/30 text-center"
+          >
             <div className="bg-pink-50 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 mx-auto group-hover:scale-110 transition-transform duration-500">
               {item.icon}
             </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">{item.title}</h3>
-            <p className="text-gray-500 leading-relaxed text-sm font-light">{item.desc}</p>
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+              {item.title}
+            </h3>
+            <p className="text-gray-500 leading-relaxed text-sm font-light">
+              {item.desc}
+            </p>
           </div>
         ))}
       </section>
@@ -61,9 +77,12 @@ export default function ReturnsPage() {
         <div className="p-16 rounded-[50px] bg-[#1A0F13] text-white relative overflow-hidden shadow-2xl">
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
             <div className="text-center md:text-left">
-              <h2 className="text-4xl font-serif font-medium mb-4">Start Your Return</h2>
+              <h2 className="text-4xl font-serif font-medium mb-4">
+                Start Your Return
+              </h2>
               <p className="text-pink-100/60 max-w-sm text-lg font-light">
-                Contact our concierge with your order ID to begin your return journey.
+                Contact our concierge with your order ID to begin your return
+                journey.
               </p>
             </div>
             <Link href="/contact">
@@ -80,4 +99,3 @@ export default function ReturnsPage() {
     </main>
   );
 }
-

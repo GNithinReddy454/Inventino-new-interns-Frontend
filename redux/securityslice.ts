@@ -24,7 +24,12 @@ const securitySlice = createSlice({
   name: "security",
   initialState,
   reducers: {
-    setField(state, action: PayloadAction<Partial<Pick<SecurityState, "current" | "newPwd" | "confirm">>>) {
+    setField(
+      state,
+      action: PayloadAction<
+        Partial<Pick<SecurityState, "current" | "newPwd" | "confirm">>
+      >,
+    ) {
       return { ...state, ...action.payload };
     },
     setErrors(state, action: PayloadAction<SecurityState["errors"]>) {
@@ -32,9 +37,9 @@ const securitySlice = createSlice({
     },
     submitSuccess(state) {
       state.current = "";
-      state.newPwd  = "";
+      state.newPwd = "";
       state.confirm = "";
-      state.errors  = {};
+      state.errors = {};
       state.savedBanner = true;
     },
     hideSavedBanner(state) {
@@ -43,5 +48,6 @@ const securitySlice = createSlice({
   },
 });
 
-export const { setField, setErrors, submitSuccess, hideSavedBanner } = securitySlice.actions;
+export const { setField, setErrors, submitSuccess, hideSavedBanner } =
+  securitySlice.actions;
 export default securitySlice.reducer;

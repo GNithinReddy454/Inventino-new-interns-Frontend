@@ -5,7 +5,7 @@ import accountReducer from "./accountslice";
 import notificationsReducer from "./notificationslice";
 import securityReducer from "./securityslice";
 import appearanceReducer from "./appearanceslice";
-import authReducer from "./authslice";          // ← new
+import authReducer from "./authslice"; // ← new
 
 export const store = configureStore({
   reducer: {
@@ -13,7 +13,7 @@ export const store = configureStore({
     notifications: notificationsReducer,
     security: securityReducer,
     appearance: appearanceReducer,
-    auth: authReducer,                          // ← new
+    auth: authReducer, // ← new
   },
 });
 

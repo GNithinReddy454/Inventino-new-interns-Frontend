@@ -1,10 +1,7 @@
-import React from 'react';
+import React from "react";
 
 function StoriesPage() {
-  return (
-    <div>Stories Page</div>
-  );
+  return <div>Stories Page</div>;
 }
 
 export default StoriesPage;
-

@@ -4,11 +4,36 @@ import { useRef } from "react";
 import Link from "next/link";
 
 const categories = [
-  { name: "Bracelets", count: "180+ Products", image: "/images/bracelets-charm.jpg", slug: "bracelets" },
-  { name: "Earrings", count: "220+ Products", image: "/images/bag-charm.jpg", slug: "earrings" },
-  { name: "Necklaces", count: "200+ Products", image: "/images/diary-charm.jpg", slug: "necklaces" },
-  { name: "Rings", count: "150+ Products", image: "/images/red-charm.jpg", slug: "rings" },
-  { name: "Accessories", count: "80+ Products", image: "/images/HairAccesories.jpg", slug: "accessories" },
+  {
+    name: "Bracelets",
+    count: "180+ Products",
+    image: "/images/bracelets-charm.jpg",
+    slug: "bracelets",
+  },
+  {
+    name: "Earrings",
+    count: "220+ Products",
+    image: "/images/bag-charm.jpg",
+    slug: "earrings",
+  },
+  {
+    name: "Necklaces",
+    count: "200+ Products",
+    image: "/images/diary-charm.jpg",
+    slug: "necklaces",
+  },
+  {
+    name: "Rings",
+    count: "150+ Products",
+    image: "/images/red-charm.jpg",
+    slug: "rings",
+  },
+  {
+    name: "Accessories",
+    count: "80+ Products",
+    image: "/images/HairAccesories.jpg",
+    slug: "accessories",
+  },
 ];
 
 export default function ShopByCategory() {
@@ -19,7 +44,9 @@ export default function ShopByCategory() {
 
     const container = scrollRef.current;
     const firstChild = container.children[0] as HTMLElement;
-    const amount = firstChild.clientWidth + parseInt(window.getComputedStyle(container).gap || "0");
+    const amount =
+      firstChild.clientWidth +
+      parseInt(window.getComputedStyle(container).gap || "0");
 
     // Disable CSS smooth scrolling and snapping while animating to prevent conflicts
     container.style.scrollBehavior = "auto";
@@ -36,9 +63,10 @@ export default function ShopByCategory() {
       const progress = Math.min(elapsed / duration, 1);
 
       // easeInOutCubic
-      const easeProgress = progress < 0.5
-        ? 4 * Math.pow(progress, 3)
-        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      const easeProgress =
+        progress < 0.5
+          ? 4 * Math.pow(progress, 3)
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
       container.scrollLeft = startPos + (targetPos - startPos) * easeProgress;
 
@@ -57,11 +85,14 @@ export default function ShopByCategory() {
   return (
     <section className="w-full bg-pink-100 px-4 sm:px-8 md:px-12 lg:px-16 py-10 md:py-16">
       <div className="max-w-[1400px] w-full mx-auto">
-
         {/* Heading */}
         <div className="text-center mb-10 md:mb-14">
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">Shop by Category</h2>
-          <p className="text-sm text-gray-500">Find the perfect handmade piece for every occasion</p>
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
+            Shop by Category
+          </h2>
+          <p className="text-sm text-gray-500">
+            Find the perfect handmade piece for every occasion
+          </p>
         </div>
 
         {/* Scrollable row + arrows */}
@@ -100,7 +131,9 @@ export default function ShopByCategory() {
                   <h3 className="font-bold text-gray-900 text-sm md:text-base mb-1 group-hover:text-pink-600 transition-colors">
                     {cat.name}
                   </h3>
-                  <p className="text-[11px] md:text-xs text-gray-400">{cat.count}</p>
+                  <p className="text-[11px] md:text-xs text-gray-400">
+                    {cat.count}
+                  </p>
                 </Link>
               </div>
             ))}
@@ -115,7 +148,6 @@ export default function ShopByCategory() {
             ❯
           </button>
         </div>
-
       </div>
     </section>
   );

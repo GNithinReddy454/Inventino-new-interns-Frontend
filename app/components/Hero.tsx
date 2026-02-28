@@ -76,8 +76,9 @@ export default function Hero() {
             key={index}
             src={s.image}
             alt={`Hero slide ${index + 1}`}
-            className={`absolute w-full h-full object-cover transition-opacity duration-1000 ${index === current ? "opacity-100" : "opacity-0"
-              }`}
+            className={`absolute w-full h-full object-cover transition-opacity duration-1000 ${
+              index === current ? "opacity-100" : "opacity-0"
+            }`}
           />
         ))}
 
@@ -87,8 +88,9 @@ export default function Hero() {
 
         {/* Text — left aligned */}
         <div
-          className={`absolute inset-0 flex flex-col justify-center z-20 px-8 md:px-16 lg:px-24 transition-all duration-1000 ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-            }`}
+          className={`absolute inset-0 flex flex-col justify-center z-20 px-8 md:px-16 lg:px-24 transition-all duration-1000 ${
+            isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+          }`}
         >
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-3 drop-shadow-2xl tracking-tight leading-tight max-w-xl">
             {slide.headline.map((word, i) =>
@@ -98,7 +100,7 @@ export default function Hero() {
                 </span>
               ) : (
                 <span key={i}>{word} </span>
-              )
+              ),
             )}
           </h1>
 
@@ -131,10 +133,11 @@ export default function Hero() {
               <button
                 key={index}
                 onClick={() => setCurrent(index)}
-                className={`rounded-full transition-all duration-300 ${index === current
+                className={`rounded-full transition-all duration-300 ${
+                  index === current
                     ? "bg-pink-500 w-6 h-2.5"
                     : "bg-white/50 hover:bg-white/70 w-2.5 h-2.5"
-                  }`}
+                }`}
                 aria-label={`Go to slide ${index + 1}`}
               />
             ))}

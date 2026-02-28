@@ -3,7 +3,7 @@ import { Address, OrderResponse, PaymentMethod } from "@/lib/types";
 
 /**
  * Order Service - All order operations
- * 
+ *
  * Handles:
  * - Placing orders
  * - Getting order history
@@ -20,10 +20,11 @@ export const orderService = {
   async placeOrder(
     shippingAddress: Address,
     paymentMethod: PaymentMethod,
-    cardDetails?: any
+    cardDetails?: any,
   ): Promise<OrderResponse> {
     const formattedAddress = {
-      fullName: shippingAddress.fullName || 
+      fullName:
+        shippingAddress.fullName ||
         `${shippingAddress.firstName} ${shippingAddress.lastName}`,
       phone: shippingAddress.phone,
       street: shippingAddress.street || shippingAddress.streetAddress,
@@ -62,8 +63,8 @@ export const orderService = {
         paymentMethod: paymentMethod,
         shippingAddress: shippingAddress,
         errorCode: error.response?.status?.toString() || "500",
-        errorMessage: error.response?.data?.message || 
-          "Failed to connect to backend",
+        errorMessage:
+          error.response?.data?.message || "Failed to connect to backend",
       };
     }
   },
@@ -88,7 +89,9 @@ export const orderService = {
    * Cancel an order
    */
   async cancelOrder(orderId: string, reason?: string) {
-    const response = await apiClient.post(`/api/orders/${orderId}/cancel`, { reason });
+    const response = await apiClient.post(`/api/orders/${orderId}/cancel`, {
+      reason,
+    });
     return response.data;
   },
 

@@ -22,7 +22,10 @@ const accountSlice = createSlice({
   name: "account",
   initialState,
   reducers: {
-    setField(state, action: PayloadAction<Partial<Omit<AccountState, "savedBanner">>>) {
+    setField(
+      state,
+      action: PayloadAction<Partial<Omit<AccountState, "savedBanner">>>,
+    ) {
       return { ...state, ...action.payload };
     },
     showSavedBanner(state) {
@@ -34,5 +37,6 @@ const accountSlice = createSlice({
   },
 });
 
-export const { setField, showSavedBanner, hideSavedBanner } = accountSlice.actions;
+export const { setField, showSavedBanner, hideSavedBanner } =
+  accountSlice.actions;
 export default accountSlice.reducer;

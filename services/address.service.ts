@@ -3,7 +3,7 @@ import { Address } from "@/lib/types";
 
 /**
  * Address Service - All address operations
- * 
+ *
  * Handles:
  * - Getting user addresses
  * - Adding new addresses
@@ -72,7 +72,10 @@ export const addressService = {
    * Validate address
    */
   async validateAddress(addressData: Partial<Address>) {
-    const response = await apiClient.post("/api/addresses/validate", addressData);
+    const response = await apiClient.post(
+      "/api/addresses/validate",
+      addressData,
+    );
     return response.data;
   },
 };

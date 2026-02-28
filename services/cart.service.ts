@@ -3,7 +3,7 @@ import { CartResponse } from "@/lib/types";
 
 /**
  * Cart Service - All cart operations
- * 
+ *
  * Handles:
  * - Getting cart items
  * - Adding products to cart
@@ -36,7 +36,9 @@ export const cartService = {
    * @param quantity - New quantity
    */
   async updateCartQuantity(productId: string, quantity: number) {
-    const response = await apiClient.put(`/api/cart/${productId}`, { quantity });
+    const response = await apiClient.put(`/api/cart/${productId}`, {
+      quantity,
+    });
     return response.data;
   },
 

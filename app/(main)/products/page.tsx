@@ -1,7 +1,14 @@
 "use client";
 import { Roboto } from "next/font/google";
 import ProductCard from "@/app/components/ProductCard";
-import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react"; // Added Suspense
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  Suspense,
+} from "react"; // Added Suspense
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   ChevronLeft,
@@ -40,12 +47,23 @@ interface Meta {
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-const CATEGORIES_LIST = ["Bracelets", "Earrings", "Necklaces", "Rings", "Accessories"];
-const SORT_OPTIONS = ["Featured", "Price: Low to High", "Price: High to Low", "Newest First"];
+const CATEGORIES_LIST = [
+  "Bracelets",
+  "Earrings",
+  "Necklaces",
+  "Rings",
+  "Accessories",
+];
+const SORT_OPTIONS = [
+  "Featured",
+  "Price: Low to High",
+  "Price: High to Low",
+  "Newest First",
+];
 const ITEMS_PER_PAGE = 9;
 
 const SORT_MAP: Record<string, string> = {
-  "Featured": "featured",
+  Featured: "featured",
   "Price: Low to High": "price_asc",
   "Price: High to Low": "price_desc",
   "Newest First": "newest",
@@ -91,7 +109,10 @@ function PriceInputs({
         min={0}
         max={maxPrice ?? maxPriceFetched ?? undefined}
         onChange={(e) => {
-          if (e.target.value === "") { setMinPrice(undefined); return; }
+          if (e.target.value === "") {
+            setMinPrice(undefined);
+            return;
+          }
           const val = Number(e.target.value);
           if (val < 0) return;
           setMinPrice(val);
@@ -105,7 +126,10 @@ function PriceInputs({
         min={minPrice ?? 0}
         max={maxPriceFetched ?? undefined}
         onChange={(e) => {
-          if (e.target.value === "") { setMaxPrice(undefined); return; }
+          if (e.target.value === "") {
+            setMaxPrice(undefined);
+            return;
+          }
           const val = Number(e.target.value);
           if (val < 0) return;
           setMaxPrice(val);
@@ -127,18 +151,22 @@ function ProductsContent() {
 
   // Filter/sort state (initialized from URL)
   const [selectedCategory, setSelectedCategory] = useState(
-    searchParams.get("category") || "All Products"
+    searchParams.get("category") || "All Products",
   );
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "Featured");
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [currentPage, setCurrentPage] = useState(
-    Number(searchParams.get("page")) || 1
+    Number(searchParams.get("page")) || 1,
   );
   const [minPrice, setMinPrice] = useState<number | undefined>(
-    searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : undefined
+    searchParams.get("minPrice")
+      ? Number(searchParams.get("minPrice"))
+      : undefined,
   );
   const [maxPrice, setMaxPrice] = useState<number | undefined>(
-    searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined
+    searchParams.get("maxPrice")
+      ? Number(searchParams.get("maxPrice"))
+      : undefined,
   );
   const [sortOpen, setSortOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -153,20 +181,29 @@ function ProductsContent() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
-  const [minPriceFetched, setMinPriceFetched] = useState<number | undefined>(undefined);
-  const [maxPriceFetched, setMaxPriceFetched] = useState<number | undefined>(undefined);
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>(
+    {},
+  );
+  const [minPriceFetched, setMinPriceFetched] = useState<number | undefined>(
+    undefined,
+  );
+  const [maxPriceFetched, setMaxPriceFetched] = useState<number | undefined>(
+    undefined,
+  );
 
   const sortRef = useRef<HTMLDivElement>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebounce(searchQuery, 350);
 
-  useEffect(() => { setIsClient(true); }, []);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Sync URL params
   useEffect(() => {
     const params = new URLSearchParams();
-    if (selectedCategory !== "All Products") params.set("category", selectedCategory);
+    if (selectedCategory !== "All Products")
+      params.set("category", selectedCategory);
     if (sortBy !== "Featured") params.set("sort", sortBy);
     if (debouncedSearch) params.set("q", debouncedSearch);
     if (minPrice !== undefined) params.set("minPrice", String(minPrice));
@@ -174,7 +211,16 @@ function ProductsContent() {
     if (currentPage > 1) params.set("page", String(currentPage));
     const query = params.toString();
     router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
-  }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice, currentPage, pathname, router]);
+  }, [
+    selectedCategory,
+    sortBy,
+    debouncedSearch,
+    minPrice,
+    maxPrice,
+    currentPage,
+    pathname,
+    router,
+  ]);
 
   // Close sort dropdown on outside click
   useEffect(() => {
@@ -233,8 +279,17 @@ function ProductsContent() {
     };
 
     fetchProducts();
-    return () => { cancelled = true; };
-  }, [currentPage, sortBy, selectedCategory, debouncedSearch, minPrice, maxPrice]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentPage,
+    sortBy,
+    selectedCategory,
+    debouncedSearch,
+    minPrice,
+    maxPrice,
+  ]);
 
   // Fetch category counts + price bounds once
   useEffect(() => {
@@ -286,11 +341,28 @@ function ProductsContent() {
   ].filter(Boolean).length;
 
   const getPaginationRange = (): (number | "...")[] => {
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (totalPages <= 7)
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     if (currentPage <= 4) return [1, 2, 3, 4, 5, "...", totalPages];
     if (currentPage >= totalPages - 3)
-      return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+      return [
+        1,
+        "...",
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ];
+    return [
+      1,
+      "...",
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      "...",
+      totalPages,
+    ];
   };
 
   if (!isClient) return <div className="min-h-screen bg-white" />;
@@ -302,7 +374,10 @@ function ProductsContent() {
       style={{ WebkitOverflowScrolling: "touch" }}
     >
       <button
-        onClick={() => { setSelectedCategory("All Products"); onSelect?.(); }}
+        onClick={() => {
+          setSelectedCategory("All Products");
+          onSelect?.();
+        }}
         className={`flex-shrink-0 lg:flex lg:justify-between lg:w-full text-sm font-medium px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
           selectedCategory === "All Products"
             ? "bg-[#D94F7A] text-white lg:bg-transparent lg:text-[#D94F7A]"
@@ -321,7 +396,10 @@ function ProductsContent() {
         return (
           <button
             key={cat}
-            onClick={() => { setSelectedCategory(cat); onSelect?.(); }}
+            onClick={() => {
+              setSelectedCategory(cat);
+              onSelect?.();
+            }}
             className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
               isActive
                 ? "bg-[#D94F7A] text-white font-bold lg:bg-transparent lg:text-[#D94F7A]"
@@ -330,9 +408,13 @@ function ProductsContent() {
           >
             <span>{cat}</span>
             {count > 0 && (
-              <span className={`hidden lg:inline px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${
-                isActive ? "bg-pink-100 text-[#D94F7A]" : "bg-gray-100 text-gray-400"
-              }`}>
+              <span
+                className={`hidden lg:inline px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${
+                  isActive
+                    ? "bg-pink-100 text-[#D94F7A]"
+                    : "bg-gray-100 text-gray-400"
+                }`}
+              >
                 {count}
               </span>
             )}
@@ -345,9 +427,13 @@ function ProductsContent() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative">
       {/* Toast */}
-      <div className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${
-        toast.show ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0 pointer-events-none"
-      }`}>
+      <div
+        className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${
+          toast.show
+            ? "translate-y-0 opacity-100"
+            : "translate-y-12 opacity-0 pointer-events-none"
+        }`}
+      >
         <div className="bg-white rounded-full py-3 px-6 flex items-center gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-50 border-l-4 border-l-[#22C55E]">
           <div className="bg-[#22C55E] p-1.5 rounded-full text-white flex-shrink-0">
             <CheckCircle2 size={18} strokeWidth={3} />
@@ -376,9 +462,11 @@ function ProductsContent() {
         }`}
         onClick={() => setSidebarOpen(false)}
       />
-      <div className={`fixed left-0 top-0 h-full w-72 z-50 overflow-y-auto bg-white transform transition-transform duration-300 ease-in-out lg:hidden ${
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      }`}>
+      <div
+        className={`fixed left-0 top-0 h-full w-72 z-50 overflow-y-auto bg-white transform transition-transform duration-300 ease-in-out lg:hidden ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="p-6 h-full">
           <div className="flex justify-between items-center mb-5">
             <h3 className="font-bold text-gray-900">Filters</h3>
@@ -388,17 +476,27 @@ function ProductsContent() {
                   {activeFilterCount}
                 </span>
               )}
-              <button onClick={clearFilters} className="text-xs text-[#D94F7A] font-medium hover:underline">
+              <button
+                onClick={clearFilters}
+                className="text-xs text-[#D94F7A] font-medium hover:underline"
+              >
                 Clear all
               </button>
-              <button onClick={() => setSidebarOpen(false)} className="ml-1 text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="ml-1 text-gray-400 hover:text-gray-600"
+              >
                 <X size={18} />
               </button>
             </div>
           </div>
-          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h4>
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">
+            Categories
+          </h4>
           <CategoryList onSelect={() => setSidebarOpen(false)} />
-          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price</h4>
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">
+            Price
+          </h4>
           <PriceInputs
             minPrice={minPrice}
             maxPrice={maxPrice}
@@ -423,14 +521,21 @@ function ProductsContent() {
                     {activeFilterCount}
                   </span>
                 )}
-                <button onClick={clearFilters} className="text-xs text-[#D94F7A] font-medium hover:underline">
+                <button
+                  onClick={clearFilters}
+                  className="text-xs text-[#D94F7A] font-medium hover:underline"
+                >
                   Clear all
                 </button>
               </div>
             </div>
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h4>
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">
+              Categories
+            </h4>
             <CategoryList />
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price</h4>
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">
+              Price
+            </h4>
             <PriceInputs
               minPrice={minPrice}
               maxPrice={maxPrice}
@@ -446,7 +551,9 @@ function ProductsContent() {
         <main className="flex-1 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col min-w-0">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{selectedCategory}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {selectedCategory}
+              </h1>
               <p className="text-xs text-gray-400 mt-0.5">
                 {loading ? "Loading…" : `${totalProducts} products found`}
               </p>
@@ -464,7 +571,10 @@ function ProductsContent() {
                 )}
               </button>
               <div className="relative flex-1 sm:w-52">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
                 <input
                   type="text"
                   placeholder="Search products..."
@@ -473,7 +583,10 @@ function ProductsContent() {
                   className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"
+                  >
                     <X size={12} />
                   </button>
                 )}
@@ -483,16 +596,26 @@ function ProductsContent() {
                   onClick={() => setSortOpen((o) => !o)}
                   className="flex items-center gap-2 text-sm bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm font-medium text-gray-700 hover:border-[#D94F7A] transition-colors whitespace-nowrap"
                 >
-                  <span className="hidden sm:inline text-gray-400 text-xs">Sort:</span>
-                  <span className="font-bold text-gray-900 text-xs">{sortBy}</span>
-                  <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`} />
+                  <span className="hidden sm:inline text-gray-400 text-xs">
+                    Sort:
+                  </span>
+                  <span className="font-bold text-gray-900 text-xs">
+                    {sortBy}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`text-gray-400 transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`}
+                  />
                 </button>
                 {sortOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 py-1.5 overflow-hidden">
                     {SORT_OPTIONS.map((opt) => (
                       <button
                         key={opt}
-                        onClick={() => { setSortBy(opt); setSortOpen(false); }}
+                        onClick={() => {
+                          setSortBy(opt);
+                          setSortOpen(false);
+                        }}
                         className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${sortBy === opt ? "text-[#D94F7A] font-bold bg-pink-50" : "text-gray-700 hover:bg-gray-50"}`}
                       >
                         {opt}
@@ -510,34 +633,49 @@ function ProductsContent() {
               {selectedCategory !== "All Products" && (
                 <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
                   {selectedCategory}
-                  <button onClick={() => setSelectedCategory("All Products")}><X size={11} /></button>
+                  <button onClick={() => setSelectedCategory("All Products")}>
+                    <X size={11} />
+                  </button>
                 </span>
               )}
               {sortBy !== "Featured" && (
                 <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
                   {sortBy}
-                  <button onClick={() => setSortBy("Featured")}><X size={11} /></button>
+                  <button onClick={() => setSortBy("Featured")}>
+                    <X size={11} />
+                  </button>
                 </span>
               )}
               {debouncedSearch && (
                 <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
                   "{debouncedSearch}"
-                  <button onClick={() => setSearchQuery("")}><X size={11} /></button>
+                  <button onClick={() => setSearchQuery("")}>
+                    <X size={11} />
+                  </button>
                 </span>
               )}
               {minPrice !== undefined && (
                 <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
                   Min: ${minPrice}
-                  <button onClick={() => setMinPrice(undefined)}><X size={11} /></button>
+                  <button onClick={() => setMinPrice(undefined)}>
+                    <X size={11} />
+                  </button>
                 </span>
               )}
               {maxPrice !== undefined && (
                 <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
                   Max: ${maxPrice}
-                  <button onClick={() => setMaxPrice(undefined)}><X size={11} /></button>
+                  <button onClick={() => setMaxPrice(undefined)}>
+                    <X size={11} />
+                  </button>
                 </span>
               )}
-              <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline">Clear all</button>
+              <button
+                onClick={clearFilters}
+                className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline"
+              >
+                Clear all
+              </button>
             </div>
           )}
 
@@ -545,25 +683,44 @@ function ProductsContent() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-6 text-sm flex items-center gap-3">
               <span className="flex-1">{error}</span>
-              <button onClick={() => setCurrentPage((p) => p)} className="text-xs font-semibold underline shrink-0">Retry</button>
+              <button
+                onClick={() => setCurrentPage((p) => p)}
+                className="text-xs font-semibold underline shrink-0"
+              >
+                Retry
+              </button>
             </div>
           )}
 
           {/* Product grid */}
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)}
+              {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
             </div>
           ) : products.length === 0 && !error ? (
             <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
               <div className="text-5xl mb-4">🔍</div>
-              <h3 className="font-bold text-gray-900 text-lg mb-1">No products found</h3>
-              <p className="text-gray-400 text-sm mb-6">Try adjusting your filters</p>
-              <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
+              <h3 className="font-bold text-gray-900 text-lg mb-1">
+                No products found
+              </h3>
+              <p className="text-gray-400 text-sm mb-6">
+                Try adjusting your filters
+              </p>
+              <Button variant="outline" onClick={clearFilters}>
+                Clear Filters
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {products.map((product) => <ProductCard key={product.id} product={product as any} onAdd={triggerToast} />)}
+              {products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product as any}
+                  onAdd={triggerToast}
+                />
+              ))}
             </div>
           )}
 
@@ -581,21 +738,25 @@ function ProductsContent() {
                 {getPaginationRange().map((item, index) => (
                   <button
                     key={index}
-                    onClick={() => typeof item === "number" && setCurrentPage(item)}
+                    onClick={() =>
+                      typeof item === "number" && setCurrentPage(item)
+                    }
                     disabled={item === "..."}
                     className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${
                       currentPage === item
                         ? "bg-[#D94F7A] text-white border-[#D94F7A] shadow-md shadow-[#D94F7A]/30"
                         : item === "..."
-                        ? "bg-transparent text-gray-300 border-transparent cursor-default"
-                        : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
+                          ? "bg-transparent text-gray-300 border-transparent cursor-default"
+                          : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
                     }`}
                   >
                     {item}
                   </button>
                 ))}
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
                   disabled={currentPage === totalPages}
                   className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
                 >
@@ -621,7 +782,9 @@ export default function ProductsPage() {
         <div className="flex items-center justify-center min-h-screen bg-gray-50/50">
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="animate-spin text-[#D94F7A]" size={48} />
-            <p className="text-sm font-medium text-gray-500">Loading your treasures...</p>
+            <p className="text-sm font-medium text-gray-500">
+              Loading your treasures...
+            </p>
           </div>
         </div>
       }

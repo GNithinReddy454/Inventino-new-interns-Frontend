@@ -3,7 +3,9 @@ import { AuthResponse, User } from "@/lib/types";
 
 export const authService = {
   // Uses User interface for credentials to avoid 'any'
-  async loginUser(credentials: Partial<User> & { password?: string }): Promise<AuthResponse> {
+  async loginUser(
+    credentials: Partial<User> & { password?: string },
+  ): Promise<AuthResponse> {
     const response = await apiClient.post("/auth/login", credentials);
     // Standard Practice: Pick JWT and store in localStorage for interceptors
     if (response.data?.data?.token) {
@@ -12,7 +14,9 @@ export const authService = {
     return response.data;
   },
 
-  async registerUser(userData: Partial<User> & { password?: string }): Promise<AuthResponse> {
+  async registerUser(
+    userData: Partial<User> & { password?: string },
+  ): Promise<AuthResponse> {
     const response = await apiClient.post("/auth/register", userData);
     if (response.data?.data?.token) {
       localStorage.setItem("token", response.data.data.token);
@@ -42,8 +46,13 @@ export const authService = {
     return response.data;
   },
 
-  async resetPassword(data: { password: string; confirmPassword: string; email?: string; token?: string }): Promise<any> {
+  async resetPassword(data: {
+    password: string;
+    confirmPassword: string;
+    email?: string;
+    token?: string;
+  }): Promise<any> {
     const response = await apiClient.post("/auth/reset-password", data);
     return response.data;
-  }
+  },
 };

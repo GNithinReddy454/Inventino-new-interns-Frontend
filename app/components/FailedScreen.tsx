@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Button } from './ui/button';
-import { OrderResponse } from '@/lib/types';
-import { XCircle, CreditCard, AlertCircle, Lock } from 'lucide-react';
+import { Button } from "./ui/button";
+import { OrderResponse } from "@/lib/types";
+import { XCircle, CreditCard, AlertCircle, Lock } from "lucide-react";
 
 interface FailedScreenProps {
   order: OrderResponse;
@@ -10,7 +10,11 @@ interface FailedScreenProps {
   onChangePayment: () => void;
 }
 
-export function FailedScreen({ order, onTryAgain, onChangePayment }: FailedScreenProps) {
+export function FailedScreen({
+  order,
+  onTryAgain,
+  onChangePayment,
+}: FailedScreenProps) {
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
       {/* Progress Steps */}
@@ -37,7 +41,9 @@ export function FailedScreen({ order, onTryAgain, onChangePayment }: FailedScree
             <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-semibold shadow-md">
               ✓
             </div>
-            <p className="text-xs font-medium text-green-600 mt-2">Information</p>
+            <p className="text-xs font-medium text-green-600 mt-2">
+              Information
+            </p>
           </div>
 
           {/* Payment - Step 3 */}
@@ -57,8 +63,14 @@ export function FailedScreen({ order, onTryAgain, onChangePayment }: FailedScree
           </div>
 
           {/* Progress Line */}
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 transform -translate-y-1/2" style={{ zIndex: 0 }}>
-            <div className="h-full bg-gradient-to-r from-green-500 via-green-500 to-red-500" style={{ width: '75%' }} />
+          <div
+            className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 transform -translate-y-1/2"
+            style={{ zIndex: 0 }}
+          >
+            <div
+              className="h-full bg-gradient-to-r from-green-500 via-green-500 to-red-500"
+              style={{ width: "75%" }}
+            />
           </div>
         </div>
       </div>
@@ -83,11 +95,15 @@ export function FailedScreen({ order, onTryAgain, onChangePayment }: FailedScree
           <div className="flex-1">
             <p className="font-semibold text-gray-900 mb-1">Error Details</p>
             <p className="text-sm text-gray-700 mb-2">
-              {order.errorMessage || 'Payment processing failed. Please check your payment details and try again.'}
+              {order.errorMessage ||
+                "Payment processing failed. Please check your payment details and try again."}
             </p>
             {order.errorCode && (
               <p className="text-xs text-gray-500">
-                Error Code: <span className="font-mono font-semibold">{order.errorCode}</span>
+                Error Code:{" "}
+                <span className="font-mono font-semibold">
+                  {order.errorCode}
+                </span>
               </p>
             )}
           </div>
@@ -95,9 +111,13 @@ export function FailedScreen({ order, onTryAgain, onChangePayment }: FailedScree
 
         <div className="pt-3 border-t border-red-200">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Attempted Payment Method</span>
+            <span className="text-sm text-gray-600">
+              Attempted Payment Method
+            </span>
             <span className="font-semibold text-gray-900 capitalize">
-              {order.paymentMethod === 'card' ? 'Credit/Debit Card' : order.paymentMethod}
+              {order.paymentMethod === "card"
+                ? "Credit/Debit Card"
+                : order.paymentMethod}
             </span>
           </div>
         </div>
@@ -105,7 +125,9 @@ export function FailedScreen({ order, onTryAgain, onChangePayment }: FailedScree
 
       {/* Common Issues */}
       <div className="bg-gray-50 rounded-lg p-4 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-3 text-sm">Common reasons for payment failure:</h3>
+        <h3 className="font-semibold text-gray-900 mb-3 text-sm">
+          Common reasons for payment failure:
+        </h3>
         <ul className="space-y-2 text-sm text-gray-600">
           <li className="flex items-start gap-2">
             <span className="text-pink-500 mt-0.5">•</span>
@@ -128,7 +150,9 @@ export function FailedScreen({ order, onTryAgain, onChangePayment }: FailedScree
 
       {/* Shipping Address (for reference) */}
       <div className="bg-gray-50 rounded-lg p-4 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-2 text-sm">Your shipping address is saved:</h3>
+        <h3 className="font-semibold text-gray-900 mb-2 text-sm">
+          Your shipping address is saved:
+        </h3>
         <div className="text-sm text-gray-600 space-y-1">
           <p className="font-medium text-gray-900">
             {order.shippingAddress.firstName} {order.shippingAddress.lastName}
@@ -162,7 +186,7 @@ export function FailedScreen({ order, onTryAgain, onChangePayment }: FailedScree
 
         <Button
           variant="ghost"
-          onClick={() => window.location.href = '/support'}
+          onClick={() => (window.location.href = "/support")}
           className="w-full text-gray-600 hover:text-gray-900 hover:bg-gray-100"
         >
           Contact Support

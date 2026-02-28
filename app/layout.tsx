@@ -4,8 +4,8 @@ import { StoreProvider } from "@/lib/storeContext";
 import { AuthProvider } from "@/app/(main)/components/authContext";
 import { CartProvider } from "@/lib/cartContext";
 import { ReduxProvider } from "@/redux/provider";
-import { SWRConfig } from 'swr';
-import { swrConfig, fetcher } from '@/hooks/useApi';
+import { SWRConfig } from "swr";
+import { swrConfig, fetcher } from "@/hooks/useApi";
 import "./globals.css";
 
 const geistSans = Geist({

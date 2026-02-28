@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import apiClient from "@/lib/api";
 import { useAppDispatch } from "@/redux/store";
 import { logout as logoutAction } from "@/redux/authslice";
@@ -14,7 +20,7 @@ type User = {
   dobYear?: string;
   gender?: string;
   memberSince?: string;
-  photoUrl?: string;   // ← profile photo (base64 or URL)
+  photoUrl?: string; // ← profile photo (base64 or URL)
 };
 
 type AuthContextType = {
@@ -40,7 +46,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // If no local user but token exists, fetch profile from backend
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token =
+          typeof window !== "undefined" ? localStorage.getItem("token") : null;
         if (token) {
           try {
             const resp = await apiClient.get("/users/me");
@@ -48,7 +55,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (serverUser) {
               setUser(serverUser);
               try {
-                localStorage.setItem("inventino_user", JSON.stringify(serverUser));
+                localStorage.setItem(
+                  "inventino_user",
+                  JSON.stringify(serverUser),
+                );
               } catch (e) {}
             }
           } catch (e) {

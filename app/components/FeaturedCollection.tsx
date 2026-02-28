@@ -17,7 +17,9 @@ export default function FeaturedCollection() {
 
     const container = scrollRef.current;
     const firstChild = container.children[0] as HTMLElement;
-    const amount = firstChild.clientWidth + parseInt(window.getComputedStyle(container).gap || "0");
+    const amount =
+      firstChild.clientWidth +
+      parseInt(window.getComputedStyle(container).gap || "0");
 
     // Disable CSS smooth scrolling and snapping while animating to prevent conflicts
     container.style.scrollBehavior = "auto";
@@ -34,9 +36,10 @@ export default function FeaturedCollection() {
       const progress = Math.min(elapsed / duration, 1);
 
       // easeInOutCubic
-      const easeProgress = progress < 0.5
-        ? 4 * Math.pow(progress, 3)
-        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      const easeProgress =
+        progress < 0.5
+          ? 4 * Math.pow(progress, 3)
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
       container.scrollLeft = startPos + (targetPos - startPos) * easeProgress;
 
@@ -57,8 +60,12 @@ export default function FeaturedCollection() {
       <div className="max-w-[1400px] w-full mx-auto">
         {/* Heading */}
         <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">Featured Collection</h2>
-          <p className="text-sm text-gray-500">Handpicked pieces that showcase exceptional craftsmanship</p>
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
+            Featured Collection
+          </h2>
+          <p className="text-sm text-gray-500">
+            Handpicked pieces that showcase exceptional craftsmanship
+          </p>
         </div>
 
         {/* Scrollable row + arrows */}
