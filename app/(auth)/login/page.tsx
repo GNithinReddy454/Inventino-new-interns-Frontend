@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { loginUserAction } from "@/redux/authslice";
 import { loginSchema, type LoginFormData } from "../schema";
+import { useToast } from "@/app/components/GlobalToast";
 
 import AuthLayout from "../_components/AuthSplitLayout";
 import AuthInput from "../_components/AuthInput";
@@ -19,7 +20,8 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { loading, error } = useAppSelector((state) => state.auth);
+  const { loading } = useAppSelector((state) => state.auth);
+  const { showToast } = useToast();
 
   const {
     register,
@@ -30,35 +32,32 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    console.log("Login form submitted with data:", data);
     if (!data.email || !data.password) {
-      console.error("Email or password missing");
       return;
     }
 
-    try {
-      const result = await dispatch(loginUserAction({ email: data.email, password: data.password })).unwrap();
-      console.log("Login result:", result);
+    const resultAction = await dispatch(
+      loginUserAction({ email: data.email, password: data.password })
+    );
 
-      const serverUser = result?.data?.user;
+    if (loginUserAction.fulfilled.match(resultAction)) {
+      const serverUser = resultAction.payload?.data?.user;
       if (serverUser) {
         login(serverUser as any);
+        showToast("Login Successful!", "Welcome back.", "success");
         router.push("/");
       }
-    } catch (err) {
-      console.error("Login error:", err);
+    } else if (loginUserAction.rejected.match(resultAction)) {
+      const errorMessage =
+        (resultAction.payload as string) ||
+        "Invalid email or password";
+      showToast("Login Failed", errorMessage, "error");
     }
   };
 
   return (
     <AuthLayout title="Welcome Back" bgImage="/images/login-bg.jpg">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
         <AuthInput
           label="Email *"
           type="email"
