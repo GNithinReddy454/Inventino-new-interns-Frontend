@@ -6,7 +6,6 @@ import {
   Package,
   PlusCircle,
   Star,
-  FileText,
   BarChart2,
   Users,
   Settings,
@@ -24,10 +23,9 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle,
-  XCircle,
 } from "lucide-react";
 import { useState } from "react";
+import Image from "next/image";
 import AddProduct from "./AddProduct";
 
 // ---- MOCK DATA ----
@@ -285,6 +283,121 @@ const RECENT_ACTIVITY = [
   },
 ];
 
+// ----- Type Definitions -----
+interface NavItemProps {
+  icon: React.ElementType;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+interface StatCardProps {
+  title: string;
+  value: string;
+  trend: string;
+  trendUp: boolean;
+  icon: React.ElementType;
+  color: string;
+}
+
+interface CategoryProgressProps {
+  label: string;
+  percent: number;
+  color: string;
+}
+
+interface ToggleProps {
+  enabled: boolean;
+  onToggle: () => void;
+}
+
+interface AllProductsViewProps {
+  onAddProduct: () => void;
+}
+
+// ----- Reusable Components -----
+function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all mb-1 ${
+        active
+          ? "bg-primary text-primary-foreground shadow-md shadow-pink-300"
+          : "text-muted-foreground hover:bg-muted hover:text-primary-dark"
+      }`}
+    >
+      <Icon size={18} />
+      {label}
+    </button>
+  );
+}
+
+function StatCard({ title, value, trend, trendUp, icon: Icon, color }: StatCardProps) {
+  return (
+    <div className="bg-card p-6 rounded-2xl shadow-sm border border-border hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-3 rounded-xl ${color}`}>
+          <Icon size={20} />
+        </div>
+        <span
+          className={`flex items-center text-xs font-bold ${
+            trendUp ? "text-green-500" : "text-red-500"
+          }`}
+        >
+          {trendUp ? (
+            <TrendingUp size={14} className="mr-1" />
+          ) : (
+            <TrendingUp size={14} className="mr-1 rotate-180" />
+          )}
+          {trend}
+        </span>
+      </div>
+      <h3 className="text-muted-foreground text-xs uppercase tracking-wider font-bold mb-1">
+        {title}
+      </h3>
+      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-[10px] text-muted-foreground mt-1">vs last month</p>
+    </div>
+  );
+}
+
+function CategoryProgress({ label, percent, color }: CategoryProgressProps) {
+  return (
+    <div>
+      <div className="flex justify-between text-xs font-bold text-muted-foreground mb-2">
+        <span>{label}</span>
+        <span>{percent}%</span>
+      </div>
+      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full ${color}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Accessible toggle component
+function Toggle({ enabled, onToggle }: ToggleProps) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+        enabled ? "bg-primary" : "bg-gray-200"
+      }`}
+    >
+      <span
+        className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
+          enabled ? "translate-x-6" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
+// ----- Main Dashboard Component -----
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
 
@@ -292,7 +405,7 @@ export default function AdminDashboard() {
     <div className="flex min-h-screen bg-background font-sans text-foreground">
       {/* --- SIDEBAR --- */}
       <aside className="w-64 bg-card border-r border-border fixed left-0 top-0 h-screen z-30 flex flex-col font-sans shadow-sm">
-        <div className="p-6 flex-shrink-0 border-b border-border">
+        <div className="p-6 shrink-0 border-b border-border">
           <h1 className="text-3xl font-serif text-primary-dark">Inventino</h1>
           <p className="text-[10px] text-muted-foreground tracking-widest uppercase mt-1">
             A la mode handcrafted
@@ -395,15 +508,15 @@ export default function AdminDashboard() {
                 {activeTab === "Dashboard"
                   ? "Welcome back, Admin! 👋"
                   : activeTab === "CMS"
-                    ? "Landing Page CMS"
-                    : activeTab}
+                  ? "Landing Page CMS"
+                  : activeTab}
               </h2>
               <p className="text-sm text-muted-foreground">
                 {activeTab === "Dashboard"
                   ? "Here's what's happening with your store today."
                   : activeTab === "CMS"
-                    ? "Manage your landing page content, banners and features."
-                    : "Manage your store efficiently."}
+                  ? "Manage your landing page content, banners and features."
+                  : "Manage your store efficiently."}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -447,11 +560,8 @@ export default function AdminDashboard() {
         )}
         {activeTab === "Reviews" && <ReviewsView />}
         {activeTab === "Orders" && <OrdersView />}
-
         {activeTab === "Reports & Analytics" && <ReportsAnalyticsView />}
-
         {activeTab === "Customers" && <CustomersView />}
-
         {activeTab === "Settings" && <SettingsView />}
       </main>
     </div>
@@ -492,7 +602,6 @@ function LandingPageCMSView() {
     },
   ]);
 
-  // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFeatureName, setNewFeatureName] = useState("");
   const [newFeatureDesc, setNewFeatureDesc] = useState("");
@@ -538,6 +647,13 @@ function LandingPageCMSView() {
     }
   };
 
+  const handleDivKeyDown = (e: React.KeyboardEvent, action: () => void) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      action();
+    }
+  };
+
   return (
     <div className="space-y-6 w-full">
       {/* 1. OFFER BAR */}
@@ -551,7 +667,7 @@ function LandingPageCMSView() {
               Control the top announcement bar on your landing page
             </p>
           </div>
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <span className="text-xs text-muted-foreground">
               Show on Landing Page
             </span>
@@ -563,13 +679,16 @@ function LandingPageCMSView() {
         </div>
 
         <div className="mt-5">
-          <label className="block text-xs font-bold text-foreground mb-2">
+          <label htmlFor="offerText" className="block text-xs font-bold text-foreground mb-2">
             Offer Text
           </label>
           <input
+            id="offerText"
             type="text"
             value={offerText}
-            onChange={(e) => setOfferText(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setOfferText(e.target.value)
+            }
             className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark transition-all"
           />
         </div>
@@ -601,16 +720,23 @@ function LandingPageCMSView() {
         </p>
 
         <div className="mb-5">
-          <label className="block text-xs font-bold text-foreground mb-2">
+          <label htmlFor="bannerImage" className="block text-xs font-bold text-foreground mb-2">
             Banner Image
           </label>
-          <label className="w-full border-2 border-dashed border-pink-300 rounded-xl bg-[#fdf0f4] flex flex-col items-center justify-center py-10 cursor-pointer hover:bg-pink-100 transition-all group">
+          <label
+            htmlFor="bannerImage"
+            className="w-full border-2 border-dashed border-pink-300 rounded-xl bg-[#fdf0f4] flex flex-col items-center justify-center py-10 cursor-pointer hover:bg-pink-100 transition-all group"
+          >
             {bannerImage ? (
-              <img
-                src={bannerImage}
-                alt="Banner"
-                className="max-h-40 object-contain rounded-lg"
-              />
+              <div className="relative h-40 w-full">
+                <Image
+                  src={bannerImage}
+                  alt="Banner preview"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 100vw, 500px"
+                />
+              </div>
             ) : (
               <>
                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm mb-3 group-hover:shadow-md transition-all">
@@ -625,6 +751,7 @@ function LandingPageCMSView() {
               </>
             )}
             <input
+              id="bannerImage"
               type="file"
               accept="image/*"
               className="hidden"
@@ -634,25 +761,31 @@ function LandingPageCMSView() {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xs font-bold text-foreground mb-2">
+          <label htmlFor="bannerHeading" className="block text-xs font-bold text-foreground mb-2">
             Banner Heading
           </label>
           <input
+            id="bannerHeading"
             type="text"
             value={bannerHeading}
-            onChange={(e) => setBannerHeading(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setBannerHeading(e.target.value)
+            }
             className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark transition-all"
           />
         </div>
 
         <div className="mb-5">
-          <label className="block text-xs font-bold text-foreground mb-2">
+          <label htmlFor="bannerText" className="block text-xs font-bold text-foreground mb-2">
             Banner Text
           </label>
           <textarea
+            id="bannerText"
             rows={3}
             value={bannerText}
-            onChange={(e) => setBannerText(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              setBannerText(e.target.value)
+            }
             className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark transition-all resize-none"
           />
         </div>
@@ -709,7 +842,7 @@ function LandingPageCMSView() {
                   {feature.description}
                 </p>
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-3 shrink-0">
                 <button
                   onClick={() => removeFeature(feature.id)}
                   className="text-muted-foreground hover:text-red-500 transition-colors"
@@ -730,10 +863,14 @@ function LandingPageCMSView() {
       {/* --- ADD FEATURE MODAL --- */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop */}
+          {/* Backdrop (accessible) */}
           <div
+            role="button"
+            tabIndex={0}
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowAddModal(false)}
+            onKeyDown={(e) => handleDivKeyDown(e, () => setShowAddModal(false))}
+            aria-label="Close modal"
           />
           {/* Modal Card */}
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8 z-10">
@@ -743,41 +880,50 @@ function LandingPageCMSView() {
 
             {/* Feature Name */}
             <div className="mb-4">
-              <label className="block text-xs font-bold text-foreground mb-1.5">
+              <label htmlFor="featureName" className="block text-xs font-bold text-foreground mb-1.5">
                 Feature Name <span className="text-primary">*</span>
               </label>
               <input
+                id="featureName"
                 type="text"
                 placeholder="Feature Name"
                 value={newFeatureName}
-                onChange={(e) => setNewFeatureName(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setNewFeatureName(e.target.value)
+                }
                 className="w-full px-4 py-3 bg-pink-50 border border-pink-200 rounded-xl text-sm text-foreground placeholder:text-pink-300 focus:outline-none focus:border-primary-dark transition-all"
               />
             </div>
 
             {/* Feature Description */}
             <div className="mb-4">
-              <label className="block text-xs font-bold text-foreground mb-1.5">
+              <label htmlFor="featureDesc" className="block text-xs font-bold text-foreground mb-1.5">
                 Feature Description <span className="text-primary">*</span>
               </label>
               <textarea
+                id="featureDesc"
                 rows={4}
                 placeholder="Feature Description"
                 value={newFeatureDesc}
-                onChange={(e) => setNewFeatureDesc(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setNewFeatureDesc(e.target.value)
+                }
                 className="w-full px-4 py-3 bg-pink-50 border border-pink-200 rounded-xl text-sm text-foreground placeholder:text-pink-300 focus:outline-none focus:border-primary-dark transition-all resize-none"
               />
             </div>
 
             {/* Status Dropdown */}
             <div className="mb-6">
-              <label className="block text-xs font-bold text-foreground mb-1.5">
+              <label htmlFor="featureStatus" className="block text-xs font-bold text-foreground mb-1.5">
                 Status
               </label>
               <div className="relative">
                 <select
+                  id="featureStatus"
                   value={newFeatureStatus}
-                  onChange={(e) => setNewFeatureStatus(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setNewFeatureStatus(e.target.value)
+                  }
                   className="w-full appearance-none px-4 py-3 bg-pink-50 border border-pink-200 rounded-xl text-sm text-foreground focus:outline-none focus:border-primary-dark transition-all cursor-pointer"
                 >
                   <option value="enabled">Enable</option>
@@ -809,26 +955,6 @@ function LandingPageCMSView() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// --- TOGGLE COMPONENT ---
-function Toggle({
-  enabled,
-  onToggle,
-}: {
-  enabled: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div
-      onClick={onToggle}
-      className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${enabled ? "bg-primary" : "bg-gray-200"}`}
-    >
-      <div
-        className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${enabled ? "translate-x-6" : "translate-x-0"}`}
-      />
     </div>
   );
 }
@@ -945,13 +1071,17 @@ function DashboardView() {
             </thead>
             <tbody className="divide-y divide-border">
               {RECENT_ORDERS.map((order, idx) => (
-                <tr key={idx} className="hover:bg-muted/50 transition-colors">
+                <tr key={order.id} className="hover:bg-muted/50 transition-colors">
                   <td className="px-6 py-4 font-bold text-foreground">
                     {order.id}
                   </td>
                   <td className="px-6 py-4 flex items-center gap-3">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${["bg-red-400", "bg-blue-400", "bg-green-400", "bg-purple-400", "bg-orange-400"][idx % 5]}`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                        ["bg-red-400", "bg-blue-400", "bg-green-400", "bg-purple-400", "bg-orange-400"][
+                          idx % 5
+                        ]
+                      }`}
                     >
                       {order.customer.charAt(0)}
                     </div>
@@ -967,10 +1097,10 @@ function DashboardView() {
                         order.status === "Completed"
                           ? "bg-green-100 text-green-700"
                           : order.status === "Processing"
-                            ? "bg-blue-100 text-blue-700"
-                            : order.status === "Pending"
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-red-100 text-red-700"
+                          ? "bg-blue-100 text-blue-700"
+                          : order.status === "Pending"
+                          ? "bg-orange-100 text-orange-700"
+                          : "bg-red-100 text-red-700"
                       }`}
                     >
                       {order.status}
@@ -998,12 +1128,12 @@ function DashboardView() {
             </button>
           </div>
           <div className="space-y-4">
-            {TOP_PRODUCTS.map((product, idx) => (
+            {TOP_PRODUCTS.map((product) => (
               <div
-                key={idx}
+                key={product.name}
                 className="flex items-center gap-4 p-3 hover:bg-muted rounded-xl transition-colors"
               >
-                <div className={`w-12 h-12 rounded-lg ${product.color}`}></div>
+                <div className={`w-12 h-12 rounded-lg ${product.color}`} />
                 <div className="flex-1">
                   <p className="font-bold text-foreground text-sm">
                     {product.name}
@@ -1026,8 +1156,8 @@ function DashboardView() {
         <div className="bg-card p-6 rounded-2xl shadow-sm border border-border">
           <h3 className="font-bold text-foreground mb-6">Recent Activity</h3>
           <div className="space-y-6 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-muted">
-            {RECENT_ACTIVITY.map((activity, idx) => (
-              <div key={idx} className="relative pl-10">
+            {RECENT_ACTIVITY.map((activity) => (
+              <div key={activity.text} className="relative pl-10">
                 <div
                   className={`absolute left-0 top-0 w-8 h-8 rounded-full ${activity.bg} flex items-center justify-center z-10 border-2 border-white`}
                 >
@@ -1051,7 +1181,7 @@ function DashboardView() {
 }
 
 // --- ALL PRODUCTS VIEW ---
-function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
+function AllProductsView({ onAddProduct }: AllProductsViewProps) {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [statusFilter, setStatusFilter] = useState("All Status");
@@ -1134,7 +1264,9 @@ function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
     };
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${colors[cat] || "bg-gray-100 text-gray-600"}`}
+        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+          colors[cat] || "bg-gray-100 text-gray-600"
+        }`}
       >
         {cat}
       </span>
@@ -1156,7 +1288,7 @@ function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold text-foreground">ducts</h2>
+          <h2 className="text-xl font-bold text-foreground">Products</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Complete product inventory and management
           </p>
@@ -1220,7 +1352,7 @@ function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
               type="text"
               placeholder="Search products by name, ID, or SKU..."
               value={search}
-              onChange={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
@@ -1231,7 +1363,7 @@ function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
           <div className="relative">
             <select
               value={categoryFilter}
-              onChange={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 setCategoryFilter(e.target.value);
                 setPage(1);
               }}
@@ -1250,7 +1382,7 @@ function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
           <div className="relative">
             <select
               value={statusFilter}
-              onChange={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
@@ -1269,7 +1401,9 @@ function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
           <div className="relative">
             <select
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setSort(e.target.value)
+              }
               className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all cursor-pointer"
             >
               {sortOptions.map((s) => (
@@ -1319,7 +1453,7 @@ function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-10 h-10 rounded-lg flex-shrink-0 ${product.color}`}
+                          className={`w-10 h-10 rounded-lg shrink-0 ${product.color}`}
                         />
                         <div>
                           <p className="font-semibold text-foreground text-sm leading-tight">
@@ -1407,7 +1541,11 @@ function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
                 <button
                   key={p}
                   onClick={() => setPage(Number(p))}
-                  className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${page === p ? "bg-primary text-primary-foreground shadow-sm" : "border border-border text-muted-foreground hover:bg-muted"}`}
+                  className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                    page === p
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "border border-border text-muted-foreground hover:bg-muted"
+                  }`}
                 >
                   {p}
                 </button>
@@ -1521,7 +1659,9 @@ function ReviewsView() {
   ];
 
   const changeStatus = (id: number, status: string) => {
-    setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    setReviews((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, status } : r)),
+    );
   };
 
   const filtered = reviews
@@ -1539,9 +1679,7 @@ function ReviewsView() {
     })
     .sort((a, b) => (sort === "Oldest" ? a.id - b.id : b.id - a.id));
 
-  const totalReviews = reviews.length;
   const pendingCount = reviews.filter((r) => r.status === "pending").length;
-  const approvedCount = reviews.filter((r) => r.status === "approved").length;
   const avgRating = (
     reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
   ).toFixed(1);
@@ -1627,7 +1765,9 @@ function ReviewsView() {
           <div className="relative">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setStatusFilter(e.target.value)
+              }
               className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all cursor-pointer"
             >
               {["All Reviews", "Pending", "Approved", "Rejected"].map((s) => (
@@ -1642,7 +1782,9 @@ function ReviewsView() {
           <div className="relative">
             <select
               value={ratingFilter}
-              onChange={(e) => setRatingFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setRatingFilter(e.target.value)
+              }
               className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all cursor-pointer"
             >
               {["All Ratings", "5", "4", "3", "2", "1"].map((s) => (
@@ -1656,10 +1798,12 @@ function ReviewsView() {
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
             />
           </div>
-          <div className="relative flex-1 min-w-[160px]">
+          <div className="relative flex-1 min-w-40">
             <select
               value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setProductFilter(e.target.value)
+              }
               className="w-full appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all cursor-pointer"
             >
               {products.map((p) => (
@@ -1674,7 +1818,9 @@ function ReviewsView() {
           <div className="relative">
             <select
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setSort(e.target.value)
+              }
               className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all cursor-pointer"
             >
               {["Newest", "Oldest"].map((s) => (
@@ -1706,7 +1852,7 @@ function ReviewsView() {
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-10 h-10 rounded-full ${review.bg} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
+                    className={`w-10 h-10 rounded-full ${review.bg} flex items-center justify-center text-white text-sm font-bold shrink-0`}
                   >
                     {review.initials}
                   </div>
@@ -1730,7 +1876,7 @@ function ReviewsView() {
 
               {/* Product reference */}
               <div className="flex items-center gap-3 mb-4 p-3 bg-muted/40 rounded-xl w-fit">
-                <div className="w-10 h-10 bg-gray-200 rounded-lg flex-shrink-0" />
+                <div className="w-10 h-10 bg-gray-200 rounded-lg shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">
                     {review.product}
@@ -1768,7 +1914,9 @@ function ReviewsView() {
                     rows={3}
                     placeholder="Write your reply..."
                     value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      setReplyText(e.target.value)
+                    }
                     className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all resize-none"
                   />
                   <div className="flex gap-2 mt-2">
@@ -1798,7 +1946,11 @@ function ReviewsView() {
               <div className="flex gap-3">
                 <button
                   onClick={() => changeStatus(review.id, "approved")}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${review.status === "approved" ? "bg-green-200 text-green-700 cursor-default" : "bg-green-500 text-white hover:bg-green-600"}`}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                    review.status === "approved"
+                      ? "bg-green-200 text-green-700 cursor-default"
+                      : "bg-green-500 text-white hover:bg-green-600"
+                  }`}
                 >
                   {review.status === "approved" ? "✓ Approved" : "Approve"}
                 </button>
@@ -1812,7 +1964,11 @@ function ReviewsView() {
                 </button>
                 <button
                   onClick={() => changeStatus(review.id, "rejected")}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${review.status === "rejected" ? "bg-red-200 text-red-700 cursor-default" : "bg-red-500 text-white hover:bg-red-600"}`}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                    review.status === "rejected"
+                      ? "bg-red-200 text-red-700 cursor-default"
+                      : "bg-red-500 text-white hover:bg-red-600"
+                  }`}
                 >
                   {review.status === "rejected" ? "✗ Rejected" : "Reject"}
                 </button>
@@ -1955,7 +2111,9 @@ function OrdersView() {
     };
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-bold ${map[status] || "bg-gray-100 text-gray-600"}`}
+        className={`px-3 py-1 rounded-full text-xs font-bold ${
+          map[status] || "bg-gray-100 text-gray-600"
+        }`}
       >
         {status}
       </span>
@@ -2031,14 +2189,18 @@ function OrdersView() {
               type="text"
               placeholder="Search by order ID, customer name..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setSearch(e.target.value)
+              }
               className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all"
             />
           </div>
           <div className="relative">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setStatusFilter(e.target.value)
+              }
               className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all cursor-pointer"
             >
               {statuses.map((s) => (
@@ -2053,7 +2215,9 @@ function OrdersView() {
           <div className="relative">
             <select
               value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setDateFilter(e.target.value)
+              }
               className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all cursor-pointer"
             >
               {dateOptions.map((d) => (
@@ -2068,7 +2232,9 @@ function OrdersView() {
           <div className="relative">
             <select
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setSort(e.target.value)
+              }
               className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary-dark transition-all cursor-pointer"
             >
               {["Newest", "Oldest"].map((s) => (
@@ -2105,10 +2271,7 @@ function OrdersView() {
                     colSpan={7}
                     className="text-center py-16 text-muted-foreground"
                   >
-                    <ShoppingCart
-                      size={36}
-                      className="mx-auto mb-3 opacity-20"
-                    />
+                    <ShoppingCart size={36} className="mx-auto mb-3 opacity-20" />
                     <p className="text-sm">No orders found</p>
                   </td>
                 </tr>
@@ -2124,7 +2287,7 @@ function OrdersView() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-9 h-9 rounded-full ${order.bg} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}
+                          className={`w-9 h-9 rounded-full ${order.bg} flex items-center justify-center text-white text-xs font-bold shrink-0`}
                         >
                           {order.initials}
                         </div>
@@ -2201,21 +2364,6 @@ function OrdersView() {
 function ReportsAnalyticsView() {
   const [period, setPeriod] = useState("30d");
   const [reportPeriod, setReportPeriod] = useState("Last 7 Days");
-
-  // ---- Simulated line chart data ----
-  const lineData = [
-    18, 22, 15, 28, 35, 20, 42, 38, 30, 45, 50, 40, 60, 55, 48, 65, 70, 62, 75,
-    68, 72, 80, 78, 85, 90, 82, 95, 88, 100, 110,
-  ];
-  const maxLine = Math.max(...lineData);
-  const linePoints = lineData
-    .map((v, i) => {
-      const x = (i / (lineData.length - 1)) * 470;
-      const y = 160 - (v / maxLine) * 150;
-      return `${x},${y}`;
-    })
-    .join(" ");
-  const areaPoints = `0,160 ${lineData.map((v, i) => `${(i / (lineData.length - 1)) * 470},${160 - (v / maxLine) * 150}`).join(" ")} 470,160`;
 
   // ---- Simulated bar chart data (sales report) ----
   const barData = [
@@ -2328,7 +2476,7 @@ function ReportsAnalyticsView() {
                   </linearGradient>
                 </defs>
                 {/* Horizontal grid lines */}
-                {[185, 143, 101, 59, 17].map((y, i) => (
+                {[185, 143, 101, 59, 17].map((y) => (
                   <line
                     key={y}
                     x1="48"
@@ -2469,24 +2617,24 @@ function ReportsAnalyticsView() {
                 viewBox="0 0 200 200"
                 width="180"
                 height="180"
-                className="flex-shrink-0"
+                className="shrink-0"
               >
-                {/* Slice 1 - Organic Search 45% (162deg) pink/rose, 0deg -> 162deg */}
+                {/* Slice 1 - Organic Search 45% (162deg) */}
                 <path
                   d="M100,100 L100,10 A90,90 0 0,1 185.4,127.3 Z"
                   fill="#e91e8c"
                 />
-                {/* Slice 2 - Direct 25% (90deg), 162deg -> 252deg */}
+                {/* Slice 2 - Direct 25% (90deg) */}
                 <path
                   d="M100,100 L185.4,127.3 A90,90 0 0,1 72.1,190 Z"
                   fill="#f4845f"
                 />
-                {/* Slice 3 - Referral 20% (72deg), 252deg -> 324deg */}
+                {/* Slice 3 - Referral 20% (72deg) */}
                 <path
                   d="M100,100 L72.1,190 A90,90 0 0,1 27.3,45.4 Z"
                   fill="#8b5cf6"
                 />
-                {/* Slice 4 - Social 10% (36deg), 324deg -> 360deg */}
+                {/* Slice 4 - Social 10% (36deg) */}
                 <path
                   d="M100,100 L27.3,45.4 A90,90 0 0,1 100,10 Z"
                   fill="#3b82f6"
@@ -2575,7 +2723,7 @@ function ReportsAnalyticsView() {
                 ].map((s) => (
                   <div key={s.label} className="flex items-center gap-2">
                     <div
-                      className={`w-3 h-3 rounded-sm flex-shrink-0 ${s.color}`}
+                      className={`w-3 h-3 rounded-sm shrink-0 ${s.color}`}
                     />
                     <span className="text-muted-foreground">{s.label}</span>
                   </div>
@@ -2778,7 +2926,7 @@ function ReportsAnalyticsView() {
                 strokeWidth="1"
               />
             ))}
-            {/* Bars — fixed 55px width, 32px gap, starts at x=60 */}
+            {/* Bars */}
             {catBars.map((cat, i) => {
               const barH = (cat.value / maxCat) * 160;
               const x = 60 + i * (55 + 32);
@@ -2829,7 +2977,9 @@ function ReportsAnalyticsView() {
             <div className="relative">
               <select
                 value={reportPeriod}
-                onChange={(e) => setReportPeriod(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setReportPeriod(e.target.value)
+                }
                 className="appearance-none pl-4 pr-8 py-2 bg-card border border-border rounded-xl text-sm focus:outline-none cursor-pointer"
               >
                 {[
@@ -2889,7 +3039,9 @@ function ReportsAnalyticsView() {
               </p>
               <p className="text-3xl font-bold text-primary">{c.value}</p>
               <p
-                className={`text-xs mt-2 font-bold ${c.positive ? "text-green-500" : "text-red-400"}`}
+                className={`text-xs mt-2 font-bold ${
+                  c.positive ? "text-green-500" : "text-red-400"
+                }`}
               >
                 {c.trend}
               </p>
@@ -2915,7 +3067,9 @@ function ReportsAnalyticsView() {
                   backgroundColor:
                     i >= barData.length - 5
                       ? "#e91e8c"
-                      : `rgba(233,30,140,${0.2 + (i / barData.length) * 0.5})`,
+                      : `rgba(233,30,140,${
+                          0.2 + (i / barData.length) * 0.5
+                        })`,
                 }}
               />
             ))}
@@ -3005,7 +3159,9 @@ function ReportsAnalyticsView() {
                     {r.revenue}
                   </td>
                   <td
-                    className={`py-3 text-right font-bold text-sm ${r.pos ? "text-green-500" : "text-red-400"}`}
+                    className={`py-3 text-right font-bold text-sm ${
+                      r.pos ? "text-green-500" : "text-red-400"
+                    }`}
                   >
                     {r.growth}
                   </td>
@@ -3252,7 +3408,9 @@ function CustomersView() {
     };
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-bold ${map[type] || "bg-gray-100 text-gray-600"}`}
+        className={`px-3 py-1 rounded-full text-xs font-bold ${
+          map[type] || "bg-gray-100 text-gray-600"
+        }`}
       >
         {type}
       </span>
@@ -3271,7 +3429,7 @@ function CustomersView() {
             View and manage all customers, returns, and support requests
           </p>
         </div>
-        <button className="px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-sm flex-shrink-0">
+        <button className="px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-sm shrink-0">
           Export Customers
         </button>
       </div>
@@ -3329,14 +3487,18 @@ function CustomersView() {
               type="text"
               placeholder="Search customers..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setSearch(e.target.value)
+              }
               className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
             />
           </div>
           <div className="relative">
             <select
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setTypeFilter(e.target.value)
+              }
               className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer"
             >
               {["All Types", "VIP", "Regular", "New"].map((t) => (
@@ -3351,7 +3513,9 @@ function CustomersView() {
           <div className="relative">
             <select
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setSort(e.target.value)
+              }
               className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer"
             >
               {["Newest", "Oldest", "Most Orders", "Highest Spent"].map((s) => (
@@ -3398,7 +3562,7 @@ function CustomersView() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div
-                            className={`w-10 h-10 rounded-full ${c.bg} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}
+                            className={`w-10 h-10 rounded-full ${c.bg} flex items-center justify-center text-white text-xs font-bold shrink-0`}
                           >
                             {c.initials}
                           </div>
@@ -3478,7 +3642,6 @@ function CustomersView() {
 }
 
 // --- SETTINGS VIEW ---
-
 function SettingsView() {
   const [storeInfo, setStoreInfo] = useState({
     name: "Handmade Marketplace",
@@ -3527,60 +3690,65 @@ function SettingsView() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="storeName" className="text-xs font-semibold text-foreground">
               Store Name
             </label>
             <input
+              id="storeName"
               value={storeInfo.name}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setStoreInfo({ ...storeInfo, name: e.target.value })
               }
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="storeEmail" className="text-xs font-semibold text-foreground">
               Store Email
             </label>
             <input
+              id="storeEmail"
               value={storeInfo.email}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setStoreInfo({ ...storeInfo, email: e.target.value })
               }
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="storePhone" className="text-xs font-semibold text-foreground">
               Contact Phone
             </label>
             <input
+              id="storePhone"
               value={storeInfo.phone}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setStoreInfo({ ...storeInfo, phone: e.target.value })
               }
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="storeCurrency" className="text-xs font-semibold text-foreground">
               Currency
             </label>
             <input
+              id="storeCurrency"
               value={storeInfo.currency}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setStoreInfo({ ...storeInfo, currency: e.target.value })
               }
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="storeAddress" className="text-xs font-semibold text-foreground">
               Store Address
             </label>
             <input
+              id="storeAddress"
               value={storeInfo.address}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setStoreInfo({ ...storeInfo, address: e.target.value })
               }
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
@@ -3684,12 +3852,13 @@ function SettingsView() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="freeShippingThreshold" className="text-xs font-semibold text-foreground">
               Free Shipping Threshold
             </label>
             <input
+              id="freeShippingThreshold"
               value={payment.freeShippingThreshold}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setPayment({
                   ...payment,
                   freeShippingThreshold: e.target.value,
@@ -3699,12 +3868,13 @@ function SettingsView() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="standardShippingRate" className="text-xs font-semibold text-foreground">
               Standard Shipping Rate
             </label>
             <input
+              id="standardShippingRate"
               value={payment.standardShippingRate}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setPayment({ ...payment, standardShippingRate: e.target.value })
               }
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
@@ -3786,20 +3956,22 @@ function SettingsView() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="currentPassword" className="text-xs font-semibold text-foreground">
               Current Password
             </label>
             <input
+              id="currentPassword"
               type="password"
               placeholder="Enter current password"
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="newPassword" className="text-xs font-semibold text-foreground">
               New Password
             </label>
             <input
+              id="newPassword"
               type="password"
               placeholder="Enter new password"
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
@@ -3858,19 +4030,21 @@ function SettingsView() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="defaultTaxRate" className="text-xs font-semibold text-foreground">
               Default Tax Rate
             </label>
             <input
+              id="defaultTaxRate"
               defaultValue="8.5%"
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="taxIdNumber" className="text-xs font-semibold text-foreground">
               Tax ID Number
             </label>
             <input
+              id="taxIdNumber"
               placeholder="Enter tax ID (optional)"
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
             />
@@ -3907,19 +4081,21 @@ function SettingsView() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="adminEmail" className="text-xs font-semibold text-foreground">
               Admin Email
             </label>
             <input
+              id="adminEmail"
               defaultValue="admin@handmade.com"
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label htmlFor="accountStatus" className="text-xs font-semibold text-foreground">
               Account Status
             </label>
             <input
+              id="accountStatus"
               defaultValue="Active"
               readOnly
               className="w-full px-4 py-2.5 bg-input border border-border rounded-xl text-sm focus:outline-none cursor-default text-muted-foreground"
@@ -3935,72 +4111,6 @@ function SettingsView() {
             Deactivate Account
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function NavItem({
-  icon: Icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: any;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all mb-1 ${active ? "bg-primary text-primary-foreground shadow-md shadow-pink-300" : "text-muted-foreground hover:bg-muted hover:text-primary-dark"}`}
-    >
-      <Icon size={18} />
-      {label}
-    </button>
-  );
-}
-
-function StatCard({ title, value, trend, trendUp, icon: Icon, color }: any) {
-  return (
-    <div className="bg-card p-6 rounded-2xl shadow-sm border border-border hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-xl ${color}`}>
-          <Icon size={20} />
-        </div>
-        <span
-          className={`flex items-center text-xs font-bold ${trendUp ? "text-green-500" : "text-red-500"}`}
-        >
-          {trendUp ? (
-            <TrendingUp size={14} className="mr-1" />
-          ) : (
-            <TrendingUp size={14} className="mr-1 rotate-180" />
-          )}
-          {trend}
-        </span>
-      </div>
-      <h3 className="text-muted-foreground text-xs uppercase tracking-wider font-bold mb-1">
-        {title}
-      </h3>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-1">vs last month</p>
-    </div>
-  );
-}
-
-function CategoryProgress({ label, percent, color }: any) {
-  return (
-    <div>
-      <div className="flex justify-between text-xs font-bold text-muted-foreground mb-2">
-        <span>{label}</span>
-        <span>{percent}%</span>
-      </div>
-      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full ${color}`}
-          style={{ width: `${percent}%` }}
-        ></div>
       </div>
     </div>
   );
