@@ -10,7 +10,10 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
 };
 
 const PasswordInput = forwardRef<HTMLInputElement, Props>(
-  ({ label, placeholder, error, autoComplete = "current-password", ...rest }, ref) => {
+  (
+    { label, placeholder, error, autoComplete = "current-password", ...rest },
+    ref,
+  ) => {
     const [show, setShow] = useState(false);
     const id = useId();
 
@@ -48,7 +51,7 @@ const PasswordInput = forwardRef<HTMLInputElement, Props>(
         {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
       </div>
     );
-  }
+  },
 );
 
 PasswordInput.displayName = "PasswordInput";

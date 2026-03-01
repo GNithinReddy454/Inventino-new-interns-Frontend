@@ -29,16 +29,34 @@ function StarRating({ rating }: { rating: number }) {
         const filled = rating >= star;
         const partial = !filled && rating > star - 1;
         return (
-          <svg key={star} width="11" height="11" viewBox="0 0 24 24" className="flex-shrink-0">
+          <svg
+            key={star}
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            className="flex-shrink-0"
+          >
             <defs>
               <linearGradient id={`star-grad-${star}-${rating}`}>
-                <stop offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`} stopColor="#E8456A" />
-                <stop offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`} stopColor="#e5e7eb" />
+                <stop
+                  offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`}
+                  stopColor="#E8456A"
+                />
+                <stop
+                  offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`}
+                  stopColor="#e5e7eb"
+                />
               </linearGradient>
             </defs>
             <polygon
               points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-              fill={filled ? "#E8456A" : partial ? `url(#star-grad-${star}-${rating})` : "#e5e7eb"}
+              fill={
+                filled
+                  ? "#E8456A"
+                  : partial
+                    ? `url(#star-grad-${star}-${rating})`
+                    : "#e5e7eb"
+              }
             />
           </svg>
         );
@@ -61,7 +79,11 @@ const MOCK_IMAGES = [
   "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400",
 ];
 
-export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  onAdd,
+  buttonBg = "#E8456A",
+}: ProductCardProps) {
   const { handleSaved, savedItems } = useStore();
   const { cart, addToCart, updateQuantity, removeFromCart } = useCart();
   const isSaved = savedItems.some((item) => item.id === product.id);
@@ -74,8 +96,8 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     product.images?.length && product.images.length > 1
       ? product.images
       : product.image
-      ? [product.image, ...MOCK_IMAGES.slice(1)] // keep real image + add mocks
-      : MOCK_IMAGES;
+        ? [product.image, ...MOCK_IMAGES.slice(1)] // keep real image + add mocks
+        : MOCK_IMAGES;
 
   const router = useRouter();
   const [localQuantity, setLocalQuantity] = useState(0);
@@ -99,7 +121,8 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   }, []);
 
   const productName = product.name || product.title || "";
-  const tags: string[] = product.tags ?? [product.category ?? "", "Adjustable"].filter(Boolean);
+  const tags: string[] =
+    product.tags ?? [product.category ?? "", "Adjustable"].filter(Boolean);
 
   const cartProduct: Product = {
     id: product.id,
@@ -115,14 +138,14 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   const handleIncreaseLocal = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setLocalQuantity(prev => prev + 1);
+    setLocalQuantity((prev) => prev + 1);
   };
 
   const handleDecreaseLocal = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (localQuantity > 0) {
-      setLocalQuantity(prev => prev - 1);
+      setLocalQuantity((prev) => prev - 1);
     }
   };
 
@@ -159,11 +182,16 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   let badgeColor = "bg-[#E8456A]";
   if (badgeText) {
     const upper = badgeText.toUpperCase();
-    if (upper === "BESTSELLER" || upper === "BEST SELLER") badgeColor = "bg-yellow-400";
-    else if (upper === "SALE") { displayText = "HOT DEALS"; badgeColor = "bg-red-500"; }
+    if (upper === "BESTSELLER" || upper === "BEST SELLER")
+      badgeColor = "bg-yellow-400";
+    else if (upper === "SALE") {
+      displayText = "HOT DEALS";
+      badgeColor = "bg-red-500";
+    }
   }
 
-  const hasDiscount = !!product.originalPrice && product.originalPrice > product.price;
+  const hasDiscount =
+    !!product.originalPrice && product.originalPrice > product.price;
 
   return (
     <div
@@ -173,11 +201,12 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     >
       {/* ── Image Area ── */}
       <div className="relative aspect-[4/3] sm:aspect-square overflow-hidden rounded-t-2xl bg-gray-50 shrink-0">
-
         {/* Badge — top left */}
         {badgeText && (
           <div className="absolute top-3 left-3 z-10 pointer-events-none">
-            <span className={`text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm shadow-sm ${badgeColor}`}>
+            <span
+              className={`text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm shadow-sm ${badgeColor}`}
+            >
               {displayText}
             </span>
           </div>
@@ -192,13 +221,23 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               handleSaved(cartProduct as any);
             }}
-            className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-200 ${isSaved ? "bg-[#E8456A] text-white" : "bg-white text-gray-400 hover:text-[#E8456A] hover:bg-pink-50"
-              }`}
+            className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-200 ${
+              isSaved
+                ? "bg-[#E8456A] text-white"
+                : "bg-white text-gray-400 hover:text-[#E8456A] hover:bg-pink-50"
+            }`}
           >
-            <Heart size={14} fill={isSaved ? "currentColor" : "none"} strokeWidth={2} />
+            <Heart
+              size={14}
+              fill={isSaved ? "currentColor" : "none"}
+              strokeWidth={2}
+            />
           </button>
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-md text-gray-400 hover:text-[#E8456A] hover:bg-pink-50 transition-all duration-200"
           >
             <Share2 size={14} strokeWidth={2} />
@@ -206,16 +245,20 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
         </div>
 
         {/* Images — fully covers container */}
-        <Link href={`/products/${product.id}`} className="absolute inset-0 block">
+        <Link
+          href={`/products/${product.id}`}
+          className="absolute inset-0 block"
+        >
           {images.map((img, idx) => {
-            const isBraceletsCharm = img.includes('bracelets-charm');
+            const isBraceletsCharm = img.includes("bracelets-charm");
             return (
               <img
                 key={idx}
                 src={img}
                 alt={productName}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${idx === currentSlide ? "opacity-100" : "opacity-0"
-                  } ${isBraceletsCharm ? "scale-[1.06]" : ""}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
+                  idx === currentSlide ? "opacity-100" : "opacity-0"
+                } ${isBraceletsCharm ? "scale-[1.06]" : ""}`}
               />
             );
           })}
@@ -227,8 +270,11 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
             {images.map((_, idx) => (
               <div
                 key={idx}
-                className={`rounded-full transition-all duration-500 ${idx === currentSlide ? "w-4 h-1.5 bg-[#E8456A]" : "w-1.5 h-1.5 bg-white/70"
-                  }`}
+                className={`rounded-full transition-all duration-500 ${
+                  idx === currentSlide
+                    ? "w-4 h-1.5 bg-[#E8456A]"
+                    : "w-1.5 h-1.5 bg-white/70"
+                }`}
               />
             ))}
           </div>
@@ -237,7 +283,6 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
 
       {/* ── Card Body ── */}
       <div className="flex flex-col flex-1 px-4 pb-4 pt-3">
-
         {/* Category + Stars */}
         <div className="flex items-center justify-between mb-1">
           <span className="text-[10px] text-[#E8456A] font-bold uppercase tracking-widest line-clamp-1">
@@ -269,8 +314,13 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2">
             {tags.slice(0, 3).map((tag, i) => (
-              <span key={i} className="text-[10px] text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-sm font-medium">
-                {typeof tag === "string" ? tag : (tag as unknown as { text?: string })?.text ?? ""}
+              <span
+                key={i}
+                className="text-[10px] text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-sm font-medium"
+              >
+                {typeof tag === "string"
+                  ? tag
+                  : ((tag as unknown as { text?: string })?.text ?? "")}
               </span>
             ))}
           </div>

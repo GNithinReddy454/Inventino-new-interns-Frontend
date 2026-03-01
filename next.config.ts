@@ -4,15 +4,15 @@ const nextConfig = {
     remotePatterns: [
       /* 1. KEEP YOUR EXISTING UNSPLASH CONFIG */
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
       /* 2. ADD NEW BACKEND IMAGE SUPPORT */
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '8080',
-        pathname: '/uploads/**', 
+        protocol: "http",
+        hostname: "localhost",
+        port: "8080",
+        pathname: "/uploads/**",
       },
     ],
   },

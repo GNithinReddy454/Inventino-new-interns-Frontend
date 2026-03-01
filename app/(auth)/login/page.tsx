@@ -37,7 +37,9 @@ export default function LoginPage() {
     }
 
     try {
-      const result = await dispatch(loginUserAction({ email: data.email, password: data.password })).unwrap();
+      const result = await dispatch(
+        loginUserAction({ email: data.email, password: data.password }),
+      ).unwrap();
       console.log("Login result:", result);
 
       const serverUser = result?.data?.user;
@@ -98,7 +100,10 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-gray-500">
           New user?
-          <Link href="/signup" className="text-[#E15483] font-bold ml-1 hover:underline">
+          <Link
+            href="/signup"
+            className="text-[#E15483] font-bold ml-1 hover:underline"
+          >
             Create Account
           </Link>
         </p>

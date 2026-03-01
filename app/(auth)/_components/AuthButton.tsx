@@ -5,13 +5,8 @@ type Props = {
   disabled?: boolean;
 };
 
-export default function AuthButton({
-  children,
-  disabled = false,
-}: Props) {
-
+export default function AuthButton({ children, disabled = false }: Props) {
   return (
-
     <button
       type="submit"
       disabled={disabled}
@@ -21,11 +16,7 @@ export default function AuthButton({
           : "bg-[#E15483] hover:opacity-90"
       }`}
     >
-
       {children}
-
     </button>
-
   );
-
 }

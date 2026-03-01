@@ -15,13 +15,17 @@ interface WishlistContextType {
   removeFromWishlist: (id: number) => void;
 }
 
-const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
+const WishlistContext = createContext<WishlistContextType | undefined>(
+  undefined,
+);
 
 export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   const [wishlist, setWishlist] = useState<Product[]>([]);
 
   const addToWishlist = (product: Product) => {
-    setWishlist((prev) => (prev.find((p) => p.id === product.id) ? prev : [...prev, product]));
+    setWishlist((prev) =>
+      prev.find((p) => p.id === product.id) ? prev : [...prev, product],
+    );
   };
 
   const removeFromWishlist = (id: number) => {
@@ -29,7 +33,9 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <WishlistContext.Provider value={{ wishlist, addToWishlist, removeFromWishlist }}>
+    <WishlistContext.Provider
+      value={{ wishlist, addToWishlist, removeFromWishlist }}
+    >
       {children}
     </WishlistContext.Provider>
   );

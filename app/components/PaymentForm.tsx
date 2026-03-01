@@ -1,12 +1,19 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { PaymentMethod } from '@/lib/types';
-import { CreditCard, Wallet, Smartphone, Banknote, Loader2, Lock } from 'lucide-react';
+import { useState } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { PaymentMethod } from "@/lib/types";
+import {
+  CreditCard,
+  Wallet,
+  Smartphone,
+  Banknote,
+  Loader2,
+  Lock,
+} from "lucide-react";
 
 interface PaymentFormProps {
   paymentMethod: PaymentMethod;
@@ -16,17 +23,23 @@ interface PaymentFormProps {
   isProcessing: boolean;
 }
 
-export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack, isProcessing }: PaymentFormProps) {
+export function PaymentForm({
+  paymentMethod,
+  setPaymentMethod,
+  onSubmit,
+  onBack,
+  isProcessing,
+}: PaymentFormProps) {
   const [cardDetails, setCardDetails] = useState({
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-    cardholderName: '',
+    cardNumber: "",
+    expiryDate: "",
+    cvv: "",
+    cardholderName: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (paymentMethod === 'card') {
+    if (paymentMethod === "card") {
       onSubmit(paymentMethod, cardDetails);
     } else {
       onSubmit(paymentMethod);
@@ -35,19 +48,21 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
 
   const getSubmitButtonText = () => {
     if (isProcessing) {
-      return paymentMethod === 'cod' ? 'Placing Order...' : 'Processing Payment...';
+      return paymentMethod === "cod"
+        ? "Placing Order..."
+        : "Processing Payment...";
     }
-    return paymentMethod === 'cod' ? 'Place Order' : 'Pay Now';
+    return paymentMethod === "cod" ? "Place Order" : "Pay Now";
   };
 
   const formatCardNumber = (value: string) => {
-    const cleaned = value.replace(/\s/g, '');
-    const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
+    const cleaned = value.replace(/\s/g, "");
+    const formatted = cleaned.match(/.{1,4}/g)?.join(" ") || cleaned;
     return formatted.substring(0, 19);
   };
 
   const formatExpiryDate = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
+    const cleaned = value.replace(/\D/g, "");
     if (cleaned.length >= 2) {
       return `${cleaned.substring(0, 2)}/${cleaned.substring(2, 4)}`;
     }
@@ -80,7 +95,9 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
             <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-semibold shadow-md">
               ✓
             </div>
-            <p className="text-xs font-medium text-green-600 mt-2">Information</p>
+            <p className="text-xs font-medium text-green-600 mt-2">
+              Information
+            </p>
           </div>
 
           {/* Payment - Step 3 */}
@@ -100,8 +117,14 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
           </div>
 
           {/* Progress Line */}
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 transform -translate-y-1/2" style={{ zIndex: 0 }}>
-            <div className="h-full bg-gradient-to-r from-green-500 via-green-500 to-pink-500" style={{ width: '75%' }} />
+          <div
+            className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 transform -translate-y-1/2"
+            style={{ zIndex: 0 }}
+          >
+            <div
+              className="h-full bg-gradient-to-r from-green-500 via-green-500 to-pink-500"
+              style={{ width: "75%" }}
+            />
           </div>
         </div>
       </div>
@@ -115,7 +138,10 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
             <h2 className="text-lg font-semibold">Payment Method</h2>
           </div>
 
-          <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
+          <RadioGroup
+            value={paymentMethod}
+            onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+          >
             <div className="space-y-3">
               {/* Credit/Debit Card */}
               <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50/50">
@@ -165,10 +191,13 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
         </div>
 
         {/* Card Details Form */}
-        {paymentMethod === 'card' && (
+        {paymentMethod === "card" && (
           <div className="space-y-4 p-4 bg-pink-50/30 rounded-lg border border-pink-100">
             <div>
-              <Label htmlFor="cardNumber" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="cardNumber"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 Card Number
               </Label>
               <Input
@@ -176,7 +205,10 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
                 placeholder="1234 5678 9012 3456"
                 value={cardDetails.cardNumber}
                 onChange={(e) =>
-                  setCardDetails({ ...cardDetails, cardNumber: formatCardNumber(e.target.value) })
+                  setCardDetails({
+                    ...cardDetails,
+                    cardNumber: formatCardNumber(e.target.value),
+                  })
                 }
                 className="bg-white"
                 maxLength={19}
@@ -186,7 +218,10 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="expiryDate" className="text-sm text-gray-700 mb-1.5 block">
+                <Label
+                  htmlFor="expiryDate"
+                  className="text-sm text-gray-700 mb-1.5 block"
+                >
                   Expiry Date
                 </Label>
                 <Input
@@ -194,7 +229,10 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
                   placeholder="MM/YY"
                   value={cardDetails.expiryDate}
                   onChange={(e) =>
-                    setCardDetails({ ...cardDetails, expiryDate: formatExpiryDate(e.target.value) })
+                    setCardDetails({
+                      ...cardDetails,
+                      expiryDate: formatExpiryDate(e.target.value),
+                    })
                   }
                   className="bg-white"
                   maxLength={5}
@@ -203,7 +241,10 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
               </div>
 
               <div>
-                <Label htmlFor="cvv" className="text-sm text-gray-700 mb-1.5 block">
+                <Label
+                  htmlFor="cvv"
+                  className="text-sm text-gray-700 mb-1.5 block"
+                >
                   CVV
                 </Label>
                 <Input
@@ -212,7 +253,10 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
                   placeholder="123"
                   value={cardDetails.cvv}
                   onChange={(e) =>
-                    setCardDetails({ ...cardDetails, cvv: e.target.value.replace(/\D/g, '').substring(0, 4) })
+                    setCardDetails({
+                      ...cardDetails,
+                      cvv: e.target.value.replace(/\D/g, "").substring(0, 4),
+                    })
                   }
                   className="bg-white"
                   maxLength={4}
@@ -222,14 +266,22 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
             </div>
 
             <div>
-              <Label htmlFor="cardholderName" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="cardholderName"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 Cardholder Name
               </Label>
               <Input
                 id="cardholderName"
                 placeholder="John Doe"
                 value={cardDetails.cardholderName}
-                onChange={(e) => setCardDetails({ ...cardDetails, cardholderName: e.target.value })}
+                onChange={(e) =>
+                  setCardDetails({
+                    ...cardDetails,
+                    cardholderName: e.target.value,
+                  })
+                }
                 className="bg-white"
                 required
               />
@@ -248,7 +300,7 @@ export function PaymentForm({ paymentMethod, setPaymentMethod, onSubmit, onBack,
             Back to Shipping
           </Button>
 
-          {paymentMethod !== 'cod' && (
+          {paymentMethod !== "cod" && (
             <Button
               type="submit"
               disabled={isProcessing}
