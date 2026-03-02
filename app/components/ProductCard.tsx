@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useStore } from "@/lib/storeContext";
 import { useCart, Product } from "@/lib/cartContext";
 import { useToast } from "@/app/components/GlobalToast";
-
+import { Roboto } from "next/font/google";
 export interface ProductCardProduct extends Product {
   title?: string;
   images?: string[];
@@ -149,7 +149,7 @@ export default function ProductCard({
     e.stopPropagation();
     addToCart(cartProduct, 1);
     onAdd?.(productName);
-    showToast("Success!", "Added to bag", "success");
+    showToast("Success!", "Added to bag ", "success");
   };
 
   const rating = typeof product.rating === "number" ? product.rating : 4.7;
@@ -340,12 +340,12 @@ export default function ProductCard({
         >
           {/* Price */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-            <span style={{ fontSize: 22, fontWeight: 800, color: "#E8456A", lineHeight: 1 }}>
-              ${product.price.toFixed(2)}
+            <span style={{ fontSize: 16, fontWeight: 800, color: "#E8456A", lineHeight: 1 }}>
+              INR{product.price.toFixed(2)}
             </span>
             {hasDiscount && (
               <span style={{ fontSize: 12, color: "#9CA3AF", textDecoration: "line-through" }}>
-                ${product.originalPrice!.toFixed(2)}
+                INR{product.originalPrice!.toFixed(2)}
               </span>
             )}
           </div>
