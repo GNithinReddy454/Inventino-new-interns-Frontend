@@ -59,9 +59,9 @@ const REASONS = [
 export default function ReturnExchangePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }> | any;
 }) {
-  const unwrappedParams = React.use(params as any);
+  const unwrappedParams = React.use(params as Promise<{ id: string }>);
   const idValue = unwrappedParams.id;
 
   const orderData = MOCK_ORDER[idValue as keyof typeof MOCK_ORDER] || MOCK_ORDER["ORD-2024-001"];

@@ -76,8 +76,8 @@ const MOCK_INVOICE_DATA: Record<string, any> = {
     },
 };
 
-export default function InvoicePage({ params }: { params: { id: string } }) {
-    const unwrappedParams = React.use(params as any);
+export default function InvoicePage({ params }: { params: Promise<{ id: string }> | any }) {
+    const unwrappedParams = React.use(params as Promise<{ id: string }>);
     const idValue = unwrappedParams.id;
 
     const invoice = MOCK_INVOICE_DATA[idValue as keyof typeof MOCK_INVOICE_DATA] || MOCK_INVOICE_DATA["ORD-2024-001"];
