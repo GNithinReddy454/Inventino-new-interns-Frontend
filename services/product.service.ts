@@ -2,7 +2,7 @@ import apiClient from "@/lib/api";
 
 /**
  * Product Service - All product operations
- * 
+ *
  * Handles:
  * - Fetching product lists
  * - Getting product details
@@ -109,7 +109,10 @@ export const productService = {
    * Add product review
    */
   async addReview(id: string | number, review: any) {
-    const response = await apiClient.post(`/api/products/${id}/reviews`, review);
+    const response = await apiClient.post(
+      `/api/products/${id}/reviews`,
+      review,
+    );
     return response.data;
   },
 

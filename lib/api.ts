@@ -41,7 +41,7 @@ apiClient.interceptors.request.use(
 
     return config;
   },
-  (error: AxiosError) => Promise.reject(error)
+  (error: AxiosError) => Promise.reject(error),
 );
 
 /**
@@ -61,7 +61,7 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 /**

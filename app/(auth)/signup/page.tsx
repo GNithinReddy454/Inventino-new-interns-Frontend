@@ -42,6 +42,15 @@ export default function SignupPage() {
         password: data.password,
       })
     );
+    try {
+      const result = await dispatch(
+        signupUserAction({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          password: data.password,
+        }),
+      ).unwrap();
 
     if (signupUserAction.fulfilled.match(resultAction)) {
       const serverUser = resultAction.payload?.data?.user;
@@ -105,7 +114,10 @@ export default function SignupPage() {
 
         <p className="text-center text-xs text-gray-500">
           Already have an account?{" "}
-          <Link href="/login" className="text-[#E15483] font-bold hover:underline">
+          <Link
+            href="/login"
+            className="text-[#E15483] font-bold hover:underline"
+          >
             Login
           </Link>
         </p>

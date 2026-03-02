@@ -1,10 +1,7 @@
-import React from 'react';
+import React from "react";
 
 function ShopPage() {
-  return (
-    <div> Shop page</div>
-  );
+  return <div> Shop page</div>;
 }
 
 export default ShopPage;
-

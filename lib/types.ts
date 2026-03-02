@@ -34,7 +34,7 @@ export interface Product {
   images: ProductImage[];
   isActive?: boolean;
   quantity?: number; // Added for Cart compatibility
-  color?: string;    // Added for UI compatibility
+  color?: string; // Added for UI compatibility
 }
 
 export interface ProductResponse {
@@ -56,17 +56,17 @@ export interface ProductResponse {
 // We export both to satisfy both files.
 export interface Address {
   _id?: string;
-  fullName?: string;  // Backend expects fullName (optional on frontend)
+  fullName?: string; // Backend expects fullName (optional on frontend)
   firstName?: string; // Frontend form uses these
   lastName?: string;
-  email?: string;     // Frontend shipping form
+  email?: string; // Frontend shipping form
   phone: string;
-  street?: string;    // Backend (optional on frontend)
+  street?: string; // Backend (optional on frontend)
   streetAddress?: string; // Frontend
   city: string;
   state: string;
-  pincode?: string;   // Backend (optional on frontend)
-  zipCode?: string;   // Frontend
+  pincode?: string; // Backend (optional on frontend)
+  zipCode?: string; // Frontend
   country?: string;
   isDefault?: boolean;
 }
@@ -91,7 +91,7 @@ export interface CartResponse {
 
 // --- ORDERS (Placeholder for CheckoutFlow) ---
 export interface OrderResponse {
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   orderId: string;
   orderNumber: string;
   orderDate: string;
@@ -108,5 +108,10 @@ export interface OrderResponse {
 }
 
 // --- CHECKOUT ENUMS ---
-export type CheckoutStep = 'shipping' | 'payment' | 'success' | 'failed' | 'tracking';
-export type PaymentMethod = 'card' | 'cod' | 'paypal' | 'gpay';
+export type CheckoutStep =
+  | "shipping"
+  | "payment"
+  | "success"
+  | "failed"
+  | "tracking";
+export type PaymentMethod = "card" | "cod" | "paypal" | "gpay";

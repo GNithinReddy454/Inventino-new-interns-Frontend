@@ -15,7 +15,7 @@ export default function ApiTest() {
 
     try {
       console.log("Testing API at:", process.env.NEXT_PUBLIC_API_BASE_URL);
-      
+
       const response = await apiClient.get("/health");
       setResult(response);
       console.log("Success:", response);
@@ -26,7 +26,7 @@ export default function ApiTest() {
         response: err.response?.data,
         status: err.response?.status,
         config: err.config,
-        url: err.config?.url
+        url: err.config?.url,
       });
     } finally {
       setLoading(false);
@@ -42,7 +42,7 @@ export default function ApiTest() {
       const response = await apiClient.post("/auth/register", {
         name: "Test User",
         email: "test@example.com",
-        password: "Test@123"
+        password: "Test@123",
       });
       setResult(response);
       console.log("Register Success:", response);
@@ -52,7 +52,7 @@ export default function ApiTest() {
         message: err.message,
         response: err.response?.data,
         status: err.response?.status,
-        url: err.config?.url
+        url: err.config?.url,
       });
     } finally {
       setLoading(false);
@@ -62,10 +62,14 @@ export default function ApiTest() {
   return (
     <div className="p-8 max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">API Connectivity Test</h1>
-      
+
       <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
-        <p><strong>API Base URL:</strong></p>
-        <p className="text-sm text-gray-700">{process.env.NEXT_PUBLIC_API_BASE_URL}</p>
+        <p>
+          <strong>API Base URL:</strong>
+        </p>
+        <p className="text-sm text-gray-700">
+          {process.env.NEXT_PUBLIC_API_BASE_URL}
+        </p>
       </div>
 
       <div className="space-y-4">

@@ -7,6 +7,8 @@ import { ReduxProvider } from "@/redux/provider";
 import { SWRConfig } from 'swr';
 import { swrConfig, fetcher } from '@/hooks/useApi';
 import { ToastProvider } from "@/app/components/GlobalToast";
+import { SWRConfig } from "swr";
+import { swrConfig, fetcher } from "@/hooks/useApi";
 import "./globals.css";
 
 const geistSans = Geist({

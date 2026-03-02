@@ -22,9 +22,11 @@ export const signupUserAction = createAsyncThunk<AuthResponse, any>(
     try {
       return await authService.registerUser(userData);
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Signup failed");
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "Signup failed",
+      );
     }
-  }
+  },
 );
 
 export const loginUserAction = createAsyncThunk<AuthResponse, any>(
@@ -36,13 +38,16 @@ export const loginUserAction = createAsyncThunk<AuthResponse, any>(
       }
       return await authService.loginUser(credentials);
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || err.message || "Login failed";
+      const errorMsg =
+        err.response?.data?.message || err.message || "Login failed";
       if (errorMsg.includes("data") && errorMsg.includes("argument")) {
-        return rejectWithValue("Unable to process request. Please check your credentials.");
+        return rejectWithValue(
+          "Unable to process request. Please check your credentials.",
+        );
       }
       return rejectWithValue(errorMsg);
     }
-  }
+  },
 );
 
 export const forgotPasswordAction = createAsyncThunk<any, string>(
@@ -51,32 +56,52 @@ export const forgotPasswordAction = createAsyncThunk<any, string>(
     try {
       return await authService.requestPasswordReset(email);
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Failed to send reset link");
+      return rejectWithValue(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to send reset link",
+      );
     }
-  }
+  },
 );
 
-export const verifyOtpAction = createAsyncThunk<AuthResponse, { email: string; otp: string }>(
+export const verifyOtpAction = createAsyncThunk<
+  AuthResponse,
+  { email: string; otp: string }
+>(
   "auth/verifyOtp",
-  async ({ email, otp }: { email: string; otp: string }, { rejectWithValue }) => {
+  async (
+    { email, otp }: { email: string; otp: string },
+    { rejectWithValue },
+  ) => {
     try {
-      // Assuming this returns the same data structure as Login 
+      // Assuming this returns the same data structure as Login
       return await authService.verifyEmail(email, otp);
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message || "OTP verification failed");
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "OTP verification failed",
+      );
     }
-  }
+  },
 );
 
-export const resetPasswordAction = createAsyncThunk<any, { password: string; confirmPassword: string }>(
+export const resetPasswordAction = createAsyncThunk<
+  any,
+  { password: string; confirmPassword: string }
+>(
   "auth/resetPassword",
-  async (data: { password: string; confirmPassword: string }, { rejectWithValue }) => {
+  async (
+    data: { password: string; confirmPassword: string },
+    { rejectWithValue },
+  ) => {
     try {
       return await authService.resetPassword(data);
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Password reset failed");
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "Password reset failed",
+      );
     }
-  }
+  },
 );
 
 interface AuthState {

@@ -2,7 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { CreditCard, Plus, Trash2, Edit2, ShieldCheck, ArrowLeft } from "lucide-react";
+import {
+  CreditCard,
+  Plus,
+  Trash2,
+  Edit2,
+  ShieldCheck,
+  ArrowLeft,
+} from "lucide-react";
 
 interface Card {
   id: number;
@@ -14,16 +21,35 @@ interface Card {
 }
 
 const INITIAL_CARDS: Card[] = [
-  { id: 1, type: "VISA", maskedNumber: "•••• •••• •••• 4532", expiry: "12/25", holder: "JOHN DOE", isDefault: true },
-  { id: 2, type: "MASTERCARD", maskedNumber: "•••• •••• •••• 8765", expiry: "08/26", holder: "JOHN DOE" },
+  {
+    id: 1,
+    type: "VISA",
+    maskedNumber: "•••• •••• •••• 4532",
+    expiry: "12/25",
+    holder: "JOHN DOE",
+    isDefault: true,
+  },
+  {
+    id: 2,
+    type: "MASTERCARD",
+    maskedNumber: "•••• •••• •••• 8765",
+    expiry: "08/26",
+    holder: "JOHN DOE",
+  },
 ];
 
 export default function PaymentMethodsPage() {
   const [cards, setCards] = useState<Card[]>(INITIAL_CARDS);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ holder: "", number: "", expiry: "", cvv: "" });
+  const [form, setForm] = useState({
+    holder: "",
+    number: "",
+    expiry: "",
+    cvv: "",
+  });
 
-  const handleDelete = (id: number) => setCards((prev) => prev.filter((c) => c.id !== id));
+  const handleDelete = (id: number) =>
+    setCards((prev) => prev.filter((c) => c.id !== id));
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +57,13 @@ export default function PaymentMethodsPage() {
     const type = form.number.startsWith("4") ? "VISA" : "MASTERCARD";
     setCards((prev) => [
       ...prev,
-      { id: Date.now(), type, maskedNumber: `•••• •••• •••• ${last4}`, expiry: form.expiry, holder: form.holder.toUpperCase() },
+      {
+        id: Date.now(),
+        type,
+        maskedNumber: `•••• •••• •••• ${last4}`,
+        expiry: form.expiry,
+        holder: form.holder.toUpperCase(),
+      },
     ]);
     setShowForm(false);
     setForm({ holder: "", number: "", expiry: "", cvv: "" });
@@ -43,12 +75,19 @@ export default function PaymentMethodsPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link href="/profile" className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-pink-600 shadow-sm border border-pink-50 hover:bg-pink-50 transition-colors">
+            <Link
+              href="/profile"
+              className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-pink-600 shadow-sm border border-pink-50 hover:bg-pink-50 transition-colors"
+            >
               <ArrowLeft size={20} />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
-              <p className="text-sm text-gray-400 mt-0.5">Manage your saved payment cards</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Payment Methods
+              </h1>
+              <p className="text-sm text-gray-400 mt-0.5">
+                Manage your saved payment cards
+              </p>
             </div>
           </div>
           <button
@@ -68,7 +107,9 @@ export default function PaymentMethodsPage() {
             >
               {/* Card brand label */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold tracking-widest opacity-80">{card.type}</span>
+                <span className="text-xs font-bold tracking-widest opacity-80">
+                  {card.type}
+                </span>
                 {card.isDefault && (
                   <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-300">
                     <ShieldCheck size={10} /> Default
@@ -92,12 +133,18 @@ export default function PaymentMethodsPage() {
               </div>
 
               {/* Masked number */}
-              <p className="text-lg font-semibold tracking-[0.18em] mt-4">{card.maskedNumber}</p>
+              <p className="text-lg font-semibold tracking-[0.18em] mt-4">
+                {card.maskedNumber}
+              </p>
 
               {/* Holder & expiry */}
               <div className="flex items-end justify-between mt-3">
-                <p className="text-xs font-semibold opacity-80">{card.holder}</p>
-                <p className="text-xs font-semibold opacity-60">Exp. {card.expiry}</p>
+                <p className="text-xs font-semibold opacity-80">
+                  {card.holder}
+                </p>
+                <p className="text-xs font-semibold opacity-60">
+                  Exp. {card.expiry}
+                </p>
               </div>
 
               {/* Decorative circle */}
@@ -122,7 +169,9 @@ export default function PaymentMethodsPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-gray-900">Add New Card</h2>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Add New Card
+                </h2>
                 <button
                   onClick={() => setShowForm(false)}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"
@@ -133,50 +182,66 @@ export default function PaymentMethodsPage() {
 
               <form onSubmit={handleAdd} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Card Holder Name</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                    Card Holder Name
+                  </label>
                   <input
                     type="text"
                     required
                     placeholder="John Doe"
                     value={form.holder}
-                    onChange={(e) => setForm({ ...form, holder: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, holder: e.target.value })
+                    }
                     className="w-full h-11 rounded-lg border border-pink-100 bg-pink-50/40 px-3 text-sm outline-none focus:ring-2 focus:ring-pink-200"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Card Number</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                    Card Number
+                  </label>
                   <input
                     type="text"
                     required
                     maxLength={16}
                     placeholder="•••• •••• •••• ••••"
                     value={form.number}
-                    onChange={(e) => setForm({ ...form, number: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, number: e.target.value })
+                    }
                     className="w-full h-11 rounded-lg border border-pink-100 bg-pink-50/40 px-3 text-sm outline-none focus:ring-2 focus:ring-pink-200"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Expiry (MM/YY)</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                      Expiry (MM/YY)
+                    </label>
                     <input
                       type="text"
                       required
                       maxLength={5}
                       placeholder="MM/YY"
                       value={form.expiry}
-                      onChange={(e) => setForm({ ...form, expiry: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, expiry: e.target.value })
+                      }
                       className="w-full h-11 rounded-lg border border-pink-100 bg-pink-50/40 px-3 text-sm outline-none focus:ring-2 focus:ring-pink-200"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">CVV</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                      CVV
+                    </label>
                     <input
                       type="password"
                       required
                       maxLength={3}
                       placeholder="•••"
                       value={form.cvv}
-                      onChange={(e) => setForm({ ...form, cvv: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, cvv: e.target.value })
+                      }
                       className="w-full h-11 rounded-lg border border-pink-100 bg-pink-50/40 px-3 text-sm outline-none focus:ring-2 focus:ring-pink-200"
                     />
                   </div>

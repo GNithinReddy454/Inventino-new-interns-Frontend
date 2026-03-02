@@ -34,7 +34,7 @@ export default function ResetPasswordPage() {
         resetPasswordAction({
           password: data.password,
           confirmPassword: data.confirmPassword,
-        })
+        }),
       );
 
       if (response.payload) {
@@ -70,11 +70,16 @@ export default function ResetPasswordPage() {
 
             <div>
               <p className="text-sm font-bold text-gray-800">Success!</p>
-              <p className="text-xs text-gray-500">Password reset successfully</p>
+              <p className="text-xs text-gray-500">
+                Password reset successfully
+              </p>
             </div>
           </div>
 
-          <button onClick={() => setShowToast(false)} className="p-1 hover:bg-gray-100 rounded-full">
+          <button
+            onClick={() => setShowToast(false)}
+            className="p-1 hover:bg-gray-100 rounded-full"
+          >
             <X size={18} className="text-gray-400" />
           </button>
         </div>

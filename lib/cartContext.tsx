@@ -39,6 +39,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Load from LocalStorage only after mounting to avoid hydration mismatch
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const savedCart = localStorage.getItem("cart");
     if (savedCart) {
@@ -63,8 +64,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       prevCart.map((item) =>
         item.id === productId
           ? { ...item, quantity: Math.max(1, newQuantity) }
-          : item
-      )
+          : item,
+      ),
     );
   };
 
@@ -76,7 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return prevCart.map((item) =>
           item.id === product.id
             ? { ...item, quantity: (item.quantity || 1) + quantity }
-            : item
+            : item,
         );
       }
 
@@ -96,7 +97,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const cartTotal = cart.reduce(
     (total, item) => total + item.price * (item.quantity || 1),
-    0
+    0,
   );
 
   return (
@@ -108,7 +109,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updateQuantity,
         removeFromCart,
         clearCart,
-        cartTotal
+        cartTotal,
       }}
     >
       {children}

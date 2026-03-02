@@ -12,7 +12,13 @@ interface StarProps {
 
 const ratingLabels = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
 
-function Star({ filled, hovered, onClick, onMouseEnter, onMouseLeave }: StarProps) {
+function Star({
+  filled,
+  hovered,
+  onClick,
+  onMouseEnter,
+  onMouseLeave,
+}: StarProps) {
   return (
     <button
       type="button"
@@ -80,7 +86,6 @@ export default function WriteReviewPage({
   return (
     <div className="bg-[#fdf8f9] min-h-screen pb-20">
       <div className="max-w-3xl mx-auto px-3 sm:px-5 lg:px-6 py-6 sm:py-8 lg:py-10">
-
         {/* ── Page Title ── */}
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
           Write a Review
@@ -93,7 +98,6 @@ export default function WriteReviewPage({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
-
           {/* ── Write Your Thoughts Card ── */}
           <div className="bg-white rounded-2xl border border-pink-100 px-4 sm:px-8 py-6 sm:py-7">
             <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-4 sm:mb-5">
@@ -113,7 +117,9 @@ export default function WriteReviewPage({
                 ))}
               </div>
               <p className="text-[11px] text-gray-400">
-                {rating === 0 ? "Click to rate this product" : ratingLabels[rating]}
+                {rating === 0
+                  ? "Click to rate this product"
+                  : ratingLabels[rating]}
               </p>
             </div>
           </div>
@@ -239,7 +245,6 @@ export default function WriteReviewPage({
               {submitting ? "Submitting…" : "Submit Review"}
             </button>
           </div>
-
         </form>
       </div>
     </div>

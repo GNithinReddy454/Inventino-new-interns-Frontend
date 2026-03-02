@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,13 +21,13 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, message: 'Invalid promo code' },
-      { status: 400 }
+      { success: false, message: "Invalid promo code" },
+      { status: 400 },
     );
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to apply promo code' },
-      { status: 500 }
+      { error: "Failed to apply promo code" },
+      { status: 500 },
     );
   }
 }
