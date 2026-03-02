@@ -39,12 +39,6 @@ export default function LoginPage() {
     const resultAction = await dispatch(
       loginUserAction({ email: data.email, password: data.password })
     );
-    try {
-      const result = await dispatch(
-        loginUserAction({ email: data.email, password: data.password }),
-      ).unwrap();
-      console.log("Login result:", result);
-
     if (loginUserAction.fulfilled.match(resultAction)) {
       const serverUser = resultAction.payload?.data?.user;
       if (serverUser) {

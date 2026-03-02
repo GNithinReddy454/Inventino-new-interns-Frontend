@@ -64,6 +64,29 @@ export default function ProductDetailsPage() {
   // --- FETCH DATA ---
   useEffect(() => {
     const fetchProduct = async () => {
+      // Use mock data for short mock IDs to avoid 400 errors from backend
+      if (!productId || productId.length < 20) {
+        setProduct({
+          id: parseInt(productId) || 999,
+          name: "Artisan Handcrafted Jewelry",
+          price: 89.99,
+          originalPrice: 129.99,
+          description: "Every piece we create carries a unique journey from concept to creation. This beautiful jewelry is the result of intricate craftsmanship. Each piece is individually inspected and polished by hand before being carefully packaged.",
+          category: "EXCLUSIVE",
+          image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800",
+          images: [
+            "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800",
+            "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800",
+            "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=800",
+            "https://images.unsplash.com/photo-1599643478524-fb66f7f32e92?w=800"
+          ],
+          rating: 4.9,
+          reviews: 156,
+        });
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await productService.getById(productId);
         const data = res?.data;
@@ -128,10 +151,21 @@ export default function ProductDetailsPage() {
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
-  if (loading || !product) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-12 h-12 border-4 border-gray-100 border-t-[#D94F7A] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4">
+        <h2 className="text-2xl font-bold text-gray-900">Product Not Found</h2>
+        <Link href="/products" className="text-[#D94F7A] hover:underline font-medium">
+          Return to Products
+        </Link>
       </div>
     );
   }

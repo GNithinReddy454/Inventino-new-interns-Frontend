@@ -42,16 +42,6 @@ export default function SignupPage() {
         password: data.password,
       })
     );
-    try {
-      const result = await dispatch(
-        signupUserAction({
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          password: data.password,
-        }),
-      ).unwrap();
-
     if (signupUserAction.fulfilled.match(resultAction)) {
       const serverUser = resultAction.payload?.data?.user;
       if (serverUser) {

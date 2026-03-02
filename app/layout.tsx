@@ -4,11 +4,9 @@ import { StoreProvider } from "@/lib/storeContext";
 import { AuthProvider } from "@/app/(main)/components/authContext";
 import { CartProvider } from "@/lib/cartContext";
 import { ReduxProvider } from "@/redux/provider";
-import { SWRConfig } from 'swr';
-import { swrConfig, fetcher } from '@/hooks/useApi';
-import { ToastProvider } from "@/app/components/GlobalToast";
 import { SWRConfig } from "swr";
 import { swrConfig, fetcher } from "@/hooks/useApi";
+import { ToastProvider } from "@/app/components/GlobalToast";
 import "./globals.css";
 
 const geistSans = Geist({

@@ -28,26 +28,6 @@ function StarRating({ rating }: { rating: number }) {
         const filled = rating >= star;
         const partial = !filled && rating > star - 1;
         return (
-          <svg key={star} className="w-3 h-3" viewBox="0 0 20 20" fill="none">
-            {partial ? (
-              <>
-                <defs>
-                  <linearGradient id={`grad-${star}`}>
-                    <stop offset={`${(rating - (star - 1)) * 100}%`} stopColor="#FBBF24" />
-                    <stop offset={`${(rating - (star - 1)) * 100}%`} stopColor="#D1D5DB" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M10 1l2.39 4.84 5.34.78-3.86 3.76.91 5.32L10 13.27l-4.78 2.51.91-5.32L2.27 6.62l5.34-.78z"
-                  fill={`url(#grad-${star})`}
-                />
-              </>
-            ) : (
-              <path
-                d="M10 1l2.39 4.84 5.34.78-3.86 3.76.91 5.32L10 13.27l-4.78 2.51.91-5.32L2.27 6.62l5.34-.78z"
-                fill={filled ? "#FBBF24" : "#D1D5DB"}
-              />
-            )}
           <svg
             key={star}
             width="11"
@@ -112,8 +92,6 @@ export default function ProductCard({
     product.images?.length && product.images.length > 1
       ? product.images
       : product.image
-      ? [product.image, ...MOCK_IMAGES.slice(1)]
-      : MOCK_IMAGES;
         ? [product.image, ...MOCK_IMAGES.slice(1)] // keep real image + add mocks
         : MOCK_IMAGES;
 
@@ -150,6 +128,8 @@ export default function ProductCard({
     reviews: product.reviews,
   };
 
+  const [localQuantity, setLocalQuantity] = useState(1);
+
   const handleIncreaseLocal = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -176,13 +156,11 @@ export default function ProductCard({
   const reviews = typeof product.reviews === "number" ? product.reviews : 5.0;
   const badgeText = getBadgeText(product.badge);
   let displayText = badgeText;
-  let badgeBg = "#E8456A";
+  let badgeColor = "bg-pink-500";
+
   if (badgeText) {
     const upper = badgeText.toUpperCase();
-    if (upper === "BESTSELLER" || upper === "BEST SELLER") badgeBg = "#EAB308";
-    else if (upper === "SALE") { displayText = "HOT DEALS"; badgeBg = "#EF4444"; }
-    if (upper === "BESTSELLER" || upper === "BEST SELLER")
-      badgeColor = "bg-yellow-400";
+    if (upper === "BESTSELLER" || upper === "BEST SELLER") badgeColor = "bg-yellow-400";
     else if (upper === "SALE") {
       displayText = "HOT DEALS";
       badgeColor = "bg-red-500";
@@ -205,33 +183,12 @@ export default function ProductCard({
       }}
     >
       {/* ── IMAGE AREA ── */}
+      {/* ── Image Area ── */}
       <div
-        className="relative w-full"
-        style={{ aspectRatio: "1/1", background: "#f3f4f6", overflow: "hidden" }}
+        className="relative aspect-[4/3] sm:aspect-square overflow-hidden rounded-t-2xl bg-gray-50 shrink-0"
         onMouseEnter={startScroll}
         onMouseLeave={stopScroll}
       >
-        {/* Badge — top left, pill, colored */}
-        {badgeText && (
-          <div
-            style={{
-              position: "absolute",
-              top: 10,
-              left: 10,
-              zIndex: 10,
-              backgroundColor: badgeBg,
-              color: "#fff",
-              fontSize: "10px",
-              fontWeight: 800,
-              padding: "3px 10px",
-              borderRadius: "999px",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-            }}
-          >
-            {displayText}
-      {/* ── Image Area ── */}
-      <div className="relative aspect-[4/3] sm:aspect-square overflow-hidden rounded-t-2xl bg-gray-50 shrink-0">
         {/* Badge — top left */}
         {badgeText && (
           <div className="absolute top-3 left-3 z-10 pointer-events-none">
@@ -243,18 +200,8 @@ export default function ProductCard({
           </div>
         )}
 
-        {/* Heart — top right */}
-        <div
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            zIndex: 10,
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-          }}
-        >
+        {/* Heart + Share — top right */}
+        <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -266,29 +213,10 @@ export default function ProductCard({
                 showToast("Removed", "Removed from wishlist", "info");
               }
             }}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: "#fff",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 1px 6px rgba(0,0,0,0.13)",
-              color: isSaved ? "#E8456A" : "#9CA3AF",
-            }}
-          >
-            <Heart
-              size={15}
-              fill={isSaved ? "#E8456A" : "none"}
-              stroke={isSaved ? "#E8456A" : "#9CA3AF"}
-            className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-200 ${
-              isSaved
-                ? "bg-[#E8456A] text-white"
-                : "bg-white text-gray-400 hover:text-[#E8456A] hover:bg-pink-50"
-            }`}
+            className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-200 ${isSaved
+              ? "bg-[#E8456A] text-white"
+              : "bg-white text-gray-400 hover:text-[#E8456A] hover:bg-pink-50"
+              }`}
           >
             <Heart
               size={14}
@@ -298,20 +226,6 @@ export default function ProductCard({
           </button>
 
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: "#fff",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 1px 6px rgba(0,0,0,0.13)",
-              color: "#9CA3AF",
-            }}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -322,28 +236,8 @@ export default function ProductCard({
           </button>
         </div>
 
-        {/* Slideshow images */}
-        {images.map((img, idx) => (
-          <img
-            key={idx}
-            src={img}
-            alt={productName}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              opacity: idx === currentSlide ? 1 : 0,
-              transition: "opacity 0.7s",
-            }}
-          />
-        ))}
         {/* Images — fully covers container */}
-        <Link
-          href={`/products/${product.id}`}
-          className="absolute inset-0 block"
-        >
+        <div className="absolute inset-0 block pointer-events-none">
           {images.map((img, idx) => {
             const isBraceletsCharm = img.includes("bracelets-charm");
             return (
@@ -351,13 +245,12 @@ export default function ProductCard({
                 key={idx}
                 src={img}
                 alt={productName}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-                  idx === currentSlide ? "opacity-100" : "opacity-0"
-                } ${isBraceletsCharm ? "scale-[1.06]" : ""}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${idx === currentSlide ? "opacity-100" : "opacity-0"
+                  } ${isBraceletsCharm ? "scale-[1.06]" : ""}`}
               />
             );
           })}
-        </Link>
+        </div>
 
         {/* Dot indicators */}
         {images.length > 1 && (
@@ -383,23 +276,16 @@ export default function ProductCard({
                   height: 6,
                   transition: "all 0.3s",
                 }}
-                className={`rounded-full transition-all duration-500 ${
-                  idx === currentSlide
-                    ? "w-4 h-1.5 bg-[#E8456A]"
-                    : "w-1.5 h-1.5 bg-white/70"
-                }`}
+                className={`rounded-full transition-all duration-500 ${idx === currentSlide
+                  ? "w-4 h-1.5 bg-[#E8456A]"
+                  : "w-1.5 h-1.5 bg-white/70"
+                  }`}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* ── WHITE CONTENT AREA ── */}
-      <div style={{ background: "#fff", padding: "12px 14px 14px 14px" }}>
-
-        {/* Row 1: Category (pink bold) + Stars + rating */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ fontSize: 10, fontWeight: 800, color: "#E8456A", textTransform: "uppercase", letterSpacing: "0.06em" }}>
       {/* ── Card Body ── */}
       <div className="flex flex-col flex-1 px-4 pb-4 pt-3">
         {/* Category + Stars */}
@@ -407,22 +293,22 @@ export default function ProductCard({
           <span className="text-[10px] text-[#E8456A] font-bold uppercase tracking-widest line-clamp-1">
             {product.category}
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <div className="flex items-center gap-1">
             <StarRating rating={rating} />
-            <span style={{ fontSize: 10, color: "#6B7280" }}>
+            <span className="text-[10px] text-gray-500">
               {rating.toFixed(1)} / {reviews.toFixed(1)}
             </span>
           </div>
         </div>
 
         {/* Row 2: Product title */}
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", lineHeight: 1.35, marginBottom: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+        <div className="text-sm font-bold text-gray-900 leading-tight mb-1 line-clamp-2">
           {productName}
         </div>
 
         {/* Row 3: Description */}
         {product.description && (
-          <div style={{ fontSize: 11, color: "#9CA3AF", lineHeight: 1.4, marginBottom: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <div className="text-[11px] text-gray-400 leading-snug mb-2 line-clamp-2">
             {product.description}
           </div>
         )}
@@ -433,17 +319,6 @@ export default function ProductCard({
             {tags.slice(0, 3).map((tag, i) => (
               <span
                 key={i}
-                style={{
-                  fontSize: 10,
-                  padding: "3px 10px",
-                  borderRadius: 999,
-                  background: "#FFF0F3",
-                  color: "#6B7280",
-                  fontWeight: 500,
-                  border: "none",
-                }}
-              >
-                {typeof tag === "string" ? tag : (tag as any)?.text ?? ""}
                 className="text-[10px] text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-sm font-medium"
               >
                 {typeof tag === "string"
