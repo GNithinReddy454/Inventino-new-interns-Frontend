@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type ToastType = "success" | "error" | "info";
+export type ToastPosition = "bottom-left" | "bottom-right";
 
 export interface ToastMsg {
   id: number;
@@ -27,9 +28,11 @@ export function useToast() {
 function ToastItem({
   toast,
   onDismiss,
+  position,
 }: {
   toast: ToastMsg;
   onDismiss: (id: number) => void;
+  position: ToastPosition;
 }) {
   const iconBg =
     toast.type === "error"
@@ -58,10 +61,9 @@ function ToastItem({
       className="flex items-center gap-3 bg-white rounded-2xl shadow-xl px-4 py-3.5 min-w-[280px] max-w-[340px] pointer-events-auto"
       style={{
         boxShadow: "0 4px 24px rgba(0,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.07)",
-        animation: "toastSlideIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        animation: `${position === "bottom-left" ? "toastSlideInLeft" : "toastSlideInRight"} 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)`,
       }}
     >
-      {/* Icon circle */}
       <div
         className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
         style={{ backgroundColor: iconBg }}
@@ -69,7 +71,6 @@ function ToastItem({
         {checkmark}
       </div>
 
-      {/* Text */}
       <div className="flex flex-col flex-1 min-w-0">
         <span className="text-sm font-bold text-gray-900 leading-tight">{toast.title}</span>
         {toast.description && (
@@ -77,7 +78,6 @@ function ToastItem({
         )}
       </div>
 
-      {/* Dismiss */}
       <button
         onClick={() => onDismiss(toast.id)}
         className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
@@ -92,30 +92,48 @@ function ToastItem({
 function ToastContainer({
   toasts,
   onDismiss,
+  position,
 }: {
   toasts: ToastMsg[];
   onDismiss: (id: number) => void;
+  position: ToastPosition;
 }) {
   if (toasts.length === 0) return null;
+
+  const positionClass =
+    position === "bottom-left"
+      ? "fixed bottom-6 left-6 z-[9999] flex flex-col gap-3 items-start pointer-events-none"
+      : "fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 items-end pointer-events-none";
+
   return (
     <>
       <style>{`
-        @keyframes toastSlideIn {
+        @keyframes toastSlideInLeft {
           from { opacity: 0; transform: translateX(-60px) scale(0.88); }
           to   { opacity: 1; transform: translateX(0)     scale(1);    }
         }
+        @keyframes toastSlideInRight {
+          from { opacity: 0; transform: translateX(60px) scale(0.88); }
+          to   { opacity: 1; transform: translateX(0)    scale(1);    }
+        }
       `}</style>
-      <div className="fixed bottom-6 left-6 z-[9999] flex flex-col gap-3 items-start pointer-events-none">
+      <div className={positionClass}>
         {toasts.map((t) => (
-          <ToastItem key={t.id} toast={t} onDismiss={onDismiss} />
+          <ToastItem key={t.id} toast={t} onDismiss={onDismiss} position={position} />
         ))}
       </div>
     </>
   );
 }
 
-// ── Provider (wrap your app/layout with this) ─────────────────────────────────
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+// ── Provider ─────────────────────────────────────────────────────────────────
+export function ToastProvider({
+  children,
+  position = "bottom-right",
+}: {
+  children: React.ReactNode;
+  position?: ToastPosition;
+}) {
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const counter = useRef(0);
 
@@ -135,7 +153,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} onDismiss={dismiss} position={position} />
     </ToastContext.Provider>
   );
 }
