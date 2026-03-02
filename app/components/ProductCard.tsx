@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useStore } from "@/lib/storeContext";
 import { useCart, Product } from "@/lib/cartContext";
 import { useToast } from "@/app/components/GlobalToast";
-
+import { Roboto } from "next/font/google";
 export interface ProductCardProduct extends Product {
   title?: string;
   images?: string[];
@@ -92,7 +92,7 @@ export default function ProductCard({
     product.images?.length && product.images.length > 1
       ? product.images
       : product.image
-        ? [product.image, ...MOCK_IMAGES.slice(1)] // keep real image + add mocks
+        ? [product.image, ...MOCK_IMAGES.slice(1)]
         : MOCK_IMAGES;
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -149,7 +149,7 @@ export default function ProductCard({
     e.stopPropagation();
     addToCart(cartProduct, 1);
     onAdd?.(productName);
-    showToast("Success!", "Action completed", "success");
+    showToast("Success!", "Added to bag ", "success");
   };
 
   const rating = typeof product.rating === "number" ? product.rating : 4.7;
@@ -172,8 +172,8 @@ export default function ProductCard({
 
   return (
     <Link
-      href={`/product/${product.id}`}
-      className="block cursor-pointer"
+      href={`/products/${product.id}`}
+      className="flex flex-col cursor-pointer h-full"
       style={{
         borderRadius: "16px",
         overflow: "hidden",
@@ -183,7 +183,6 @@ export default function ProductCard({
       }}
     >
       {/* ── IMAGE AREA ── */}
-      {/* ── Image Area ── */}
       <div
         className="relative aspect-[4/3] sm:aspect-square overflow-hidden rounded-t-2xl bg-gray-50 shrink-0"
         onMouseEnter={startScroll}
@@ -236,7 +235,7 @@ export default function ProductCard({
           </button>
         </div>
 
-        {/* Images — fully covers container */}
+        {/* Images */}
         <div className="absolute inset-0 block pointer-events-none">
           {images.map((img, idx) => {
             const isBraceletsCharm = img.includes("bracelets-charm");
@@ -301,19 +300,19 @@ export default function ProductCard({
           </div>
         </div>
 
-        {/* Row 2: Product title */}
+        {/* Product title */}
         <div className="text-sm font-bold text-gray-900 leading-tight mb-1 line-clamp-2">
           {productName}
         </div>
 
-        {/* Row 3: Description */}
+        {/* Description */}
         {product.description && (
           <div className="text-[11px] text-gray-400 leading-snug mb-2 line-clamp-2">
             {product.description}
           </div>
         )}
 
-        {/* Row 4: Tags */}
+        {/* Tags */}
         {tags.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
             {tags.slice(0, 3).map((tag, i) => (
@@ -329,8 +328,16 @@ export default function ProductCard({
           </div>
         )}
 
-        {/* Row 5: Price (big pink bold) + ADD TO BAG (pill button) */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        {/* ✅ Price + ADD TO BAG — pinned to bottom with mt-auto */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            marginTop: "auto",  // ✅ KEY FIX: always pushes to bottom
+          }}
+        >
           {/* Price */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
             <span style={{ fontSize: 22, fontWeight: 800, color: "#E8456A", lineHeight: 1 }}>
