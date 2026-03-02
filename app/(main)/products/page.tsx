@@ -379,17 +379,14 @@ function ProductsContent() {
       style={vertical ? undefined : { WebkitOverflowScrolling: "touch" }}
     >
       <button
-        onClick={() => { setSelectedCategory("All Products"); onSelect?.(); }}
-        className={`flex justify-between items-center w-full text-sm font-medium px-3 py-2 rounded-xl transition-colors ${
         onClick={() => {
           setSelectedCategory("All Products");
           onSelect?.();
         }}
-        className={`flex-shrink-0 lg:flex lg:justify-between lg:w-full text-sm font-medium px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
-          selectedCategory === "All Products"
+        className={`flex-shrink-0 lg:flex lg:justify-between lg:w-full text-sm font-medium px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${selectedCategory === "All Products"
             ? "bg-[#D94F7A] text-white"
             : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
-        } ${!vertical ? "lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent flex-shrink-0 " + (selectedCategory === "All Products" ? "lg:text-[#D94F7A]" : "") : ""}`}
+          } ${!vertical ? "lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent flex-shrink-0 " + (selectedCategory === "All Products" ? "lg:text-[#D94F7A]" : "") : ""}`}
       >
         <span>All Products</span>
         <span className={`${vertical ? "inline" : "hidden lg:inline"} bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs ${selectedCategory === "All Products" && vertical ? "bg-white/30 text-white" : ""}`}>
@@ -403,30 +400,19 @@ function ProductsContent() {
         return (
           <button
             key={cat}
-            onClick={() => { setSelectedCategory(cat); onSelect?.(); }}
-            className={`flex justify-between items-center w-full text-sm px-3 py-2 rounded-xl transition-colors ${
             onClick={() => {
               setSelectedCategory(cat);
               onSelect?.();
             }}
-            className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
-              isActive
+            className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${isActive
                 ? "bg-[#D94F7A] text-white font-bold"
                 : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
-            } ${!vertical ? "lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent flex-shrink-0 " + (isActive ? "lg:text-[#D94F7A]" : "") : ""}`}
+              } ${!vertical ? "lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent flex-shrink-0 " + (isActive ? "lg:text-[#D94F7A]" : "") : ""}`}
           >
             <span>{cat}</span>
             {count > 0 && (
-              <span className={`${vertical ? "inline" : "hidden lg:inline"} px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${
-                isActive ? "bg-white/30 text-white" : "bg-gray-200 text-gray-400"
-              }`}>
-              <span
-                className={`hidden lg:inline px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${
-                  isActive
-                    ? "bg-pink-100 text-[#D94F7A]"
-                    : "bg-gray-100 text-gray-400"
-                }`}
-              >
+              <span className={`${vertical ? "inline" : "hidden lg:inline"} px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${isActive ? "bg-[#D94F7A] text-white" : "bg-gray-200 text-gray-400"
+                }`}>
                 {count}
               </span>
             )}
@@ -440,11 +426,10 @@ function ProductsContent() {
     <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative">
       {/* Toast */}
       <div
-        className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${
-          toast.show
+        className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${toast.show
             ? "translate-y-0 opacity-100"
             : "translate-y-12 opacity-0 pointer-events-none"
-        }`}
+          }`}
       >
         <div className="bg-white rounded-full py-3 px-6 flex items-center gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-50 border-l-4 border-l-[#22C55E]">
           <div className="bg-[#22C55E] p-1.5 rounded-full text-white flex-shrink-0">
@@ -469,15 +454,13 @@ function ProductsContent() {
 
       {/* Mobile Sidebar */}
       <div
-        className={`fixed inset-0 bg-black/30 z-40 md:hidden transition-opacity duration-300 ${
-          sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 bg-black/30 z-40 md:hidden transition-opacity duration-300 ${sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
         onClick={() => setSidebarOpen(false)}
       />
       <div
-        className={`fixed left-0 top-0 h-full w-72 z-50 overflow-y-auto bg-white transform transition-transform duration-300 ease-in-out lg:hidden ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed left-0 top-0 h-full w-72 z-50 overflow-y-auto bg-white transform transition-transform duration-300 ease-in-out lg:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="p-6 h-full">
           <div className="flex justify-between items-center mb-5">
@@ -508,13 +491,12 @@ function ProductsContent() {
             <CategoryList onSelect={() => setSidebarOpen(false)} vertical={true} />
           </div>
           <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price</h4>
-          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">
-            Categories
-          </h4>
-          <CategoryList onSelect={() => setSidebarOpen(false)} />
-          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">
-            Price
-          </h4>
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h4>
+          {/* ─── FIX: Pass vertical={true} so categories stack in a column ─── */}
+          <div className="max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+            <CategoryList onSelect={() => setSidebarOpen(false)} vertical={true} />
+          </div>
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price</h4>
           <PriceInputs
             minPrice={minPrice}
             maxPrice={maxPrice}
@@ -760,13 +742,12 @@ function ProductsContent() {
                       typeof item === "number" && setCurrentPage(item)
                     }
                     disabled={item === "..."}
-                    className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${
-                      currentPage === item
+                    className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${currentPage === item
                         ? "bg-[#D94F7A] text-white border-[#D94F7A] shadow-md shadow-[#D94F7A]/30"
                         : item === "..."
                           ? "bg-transparent text-gray-300 border-transparent cursor-default"
                           : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
-                    }`}
+                      }`}
                   >
                     {item}
                   </button>

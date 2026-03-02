@@ -7,6 +7,7 @@ type ToastProps = {
   title: string;
   message: string;
   type?: "success" | "warning" | "error";
+  position?: "top-center" | "bottom-right";
   onClose: () => void;
 };
 
@@ -14,6 +15,7 @@ export default function Toast({
   title,
   message,
   type = "success",
+  position = "top-center",
   onClose,
 }: ToastProps) {
   // Auto-close after 3 seconds
@@ -42,8 +44,14 @@ export default function Toast({
 
   const currentStyle = styles[type];
 
+  // Dynamic positioning
+  const positionClasses =
+    position === "bottom-right"
+      ? "bottom-10 right-10 animate-[slideUp_0.3s_ease-out]"
+      : "top-10 left-1/2 -translate-x-1/2 animate-[slideDown_0.3s_ease-out]";
+
   return (
-    <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-4 flex items-center gap-4 min-w-[320px] max-w-sm border border-gray-50 animate-[slideDown_0.3s_ease-out]">
+    <div className={`fixed bg-white z-50 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-4 flex items-center gap-4 min-w-[320px] max-w-sm border border-gray-50 ${positionClasses}`}>
       <div
         className={`w-12 h-12 rounded-full ${currentStyle.bg} flex items-center justify-center shadow-sm flex-shrink-0`}
       >

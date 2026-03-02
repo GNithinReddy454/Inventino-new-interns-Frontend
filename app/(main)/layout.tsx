@@ -22,13 +22,5 @@ export default function MainLayout({
         <Footer />
       </div>
     </ToastProvider>
-    <div className="flex flex-col min-h-screen bg-white">
-      <Navbar />
-
-      <main className="flex-1 bg-white">{children}</main>
-
-      <BackToTop />
-      <Footer />
-    </div>
   );
 }
