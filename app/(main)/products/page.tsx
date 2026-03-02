@@ -367,25 +367,32 @@ function ProductsContent() {
 
   if (!isClient) return <div className="min-h-screen bg-white" />;
 
-  const CategoryList = ({ onSelect }: { onSelect?: () => void }) => (
+  // ─── FIX: Added `vertical` prop so mobile sidebar forces a column layout ───
+  const CategoryList = ({ onSelect, vertical }: { onSelect?: () => void; vertical?: boolean }) => (
     <div
       ref={categoryScrollRef}
-      className="flex lg:flex-col gap-2 overflow-x-auto pb-1 lg:pb-0 lg:overflow-x-visible scrollbar-hide"
-      style={{ WebkitOverflowScrolling: "touch" }}
+      className={
+        vertical
+          ? "flex flex-col gap-2"
+          : "flex lg:flex-col gap-2 overflow-x-auto pb-1 lg:pb-0 lg:overflow-x-visible scrollbar-hide"
+      }
+      style={vertical ? undefined : { WebkitOverflowScrolling: "touch" }}
     >
       <button
+        onClick={() => { setSelectedCategory("All Products"); onSelect?.(); }}
+        className={`flex justify-between items-center w-full text-sm font-medium px-3 py-2 rounded-xl transition-colors ${
         onClick={() => {
           setSelectedCategory("All Products");
           onSelect?.();
         }}
         className={`flex-shrink-0 lg:flex lg:justify-between lg:w-full text-sm font-medium px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
           selectedCategory === "All Products"
-            ? "bg-[#D94F7A] text-white lg:bg-transparent lg:text-[#D94F7A]"
-            : "bg-gray-100 text-gray-600 lg:bg-transparent hover:text-[#D94F7A]"
-        }`}
+            ? "bg-[#D94F7A] text-white"
+            : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
+        } ${!vertical ? "lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent flex-shrink-0 " + (selectedCategory === "All Products" ? "lg:text-[#D94F7A]" : "") : ""}`}
       >
         <span>All Products</span>
-        <span className="hidden lg:inline bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs">
+        <span className={`${vertical ? "inline" : "hidden lg:inline"} bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs ${selectedCategory === "All Products" && vertical ? "bg-white/30 text-white" : ""}`}>
           {totalProducts || "—"}
         </span>
       </button>
@@ -396,18 +403,23 @@ function ProductsContent() {
         return (
           <button
             key={cat}
+            onClick={() => { setSelectedCategory(cat); onSelect?.(); }}
+            className={`flex justify-between items-center w-full text-sm px-3 py-2 rounded-xl transition-colors ${
             onClick={() => {
               setSelectedCategory(cat);
               onSelect?.();
             }}
             className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
               isActive
-                ? "bg-[#D94F7A] text-white font-bold lg:bg-transparent lg:text-[#D94F7A]"
-                : "bg-gray-100 text-gray-600 lg:bg-transparent hover:text-[#D94F7A]"
-            }`}
+                ? "bg-[#D94F7A] text-white font-bold"
+                : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
+            } ${!vertical ? "lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent flex-shrink-0 " + (isActive ? "lg:text-[#D94F7A]" : "") : ""}`}
           >
             <span>{cat}</span>
             {count > 0 && (
+              <span className={`${vertical ? "inline" : "hidden lg:inline"} px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${
+                isActive ? "bg-white/30 text-white" : "bg-gray-200 text-gray-400"
+              }`}>
               <span
                 className={`hidden lg:inline px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${
                   isActive
@@ -490,6 +502,12 @@ function ProductsContent() {
               </button>
             </div>
           </div>
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h4>
+          {/* ─── FIX: Pass vertical={true} so categories stack in a column ─── */}
+          <div className="max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+            <CategoryList onSelect={() => setSidebarOpen(false)} vertical={true} />
+          </div>
+          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price</h4>
           <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">
             Categories
           </h4>

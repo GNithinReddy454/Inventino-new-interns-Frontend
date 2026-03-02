@@ -9,6 +9,7 @@ import { useAuth } from "@/app/(main)/components/authContext";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { signupUserAction } from "@/redux/authslice";
 import { signupSchema, type SignupFormData } from "../schema";
+import { useToast } from "@/app/components/GlobalToast";
 
 import AuthLayout from "../_components/AuthSplitLayout";
 import AuthInput from "../_components/AuthInput";
@@ -20,7 +21,8 @@ export default function SignupPage() {
   const router = useRouter();
   const { login } = useAuth();
   const dispatch = useAppDispatch();
-  const { loading, error } = useAppSelector((state) => state.auth);
+  const { loading } = useAppSelector((state) => state.auth);
+  const { showToast } = useToast();
 
   const {
     register,
@@ -32,6 +34,14 @@ export default function SignupPage() {
   });
 
   const onSubmit = async (data: SignupFormData) => {
+    const resultAction = await dispatch(
+      signupUserAction({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        password: data.password,
+      })
+    );
     try {
       const result = await dispatch(
         signupUserAction({
@@ -42,25 +52,23 @@ export default function SignupPage() {
         }),
       ).unwrap();
 
-      const serverUser = result?.data?.user;
+    if (signupUserAction.fulfilled.match(resultAction)) {
+      const serverUser = resultAction.payload?.data?.user;
       if (serverUser) {
         login(serverUser as any);
+        showToast("Account Created!", "Welcome to Inventino Jewels.", "success");
         router.push("/verify-otp");
       }
-    } catch (err) {
-      console.error("Signup error:", err);
+    } else if (signupUserAction.rejected.match(resultAction)) {
+      const errorMessage =
+        (resultAction.payload as string) || "Signup failed. Please try again.";
+      showToast("Signup Failed", errorMessage, "error");
     }
   };
 
   return (
     <AuthLayout title="Create Account" bgImage="/images/signup-bg.jpg">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
         <AuthInput
           label="Full Name *"
           placeholder="Enter your full name"

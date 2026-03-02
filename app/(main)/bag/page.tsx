@@ -184,7 +184,7 @@ export default function BagPage() {
           <div className="lg:col-span-2 flex flex-col gap-4">
             {/* Cart Items */}
             <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-6 md:p-8 border-b border-gray-50 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+              <div className="p-4 md:p-8 border-b border-gray-50 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
                 <div className="flex items-center justify-between md:justify-start gap-4">
                   <span className="font-bold text-gray-900 uppercase text-[10px] md:text-xs tracking-widest">
                     Cart Items
@@ -195,7 +195,7 @@ export default function BagPage() {
                 </div>
 
                 {/* ── Bulk Actions ── */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={handleAddAllToWishlist}
                     className="inline-flex items-center gap-1.5 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-[#D94F7A] hover:text-[#D94F7A] transition-colors text-[10px] sm:text-xs font-semibold text-gray-700 group whitespace-nowrap"
@@ -226,6 +226,33 @@ export default function BagPage() {
                   return (
                     <div
                       key={item.id}
+                      className={`p-4 md:p-8 transition-all duration-400 ease-in-out ${isAnimating
+                        ? actionType === "wishlist"
+                          ? "opacity-0 -translate-y-16 scale-90"
+                          : "opacity-0 -translate-x-full"
+                        : "opacity-100 translate-x-0 translate-y-0"
+                        }`}
+                    >
+                      {/* ── Mobile: horizontal row layout ── */}
+                      <div className="flex flex-row gap-4 md:gap-8">
+                        
+                        {/* Image */}
+                        <Link href={`/products/${item.id}`} className="block group shrink-0">
+                          <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          </div>
+                        </Link>
+
+                        {/* Details */}
+                        <div className="flex-1 flex flex-col justify-between min-w-0">
+                          
+                          {/* Top: name + remove/wishlist actions */}
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <Link href={`/products/${item.id}`} className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300 min-w-0">
+                                <h3 className="font-bold text-sm md:text-lg leading-tight line-clamp-2">{item.name}</h3>
+                              </Link>
+                              {/* Remove button — top right on mobile */}
                       className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${
                         isAnimating
                           ? actionType === "wishlist"
@@ -277,13 +304,20 @@ export default function BagPage() {
                               <span className="h-3 w-[1px] bg-gray-200" />
                               <button
                                 onClick={() => handleAction(item, "remove")}
-                                className="hover:text-red-500 flex items-center gap-1.5 transition-all"
+                                className="shrink-0 text-gray-300 hover:text-red-400 transition-colors ml-1"
+                                aria-label="Remove item"
                               >
-                                <X size={12} /> Remove
+                                <X size={16} />
                               </button>
                             </div>
-                          </div>
 
+                            {/* Price */}
+                            <div className="flex items-baseline gap-2 mt-1.5">
+                              <span className="text-[#E8456A] font-black text-lg md:text-xl">${item.price.toFixed(2)}</span>
+                              {(item as any).originalPrice && (item as any).originalPrice > item.price && (
+                                <span className="text-gray-400 line-through text-xs md:text-sm">${(item as any).originalPrice.toFixed(2)}</span>
+                              )}
+                            </div>
                           <div className="flex items-baseline gap-2 mt-2 justify-center md:justify-start">
                             <span className="text-[#E8456A] font-black text-xl">
                               ${item.price.toFixed(2)}
@@ -297,9 +331,13 @@ export default function BagPage() {
                           </div>
                         </div>
 
-                        <div className="flex justify-center md:justify-end mt-6 md:mt-2">
-                          <div className="flex items-center bg-[#FFF1F2] rounded-full p-1 border border-pink-50 shadow-sm h-12 w-fit">
+                            {/* Wishlist action */}
                             <button
+                              onClick={() => handleAction(item, "wishlist")}
+                              className="mt-2 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-gray-300 hover:text-[#E8456A] transition-colors"
+                            >
+                              <Heart size={11} className={isAnimating && actionType === "wishlist" ? "fill-[#E8456A]" : ""} />
+                              Back to Wishlist
                               onClick={() =>
                                 updateQuantity &&
                                 updateQuantity(
@@ -327,6 +365,25 @@ export default function BagPage() {
                               <Plus size={14} strokeWidth={3} />
                             </button>
                           </div>
+
+                          {/* Bottom: Quantity */}
+                          <div className="flex justify-start mt-3 md:justify-end md:mt-2">
+                            <div className="flex items-center bg-[#FFF1F2] rounded-full p-0.5 border border-pink-50 shadow-sm h-8 md:h-10 w-fit">
+                              <button
+                                onClick={() => updateQuantity && updateQuantity(item.id, Math.max(1, (item.quantity || 1) - 1))}
+                                className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
+                              >
+                                <Minus size={10} strokeWidth={3} />
+                              </button>
+                              <span className="font-bold text-gray-900 w-7 md:w-9 text-center text-sm md:text-base px-0.5">{item.quantity || 1}</span>
+                              <button
+                                onClick={() => updateQuantity && updateQuantity(item.id, (item.quantity || 1) + 1)}
+                                className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
+                              >
+                                <Plus size={10} strokeWidth={3} />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -335,7 +392,7 @@ export default function BagPage() {
               </div>
             </div>
 
-            {/* ── Promo Code — FIXED FOR MOBILE ── */}
+            {/* ── Promo Code ── */}
             <div className="bg-white rounded-[2rem] border border-dashed border-gray-200 shadow-sm p-6 md:p-8">
               <div className="flex items-center gap-2 mb-4">
                 <Tag size={15} className="text-[#D94F7A]" />
@@ -343,7 +400,6 @@ export default function BagPage() {
                   Promo Code
                 </span>
               </div>
-              {/* Changed to flex-col on small mobile, flex-row on larger screens */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"

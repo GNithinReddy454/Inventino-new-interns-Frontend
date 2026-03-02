@@ -4,6 +4,9 @@ import { StoreProvider } from "@/lib/storeContext";
 import { AuthProvider } from "@/app/(main)/components/authContext";
 import { CartProvider } from "@/lib/cartContext";
 import { ReduxProvider } from "@/redux/provider";
+import { SWRConfig } from 'swr';
+import { swrConfig, fetcher } from '@/hooks/useApi';
+import { ToastProvider } from "@/app/components/GlobalToast";
 import { SWRConfig } from "swr";
 import { swrConfig, fetcher } from "@/hooks/useApi";
 import "./globals.css";
@@ -34,15 +37,17 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col overflow-x-hidden`}
       >
         <ReduxProvider>
-          <CartProvider>
-            <StoreProvider>
-              <AuthProvider>
-                <SWRConfig value={{ ...swrConfig, fetcher }}>
-                  {children}
-                </SWRConfig>
-              </AuthProvider>
-            </StoreProvider>
-          </CartProvider>
+          <ToastProvider>
+            <CartProvider>
+              <StoreProvider>
+                <AuthProvider>
+                  <SWRConfig value={{ ...swrConfig, fetcher }}>
+                    {children}
+                  </SWRConfig>
+                </AuthProvider>
+              </StoreProvider>
+            </CartProvider>
+          </ToastProvider>
         </ReduxProvider>
       </body>
     </html>
