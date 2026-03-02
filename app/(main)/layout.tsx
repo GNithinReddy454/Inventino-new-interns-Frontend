@@ -10,7 +10,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ToastProvider>
+    <ToastProvider position="bottom-right">
       <div className="flex flex-col min-h-screen bg-white">
         <Navbar />
 
