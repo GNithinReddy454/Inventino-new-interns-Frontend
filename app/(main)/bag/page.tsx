@@ -261,6 +261,7 @@ export default function BagPage() {
                   return (
                     <div
                       key={item.id}
+                      className={`p-4 md:p-8 flex flex-row gap-4 md:gap-8 transition-all duration-400 ease-in-out ${isAnimating
                       className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${
                         isAnimating
                           ? actionType === "wishlist"
@@ -272,8 +273,10 @@ export default function BagPage() {
                       {/* Image - Now using Next.js Image */}
                       <Link
                         href={`/products/${item.id}`}
-                        className="block group shrink-0 mx-auto md:mx-0"
+                        className="block group shrink-0"
                       >
+                        <div className="w-20 h-20 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
+                          <img
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
                           <Image
                             src={item.image}
@@ -288,22 +291,22 @@ export default function BagPage() {
 
                       {/* Details */}
                       <div className="flex-1 flex flex-col justify-between overflow-hidden">
-                        <div className="text-center md:text-left">
-                          <div className="flex flex-col md:flex-row md:justify-between gap-2">
+                        <div className="text-left">
+                          <div className="flex flex-row justify-between gap-2">
                             <Link
                               href={`/products/${item.id}`}
                               className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300"
                             >
-                              <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-2">
+                              <h3 className="font-bold text-sm md:text-lg leading-tight line-clamp-2">
                                 {item.name}
                               </h3>
                             </Link>
 
-                            {/* Actions on Desktop */}
-                            <div className="flex items-center justify-center md:justify-start gap-4 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300 shrink-0">
+                            {/* Actions */}
+                            <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300 shrink-0">
                               <button
                                 onClick={() => handleAction(item, "wishlist")}
-                                className="hover:text-[#E8456A] flex items-center gap-1.5 transition-all"
+                                className="hover:text-[#E8456A] flex items-center gap-1 transition-all"
                               >
                                 <Heart
                                   size={12}
@@ -313,12 +316,15 @@ export default function BagPage() {
                                       : ""
                                   }
                                 />
+                                <span className="hidden sm:inline">Back to Wishlist</span>
+                              </button>
+                              <span className="h-3 w-[1px] bg-gray-200 hidden sm:block" />
                                 Save for Later
                               </button>
                               <span className="h-3 w-px bg-gray-200" />
                               <button
                                 onClick={() => handleAction(item, "remove")}
-                                className="shrink-0 text-gray-300 hover:text-red-400 transition-colors ml-1"
+                                className="shrink-0 text-gray-300 hover:text-red-400 transition-colors"
                                 aria-label="Remove item"
                               >
                                 <X size={16} />
@@ -327,10 +333,14 @@ export default function BagPage() {
                           </div>
 
                           {/* Price */}
-                          <div className="flex items-baseline gap-2 mt-2 justify-center md:justify-start">
-                            <span className="text-[#E8456A] font-black text-xl">
+                          <div className="flex items-baseline gap-2 mt-1.5">
+                            <span className="text-[#E8456A] font-black text-lg md:text-xl">
                               ${item.price.toFixed(2)}
                             </span>
+                            {(item as any).originalPrice &&
+                              (item as any).originalPrice > item.price && (
+                                <span className="text-gray-400 line-through text-xs md:text-sm">
+                                  ${(item as any).originalPrice.toFixed(2)}
                             {item.originalPrice &&
                               item.originalPrice > item.price && (
                                 <span className="text-gray-400 line-through text-sm">
@@ -341,9 +351,11 @@ export default function BagPage() {
                         </div>
 
                         {/* Quantity */}
-                        <div className="flex justify-center md:justify-start mt-4 md:mt-0 items-center">
-                          <div className="flex items-center bg-[#FFF1F2] rounded-full p-0.5 border border-pink-50 shadow-sm h-10 w-fit">
+                        <div className="flex justify-start mt-2 md:mt-0 items-center">
+                          <div className="flex items-center bg-[#FFF1F2] rounded-full p-0.5 border border-pink-50 shadow-sm h-9 md:h-10 w-fit">
                             <button
+                              onClick={() => updateQuantity && updateQuantity(item.id, Math.max(1, (item.quantity || 1) - 1))}
+                              className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                               onClick={() =>
                                 updateQuantity &&
                                 updateQuantity(
@@ -354,8 +366,14 @@ export default function BagPage() {
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                               aria-label="Decrease quantity"
                             >
-                              <Minus size={14} strokeWidth={3} />
+                              <Minus size={12} strokeWidth={3} />
                             </button>
+                            <span className="font-bold text-gray-900 w-8 md:w-10 text-center text-sm px-1">
+                              {item.quantity || 1}
+                            </span>
+                            <button
+                              onClick={() => updateQuantity && updateQuantity(item.id, (item.quantity || 1) + 1)}
+                              className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                             <span className="font-bold text-gray-900 w-10 text-center px-1">
                               {item.quantity || 1}
                             </span>
@@ -367,7 +385,7 @@ export default function BagPage() {
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                               aria-label="Increase quantity"
                             >
-                              <Plus size={14} strokeWidth={3} />
+                              <Plus size={12} strokeWidth={3} />
                             </button>
                           </div>
                         </div>
