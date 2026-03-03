@@ -289,12 +289,12 @@ export default function BagPage() {
                           {/* Price */}
                           <div className="flex items-baseline gap-2 mt-2 justify-center md:justify-start">
                             <span className="text-[#E8456A] font-black text-xl">
-                              ${item.price.toFixed(2)}
+                              ₹{item.price.toFixed(2)}
                             </span>
                             {(item as any).originalPrice &&
                               (item as any).originalPrice > item.price && (
                                 <span className="text-gray-400 line-through text-sm">
-                                  ${(item as any).originalPrice.toFixed(2)}
+                                  ₹{(item as any).originalPrice.toFixed(2)}
                                 </span>
                               )}
                           </div>
@@ -378,13 +378,13 @@ export default function BagPage() {
               <div className="flex justify-between text-gray-500">
                 <span>Subtotal</span>
                 <span className="text-gray-900 font-bold">
-                  ${cartTotal.toFixed(2)}
+                  ₹{cartTotal.toFixed(2)}
                 </span>
               </div>
               {promoApplied && (
                 <div className="flex justify-between text-green-500">
                   <span>Discount (10%)</span>
-                  <span className="font-bold">-${discount.toFixed(2)}</span>
+                  <span className="font-bold">-₹{discount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between text-gray-500">
@@ -396,7 +396,7 @@ export default function BagPage() {
               <div className="flex justify-between text-gray-500">
                 <span>Estimated Tax</span>
                 <span className="text-gray-900 font-bold">
-                  ${tax.toFixed(2)}
+                  ₹{tax.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -405,8 +405,8 @@ export default function BagPage() {
               <span className="font-bold text-gray-900 text-lg font-serif">
                 Total
               </span>
-              <span className="font-black text-[#D94F7A] text-2xl md:text-3xl tracking-tight">
-                ${finalTotal.toFixed(2)}
+              <span className="font-black text-[#D94F7A] text-2xl md:text-l tracking-tight">
+                ₹{finalTotal.toFixed(2)}
               </span>
             </div>
 

@@ -340,12 +340,12 @@ export default function ProductCard({
         >
           {/* Price */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: "#E8456A", lineHeight: 1 }}>
-              INR{product.price.toFixed(2)}
+            <span style={{ fontSize: 14, fontWeight: 800, color: "#E8456A", lineHeight: 1 }}>
+              ₹{product.price.toFixed(2)}
             </span>
             {hasDiscount && (
               <span style={{ fontSize: 12, color: "#9CA3AF", textDecoration: "line-through" }}>
-                INR{product.originalPrice!.toFixed(2)}
+                ₹{product.originalPrice!.toFixed(2)}
               </span>
             )}
           </div>
