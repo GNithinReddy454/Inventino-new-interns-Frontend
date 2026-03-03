@@ -58,8 +58,8 @@ export const forgotPasswordAction = createAsyncThunk<any, string>(
     } catch (err: any) {
       return rejectWithValue(
         err.response?.data?.message ||
-          err.message ||
-          "Failed to send reset link",
+        err.message ||
+        "Failed to send reset link",
       );
     }
   },
@@ -87,11 +87,11 @@ export const verifyOtpAction = createAsyncThunk<
 
 export const resetPasswordAction = createAsyncThunk<
   any,
-  { password: string; confirmPassword: string }
+  { token: string; newPassword: string }
 >(
   "auth/resetPassword",
   async (
-    data: { password: string; confirmPassword: string },
+    data: { token: string; newPassword: string },
     { rejectWithValue },
   ) => {
     try {
@@ -102,6 +102,35 @@ export const resetPasswordAction = createAsyncThunk<
       );
     }
   },
+);
+
+export const resendOtpAction = createAsyncThunk<any, string>(
+  "auth/resendOtp",
+  async (email: string, { rejectWithValue }) => {
+    try {
+      return await authService.resendOtp(email);
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "Failed to resend OTP"
+      );
+    }
+  }
+);
+
+export const changePasswordAction = createAsyncThunk<
+  any,
+  { oldPassword: string; newPassword: string }
+>(
+  "auth/changePassword",
+  async (data, { rejectWithValue }) => {
+    try {
+      return await authService.changePassword(data);
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.message || err.message || "Failed to change password"
+      );
+    }
+  }
 );
 
 interface AuthState {
@@ -193,6 +222,28 @@ const authSlice = createSlice({
       .addCase(resetPasswordAction.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || "Password reset failed";
+      })
+      // Resend OTP
+      .addCase(resendOtpAction.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(resendOtpAction.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(resendOtpAction.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || "Failed to resend OTP";
+      })
+      // Change Password
+      .addCase(changePasswordAction.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(changePasswordAction.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(changePasswordAction.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || "Failed to change password";
       });
   },
 });

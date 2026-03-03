@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
@@ -13,12 +13,16 @@ import AuthLayout from "../_components/AuthCardLayout";
 import AuthButton from "../_components/AuthButton";
 import PasswordInput from "../_components/PasswordInput";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.auth);
 
   const [showToast, setShowToast] = useState(false);
+  const [errorToast, setErrorToast] = useState("");
+
+  const token = searchParams.get("token") || "";
 
   const {
     register,
@@ -29,29 +33,38 @@ export default function ResetPasswordPage() {
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
+    if (!token) {
+      setErrorToast("Invalid or missing password reset token. Please request a new link.");
+      return;
+    }
+
     try {
       const response = await dispatch(
         resetPasswordAction({
-          password: data.password,
-          confirmPassword: data.confirmPassword,
+          token,
+          newPassword: data.password,
         }),
       );
 
-      if (response.payload) {
+      if (resetPasswordAction.fulfilled.match(response)) {
         setShowToast(true);
 
         setTimeout(() => {
           setShowToast(false);
           router.push("/login");
         }, 2500);
+      } else if (resetPasswordAction.rejected.match(response)) {
+        setErrorToast((response.payload as string) || "Failed to reset password");
       }
     } catch (err) {
       console.error("Reset password error:", err);
+      setErrorToast("An unexpected error occurred.");
     }
   };
 
   return (
     <AuthLayout title="Reset Password" subtitle="Enter your new password below">
+      {/* Success Toast */}
       {showToast && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-[344px] bg-white rounded-2xl shadow-xl border border-gray-100 p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -86,6 +99,20 @@ export default function ResetPasswordPage() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* Error Message */}
+        {errorToast && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex justify-between items-center">
+            <span>{errorToast}</span>
+            <button
+              onClick={() => setErrorToast("")}
+              className="p-1 hover:bg-red-100 rounded-full"
+              type="button"
+            >
+              <X size={14} className="text-red-700" />
+            </button>
+          </div>
+        )}
+
         <PasswordInput
           label="New Password *"
           placeholder="Enter new password"
@@ -105,5 +132,13 @@ export default function ResetPasswordPage() {
         </AuthButton>
       </form>
     </AuthLayout>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
