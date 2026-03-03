@@ -14,6 +14,10 @@ const nextConfig = {
         port: "8080",
         pathname: "/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "avatar.iran.liara.run",
+      },
     ],
   },
 
