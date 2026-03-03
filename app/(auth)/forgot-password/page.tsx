@@ -16,6 +16,7 @@ import AuthButton from "../_components/AuthButton";
 
 export default function ForgotPasswordPage() {
   const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.auth);
@@ -29,18 +30,22 @@ export default function ForgotPasswordPage() {
   });
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
+    setErrorMessage("");
+    setSuccessMessage("");
+
     try {
       const response = await dispatch(forgotPasswordAction(data.email));
 
-      if (response.payload) {
-        setSuccessMessage("Password reset link sent to your email!");
-
-        setTimeout(() => {
-          router.push("/reset-password");
-        }, 2000);
+      if (forgotPasswordAction.fulfilled.match(response)) {
+        setSuccessMessage("If an account with that email exists, a password reset link has been sent.");
+        // Do NOT redirect – let the user check their email.
+      } else {
+        const errorMsg = (response.payload as string) || "Something went wrong. Please try again.";
+        setErrorMessage(errorMsg);
       }
     } catch (err) {
       console.error("Forgot password error:", err);
+      setErrorMessage("An unexpected error occurred.");
     }
   };
 
@@ -53,6 +58,12 @@ export default function ForgotPasswordPage() {
         {successMessage && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
             {successMessage}
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            {errorMessage}
           </div>
         )}
 

@@ -66,7 +66,7 @@ function ResetPasswordForm() {
     <AuthLayout title="Reset Password" subtitle="Enter your new password below">
       {/* Success Toast */}
       {showToast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-[344px] bg-white rounded-2xl shadow-xl border border-gray-100 p-4 flex items-center justify-between">
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-86 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-green-500 rounded-full p-1.5">
               <svg

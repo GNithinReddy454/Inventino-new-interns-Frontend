@@ -19,7 +19,6 @@ import GoogleButton from "../_components/GoogleButton";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { login } = useAuth();
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.auth);
   const { showToast } = useToast();
@@ -28,7 +27,6 @@ export default function SignupPage() {
     register,
     handleSubmit,
     formState: { errors },
-    watch,
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
   });
@@ -43,12 +41,8 @@ export default function SignupPage() {
       })
     );
     if (signupUserAction.fulfilled.match(resultAction)) {
-      const serverUser = resultAction.payload?.data?.user;
-      if (serverUser) {
-        login(serverUser as any);
-        showToast("Account Created!", "Welcome to Inventino Jewels.", "success");
-        router.push("/verify-otp");
-      }
+      showToast("Account Created!", "Please verify your email.", "success");
+      router.push(`/verify-otp?email=${encodeURIComponent(data.email)}`);
     } else if (signupUserAction.rejected.match(resultAction)) {
       const errorMessage =
         (resultAction.payload as string) || "Signup failed. Please try again.";
