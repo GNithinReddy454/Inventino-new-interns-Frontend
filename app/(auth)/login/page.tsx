@@ -15,6 +15,7 @@ import AuthLayout from "../_components/AuthSplitLayout";
 import AuthInput from "../_components/AuthInput";
 import AuthButton from "../_components/AuthButton";
 import PasswordInput from "../_components/PasswordInput";
+import GoogleButton from "../_components/GoogleButton"; // <-- import the shared component
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -48,8 +49,7 @@ export default function LoginPage() {
       }
     } else if (loginUserAction.rejected.match(resultAction)) {
       const errorMessage =
-        (resultAction.payload as string) ||
-        "Invalid email or password";
+        (resultAction.payload as string) || "Invalid email or password";
       showToast("Login Failed", errorMessage, "error");
     }
   };
@@ -85,14 +85,8 @@ export default function LoginPage() {
           {loading ? "Logging in..." : "Login"}
         </AuthButton>
 
-        <div className="w-full rounded-full border border-gray-300 py-3 text-sm font-semibold flex items-center justify-center gap-2 hover:bg-gray-50 cursor-pointer">
-          <img
-            src="https://www.svgrepo.com/show/475656/google-color.svg"
-            width={16}
-            height={16}
-          />
-          Login with Google
-        </div>
+        {/* Replaced inline div with GoogleButton */}
+        <GoogleButton text="Login with Google" />
 
         <p className="text-center text-xs text-gray-500">
           New user?
