@@ -1,26 +1,30 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, X } from "lucide-react";
 import { useAuth } from "@/app/(main)/components/authContext";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { verifyOtpAction } from "@/redux/authslice";
+import { verifyOtpAction, resendOtpAction } from "@/redux/authslice";
+import { useToast } from "@/app/components/GlobalToast";
 
 import AuthLayout from "../_components/AuthCardLayout";
 import AuthButton from "../_components/AuthButton";
 
-export default function VerifyOTP() {
+function VerifyOTPForm() {
   const router = useRouter();
-  const { user, login } = useAuth();
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email") || "";
+
+  const { login } = useAuth();
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.auth);
+  const { showToast } = useToast();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(0);
   const [isResending, setIsResending] = useState(false);
-  const [showToast, setShowToast] = useState(false);
   const [otpError, setOtpError] = useState("");
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -58,76 +62,62 @@ export default function VerifyOTP() {
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
+    if (!email) {
+      setOtpError("Email not found. Please sign up again.");
+      return;
+    }
+
     setIsResending(true);
-
-    setTimeout(() => {
+    try {
+      const result = await dispatch(resendOtpAction(email));
+      if (resendOtpAction.fulfilled.match(result)) {
+        setTimer(30);
+        showToast("OTP Resent", "A new OTP has been sent to your email.", "success");
+      } else {
+        const errorMsg = (result.payload as string) || "Failed to resend OTP";
+        setOtpError(errorMsg);
+      }
+    } catch (err) {
+      setOtpError("An unexpected error occurred.");
+    } finally {
       setIsResending(false);
-      setTimer(30);
-      setShowToast(true);
-
-      setTimeout(() => setShowToast(false), 4000);
-    }, 1000);
+    }
   };
 
-  // const handleVerify = async (e: React.FormEvent) => {
-
-  //   e.preventDefault();
-
-  //   const otpCode = otp.join("");
-
-  //   if (otpCode.length !== 6) {
-  //     setOtpError("Please enter all 6 digits");
-  //     return;
-  //   }
-
-  //   if (!user?.email) {
-  //     setOtpError("Email not found. Please sign up again.");
-  //     return;
-  //   }
-
-  //   try {
-  //     const result = await dispatch(verifyOtpAction({ email: user.email, otp: otpCode }));
-
-  //     const serverUser = result.payload?.data?.user;
-  //     if (serverUser) {
-  //       // Persist server user in AuthContext so user stays logged in
-  //     }
-
-  //     if (result.payload) {
-  //       // If server returned user, update AuthContext
-  //       const srv = result.payload?.data?.user;
-  //       if (srv) {
-  //         login(srv as any);
-  //       }
-
-  //       router.push("/products");
-  //     }
-  //   } catch (err) {
-  //     console.error("OTP verification error:", err);
-  //   }
-
-  // };
-
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const otpCode = otp.join("");
-
     if (otpCode.length !== 6) {
       setOtpError("Please enter all 6 digits");
       return;
     }
 
-    if (!user?.email) {
+    if (!email) {
       setOtpError("Email not found. Please sign up again.");
       return;
     }
 
-    // Since no API, just login and redirect
-    login(user as any); // keep user logged in
+    try {
+      const result = await dispatch(verifyOtpAction({ email, otp: otpCode }));
 
-    router.push("/products");
+      if (verifyOtpAction.fulfilled.match(result)) {
+        // Backend returns token and user data inside `data.user`
+        const serverUser = result.payload?.data?.user;
+        if (serverUser) {
+          login(serverUser); // Log the user in
+        }
+        showToast("Email Verified!", "Your email has been verified successfully.", "success");
+        router.push("/products");
+      } else {
+        const errorMsg = (result.payload as string) || "OTP verification failed";
+        setOtpError(errorMsg);
+      }
+    } catch (err) {
+      console.error("OTP verification error:", err);
+      setOtpError("An unexpected error occurred.");
+    }
   };
 
   return (
@@ -135,38 +125,6 @@ export default function VerifyOTP() {
       title="OTP Verification"
       subtitle="Enter the 6-digit code sent to your email"
     >
-      {/* Toast */}
-      {showToast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-[344px] bg-white rounded-2xl shadow-xl border border-gray-100 p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-green-500 rounded-full p-1.5">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="4"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-
-            <div>
-              <p className="text-sm font-bold text-gray-800">Success!</p>
-              <p className="text-xs text-gray-500">OTP sent to your email</p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setShowToast(false)}
-            className="p-1 hover:bg-gray-100 rounded-full"
-          >
-            <X size={18} className="text-gray-400" />
-          </button>
-        </div>
-      )}
-
       <form onSubmit={handleVerify} className="space-y-5">
         {otpError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -235,5 +193,13 @@ export default function VerifyOTP() {
         </Link>
       </form>
     </AuthLayout>
+  );
+}
+
+export default function VerifyOTPPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <VerifyOTPForm />
+    </Suspense>
   );
 }

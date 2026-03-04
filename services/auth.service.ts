@@ -47,12 +47,23 @@ export const authService = {
   },
 
   async resetPassword(data: {
-    password: string;
-    confirmPassword: string;
-    email?: string;
-    token?: string;
+    token: string;
+    newPassword: string;
   }): Promise<any> {
     const response = await apiClient.post("/auth/reset-password", data);
+    return response.data;
+  },
+
+  async resendOtp(email: string): Promise<any> {
+    const response = await apiClient.post("/auth/resend-otp", { email });
+    return response.data;
+  },
+
+  async changePassword(data: {
+    oldPassword: string;
+    newPassword: string;
+  }): Promise<any> {
+    const response = await apiClient.put("/auth/change-password", data);
     return response.data;
   },
 };

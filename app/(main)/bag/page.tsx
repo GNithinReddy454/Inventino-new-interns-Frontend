@@ -1,8 +1,7 @@
 "use client";
-import { Roboto } from "next/font/google";
-import { Button } from "@/app/components/ui/button";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Minus,
   Plus,
@@ -17,6 +16,27 @@ import {
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import { useRouter } from "next/navigation";
+import type { Product as StoreProduct } from "@/lib/products";
+
+interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  quantity?: number;
+  originalPrice?: number;
+}
+
+interface ToastState {
+  title?: string;
+  message: string;
+  show: boolean;
+}
+
+interface AnimatingItem {
+  id: number;
+  type: "wishlist" | "remove";
+}
 
 export default function BagPage() {
   const {
@@ -29,23 +49,15 @@ export default function BagPage() {
   const { handleSaved, savedItems = [] } = useStore();
   const router = useRouter();
 
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [animatingItem, setAnimatingItem] = useState<{
-    id: number;
-    type: "wishlist" | "remove";
-  } | null>(null);
+  const [animatingItem, setAnimatingItem] = useState<AnimatingItem | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
-  const [toast, setToast] = useState<{
-    title?: string;
-    message: string;
-    show: boolean;
-  }>({ title: "Moved to Wishlist!", message: "", show: false });
-
-  useEffect(() => {
-    setIsLoaded(true);
-  }, []);
+  const [toast, setToast] = useState<ToastState>({
+    title: "Moved to Wishlist!",
+    message: "",
+    show: false,
+  });
 
   const triggerToast = useCallback(
     (message: string, title: string = "Moved to Wishlist!") => {
@@ -55,13 +67,27 @@ export default function BagPage() {
     [],
   );
 
-  const handleAction = (item: any, type: "wishlist" | "remove") => {
+  const handleAction = (item: CartItem, type: "wishlist" | "remove") => {
     setAnimatingItem({ id: item.id, type });
     setTimeout(() => {
       if (type === "wishlist") {
-        if (!savedItems.some((si: any) => si.id === item.id)) handleSaved(item);
+        if (!savedItems.some((si: StoreProduct) => si.id === item.id)) {
+          const productToSave: StoreProduct = {
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            image: item.image,
+            rating: 0,
+            reviews: 0,
+            badge: "",
+            category: "necklaces",
+          };
+          handleSaved(productToSave);
+        }
       }
-      removeFromCart(item.id);
+      if (removeFromCart) {
+        removeFromCart(item.id);
+      }
       setAnimatingItem(null);
     }, 400);
   };
@@ -77,11 +103,19 @@ export default function BagPage() {
   };
 
   const handleAddAllToWishlist = () => {
-    let count = 0;
-    cart.forEach((item) => {
-      if (!savedItems.some((si: any) => si.id === item.id)) {
-        handleSaved(item as any);
-        count++;
+    cart.forEach((item: CartItem) => {
+      if (!savedItems.some((si: StoreProduct) => si.id === item.id)) {
+        const productToSave: StoreProduct = {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          image: item.image,
+          rating: 0,
+          reviews: 0,
+          badge: "",
+          category: "necklaces",
+        };
+        handleSaved(productToSave);
       }
     });
     if (cart.length > 0) {
@@ -104,8 +138,6 @@ export default function BagPage() {
   const tax = discountedTotal * 0.08;
   const finalTotal = discountedTotal + tax;
 
-  if (!isLoaded) return null;
-
   if (cart.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 pb-20 overflow-hidden">
@@ -117,7 +149,7 @@ export default function BagPage() {
             Your cart is empty
           </h2>
           <p className="text-gray-500 mb-8 md:mb-10 max-w-sm mx-auto text-sm md:text-base font-sans">
-            Looks like you haven't added any treasures yet.
+            Looks like you haven&apos;t added any treasures yet.
           </p>
           <Link
             href="/products"
@@ -132,15 +164,16 @@ export default function BagPage() {
 
   return (
     <div className="bg-[#fafafa] min-h-screen w-full max-w-[100vw] overflow-x-hidden py-6 px-4 md:px-12 font-sans">
-      {/* ── Toast ── */}
+      {/* Toast */}
       <div
-        className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${toast.show
+        className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-100 transition-all duration-300 ${
+          toast.show
             ? "opacity-100 translate-y-0"
             : "opacity-0 translate-y-4 pointer-events-none"
-          }`}
+        }`}
       >
-        <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-[200px] max-w-[88vw]">
-          <div className="bg-[#E8456A] w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0">
+        <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-50 max-w-[88vw]">
+          <div className="bg-[#E8456A] w-7 h-7 rounded-full flex items-center justify-center shrink-0">
             <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} />
           </div>
           <div className="flex-1 min-w-0">
@@ -151,7 +184,7 @@ export default function BagPage() {
           </div>
           <button
             onClick={() => setToast((prev) => ({ ...prev, show: false }))}
-            className="text-gray-300 hover:text-gray-500 flex-shrink-0 ml-1"
+            className="text-gray-300 hover:text-gray-500 shrink-0 ml-1"
           >
             <X size={12} />
           </button>
@@ -159,9 +192,9 @@ export default function BagPage() {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        {/* ── Back ── */}
+        {/* Back */}
         <Link
-          href="/all-products"
+          href="/products"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9E7EA8] hover:text-[#D94F7A] transition-colors group mb-4"
         >
           <ArrowLeft
@@ -179,10 +212,10 @@ export default function BagPage() {
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start">
-          {/* ── LEFT: Cart Items + Promo Code ── */}
+          {/* LEFT: Cart Items + Promo Code */}
           <div className="lg:col-span-2 flex flex-col gap-4">
             {/* Cart Items */}
-            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-4xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="p-4 md:p-8 border-b border-gray-50 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
                 <div className="flex items-center justify-between md:justify-start gap-4">
                   <span className="font-bold text-gray-900 uppercase text-[10px] md:text-xs tracking-widest">
@@ -193,7 +226,7 @@ export default function BagPage() {
                   </span>
                 </div>
 
-                {/* ── Bulk Actions ── */}
+                {/* Bulk Actions */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleAddAllToWishlist}
@@ -218,52 +251,56 @@ export default function BagPage() {
                 </div>
               </div>
 
-              <div className="divide-y divide-gray-50">
-                {cart.map((item) => {
+              <div className="divide-y divide-gray-200">
+                {cart.map((item: CartItem) => {
                   const isAnimating = animatingItem?.id === item.id;
                   const actionType = animatingItem?.type;
                   return (
                     <div
                       key={item.id}
-                      className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${isAnimating
+                      className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${
+                        isAnimating
                           ? actionType === "wishlist"
                             ? "opacity-0 -translate-y-16 scale-90"
                             : "opacity-0 -translate-x-full"
                           : "opacity-100 translate-x-0 translate-y-0"
-                        }`}
+                      }`}
                     >
                       {/* Image */}
                       <Link
                         href={`/products/${item.id}`}
-                        className="block group shrink-0 mx-auto md:mx-0"
+                        className="block group shrink-0"
                       >
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
-                          <img
+                          <Image
                             src={item.image}
                             alt={item.name}
+                            width={128}
+                            height={128}
                             className="w-full h-full object-cover"
+                            unoptimized
                           />
                         </div>
                       </Link>
 
                       {/* Details */}
                       <div className="flex-1 flex flex-col justify-between overflow-hidden">
-                        <div className="text-center md:text-left">
-                          <div className="flex flex-col md:flex-row md:justify-between gap-2">
+                        <div className="text-left">
+                          <div className="flex flex-row justify-between gap-2">
                             <Link
                               href={`/products/${item.id}`}
                               className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300"
                             >
-                              <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-2">
+                              <h3 className="font-bold text-sm md:text-lg leading-tight line-clamp-2">
                                 {item.name}
                               </h3>
                             </Link>
 
-                            {/* Actions on Desktop */}
-                            <div className="flex items-center justify-center md:justify-start gap-4 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300 shrink-0">
+                            {/* Actions */}
+                            <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300 shrink-0">
                               <button
                                 onClick={() => handleAction(item, "wishlist")}
-                                className="hover:text-[#E8456A] flex items-center gap-1.5 transition-all"
+                                className="hover:text-[#E8456A] flex items-center gap-1 transition-all"
                               >
                                 <Heart
                                   size={12}
@@ -273,12 +310,12 @@ export default function BagPage() {
                                       : ""
                                   }
                                 />
-                                Back to Wishlist
+                                <span className="hidden sm:inline">Save for Later</span>
                               </button>
-                              <span className="h-3 w-[1px] bg-gray-200" />
+                              <span className="h-3 w-px bg-gray-200" />
                               <button
                                 onClick={() => handleAction(item, "remove")}
-                                className="shrink-0 text-gray-300 hover:text-red-400 transition-colors ml-1"
+                                className="shrink-0 text-gray-300 hover:text-red-400 transition-colors"
                                 aria-label="Remove item"
                               >
                                 <X size={16} />
@@ -291,36 +328,46 @@ export default function BagPage() {
                             <span className="text-[#E8456A] font-black text-xl">
                               ₹{item.price.toFixed(2)}
                             </span>
-                            {(item as any).originalPrice &&
-                              (item as any).originalPrice > item.price && (
+                            {item.originalPrice &&
+                              item.originalPrice > item.price && (
                                 <span className="text-gray-400 line-through text-sm">
-                                  ₹{(item as any).originalPrice.toFixed(2)}
+                                  ₹{item.originalPrice.toFixed(2)}
                                 </span>
                               )}
                           </div>
                         </div>
 
                         {/* Quantity */}
-                        <div className="flex justify-center md:justify-start mt-4 md:mt-0 items-center">
-                          <div className="flex items-center bg-[#FFF1F2] rounded-full p-0.5 border border-pink-50 shadow-sm h-10 w-fit">
+                        <div className="flex justify-start mt-2 md:mt-0 items-center">
+                          <div className="flex items-center bg-[#FFF1F2] rounded-full p-0.5 border border-pink-50 shadow-sm h-9 md:h-10 w-fit">
                             <button
-                              onClick={() => updateQuantity && updateQuantity(item.id, Math.max(1, (item.quantity || 1) - 1))}
+                              onClick={() =>
+                                updateQuantity &&
+                                updateQuantity(
+                                  item.id,
+                                  Math.max(1, (item.quantity || 1) - 1),
+                                )
+                              }
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
+                              aria-label="Decrease quantity"
                             >
-                              <Minus size={14} strokeWidth={3} />
+                              <Minus size={12} strokeWidth={3} />
                             </button>
-                            <span className="font-bold text-gray-900 w-10 text-center text-sm px-1 text-lg">
+                            <span className="font-bold text-gray-900 w-10 text-center px-1">
                               {item.quantity || 1}
                             </span>
                             <button
-                              onClick={() => updateQuantity && updateQuantity(item.id, (item.quantity || 1) + 1)}
+                              onClick={() =>
+                                updateQuantity &&
+                                updateQuantity(item.id, (item.quantity || 1) + 1)
+                              }
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
+                              aria-label="Increase quantity"
                             >
-                              <Plus size={14} strokeWidth={3} />
+                              <Plus size={12} strokeWidth={3} />
                             </button>
                           </div>
                         </div>
-
                       </div>
                     </div>
                   );
@@ -328,8 +375,8 @@ export default function BagPage() {
               </div>
             </div>
 
-            {/* ── Promo Code ── */}
-            <div className="bg-white rounded-[2rem] border border-dashed border-gray-200 shadow-sm p-6 md:p-8">
+            {/* Promo Code */}
+            <div className="bg-white rounded-4xl border border-dashed border-gray-200 shadow-sm p-6 md:p-8">
               <div className="flex items-center gap-2 mb-4">
                 <Tag size={15} className="text-[#D94F7A]" />
                 <span className="text-sm font-bold text-gray-700 uppercase tracking-widest text-[10px]">
@@ -347,6 +394,7 @@ export default function BagPage() {
                     setPromoApplied(false);
                   }}
                   className="w-full sm:flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
+                  aria-label="Promo code"
                 />
                 <button
                   onClick={handleApplyPromo}
@@ -368,8 +416,8 @@ export default function BagPage() {
             </div>
           </div>
 
-          {/* ── RIGHT: Order Summary ── */}
-          <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 border border-gray-100 shadow-sm lg:sticky lg:top-8 h-fit">
+          {/* RIGHT: Order Summary */}
+          <div className="bg-white rounded-4xl md:rounded-[2.5rem] p-8 md:p-10 border border-gray-100 shadow-sm lg:sticky lg:top-8 h-fit">
             <h3 className="font-bold text-gray-900 mb-6 font-serif text-2xl">
               Order Summary
             </h3>
