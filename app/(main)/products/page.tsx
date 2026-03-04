@@ -295,7 +295,7 @@ function ProductsContent() {
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const res = await productService.getAll({ limit: 999, type: "all" });
+        const res = await productService.getAll({ limit: 999 });
         const items: ApiProduct[] = res.data.items ?? [];
         const counts: Record<string, number> = {};
         let min = Infinity;

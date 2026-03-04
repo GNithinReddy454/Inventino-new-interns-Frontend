@@ -36,13 +36,13 @@ const ORDERS: Order[] = [
   {
     id: "ORD-2024-001",
     date: "Feb 6, 2026",
-    total: "$89.99",
+    total: "₹89.99",
     status: "Delivered",
     items: [
       {
         name: "Rose Gold Bracelet",
         variant: "Color: Rose Gold · Size: Medium",
-        price: "$89.99",
+        price: "₹89.99",
         image:
           "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=120&q=80",
       },
@@ -51,13 +51,13 @@ const ORDERS: Order[] = [
   {
     id: "ORD-2024-002",
     date: "Feb 10, 2026",
-    total: "$129.99",
+    total: "₹129.99",
     status: "Shipped",
     items: [
       {
         name: "Pearl Necklace Set",
         variant: "Color: Silver · Style: Classic",
-        price: "$129.99",
+        price: "₹129.99",
         image:
           "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=120&q=80",
       },
@@ -66,13 +66,13 @@ const ORDERS: Order[] = [
   {
     id: "ORD-2024-003",
     date: "Feb 13, 2026",
-    total: "$44.99",
+    total: "₹44.99",
     status: "Processing",
     items: [
       {
         name: "Boho Beaded Set",
         variant: "Color: Gold · Quantity: 1",
-        price: "$44.99",
+        price: "₹44.99",
         image:
           "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=120&q=80",
       },
