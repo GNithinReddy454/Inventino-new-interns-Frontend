@@ -18,131 +18,131 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-[#1f2937] text-gray-300 py-10 w-full">
-      <div className="w-full flex flex-col md:flex-row justify-between items-start px-6 md:px-12 gap-8">
+    <footer className="bg-[#1f2937] text-gray-300 w-full">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 py-16 md:py-20">
 
-        {/* LEFT: Logo + Description */}
-        <div className="min-w-45 md:max-w-55">
-          <Link href="/">
-            <Image
-              src="/logo.png"
+        {/* 4 Column Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
+
+          {/* Column 1 - Logo & Description */}
+          <div className="space-y-5">
+            <Link href="/">
+              <Image
+             src="/logo.png"
               alt="Inventino"
               width={120}
-              height={40}
+               height={40}
               className="object-contain mb-2"
-            />
-          </Link>
-          <p className="text-gray-400 text-sm md:text-base leading-relaxed">
-            Crafting memories, one piece at a time. Every handmade treasure tells a unique story of passion and dedication.
-          </p>
-        </div>
+           />
+            </Link>
 
-        {/* CENTER: Navigation Links */}
-        <div className="flex-1 flex justify-between md:justify-around gap-6 w-full">
-          {/** Shop Section **/}
-          <div>
-            <h3 className="text-base font-semibold mb-2 text-white">Shop</h3>
-            <ul className="space-y-1 text-sm md:text-base">
-              {["Rings", "Necklaces", "Bracelets", "Earrings"].map(item => (
-                <li key={item}>
-                  <Link
-                    href="/AllProducts"
-                    className="relative text-gray-400 hover:text-white transition-colors
-                      after:absolute after:left-0 after:-bottom-0.5 after:w-full after:h-0.5 after:bg-white after:opacity-0 hover:after:opacity-100 after:transition-opacity"
-                  >
-                    {item}
-                  </Link>
-                </li>
-              ))}
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Crafting memories, one piece at a time. Every handmade treasure
+              tells a unique story of passion and dedication.
+            </p>
+          </div>
+
+          {/* Column 2 - About */}
+          <div className="space-y-5">
+            <h3 className="text-base font-semibold text-white">About</h3>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <Link href="/stories" className="hover:text-white transition-colors">
+                  Our Story
+                </Link>
+              </li>
+              <li>
+                <Link href="/craftsmanship" className="hover:text-white transition-colors">
+                  Craftsmanship
+                </Link>
+              </li>
+              <li>
+                <Link href="/stories" className="hover:text-white transition-colors">
+                  Blog
+                </Link>
+              </li>
+              <li>
+                <Link href="/about" className="hover:text-white transition-colors">
+                  Careers
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/** About Section **/}
-          <div>
-            <h3 className="text-base font-semibold mb-2 text-white">About</h3>
-            <ul className="space-y-1 text-sm md:text-base">
-              {["Our Story", "Craftsmanship", "Blog", "Careers"].map(item => (
-                <li key={item}>
-                  <Link
-                    href={
-                      item === "Craftsmanship" ? "/craftsmanship" :
-                        (item === "Our Story" || item === "Blog")
-                          ? "/stories"
-                          : "/about"
-                    }
-                    className="relative text-gray-400 hover:text-white transition-colors
-                      after:absolute after:left-0 after:-bottom-0.5 after:w-full after:h-0.5 after:bg-white after:opacity-0 hover:after:opacity-100 after:transition-opacity"
-                  >
-                    {item}
-                  </Link>
-                </li>
-              ))}
+          {/* Column 3 - Support */}
+          <div className="space-y-5">
+            <h3 className="text-base font-semibold text-white">Support</h3>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <Link href="/contact" className="hover:text-white transition-colors">
+                  Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link href="/faq" className="hover:text-white transition-colors">
+                  FAQs
+                </Link>
+              </li>
+              <li>
+                <Link href="/shipping" className="hover:text-white transition-colors">
+                  Shipping
+                </Link>
+              </li>
+              <li>
+                <Link href="/returns" className="hover:text-white transition-colors">
+                  Returns
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/** Support Section **/}
-          <div>
-            <h3 className="text-base font-semibold mb-2 text-white">Support</h3>
-            <ul className="space-y-1 text-sm md:text-base">
-              {["Contact Us", "FAQs", "Shipping", "Returns"].map(item => (
-                <li key={item}>
-                  <Link
-                    href={
-                      item === "Contact Us" ? "/contact" :
-                        item === "FAQs" ? "/faq" :
-                          item === "Shipping" ? "/shipping" :
-                            "/returns"
-                    }
-                    className="relative text-gray-400 hover:text-white transition-colors
-                      after:absolute after:left-0 after:-bottom-0.5 after:w-full after:h-0.5 after:bg-white after:opacity-0 hover:after:opacity-100 after:transition-opacity"
-                  >
-                    {item}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          {/* Column 4 - Newsletter */}
+          <div className="space-y-5">
+            <h3 className="text-base font-semibold text-white">Stay in Touch</h3>
+
+            {isSubscribed ? (
+              <div className="bg-white/10 p-4 rounded-lg border border-pink-400/40">
+                <p className="text-pink-400 font-medium text-sm">
+                  ✨ Thank you for joining our newsletter!
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-400 text-sm">
+                  Get the latest arrivals and special offers.
+                </p>
+
+                <form onSubmit={handleSubmit} className="mt-3 w-full max-w-sm">
+                  <div className="flex items-center bg-[#111827] border border-gray-600 rounded-full overflow-hidden transition-all duration-300 focus-within:border-pink-500 focus-within:shadow-lg focus-within:shadow-pink-500/20">
+
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      className="flex-1 px-5 py-3 bg-transparent text-gray-200 placeholder-gray-400 focus:outline-none text-sm"
+                    />
+
+                    <button
+                      type="submit"
+                      className="h-10 w-10 flex items-center justify-center bg-pink-600 hover:bg-pink-700 transition-colors duration-300 rounded-full mr-1"
+                    >
+                      <ArrowRight size={18} />
+                    </button>
+
+                  </div>
+                </form>
+              </>
+            )}
           </div>
+
         </div>
 
-        {/* RIGHT: Newsletter */}
-        <div className="min-w-55">
-          <h3 className="text-base font-semibold mb-2 text-white">Stay in Touch</h3>
-
-          {isSubscribed ? (
-            <div className="bg-white/50 p-4 rounded-lg border border-pink-200 animate-in fade-in duration-500">
-              <p className="text-pink-600 font-medium text-sm">
-                ✨ Thank you for joining our newsletter!
-              </p>
-            </div>
-          ) : (
-            <>
-              <p className="text-gray-400 text-sm mb-2">
-                Get the latest arrivals and special offers.
-              </p>
-              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your email"
-                  className="flex-1 px-3 py-2 rounded-md border border-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 placeholder-gray-400"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-md transition-colors flex items-center justify-center"
-                >
-                  <ArrowRight size={20} />
-                </button>
-              </form>
-            </>
-          )}
+        {/* Bottom Bar */}
+        <div className="border-t border-gray-700 mt-16 pt-8 text-center text-gray-500 text-sm">
+          © 2026 Inventino. All Rights Reserved.
         </div>
-
-      </div>
-
-      <div className="mt-10 text-center text-gray-500 text-sm">
-        © 2026 Inventino. All Rights Reserved.
       </div>
     </footer>
   );

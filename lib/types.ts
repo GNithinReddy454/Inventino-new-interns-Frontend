@@ -1,5 +1,3 @@
-// lib/types.ts
-
 // --- USER & AUTH ---
 export interface User {
   _id: string;
@@ -16,6 +14,15 @@ export interface AuthResponse {
     user: User;
     token: string;
   };
+  error?: string | null;
+}
+
+// Generic API response for endpoints that return no data or other data
+export interface ApiResponse<T = null> {
+  statusCode: number;
+  message: string;
+  data: T;
+  error: string | null;
 }
 
 // --- PRODUCTS ---
@@ -33,8 +40,8 @@ export interface Product {
   slug: string;
   images: ProductImage[];
   isActive?: boolean;
-  quantity?: number; // Added for Cart compatibility
-  color?: string;    // Added for UI compatibility
+  quantity?: number;
+  color?: string;
 }
 
 export interface ProductResponse {
@@ -52,26 +59,23 @@ export interface ProductResponse {
 }
 
 // --- ADDRESS ---
-// Backend calls it "Address", Frontend Checkout calls it "ShippingAddress"
-// We export both to satisfy both files.
 export interface Address {
   _id?: string;
-  fullName?: string;  // Backend expects fullName (optional on frontend)
-  firstName?: string; // Frontend form uses these
+  fullName?: string;
+  firstName?: string;
   lastName?: string;
-  email?: string;     // Frontend shipping form
+  email?: string;
   phone: string;
-  street?: string;    // Backend (optional on frontend)
-  streetAddress?: string; // Frontend
+  street?: string;
+  streetAddress?: string;
   city: string;
   state: string;
-  pincode?: string;   // Backend (optional on frontend)
-  zipCode?: string;   // Frontend
+  pincode?: string;
+  zipCode?: string;
   country?: string;
   isDefault?: boolean;
 }
 
-// Alias Address as ShippingAddress so CheckoutFlow doesn't break
 export type ShippingAddress = Address;
 
 // --- CART ---
@@ -89,9 +93,9 @@ export interface CartResponse {
   };
 }
 
-// --- ORDERS (Placeholder for CheckoutFlow) ---
+// --- ORDERS ---
 export interface OrderResponse {
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   orderId: string;
   orderNumber: string;
   orderDate: string;
@@ -108,5 +112,5 @@ export interface OrderResponse {
 }
 
 // --- CHECKOUT ENUMS ---
-export type CheckoutStep = 'shipping' | 'payment' | 'success' | 'failed' | 'tracking';
-export type PaymentMethod = 'card' | 'cod' | 'paypal' | 'gpay';
+export type CheckoutStep = "shipping" | "payment" | "success" | "failed" | "tracking";
+export type PaymentMethod = "card" | "cod" | "paypal" | "gpay";

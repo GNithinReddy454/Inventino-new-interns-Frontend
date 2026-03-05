@@ -38,6 +38,11 @@ const appearanceSlice = createSlice({
   },
 });
 
-export const { setTheme, setAccentColor, setReducedMotion, showSavedBanner, hideSavedBanner } =
-  appearanceSlice.actions;
+export const {
+  setTheme,
+  setAccentColor,
+  setReducedMotion,
+  showSavedBanner,
+  hideSavedBanner,
+} = appearanceSlice.actions;
 export default appearanceSlice.reducer;

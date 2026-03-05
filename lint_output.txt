@@ -1,0 +1,362 @@
+﻿
+> inventino-frontend@0.1.0 lint
+> eslint
+
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(admin)\admin\AddProduct.tsx
+  470:37  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(admin)\admin\page.tsx
+     5:5   warning  'FileText' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+     8:5   warning  'AlertTriangle' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+     8:20  warning  'XCircle' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   248:29  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @next/next/no-img-element
+   872:11  warning  'totalReviews' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   874:11  warning  'approvedCount' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  1240:11  warning  'linePoints' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  1245:11  warning  'areaPoints' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  1311:66  warning  'i' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  2076:22  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(admin)\admin\page.tsx:2076:22
+  2074 |                         <p className="text-xs text-muted-foreground mt-0.5">Add extra security layer to your account</p>
+  2075 |                     </div>
+> 2076 |                     <Toggle enabled={twoFactor} onToggle={() => setTwoFactor(prev => !prev)} />
+       |                      ^^^^^^ This component is created during render
+  2077 |                 </div>
+  2078 |
+  2079 |                 <div className="grid grid-cols-2 gap-4 mt-2">
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(admin)\admin\page.tsx:1880:20
+  1878 |     const [taxEnabled, setTaxEnabled] = useState(true);
+  1879 |
+> 1880 |     const Toggle = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
+       |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 1881 |         <button
+       | ^^^^^^^^^^^^^^^
+> 1882 |             onClick={onToggle}
+       ΓÇª
+       | ^^^^^^^^^^^^^^^
+> 1890 |         </button>
+       | ^^^^^^^^^^^^^^^
+> 1891 |     );
+       | ^^^^^^ The component is created during render here
+  1892 |
+  1893 |     return (
+  1894 |         <div className="space-y-6 w-full">             react-hooks/static-components
+  2099:22  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(admin)\admin\page.tsx:2099:22
+  2097 |                         <p className="text-xs text-muted-foreground mt-0.5">Automatically calculate taxes on orders</p>
+  2098 |                     </div>
+> 2099 |                     <Toggle enabled={taxEnabled} onToggle={() => setTaxEnabled(prev => !prev)} />
+       |                      ^^^^^^ This component is created during render
+  2100 |                 </div>
+  2101 |
+  2102 |                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(admin)\admin\page.tsx:1880:20
+  1878 |     const [taxEnabled, setTaxEnabled] = useState(true);
+  1879 |
+> 1880 |     const Toggle = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
+       |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 1881 |         <button
+       | ^^^^^^^^^^^^^^^
+> 1882 |             onClick={onToggle}
+       ΓÇª
+       | ^^^^^^^^^^^^^^^
+> 1890 |         </button>
+       | ^^^^^^^^^^^^^^^
+> 1891 |     );
+       | ^^^^^^ The component is created during render here
+  1892 |
+  1893 |     return (
+  1894 |         <div className="space-y-6 w-full">  react-hooks/static-components
+  2172:66  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  2181:72  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  2198:54  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(auth)\login\page.tsx
+  45:29  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  91:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  91:11  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(auth)\signup\page.tsx
+  29:5   warning  'watch' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  47:29  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(auth)\verify-otp\page.tsx
+    9:10  warning  'verifyOtpAction' is defined but never used    @typescript-eslint/no-unused-vars
+   18:9   warning  'dispatch' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  140:17  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\about\page.tsx
+  72:57  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  94:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\bag\page.tsx
+    2:10   warning  'Roboto' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+    3:10   warning  'Button' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   30:31   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   34:35   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   52:9    warning  'count' is assigned a value but never used                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   54:33   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   55:29   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   87:122  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  184:27   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  215:39   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  215:70   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  216:95   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\components\Navbar.tsx
+  108:8   error    A `require()` style import is forbidden                                                                                                                                                                                                                                                  @typescript-eslint/no-require-imports
+  108:51  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  116:8   error    A `require()` style import is forbidden                                                                                                                                                                                                                                                  @typescript-eslint/no-require-imports
+  116:47  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  233:31  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\components\authContext.tsx
+  52:24  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  54:20  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  58:16  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  68:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  75:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  80:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  89:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\products\[id]\page.tsx
+   67:41   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   79:6    warning  React Hook useEffect has a missing dependency: 'productId'. Either include it or remove the dependency array                                                                                                                                                                             react-hooks/exhaustive-deps
+  121:34   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  121:51   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  130:26   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  194:63   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  204:23   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  204:23   warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+  225:19   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  225:19   warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+  282:66   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  282:121  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  303:13   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  312:96   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  312:215  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  312:250  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\products\page.tsx
+    2:10  warning  'Roboto' is defined but never used                               @typescript-eslint/no-unused-vars
+    4:31  warning  'useMemo' is defined but never used                              @typescript-eslint/no-unused-vars
+   73:3   warning  'minPriceFetched' is defined but never used                      @typescript-eslint/no-unused-vars
+  207:38  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  228:21  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  524:19  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  524:37  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  566:92  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\profile\edit\page.tsx
+   96:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  106:7   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  213:48  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\profile\orders\[id]\page.tsx
+  5:28  warning  'FileText' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\profile\orders\page.tsx
+  164:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\profile\page.tsx
+  42:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\profile\payments\page.tsx
+  5:10  warning  'CreditCard' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\profile\settings\page.tsx
+  312:102  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\rewards\page.tsx
+  5:25  warning  'History' is defined but never used       @typescript-eslint/no-unused-vars
+  6:16  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+  7:28  warning  'Percent' is defined but never used       @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\(main)\wishlist\page.tsx
+    7:10  warning  'ShoppingCart' is defined but never used                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   39:30  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   61:46  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   67:9   warning  'handleAddAllToCart' is assigned a value but never used                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   72:37  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   78:9   warning  'handleRemoveSelected' is assigned a value but never used                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+   96:25  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  215:36  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  234:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\api\order\place\route.ts
+   6:45  warning  'cardDetails' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  71:12  warning  'error' is defined but never used                 @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\api\promo\apply\route.ts
+  27:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\About.tsx
+  47:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\CheckoutFlow.tsx
+  34:68  warning  'cardDetails' is defined but never used   @typescript-eslint/no-unused-vars
+  34:82  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  52:36  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  79:32  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  82:12  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\ClientOnly.tsx
+  9:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\ClientOnly.tsx:9:5
+   7 |
+   8 |   useEffect(() => {
+>  9 |     setIsClient(true);
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  10 |   }, []);
+  11 |
+  12 |   return isClient ? <>{children}</> : null;  react-hooks/set-state-in-effect
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\Hero.tsx
+  75:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\OrderSidebar.tsx
+   4:20  warning  'useMutate' is defined but never used     @typescript-eslint/no-unused-vars
+  25:32  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  78:26  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  78:37  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\PaymentForm.tsx
+  14:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\ProductCard.tsx
+    2:10  warning  'Roboto' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+    4:25  warning  'Minus' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+    4:32  warning  'Plus' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   50:30  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   80:9   warning  'router' is assigned a value but never used                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  115:9   warning  'handleIncreaseLocal' is assigned a value but never used                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  121:9   warning  'handleDecreaseLocal' is assigned a value but never used                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  138:9   warning  'handleIncrease' is assigned a value but never used                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  144:9   warning  'handleDecrease' is assigned a value but never used                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  213:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\ProductReviews.tsx
+   4:39  warning  'User' is defined but never used                     @typescript-eslint/no-unused-vars
+  45:3   warning  'isLoggedIn' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  46:3   warning  'hasPurchased' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  59:10  warning  'hoverRating' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  59:23  warning  'setHoverRating' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  64:9   warning  'handleSubmit' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\ShopByCategory.tsx
+  94:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\SuccessScreen.tsx
+  12:40  warning  'onViewTracking' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\hoc\withAdmin.tsx
+   6:65  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   7:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:22  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\hoc\withAuth.tsx
+  6:64  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  7:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\components\ui\input.tsx
+  5:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\app\test-api\api-test.tsx
+   7:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   9:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  49:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\hooks\useApi.ts
+    3:36  warning  'mutate' is defined but never used        @typescript-eslint/no-unused-vars
+   43:30  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   67:38  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   80:52  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   87:40  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:20  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:44  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:19  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:43  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  114:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  114:45  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  118:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\lib\api.ts
+   80:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   92:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   92:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   98:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   98:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\lib\cartContext.tsx
+  42:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\lib\cartContext.tsx:42:5
+  40 |   // Load from LocalStorage only after mounting to avoid hydration mismatch
+  41 |   useEffect(() => {
+> 42 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  43 |     const savedCart = localStorage.getItem("cart");
+  44 |     if (savedCart) {
+  45 |       try {  react-hooks/set-state-in-effect
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\redux\authslice.ts
+   1:41  warning  'PayloadAction' is defined but never used  @typescript-eslint/no-unused-vars
+  19:64  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  21:20  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  24:19  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  30:63  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  32:23  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  38:19  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  48:54  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  53:19  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  65:19  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  71:53  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  76:19  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\services\auth.service.ts
+  40:54   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:117  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\services\order.service.ts
+  23:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Victus\Desktop\MY PROJECTS\inventino jwellery shop\Inventino-new-interns-Frontend\services\product.service.ts
+   18:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   71:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   79:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   87:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  111:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 183 problems (106 errors, 77 warnings)
+

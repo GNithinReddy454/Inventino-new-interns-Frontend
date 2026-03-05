@@ -6,7 +6,15 @@ export interface Product {
   reviews: number;
   badge: string;
   image: string;
-  category: "hair-accessories" | "bracelets" | "bag-charms" | "kids-jewelry" | "shoe-charms" | "rings" | "necklaces" | "earrings";
+  category:
+    | "hair-accessories"
+    | "bracelets"
+    | "bag-charms"
+    | "kids-jewelry"
+    | "shoe-charms"
+    | "rings"
+    | "necklaces"
+    | "earrings";
   description?: string;
 }
 

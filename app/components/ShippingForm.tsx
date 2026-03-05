@@ -1,13 +1,19 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Checkbox } from './ui/checkbox';
-import { ShippingAddress } from '@/lib/types';
-import { Lock } from 'lucide-react';
+import { useState } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { Checkbox } from "./ui/checkbox";
+import { ShippingAddress } from "@/lib/types";
+import { Lock } from "lucide-react";
 
 interface ShippingFormProps {
   onSubmit: (address: ShippingAddress) => void;
@@ -15,15 +21,15 @@ interface ShippingFormProps {
 
 export function ShippingForm({ onSubmit }: ShippingFormProps) {
   const [formData, setFormData] = useState<ShippingAddress>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    streetAddress: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'United States',
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    streetAddress: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "United States",
   });
 
   const [saveInfo, setSaveInfo] = useState(false);
@@ -38,7 +44,7 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
   };
 
   const isFormValid = () => {
-    return Object.values(formData).every((value) => value.trim() !== '');
+    return Object.values(formData).every((value) => value.trim() !== "");
   };
 
   return (
@@ -67,7 +73,9 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
             <div className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center text-white font-semibold shadow-md">
               2
             </div>
-            <p className="text-xs font-medium text-pink-600 mt-2">Information</p>
+            <p className="text-xs font-medium text-pink-600 mt-2">
+              Information
+            </p>
           </div>
 
           {/* Payment - Step 3 */}
@@ -87,8 +95,14 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
           </div>
 
           {/* Progress Line */}
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 transform -translate-y-1/2" style={{ zIndex: 0 }}>
-            <div className="h-full bg-gradient-to-r from-green-500 via-pink-500 to-pink-500" style={{ width: '50%' }} />
+          <div
+            className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 transform -translate-y-1/2"
+            style={{ zIndex: 0 }}
+          >
+            <div
+              className="h-full bg-gradient-to-r from-green-500 via-pink-500 to-pink-500"
+              style={{ width: "50%" }}
+            />
           </div>
         </div>
       </div>
@@ -104,35 +118,44 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="firstName" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="firstName"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 First Name <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="firstName"
                 placeholder="Enter First Name"
                 value={formData.firstName}
-                onChange={(e) => handleChange('firstName', e.target.value)}
+                onChange={(e) => handleChange("firstName", e.target.value)}
                 className="bg-pink-50/50 border-pink-100"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="lastName" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="lastName"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 Last Name <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="lastName"
                 placeholder="Enter First Name"
                 value={formData.lastName}
-                onChange={(e) => handleChange('lastName', e.target.value)}
+                onChange={(e) => handleChange("lastName", e.target.value)}
                 className="bg-pink-50/50 border-pink-100"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="email" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="email"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 Email Address <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -140,14 +163,17 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
                 type="email"
                 placeholder="john@email.com"
                 value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
+                onChange={(e) => handleChange("email", e.target.value)}
                 className="bg-pink-50/50 border-pink-100"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="phone" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="phone"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 Phone Number <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -155,73 +181,91 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
                 type="tel"
                 placeholder="+1 (555) 123-4567"
                 value={formData.phone}
-                onChange={(e) => handleChange('phone', e.target.value)}
+                onChange={(e) => handleChange("phone", e.target.value)}
                 className="bg-pink-50/50 border-pink-100"
                 required
               />
             </div>
 
             <div className="md:col-span-2">
-              <Label htmlFor="streetAddress" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="streetAddress"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 Street Address <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="streetAddress"
                 placeholder="123 Main Street"
                 value={formData.streetAddress}
-                onChange={(e) => handleChange('streetAddress', e.target.value)}
+                onChange={(e) => handleChange("streetAddress", e.target.value)}
                 className="bg-pink-50/50 border-pink-100"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="city" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="city"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 City <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="city"
                 placeholder="New York"
                 value={formData.city}
-                onChange={(e) => handleChange('city', e.target.value)}
+                onChange={(e) => handleChange("city", e.target.value)}
                 className="bg-pink-50/50 border-pink-100"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="state" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="state"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 State <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="state"
                 placeholder="New York"
                 value={formData.state}
-                onChange={(e) => handleChange('state', e.target.value)}
+                onChange={(e) => handleChange("state", e.target.value)}
                 className="bg-pink-50/50 border-pink-100"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="zipCode" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="zipCode"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 ZIP Code <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="zipCode"
                 placeholder="10001"
                 value={formData.zipCode}
-                onChange={(e) => handleChange('zipCode', e.target.value)}
+                onChange={(e) => handleChange("zipCode", e.target.value)}
                 className="bg-pink-50/50 border-pink-100"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="country" className="text-sm text-gray-700 mb-1.5 block">
+              <Label
+                htmlFor="country"
+                className="text-sm text-gray-700 mb-1.5 block"
+              >
                 Country <span className="text-red-500">*</span>
               </Label>
-              <Select value={formData.country} onValueChange={(value) => handleChange('country', value)}>
+              <Select
+                value={formData.country}
+                onValueChange={(value) => handleChange("country", value)}
+              >
                 <SelectTrigger className="bg-pink-50/50 border-pink-100">
                   <SelectValue />
                 </SelectTrigger>
@@ -269,7 +313,9 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
                   <SelectItem value="Chile">Chile</SelectItem>
                   <SelectItem value="Colombia">Colombia</SelectItem>
                   <SelectItem value="Peru">Peru</SelectItem>
-                  <SelectItem value="United Arab Emirates">United Arab Emirates</SelectItem>
+                  <SelectItem value="United Arab Emirates">
+                    United Arab Emirates
+                  </SelectItem>
                   <SelectItem value="Saudi Arabia">Saudi Arabia</SelectItem>
                   <SelectItem value="Israel">Israel</SelectItem>
                   <SelectItem value="Turkey">Turkey</SelectItem>

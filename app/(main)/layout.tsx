@@ -1,22 +1,17 @@
-// app/(main)/layout.tsx
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import BackToTop from "./components/BackToTop";
+import { ToastProvider } from "@/app/components/GlobalToast";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Navigation only for shopping pages */}
-      <Navbar />
-      
-      <main className="flex-1">
-        {children}
-      </main>
-      
-      {/* Only appears after scrolling 300px */}
-      <BackToTop /> 
-      
-      <Footer />
-    </div>
+    <ToastProvider position="bottom-right">
+      <div className="flex flex-col min-h-screen bg-white">
+        <Navbar />
+        <main className="flex-1 bg-white">{children}</main>
+        <BackToTop />
+        <Footer />
+      </div>
+    </ToastProvider>
   );
 }

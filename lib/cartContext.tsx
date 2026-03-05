@@ -24,8 +24,9 @@ type CartContextType = {
   cart: Product[];
   addToCart: (product: Product, quantity?: number) => void;
   handleBag: (product: Product, quantity?: number) => void;
-  updateQuantity: (productId: number, newQuantity: number) => void; 
+  updateQuantity: (productId: number, newQuantity: number) => void;
   removeFromCart: (productId: number) => void;
+  clearCart: () => void;
   cartTotal: number;
 };
 
@@ -38,6 +39,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Load from LocalStorage only after mounting to avoid hydration mismatch
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const savedCart = localStorage.getItem("cart");
     if (savedCart) {
@@ -60,10 +62,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateQuantity = (productId: number, newQuantity: number) => {
     setCart((prevCart) =>
       prevCart.map((item) =>
-        item.id === productId 
-          ? { ...item, quantity: Math.max(1, newQuantity) } 
-          : item
-      )
+        item.id === productId
+          ? { ...item, quantity: Math.max(1, newQuantity) }
+          : item,
+      ),
     );
   };
 
@@ -75,7 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return prevCart.map((item) =>
           item.id === product.id
             ? { ...item, quantity: (item.quantity || 1) + quantity }
-            : item
+            : item,
         );
       }
 
@@ -89,20 +91,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
   };
 
+  const clearCart = () => {
+    setCart([]);
+  };
+
   const cartTotal = cart.reduce(
     (total, item) => total + item.price * (item.quantity || 1),
-    0
+    0,
   );
 
   return (
     <CartContext.Provider
-      value={{ 
-        cart, 
-        addToCart, 
-        handleBag, 
-        updateQuantity, 
-        removeFromCart, 
-        cartTotal 
+      value={{
+        cart,
+        addToCart,
+        handleBag,
+        updateQuantity,
+        removeFromCart,
+        clearCart,
+        cartTotal,
       }}
     >
       {children}

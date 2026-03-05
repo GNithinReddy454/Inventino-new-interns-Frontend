@@ -2,30 +2,30 @@
 const nextConfig = {
   images: {
     remotePatterns: [
-      /* 1. KEEP YOUR EXISTING UNSPLASH CONFIG */
+      // existing
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
-      /* 2. ADD NEW BACKEND IMAGE SUPPORT */
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '8080',
-        pathname: '/uploads/**', 
+        protocol: "http",
+        hostname: "localhost",
+        port: "8080",
+        pathname: "/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "avatar.iran.liara.run",
+      },
+      // ✅ Added: live backend server for review images
+      {
+        protocol: "https",
+        hostname: "3.6.36.33",
+        pathname: "/uploads/**",
       },
     ],
   },
-
-  /* 3. ADD PROXY FOR API REQUESTS (Fixes CORS) */
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://localhost:8080/api/:path*",
-      },
-    ];
-  },
+  // ✅ No rewrites needed — direct calls to NEXT_PUBLIC_API_BASE_URL work fine
 };
 
 export default nextConfig;

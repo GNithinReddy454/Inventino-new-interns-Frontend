@@ -3,7 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { StoreProvider } from "@/lib/storeContext";
 import { AuthProvider } from "@/app/(main)/components/authContext";
 import { CartProvider } from "@/lib/cartContext";
-import { ReduxProvider } from "@/redux/provider";  // ← new
+import { ReduxProvider } from "@/redux/provider";
+import { SWRConfig } from "swr";
+import { swrConfig, fetcher } from "@/hooks/useApi";
+import { ToastProvider } from "@/app/components/GlobalToast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,18 +30,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="overflow-x-hidden">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col overflow-x-hidden`}
       >
-        <ReduxProvider>        {/* ← wraps everything so Redux is available globally */}
-          <CartProvider>
-            <StoreProvider>
-              <AuthProvider>
-                {children}
-              </AuthProvider>
-            </StoreProvider>
-          </CartProvider>
+        <ReduxProvider>
+          <ToastProvider>
+            <CartProvider>
+              <StoreProvider>
+                <AuthProvider>
+                  <SWRConfig value={{ ...swrConfig, fetcher }}>
+                    {children}
+                  </SWRConfig>
+                </AuthProvider>
+              </StoreProvider>
+            </CartProvider>
+          </ToastProvider>
         </ReduxProvider>
       </body>
     </html>

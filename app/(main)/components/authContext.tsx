@@ -1,17 +1,19 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import apiClient from "@/lib/api";
+import { useAppDispatch } from "@/redux/store";
+import { logout as logoutAction } from "@/redux/authslice";
+import { User as BaseUser } from "@/lib/types";
+import { authService } from "@/services/auth.service";
 
-type User = {
-  name: string;
-  email: string;
-  phone?: string;
+type User = BaseUser & {
   dobDay?: string;
   dobMonth?: string;
   dobYear?: string;
   gender?: string;
   memberSince?: string;
-  photoUrl?: string;   // ← profile photo (base64 or URL)
+  photoUrl?: string;
 };
 
 type AuthContextType = {
@@ -25,35 +27,50 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("inventino_user");
-      if (raw) setUser(JSON.parse(raw));
-    } catch (e) {}
+    const init = async () => {
+      const storedUser = localStorage.getItem("inventino_user");
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const resp = await apiClient.get("/users/me");
+          const serverUser = resp.data?.data;
+          if (serverUser) {
+            setUser(serverUser);
+            localStorage.setItem("inventino_user", JSON.stringify(serverUser));
+          }
+        } catch {
+          localStorage.removeItem("token");
+        }
+      }
+    };
+    init();
   }, []);
 
   const login = (u: User) => {
     setUser(u);
-    try {
-      localStorage.setItem("inventino_user", JSON.stringify(u));
-    } catch (e) {}
+    localStorage.setItem("inventino_user", JSON.stringify(u));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await authService.logoutUser();
     setUser(null);
-    try {
-      localStorage.removeItem("inventino_user");
-    } catch (e) {}
+    localStorage.removeItem("inventino_user");
+    dispatch(logoutAction());
   };
 
   const updateUser = (updates: Partial<User>) => {
     if (!user) return;
     const updated = { ...user, ...updates };
     setUser(updated);
-    try {
-      localStorage.setItem("inventino_user", JSON.stringify(updated));
-    } catch (e) {}
+    localStorage.setItem("inventino_user", JSON.stringify(updated));
   };
 
   return (
@@ -68,5 +85,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 };
-
-export default AuthContext;

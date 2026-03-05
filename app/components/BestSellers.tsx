@@ -3,38 +3,77 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { products } from "@/lib/products";
-import { useCart } from "@/lib/cartContext";
 import ClientOnly from "./ClientOnly";
+import ProductCard from "./ProductCard";
 
 export default function BestSellers() {
-  const { addToCart } = useCart();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const bestSellerProducts = products.slice(0, 6);
+
+  // Adjusted to 8 products so there are exactly 2 full pages on desktop (4 per page)
+  const bestSellerProducts = products.slice(0, 8);
 
   const scroll = (dir: "left" | "right") => {
-    if (!scrollRef.current) return;
-    const amount = 280;
-    scrollRef.current.scrollBy({
-      left: dir === "right" ? amount : -amount,
-      behavior: "smooth",
-    });
+    if (!scrollRef.current || !scrollRef.current.children.length) return;
+
+    const container = scrollRef.current;
+    const firstChild = container.children[0] as HTMLElement;
+    const amount =
+      firstChild.clientWidth +
+      parseInt(window.getComputedStyle(container).gap || "0");
+
+    // Disable CSS smooth scrolling and snapping while animating to prevent conflicts
+    container.style.scrollBehavior = "auto";
+    container.style.scrollSnapType = "none";
+
+    const startPos = container.scrollLeft;
+    const targetPos = dir === "right" ? startPos + amount : startPos - amount;
+
+    const duration = 600; // 600ms for a slow smooth effect
+    const startTime = performance.now();
+
+    const animateScroll = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // easeInOutCubic
+      const easeProgress =
+        progress < 0.5
+          ? 4 * Math.pow(progress, 3)
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+      container.scrollLeft = startPos + (targetPos - startPos) * easeProgress;
+
+      if (elapsed < duration) {
+        requestAnimationFrame(animateScroll);
+      } else {
+        // Restore CSS smooth scrolling and snapping
+        container.style.scrollBehavior = "";
+        container.style.scrollSnapType = "";
+      }
+    };
+
+    requestAnimationFrame(animateScroll);
   };
 
   return (
-    <section className="w-full bg-pink-100 px-6 md:px-16 py-14 md:py-20">
-      <div className="max-w-6xl mx-auto">
+    <section className="w-full bg-pink-100 px-4 sm:px-8 md:px-12 lg:px-16 py-10 md:py-16">
+      <div className="max-w-[1400px] w-full mx-auto">
         {/* Heading */}
-        <div className="text-center mb-8">
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-1">Best Sellers</h2>
-          <p className="text-sm text-gray-500">Handpicked pieces that showcase exceptional craftsmanship</p>
+        <div className="text-center mb-10">
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
+            Best Sellers
+          </h2>
+          <p className="text-sm text-gray-500">
+            Handpicked pieces that showcase exceptional craftsmanship
+          </p>
         </div>
 
         {/* Scrollable row + arrows */}
-        <div className="relative">
+        <div className="relative group px-12 sm:px-0">
           {/* Left Arrow */}
           <button
             onClick={() => scroll("left")}
-            className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:border-pink-300 transition-all"
+            className="absolute left-0 sm:-left-3 md:-left-6 lg:-left-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
             aria-label="Scroll left"
           >
             ❮
@@ -43,35 +82,16 @@ export default function BestSellers() {
           {/* Cards */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto scroll-smooth pb-2"
+            className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-12 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory items-stretch px-2 sm:px-4"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             {bestSellerProducts.map((product) => (
               <div
                 key={product.id}
-                className="group flex-shrink-0 w-60 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-pink-50"
+                className="snap-center flex-shrink-0 w-full sm:w-[calc(50%-1.5rem)] md:w-[calc(33.3333%-2rem)] lg:w-[calc(25%-2.25rem)]"
               >
-                <div className="relative aspect-square overflow-hidden bg-pink-50">
-                  {product.badge && (
-                    <span className="absolute top-2 left-2 z-10 bg-yellow-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                      {product.badge}
-                    </span>
-                  )}
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-800 text-sm mb-1 line-clamp-2">{product.name}</h3>
-                  <div className="flex items-center gap-1 mb-1">
-                    <div className="flex text-yellow-400 text-xs">{"★".repeat(Math.floor(product.rating))}</div>
-                    <span className="text-[10px] text-gray-400">
-                      {product.rating.toFixed(1)} / {product.reviews}
-                    </span>
-                  </div>
-                  <p className="text-pink-600 font-black text-base">${product.price.toFixed(2)}</p>
+                <div className="h-full">
+                  <ProductCard product={product} />
                 </div>
               </div>
             ))}
@@ -80,7 +100,7 @@ export default function BestSellers() {
           {/* Right Arrow */}
           <button
             onClick={() => scroll("right")}
-            className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:border-pink-300 transition-all"
+            className="absolute right-0 sm:-right-3 md:-right-6 lg:-right-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
             aria-label="Scroll right"
           >
             ❯
@@ -91,7 +111,7 @@ export default function BestSellers() {
         <div className="text-center mt-10">
           <ClientOnly>
             <Link
-              href="/AllProducts"
+              href="/products"
               className="inline-block bg-pink-500 hover:bg-pink-600 text-white px-8 py-3 rounded-full font-semibold text-sm transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95"
             >
               View All Products

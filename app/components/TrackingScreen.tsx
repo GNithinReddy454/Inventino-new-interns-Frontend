@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Button } from './ui/button';
-import { OrderResponse } from '@/lib/types';
-import { Package, CheckCircle2, Truck, MapPin, Home, Lock } from 'lucide-react';
+import { Button } from "./ui/button";
+import { OrderResponse } from "@/lib/types";
+import { Package, CheckCircle2, Truck, MapPin, Home, Lock } from "lucide-react";
 
 interface TrackingScreenProps {
   order: OrderResponse;
@@ -11,22 +11,22 @@ interface TrackingScreenProps {
 export function TrackingScreen({ order }: TrackingScreenProps) {
   const trackingSteps = [
     {
-      status: 'Confirmed',
+      status: "Confirmed",
       completed: true,
       icon: CheckCircle2,
     },
     {
-      status: 'Packed',
+      status: "Packed",
       completed: true,
       icon: Package,
     },
     {
-      status: 'Shipped',
+      status: "Shipped",
       completed: true,
       icon: Truck,
     },
     {
-      status: 'Delivered',
+      status: "Delivered",
       completed: false,
       icon: Home,
     },
@@ -58,7 +58,9 @@ export function TrackingScreen({ order }: TrackingScreenProps) {
             <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-semibold shadow-md">
               ✓
             </div>
-            <p className="text-xs font-medium text-green-600 mt-2">Information</p>
+            <p className="text-xs font-medium text-green-600 mt-2">
+              Information
+            </p>
           </div>
 
           {/* Payment - Step 3 */}
@@ -78,8 +80,14 @@ export function TrackingScreen({ order }: TrackingScreenProps) {
           </div>
 
           {/* Progress Line */}
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 transform -translate-y-1/2" style={{ zIndex: 0 }}>
-            <div className="h-full bg-gradient-to-r from-green-500 via-green-500 to-pink-500" style={{ width: '100%' }} />
+          <div
+            className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 transform -translate-y-1/2"
+            style={{ zIndex: 0 }}
+          >
+            <div
+              className="h-full bg-gradient-to-r from-green-500 via-green-500 to-pink-500"
+              style={{ width: "100%" }}
+            />
           </div>
         </div>
       </div>
@@ -100,18 +108,20 @@ export function TrackingScreen({ order }: TrackingScreenProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
           <div>
             <p className="text-xs text-gray-600 mb-1">Courier</p>
-            <p className="font-semibold text-gray-900">{order.courier || 'BlueDart'}</p>
+            <p className="font-semibold text-gray-900">
+              {order.courier || "BlueDart"}
+            </p>
           </div>
           <div>
             <p className="text-xs text-gray-600 mb-1">Tracking ID</p>
             <p className="font-semibold text-gray-900 font-mono text-sm">
-              {order.trackingNumber || 'BD0938475621'}
+              {order.trackingNumber || "BD0938475621"}
             </p>
           </div>
           <div>
             <p className="text-xs text-gray-600 mb-1">Estimated Delivery</p>
             <p className="font-semibold text-pink-600">
-              {order.estimatedDelivery || '12 Feb 2026'}
+              {order.estimatedDelivery || "12 Feb 2026"}
             </p>
           </div>
         </div>
@@ -124,7 +134,7 @@ export function TrackingScreen({ order }: TrackingScreenProps) {
           <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
           <div
             className="absolute left-6 top-0 w-0.5 bg-pink-500 transition-all duration-500"
-            style={{ height: '66.67%' }}
+            style={{ height: "66.67%" }}
           />
 
           {/* Steps */}
@@ -137,8 +147,8 @@ export function TrackingScreen({ order }: TrackingScreenProps) {
                   <div
                     className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                       step.completed
-                        ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/30'
-                        : 'bg-gray-200 text-gray-400'
+                        ? "bg-pink-500 text-white shadow-lg shadow-pink-500/30"
+                        : "bg-gray-200 text-gray-400"
                     }`}
                   >
                     <Icon className="h-6 w-6" />
@@ -148,7 +158,7 @@ export function TrackingScreen({ order }: TrackingScreenProps) {
                   <div className="flex-1">
                     <p
                       className={`font-semibold ${
-                        step.completed ? 'text-gray-900' : 'text-gray-400'
+                        step.completed ? "text-gray-900" : "text-gray-400"
                       }`}
                     >
                       {step.status}
@@ -185,7 +195,7 @@ export function TrackingScreen({ order }: TrackingScreenProps) {
           </p>
           <p>{order.shippingAddress.streetAddress}</p>
           <p>
-            {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
+            {order.shippingAddress.city}, {order.shippingAddress.state}{" "}
             {order.shippingAddress.zipCode}
           </p>
           <p>{order.shippingAddress.country}</p>
@@ -196,7 +206,7 @@ export function TrackingScreen({ order }: TrackingScreenProps) {
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button
-          onClick={() => window.location.href = '/'}
+          onClick={() => (window.location.href = "/")}
           className="flex-1 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white py-6 text-base font-semibold rounded-lg shadow-lg shadow-pink-500/30"
         >
           Back to Home
@@ -204,7 +214,7 @@ export function TrackingScreen({ order }: TrackingScreenProps) {
 
         <Button
           variant="outline"
-          onClick={() => window.location.href = '/support'}
+          onClick={() => (window.location.href = "/support")}
           className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 py-6"
         >
           Contact Support

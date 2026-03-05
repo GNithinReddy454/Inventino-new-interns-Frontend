@@ -1,60 +1,85 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { forgotPasswordAction } from "@/redux/authslice";
+import { forgotPasswordSchema, type ForgotPasswordFormData } from "../schema";
+
+import AuthLayout from "../_components/AuthCardLayout";
+import AuthInput from "../_components/AuthInput";
+import AuthButton from "../_components/AuthButton";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const router = useRouter();
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const dispatch = useAppDispatch();
+  const { loading } = useAppSelector((state) => state.auth);
 
-  const handleSendLink = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !email.includes("@")) {
-      setError("Please enter a valid registered email");
-      return;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+  });
+
+  const onSubmit = async (data: ForgotPasswordFormData) => {
+    setErrorMessage("");
+    setSuccessMessage("");
+    try {
+      const response = await dispatch(forgotPasswordAction(data.email));
+      if (forgotPasswordAction.fulfilled.match(response)) {
+        setSuccessMessage("If an account with that email exists, a password reset link has been sent.");
+      } else {
+        const errorMsg = (response.payload as string) || "Something went wrong. Please try again.";
+        setErrorMessage(errorMsg);
+      }
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      setErrorMessage("An unexpected error occurred.");
     }
-    // Simulate sending link and move to reset page
-    router.push("/reset-password");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-[32px] p-8 shadow-sm text-center border border-gray-100">
-        <div className="flex justify-center mb-6">
-          <Image src="/logo.png" alt="Inventino" width={160} height={48} priority />
-        </div>
-        <h1 className="text-2xl font-semibold text-gray-800 mb-2">Forgot Password</h1>
-        <p className="text-gray-500 text-sm mb-8 px-4">
-          Enter your registered email address and we&apos;ll send you a password reset link.
-        </p>
-        <form onSubmit={handleSendLink} className="text-left space-y-6">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600 uppercase tracking-wider pl-1">Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(""); }}
-              placeholder="you@example.com"
-              className={`w-full rounded-[16px] bg-[#FFE6F0] border px-4 py-[15px] text-sm focus:outline-none focus:ring-2 transition-all ${
-                error ? "border-red-500 focus:ring-red-500" : "border-[#F7B9D0] focus:ring-[#E15483]/60"
-              }`}
-            />
-            {error && <p className="text-[#D32F2F] text-xs mt-1 pl-2 font-medium">{error}</p>}
+    <AuthLayout
+      title="Forgot Password"
+      subtitle="Enter your registered email address and we'll send you a password reset link."
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+            {successMessage}
           </div>
-          <button type="submit" className="w-full rounded-full bg-[#E15483] text-white py-3.5 text-sm font-medium hover:bg-[#d14476] transition-colors">
-            Send Reset Link
-          </button>
-        </form>
-        <div className="mt-8">
-          <Link href="/login" className="flex items-center justify-center gap-2 text-gray-400 hover:text-gray-600 transition-colors text-sm font-medium">
-            <ArrowLeft size={16} /> Back to Login
+        )}
+        {errorMessage && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            {errorMessage}
+          </div>
+        )}
+        <AuthInput
+          label="Email Address"
+          type="email"
+          placeholder="you@example.com"
+          error={errors.email?.message}
+          {...register("email")}
+        />
+        <AuthButton disabled={loading}>
+          {loading ? "Sending..." : "Send Reset Link"}
+        </AuthButton>
+        <div className="text-center">
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#E15483]"
+          >
+            <ArrowLeft size={16} />
+            Back to Login
           </Link>
         </div>
-      </div>
-    </div>
+      </form>
+    </AuthLayout>
   );
 }
