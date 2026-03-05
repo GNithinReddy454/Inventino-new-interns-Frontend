@@ -2,26 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/(main)/components/authContext";
 
-export const withAuth = (WrappedComponent: React.ComponentType<any>) => {
-  return function ProtectedUserRoute(props: any) {
+export const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
+  return function ProtectedRoute(props: P) {
+    const { user } = useAuth();
     const router = useRouter();
     const [isAuthorized, setIsAuthorized] = useState(false);
 
     useEffect(() => {
-      const rawUser = localStorage.getItem("inventino_user");
-      const token = localStorage.getItem("token");
-
-      if (!rawUser || !token) {
+      if (user === undefined) return;
+      if (!user) {
         router.replace("/login");
       } else {
         setIsAuthorized(true);
       }
-    }, [router]);
+    }, [user, router]);
 
-    // Render nothing while checking or if unauthorized to prevent flashing
     if (!isAuthorized) {
-      return null;
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500" />
+        </div>
+      );
     }
 
     return <WrappedComponent {...props} />;

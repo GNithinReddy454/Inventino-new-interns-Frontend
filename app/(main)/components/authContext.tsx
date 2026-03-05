@@ -1,26 +1,19 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import apiClient from "@/lib/api";
 import { useAppDispatch } from "@/redux/store";
 import { logout as logoutAction } from "@/redux/authslice";
+import { User as BaseUser } from "@/lib/types";
+import { authService } from "@/services/auth.service";
 
-type User = {
-  name: string;
-  email: string;
-  phone?: string;
+type User = BaseUser & {
   dobDay?: string;
   dobMonth?: string;
   dobYear?: string;
   gender?: string;
   memberSince?: string;
-  photoUrl?: string; // ← profile photo (base64 or URL)
+  photoUrl?: string;
 };
 
 type AuthContextType = {
@@ -38,65 +31,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const init = async () => {
-      try {
-        const raw = localStorage.getItem("inventino_user");
-        if (raw) {
-          setUser(JSON.parse(raw));
-          return;
-        }
+      const storedUser = localStorage.getItem("inventino_user");
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+        return;
+      }
 
-        // If no local user but token exists, fetch profile from backend
-        const token =
-          typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        if (token) {
-          try {
-            const resp = await apiClient.get("/users/me");
-            const serverUser = resp.data?.data;
-            if (serverUser) {
-              setUser(serverUser);
-              try {
-                localStorage.setItem(
-                  "inventino_user",
-                  JSON.stringify(serverUser),
-                );
-              } catch (e) {}
-            }
-          } catch (e) {
-            // profile fetch failed (token invalid or network); ignore
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const resp = await apiClient.get("/users/me");
+          const serverUser = resp.data?.data;
+          if (serverUser) {
+            setUser(serverUser);
+            localStorage.setItem("inventino_user", JSON.stringify(serverUser));
           }
+        } catch {
+          localStorage.removeItem("token");
         }
-      } catch (e) {}
+      }
     };
-
     init();
   }, []);
 
   const login = (u: User) => {
     setUser(u);
-    try {
-      localStorage.setItem("inventino_user", JSON.stringify(u));
-    } catch (e) {}
+    localStorage.setItem("inventino_user", JSON.stringify(u));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await authService.logoutUser();
     setUser(null);
-    try {
-      localStorage.removeItem("inventino_user");
-    } catch (e) {}
-
-    try {
-      // update redux state and let slice handle backend logout/token removal
-      dispatch(logoutAction());
-    } catch (e) {}
+    localStorage.removeItem("inventino_user");
+    dispatch(logoutAction());
   };
 
   const updateUser = (updates: Partial<User>) => {
     if (!user) return;
     const updated = { ...user, ...updates };
     setUser(updated);
-    try {
-      localStorage.setItem("inventino_user", JSON.stringify(updated));
-    } catch (e) {}
+    localStorage.setItem("inventino_user", JSON.stringify(updated));
   };
 
   return (
@@ -111,5 +85,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 };
-
-export default AuthContext;

@@ -21,6 +21,40 @@ import { useEffect, useState, useRef } from "react";
 import { useStore } from "@/lib/storeContext";
 import { useCart } from "@/lib/cartContext";
 
+// Import product data statically
+import * as localProducts from "@/lib/products";
+import jsonProducts from "@/lib/products.json";
+
+// Define types for product data
+interface LocalProduct {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  image: string;
+  description?: string;
+  badge?: string;
+}
+
+interface JsonProduct {
+  title?: string;
+  name?: string;
+  category: string;
+  price: number;
+  images?: string[];
+  description?: string;
+  tags?: string[];
+}
+
+interface SearchProduct {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  image: string;
+  searchString: string;
+}
+
 const Navbar = () => {
   const pathname = usePathname();
   const { savedItems } = useStore();
@@ -29,8 +63,8 @@ const Navbar = () => {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [announcementHeight, setAnnouncementHeight] = useState(40); // Default
-  const [navbarHeight, setNavbarHeight] = useState(64); // Default
+  const [announcementHeight, setAnnouncementHeight] = useState(40);
+  const [navbarHeight, setNavbarHeight] = useState(64);
 
   const announcementRef = useRef<HTMLDivElement>(null);
   const navbarRef = useRef<HTMLDivElement>(null);
@@ -40,7 +74,7 @@ const Navbar = () => {
 
   const bagCount = cart.reduce(
     (total, item) => total + (item.quantity || 1),
-    0,
+    0
   );
 
   // Measure actual heights on mount and resize
@@ -64,14 +98,12 @@ const Navbar = () => {
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
-
-      // Calculate progress (0 to 1) based on scroll through announcement bar
       const progress = Math.min(scrollY / announcementHeight, 1);
       setScrollProgress(progress);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll(); // Call once to set initial state
+    handleScroll();
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, [announcementHeight]);
@@ -97,7 +129,6 @@ const Navbar = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Close search dropdown on click outside
   useEffect(() => {
     const handleClickOutsideSearch = (event: MouseEvent) => {
       if (
@@ -122,9 +153,9 @@ const Navbar = () => {
     }
   };
 
-  // Build a unified searchable master list mapping from static and JSON products
-  const masterProductList = [
-    ...require("@/lib/products").products.map((p: any) => ({
+  // Build a unified searchable master list
+  const masterProductList: SearchProduct[] = [
+    ...(localProducts.products || []).map((p: LocalProduct) => ({
       id: p.id,
       name: p.name,
       category: p.category,
@@ -133,29 +164,28 @@ const Navbar = () => {
       searchString:
         `${p.name} ${p.category} ${p.description || ""} ${p.badge || ""}`.toLowerCase(),
     })),
-    ...require("@/lib/products.json").map((p: any, i: number) => ({
+    ...(jsonProducts as JsonProduct[]).map((p, i) => ({
       id: i + 11,
-      name: p.title || p.name,
+      name: p.title || p.name || "",
       category: p.category,
       price: p.price,
-      image: p.images ? p.images[0] : "",
+      image: p.images && p.images[0] ? p.images[0] : "",
       searchString:
         `${p.title || p.name} ${p.category} ${p.description || ""} ${(p.tags || []).join(" ")}`.toLowerCase(),
     })),
   ];
 
-  const searchResults =
-    searchQuery.trim().length > 1
-      ? masterProductList
-          .filter((p) => {
-            const queryTerms = searchQuery
-              .toLowerCase()
-              .split(" ")
-              .filter(Boolean);
-            return queryTerms.every((term) => p.searchString.includes(term));
-          })
-          .slice(0, 5)
-      : [];
+  const searchResults = searchQuery.trim().length > 1
+    ? masterProductList
+        .filter((p) => {
+          const queryTerms = searchQuery
+            .toLowerCase()
+            .split(" ")
+            .filter(Boolean);
+          return queryTerms.every((term) => p.searchString.includes(term));
+        })
+        .slice(0, 5)
+    : [];
 
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path;
@@ -176,14 +206,13 @@ const Navbar = () => {
   const iconCircleStyle =
     "w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white text-gray-800 shadow-sm border border-pink-50 hover:text-pink-500 transition-all relative";
 
-  // Calculate dynamic styles based on scroll progress
-  const navbarTop = announcementHeight - scrollProgress * announcementHeight; // Moves from announcementHeight to 0px
-  const spacerHeight = navbarHeight + announcementHeight * (1 - scrollProgress); // Moves from announcementHeight+navbarHeight to navbarHeight
+  const navbarTop = announcementHeight - scrollProgress * announcementHeight;
+  const spacerHeight = navbarHeight + announcementHeight * (1 - scrollProgress);
   const announcementOpacity = 1 - scrollProgress;
 
   return (
     <>
-      {/* TOP ANNOUNCEMENT BAR - Fades out as you scroll */}
+      {/* TOP ANNOUNCEMENT BAR */}
       <div
         ref={announcementRef}
         className="bg-pink-500 text-white text-sm py-2 px-4 flex justify-center items-center font-sans fixed top-0 left-0 right-0 z-40 transition-opacity duration-150"
@@ -200,7 +229,7 @@ const Navbar = () => {
         </p>
       </div>
 
-      {/* FIXED NAVBAR - Smoothly moves up as you scroll */}
+      {/* FIXED NAVBAR */}
       <header
         className="fixed left-0 right-0 z-50 transition-none"
         style={{ top: `${navbarTop}px` }}
@@ -263,9 +292,11 @@ const Navbar = () => {
                         >
                           <div className="w-12 h-12 bg-gray-50 rounded-lg overflow-hidden shrink-0 border border-gray-100">
                             {p.image && (
-                              <img
+                              <Image
                                 src={p.image}
                                 alt={p.name}
+                                width={48}
+                                height={48}
                                 className="w-full h-full object-cover"
                               />
                             )}
@@ -284,6 +315,7 @@ const Navbar = () => {
                         </Link>
                       ))}
                       <button
+                        suppressHydrationWarning
                         onClick={handleSearchSubmit}
                         className="w-full mt-2 py-2.5 text-xs font-bold text-pink-600 bg-pink-50 rounded-xl hover:bg-pink-100 transition-colors flex items-center justify-center gap-1"
                       >
@@ -346,6 +378,7 @@ const Navbar = () => {
                 ref={dropdownRef}
               >
                 <button
+                  suppressHydrationWarning
                   onClick={() =>
                     user
                       ? setShowDropdown(!showDropdown)
@@ -450,6 +483,7 @@ const Navbar = () => {
                     </div>
 
                     <button
+                      suppressHydrationWarning
                       onClick={() => {
                         logout();
                         setShowDropdown(false);
@@ -463,6 +497,7 @@ const Navbar = () => {
               </div>
 
               <button
+                suppressHydrationWarning
                 className="lg:hidden w-9 h-9 flex items-center justify-center text-gray-800"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 aria-label="Toggle Menu"
@@ -474,12 +509,13 @@ const Navbar = () => {
         </div>
       </header>
 
-      {/* Dynamic spacer that smoothly adjusts based on actual heights */}
       <div style={{ height: `${spacerHeight}px` }}></div>
 
       {/* MOBILE MENU DRAWER */}
       <div
-        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${
+          isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
       >
         <div
           className="absolute inset-0 bg-black/50 backdrop-blur-md"
@@ -487,13 +523,16 @@ const Navbar = () => {
         ></div>
 
         <div
-          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}
+          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${
+            isMenuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
         >
           <div className="flex justify-between items-center mb-8 pb-4">
             <span className="font-bold text-pink-600 text-xl font-serif">
               Menu
             </span>
             <button
+              suppressHydrationWarning
               onClick={() => setIsMenuOpen(false)}
               className="p-1 hover:bg-pink-50 rounded-full transition-colors"
             >
@@ -573,6 +612,7 @@ const Navbar = () => {
                   </div>
                 </Link>
                 <button
+                  suppressHydrationWarning
                   onClick={() => {
                     logout();
                     setIsMenuOpen(false);

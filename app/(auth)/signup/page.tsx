@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "@/app/(main)/components/authContext";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { signupUserAction } from "@/redux/authslice";
 import { signupSchema, type SignupFormData } from "../schema";
@@ -44,8 +43,7 @@ export default function SignupPage() {
       showToast("Account Created!", "Please verify your email.", "success");
       router.push(`/verify-otp?email=${encodeURIComponent(data.email)}`);
     } else if (signupUserAction.rejected.match(resultAction)) {
-      const errorMessage =
-        (resultAction.payload as string) || "Signup failed. Please try again.";
+      const errorMessage = (resultAction.payload as string) || "Signup failed. Please try again.";
       showToast("Signup Failed", errorMessage, "error");
     }
   };
@@ -59,7 +57,6 @@ export default function SignupPage() {
           error={errors.name?.message}
           {...register("name")}
         />
-
         <AuthInput
           label="Email *"
           type="email"
@@ -67,7 +64,6 @@ export default function SignupPage() {
           error={errors.email?.message}
           {...register("email")}
         />
-
         <AuthInput
           label="Phone Number *"
           type="tel"
@@ -75,33 +71,25 @@ export default function SignupPage() {
           error={errors.phone?.message}
           {...register("phone")}
         />
-
         <PasswordInput
           label="Password *"
           placeholder="Create password"
           error={errors.password?.message}
           {...register("password")}
         />
-
         <PasswordInput
           label="Confirm Password *"
           placeholder="Repeat password"
           error={errors.confirmPassword?.message}
           {...register("confirmPassword")}
         />
-
         <AuthButton disabled={loading}>
           {loading ? "Creating Account..." : "Sign Up"}
         </AuthButton>
-
         <GoogleButton text="Sign up with Google" />
-
         <p className="text-center text-xs text-gray-500">
           Already have an account?{" "}
-          <Link
-            href="/login"
-            className="text-[#E15483] font-bold hover:underline"
-          >
+          <Link href="/login" className="text-[#E15483] font-bold hover:underline">
             Login
           </Link>
         </p>
