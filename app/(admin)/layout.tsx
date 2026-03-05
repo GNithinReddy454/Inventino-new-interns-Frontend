@@ -1,6 +1,6 @@
 "use client";
 // Bare layout for admin — no Navbar or Footer
-import { withAdmin } from "@/app/components/hoc/withAdmin";
+import { withAuth } from "@/app/components/hoc/withAuth";
 import React from "react";
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -11,4 +11,4 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default withAdmin(AdminLayout);
+export default withAuth(AdminLayout);
