@@ -1,154 +1,87 @@
+
 import apiClient from "@/lib/api";
-
-/**
- * Product Service
- * Fully supports:
- * - Filter
- * - Pagination
- * - Sorting
- * - Search
- * - CRUD
- * - Reviews
- * - Images
- * - Inventory
- * - Related Products
- */
-
-export interface GetProductsParams {
-  page?: number;
-  limit?: number;
-  category?: string;
-  search?: string;
-  sort?: "newest" | "LOW to HIGH" | "HIGH to LOW";
-}
+import {
+  GetAllProductsParams,
+  ProductListResponse,
+  ProductDetailResponse,
+} from "@/types/products.type";
 
 export const productService = {
-  /**
-   * Get all products with filters
-   * Example:
-   * /products?category=Women Watches&page=1&limit=5&sort=priceAsc
-   */
-  async getAll(params?: GetProductsParams) {
-    const response = await apiClient.get("/products", {
-      params,
-    });
-    return response.data;
+  // GET /products — category + sort + pagination
+  async getAll(params?: GetAllProductsParams) {
+    const response = await apiClient.get<ProductListResponse>("/products", { params });
+    return response;
   },
 
-  /**
-   * Get single product
-   */
+  // GET /products/search?q=
+  async searchProducts(query: string, page = 1, limit = 9) {
+    const response = await apiClient.get<ProductListResponse>("/products/search", {
+      params: { q: query, page, limit },
+    });
+    return response;
+  },
+
+  // GET /products/featured
+  async getFeatured(page = 1, limit = 9) {
+    const response = await apiClient.get("/products/featured", {
+      params: { page, limit },
+    });
+    return response;
+  },
+
+  // GET /products/best-sellers
+  async getBestSellers(page = 1, limit = 9) {
+    const response = await apiClient.get("/products/best-sellers", {
+      params: { page, limit },
+    });
+    return response;
+  },
+
   async getById(id: string | number) {
-    const response = await apiClient.get(`/products/${id}`);
+    const response = await apiClient.get<ProductDetailResponse>(`/products/${id}`);
     return response.data;
   },
 
-  /**
-   * Search products
-   */
-  async search(query: string) {
-    const response = await apiClient.get("/products", {
-      params: { search: query },
-    });
+  async getBySlug(slug: string) {
+    const response = await apiClient.get<ProductDetailResponse>(`/products/${slug}`);
     return response.data;
   },
 
-  /**
-   * Filter by category
-   */
   async getByCategory(category: string, page = 1, limit = 9) {
-    const response = await apiClient.get("/products", {
+    const response = await apiClient.get<ProductListResponse>("/products", {
       params: { category, page, limit },
     });
-    return response.data;
+    return response;
   },
 
-  /**
-   * Get featured products
-   * (If backend supports ?featured=true)
-   */
-  async getFeatured() {
-    const response = await apiClient.get("/products", {
-      params: { featured: true },
-    });
-    return response.data;
-  },
-
-  /**
-   *
-
-  /**
-   * Create product (ADMIN)
-   */
   async create(data: any) {
     const response = await apiClient.post("/products", data);
     return response.data;
   },
 
-  /**
-   * Full update
-   */
   async update(id: string | number, data: any) {
-    const response = await apiClient.put(`/products/${id}`, data);
-    return response.data;
-  },
-
-  /**
-   * Partial update
-   */
-  async patch(id: string | number, data: any) {
     const response = await apiClient.patch(`/products/${id}`, data);
     return response.data;
   },
 
-  /**
-   * Delete product
-   */
+  async addImages(id: string | number, data: any) {
+    const response = await apiClient.post(`/products/${id}/images`, data);
+    return response.data;
+  },
+
+  async deleteImage(productId: string | number, imageId: string) {
+    const response = await apiClient.delete(`/products/${productId}/images/${imageId}`);
+    return response.data;
+  },
+
   async delete(id: string | number) {
     const response = await apiClient.delete(`/products/${id}`);
     return response.data;
   },
 
-  /**
-   * Get product reviews
-   */
-  async getReviews(id: string | number) {
-    const response = await apiClient.get(`/products/${id}/reviews`);
-    return response.data;
-  },
-
-  /**
-   * Add review
-   */
-  async addReview(id: string | number, review: any) {
-    const response = await apiClient.post(
-      `/products/${id}/reviews`,
-      review
-    );
-    return response.data;
-  },
-
-  /**
-   * Get product images
-   */
-  async getImages(id: string | number) {
-    const response = await apiClient.get(`/products/${id}/images`);
-    return response.data;
-  },
-
-  /**
-   * Get inventory / stock
-   */
-  async getInventory(id: string | number) {
-    const response = await apiClient.get(`/products/${id}/inventory`);
-    return response.data;
-  },
-
-  /**
-   * Get related products
-   */
-  async getRelated(id: string | number) {
-    const response = await apiClient.get(`/products/${id}/related`);
+  async updateStatus(id: string | number, data: any) {
+    const response = await apiClient.patch(`/products/${id}/status`, data);
     return response.data;
   },
 };
+

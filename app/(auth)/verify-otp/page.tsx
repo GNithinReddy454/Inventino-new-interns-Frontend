@@ -31,32 +31,23 @@ function VerifyOTPForm() {
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-
     if (timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
+      interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
     }
-
     return () => clearInterval(interval);
   }, [timer]);
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
-
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
-
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
-  const handleKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -67,7 +58,6 @@ function VerifyOTPForm() {
       setOtpError("Email not found. Please sign up again.");
       return;
     }
-
     setIsResending(true);
     try {
       const result = await dispatch(resendOtpAction(email));
@@ -78,7 +68,7 @@ function VerifyOTPForm() {
         const errorMsg = (result.payload as string) || "Failed to resend OTP";
         setOtpError(errorMsg);
       }
-    } catch (err) {
+    } catch {
       setOtpError("An unexpected error occurred.");
     } finally {
       setIsResending(false);
@@ -87,35 +77,28 @@ function VerifyOTPForm() {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const otpCode = otp.join("");
     if (otpCode.length !== 6) {
       setOtpError("Please enter all 6 digits");
       return;
     }
-
     if (!email) {
       setOtpError("Email not found. Please sign up again.");
       return;
     }
-
     try {
       const result = await dispatch(verifyOtpAction({ email, otp: otpCode }));
-
       if (verifyOtpAction.fulfilled.match(result)) {
-        // Backend returns token and user data inside `data.user`
         const serverUser = result.payload?.data?.user;
         if (serverUser) {
-          login(serverUser); // Log the user in
+          login(serverUser);
         }
         showToast("Email Verified!", "Your email has been verified successfully.", "success");
         router.push("/products");
       } else {
-        const errorMsg = (result.payload as string) || "OTP verification failed";
-        setOtpError(errorMsg);
+        setOtpError((result.payload as string) || "OTP verification failed");
       }
-    } catch (err) {
-      console.error("OTP verification error:", err);
+    } catch {
       setOtpError("An unexpected error occurred.");
     }
   };
@@ -132,30 +115,18 @@ function VerifyOTPForm() {
           </div>
         )}
 
-        {/* OTP inputs */}
         <div className="flex gap-2 sm:gap-3 justify-center">
           {otp.map((digit, index) => (
             <input
               key={index}
-              ref={(el) => {
-                inputRefs.current[index] = el;
-              }}
+              ref={(el) => { inputRefs.current[index] = el; }}
               type="text"
               inputMode="numeric"
               maxLength={1}
               value={digit}
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
-              className="
-                w-12 h-14
-                text-center
-                text-xl font-bold
-                border border-[#F7B9D0]
-                rounded-[14px]
-                bg-[#FFE6F0]
-                focus:border-[#E15483]
-                focus:outline-none
-              "
+              className="w-12 h-14 text-center text-xl font-bold border border-[#F7B9D0] rounded-[14px] bg-[#FFE6F0] focus:border-[#E15483] focus:outline-none"
             />
           ))}
         </div>
@@ -171,16 +142,10 @@ function VerifyOTPForm() {
             onClick={handleResend}
             disabled={timer > 0 || isResending}
             className={`font-bold ml-1 ${
-              timer > 0 || isResending
-                ? "text-gray-400"
-                : "text-[#E15483] hover:underline"
+              timer > 0 || isResending ? "text-gray-400" : "text-[#E15483] hover:underline"
             }`}
           >
-            {isResending
-              ? "Sending..."
-              : timer > 0
-                ? `Resend in ${timer}s`
-                : "Resend OTP"}
+            {isResending ? "Sending..." : timer > 0 ? `Resend in ${timer}s` : "Resend OTP"}
           </button>
         </p>
 

@@ -1,5 +1,5 @@
 import apiClient from "@/lib/api";
-import { AuthResponse, User } from "@/lib/types";
+import { AuthResponse, ApiResponse } from "@/lib/types";
 
 export const authService = {
   // Uses User interface for credentials to avoid 'any'
@@ -25,7 +25,6 @@ export const authService = {
   },
 
   async logoutUser(): Promise<void> {
-    localStorage.removeItem("token");
     try {
       await apiClient.post("/api/auth/logout");
     } catch {
@@ -65,5 +64,10 @@ export const authService = {
   }): Promise<any> {
     const response = await apiClient.put("/api/auth/change-password", data);
     return response.data;
+  },
+
+  async getProfile(): Promise<any> {
+    const response = await apiClient.get("/users/me");
+    return response.data.data;
   },
 };
