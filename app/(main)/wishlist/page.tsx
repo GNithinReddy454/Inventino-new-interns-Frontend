@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback } from "react";
@@ -252,13 +253,13 @@ export default function WishlistPage() {
               Remove All
             </button>
 
-            {/* Add All to Cart */}
+            {/* Add All to Bag */}
             <button
               onClick={handleAddEntireWishlistToCart}
               className="inline-flex items-center gap-1.5 cursor-pointer bg-[#E8456A] text-white rounded-xl px-3 py-2 shadow-sm hover:bg-[#c73358] transition-colors text-xs font-semibold whitespace-nowrap"
             >
               <ShoppingBag size={14} className="text-white" />
-              Add All to Cart
+              Add All to Bag
             </button>
 
             {/* Count badge */}
@@ -444,7 +445,7 @@ export default function WishlistPage() {
                         className="flex-1 inline-flex items-center justify-center gap-1 bg-[#E8456A] hover:bg-[#c73358] text-white py-1.5 sm:py-2 rounded-lg text-[9px] sm:text-[11px] font-bold uppercase tracking-wide transition-all active:scale-95 shadow-sm shadow-pink-100"
                       >
                         <ShoppingBag size={10} className="flex-shrink-0" />
-                        Add to Cart
+                        ADD TO BAG
                       </button>
                       <button
                         onClick={() => handleSaved(item)}
