@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import Image from "next/image";
-import { ChevronDown, MoreVertical, Search, Package, Star, Edit, Trash2 } from "lucide-react";
+import { ChevronDown, MoreVertical, Search, Package, Edit, Trash2 } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
-import { ADMIN_PRODUCTS } from "../_data/mockData";
+import Pagination from "./Pagination";
+import { getAdminProducts, AdminProduct } from "@/services/admin.service";
 
 export default function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
     const [search, setSearch] = useState("");
@@ -11,26 +11,40 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
     const [sort, setSort] = useState("Newest");
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [ADMIN_PRODUCTS, setAdminProducts] = useState<AdminProduct[]>([]);
 
     useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 1500);
-        return () => clearTimeout(timer);
+        const fetchProducts = async () => {
+            setIsLoading(true);
+            try {
+                const data = await getAdminProducts();
+                setAdminProducts(data ?? []);
+            } catch (err) {
+                console.error("Failed to fetch admin products:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchProducts();
     }, []);
 
     const categories = ["All Categories", "Jewelry", "Bags", "Home Decor", "Textiles", "Accessories"];
     const statuses = ["All Status", "Active", "Draft", "Low Stock", "Out of Stock"];
 
     const filtered = ADMIN_PRODUCTS.filter((p: any) => {
-        const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
         const matchCat = categoryFilter === "All Categories" || p.category === categoryFilter;
-        const matchStatus = statusFilter === "All Status" || p.status === statusFilter;
-        return matchSearch && matchCat && matchStatus;
+        return matchSearch && matchCat;
     }).sort((a: any, b: any) => {
         if (sort === "Price: High to Low") return b.price - a.price;
         if (sort === "Price: Low to High") return a.price - b.price;
         if (sort === "Stock: Low to High") return a.stock - b.stock;
-        return a.id.localeCompare(b.id);
+        return 0;
     });
+
+    const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const statusColor = (status: string) => {
         switch (status) {
@@ -66,9 +80,9 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                 ) : (
                     [
                         { label: "Total Products", value: ADMIN_PRODUCTS.length, color: "text-foreground" },
-                        { label: "Active", value: ADMIN_PRODUCTS.filter((p: any) => p.status === "Active").length, color: "text-green-500" },
-                        { label: "Low Stock", value: ADMIN_PRODUCTS.filter((p: any) => p.status === "Low Stock").length, color: "text-orange-500" },
-                        { label: "Out of Stock", value: ADMIN_PRODUCTS.filter((p: any) => p.status === "Out of Stock").length, color: "text-red-500" },
+                        { label: "Low Stock", value: ADMIN_PRODUCTS.filter((p: any) => p.stock < 5).length, color: "text-orange-500" },
+                        { label: "Out of Stock", value: ADMIN_PRODUCTS.filter((p: any) => p.stock === 0).length, color: "text-red-500" },
+                        { label: "Total Revenue", value: `₹${ADMIN_PRODUCTS.reduce((s, p: any) => s + (p.totalRevenue || 0), 0).toLocaleString()}`, color: "text-primary" },
                     ].map((stat, i) => (
                         <div key={i} className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-center">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{stat.label}</span>
@@ -150,8 +164,8 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                                         </td>
                                     </tr>
                                 ) : (
-                                    filtered.map((prod: any) => (
-                                        <tr key={prod.id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors group">
+                                    paginated.map((prod: any) => (
+                                        <tr key={prod._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors group">
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center hidden md:flex" style={{ backgroundColor: prod.color ? prod.color.replace('bg-', '') : '#f3f4f6' }}>
@@ -173,7 +187,7 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Price</span>
-                                                ${prod.price}
+                                                ₹{prod.price.toLocaleString()}
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Stock</span>
@@ -189,18 +203,26 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
                                                 <button
-                                                    onClick={() => setOpenMenu(openMenu === prod.id ? null : prod.id)}
+                                                    onClick={() => setOpenMenu(openMenu === prod._id ? null : prod._id)}
                                                     className="md:p-1.5 px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted bg-muted md:bg-transparent rounded-lg transition-colors flex items-center gap-2 text-xs font-bold"
                                                 >
                                                     <span className="md:hidden">Actions</span>
                                                     <MoreVertical size={16} />
                                                 </button>
-                                                {openMenu === prod.id && (
+                                                {openMenu === prod._id && (
                                                     <div className="absolute right-0 md:right-6 top-12 md:top-8 z-20 bg-background border border-border shadow-xl rounded-xl w-48 text-sm py-2">
-                                                        <button className="flex items-center gap-2 w-full px-4 py-2 text-foreground hover:bg-muted transition-colors text-left">
+                                                        <button
+                                                            className="flex items-center gap-2 w-full px-4 py-2 text-foreground hover:bg-muted transition-colors text-left"
+                                                        >
                                                             <Edit size={14} /> Edit
                                                         </button>
-                                                        <button className="flex items-center gap-2 w-full px-4 py-2 text-red-500 hover:bg-red-50 transition-colors text-left mt-1 border-t border-border/50">
+                                                        <button
+                                                            onClick={() => {
+                                                                setAdminProducts(prev => prev.filter(p => p._id !== prod._id));
+                                                                setOpenMenu(null);
+                                                            }}
+                                                            className="flex items-center gap-2 w-full px-4 py-2 text-red-500 hover:bg-red-50 transition-colors text-left mt-1 border-t border-border/50"
+                                                        >
                                                             <Trash2 size={14} /> Delete
                                                         </button>
                                                     </div>
@@ -212,14 +234,13 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                             </tbody>
                         </table>
                     </div>
-                    <div className="px-6 py-4 border-t border-border bg-muted/20 flex justify-between items-center text-xs text-muted-foreground">
-                        <span>Showing <span className="font-bold text-foreground">{filtered.length}</span> products</span>
-                        <div className="flex gap-1">
-                            <button className="px-3 py-1.5 border border-border rounded hover:bg-background transition-colors disabled:opacity-50">Prev</button>
-                            <button className="px-3 py-1.5 border border-border rounded bg-white text-foreground font-bold">1</button>
-                            <button className="px-3 py-1.5 border border-border rounded hover:bg-background transition-colors disabled:opacity-50">Next</button>
-                        </div>
-                    </div>
+                    <Pagination
+                        currentPage={currentPage}
+                        totalItems={filtered.length}
+                        pageSize={pageSize}
+                        onPageChange={(p) => { setCurrentPage(p); setOpenMenu(null); }}
+                        onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                    />
                 </div>
             )}
         </div>

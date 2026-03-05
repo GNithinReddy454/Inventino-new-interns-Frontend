@@ -6,7 +6,7 @@ export const authService = {
   async loginUser(
     credentials: Partial<User> & { password?: string },
   ): Promise<AuthResponse> {
-    const response = await apiClient.post("/auth/login", credentials);
+    const response = await apiClient.post("/api/auth/login", credentials);
     // Standard Practice: Pick JWT and store in localStorage for interceptors
     if (response.data?.data?.token) {
       localStorage.setItem("token", response.data.data.token);
@@ -17,7 +17,7 @@ export const authService = {
   async registerUser(
     userData: Partial<User> & { password?: string },
   ): Promise<AuthResponse> {
-    const response = await apiClient.post("/auth/register", userData);
+    const response = await apiClient.post("/api/auth/register", userData);
     if (response.data?.data?.token) {
       localStorage.setItem("token", response.data.data.token);
     }
@@ -27,14 +27,14 @@ export const authService = {
   async logoutUser(): Promise<void> {
     localStorage.removeItem("token");
     try {
-      await apiClient.post("/auth/logout");
+      await apiClient.post("/api/auth/logout");
     } catch {
       // Logic continues even if backend logout fails
     }
   },
 
   async verifyEmail(email: string, otp: string): Promise<AuthResponse> {
-    const response = await apiClient.post("/auth/verify-email", { email, otp });
+    const response = await apiClient.post("/api/auth/verify-email", { email, otp });
     if (response.data?.data?.token) {
       localStorage.setItem("token", response.data.data.token);
     }
@@ -42,7 +42,7 @@ export const authService = {
   },
 
   async requestPasswordReset(email: string): Promise<any> {
-    const response = await apiClient.post("/auth/forgot-password", { email });
+    const response = await apiClient.post("/api/auth/forgot-password", { email });
     return response.data;
   },
 
@@ -50,12 +50,12 @@ export const authService = {
     token: string;
     newPassword: string;
   }): Promise<any> {
-    const response = await apiClient.post("/auth/reset-password", data);
+    const response = await apiClient.post("/api/auth/reset-password", data);
     return response.data;
   },
 
   async resendOtp(email: string): Promise<any> {
-    const response = await apiClient.post("/auth/resend-otp", { email });
+    const response = await apiClient.post("/api/auth/resend-otp", { email });
     return response.data;
   },
 
@@ -63,7 +63,7 @@ export const authService = {
     oldPassword: string;
     newPassword: string;
   }): Promise<any> {
-    const response = await apiClient.put("/auth/change-password", data);
+    const response = await apiClient.put("/api/auth/change-password", data);
     return response.data;
   },
 };
