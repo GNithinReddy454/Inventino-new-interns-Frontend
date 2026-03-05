@@ -1,45 +1,57 @@
-import apiClient from "@/lib/api";
 
-export interface GetProductsParams {
-  page?: number;
-  limit?: number;
-  category?: string;
-  search?: string;
-  sort?: string;
-  minPrice?: number;
-  maxPrice?: number;
-}
+import apiClient from "@/lib/api";
+import {
+  GetAllProductsParams,
+  ProductListResponse,
+  ProductDetailResponse,
+} from "@/types/products.type";
 
 export const productService = {
-  async getAll(params?: GetProductsParams) {
-    const response = await apiClient.get("/products", { params });
+  // GET /products — category + sort + pagination
+  async getAll(params?: GetAllProductsParams) {
+    const response = await apiClient.get<ProductListResponse>("/products", { params });
+    return response;
+  },
+
+  // GET /products/search?q=
+  async searchProducts(query: string, page = 1, limit = 9) {
+    const response = await apiClient.get<ProductListResponse>("/products/search", {
+      params: { q: query, page, limit },
+    });
+    return response;
+  },
+
+  // GET /products/featured
+  async getFeatured(page = 1, limit = 9) {
+    const response = await apiClient.get("/products/featured", {
+      params: { page, limit },
+    });
+    return response;
+  },
+
+  // GET /products/best-sellers
+  async getBestSellers(page = 1, limit = 9) {
+    const response = await apiClient.get("/products/best-sellers", {
+      params: { page, limit },
+    });
     return response;
   },
 
   async getById(id: string | number) {
-    const response = await apiClient.get(`/products/${id}`);
+    const response = await apiClient.get<ProductDetailResponse>(`/products/${id}`);
     return response.data;
   },
 
-  async search(query: string) {
-    const response = await apiClient.get("/products", {
-      params: { search: query },
-    });
+  async getBySlug(slug: string) {
+    const response = await apiClient.get<ProductDetailResponse>(`/products/${slug}`);
     return response.data;
   },
 
   async getByCategory(category: string, page = 1, limit = 9) {
-    const response = await apiClient.get("/products", {
+    const response = await apiClient.get<ProductListResponse>("/products", {
       params: { category, page, limit },
     });
-    return response.data;
-  },
-
-  async getFeatured() {
-    const response = await apiClient.get("/products", {
-      params: { featured: true },
-    });
-    return response.data;
+    return response;
   },
 
   async create(data: any) {
@@ -48,12 +60,17 @@ export const productService = {
   },
 
   async update(id: string | number, data: any) {
-    const response = await apiClient.put(`/products/${id}`, data);
+    const response = await apiClient.patch(`/products/${id}`, data);
     return response.data;
   },
 
-  async patch(id: string | number, data: any) {
-    const response = await apiClient.patch(`/products/${id}`, data);
+  async addImages(id: string | number, data: any) {
+    const response = await apiClient.post(`/products/${id}/images`, data);
+    return response.data;
+  },
+
+  async deleteImage(productId: string | number, imageId: string) {
+    const response = await apiClient.delete(`/products/${productId}/images/${imageId}`);
     return response.data;
   },
 
@@ -62,28 +79,9 @@ export const productService = {
     return response.data;
   },
 
-  async getReviews(id: string | number) {
-    const response = await apiClient.get(`/products/${id}/reviews`);
-    return response.data;
-  },
-
-  async addReview(id: string | number, review: any) {
-    const response = await apiClient.post(`/products/${id}/reviews`, review);
-    return response.data;
-  },
-
-  async getImages(id: string | number) {
-    const response = await apiClient.get(`/products/${id}/images`);
-    return response.data;
-  },
-
-  async getInventory(id: string | number) {
-    const response = await apiClient.get(`/products/${id}/inventory`);
-    return response.data;
-  },
-
-  async getRelated(id: string | number) {
-    const response = await apiClient.get(`/products/${id}/related`);
+  async updateStatus(id: string | number, data: any) {
+    const response = await apiClient.patch(`/products/${id}/status`, data);
     return response.data;
   },
 };
+
