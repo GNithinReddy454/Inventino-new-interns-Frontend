@@ -29,6 +29,7 @@ import CustomersView from "./_components/CustomersView";
 import ReportsAnalyticsView from "./_components/ReportsAnalyticsView";
 import SettingsView from "./_components/SettingsView";
 import LandingPageCMSView from "./_components/LandingPageCMSView";
+import ReviewsView from "./_components/ReviewsView";
 
 // ----- Type Definitions -----
 interface NavItemProps {
@@ -45,8 +46,8 @@ function NavItem({ icon: Icon, label, active, onClick, collapsed }: NavItemProps
     <button
       onClick={onClick}
       className={`relative w-full flex items-center gap-4 px-6 py-2.5 transition-all group ${active
-          ? "text-[#E91E63] font-bold bg-white shadow-sm rounded-lg mx-2 w-[calc(100%-16px)]"
-          : "text-gray-500 hover:text-gray-900 font-medium bg-transparent mx-2 w-[calc(100%-16px)]"
+        ? "text-[#E91E63] font-bold bg-white shadow-sm rounded-lg mx-2 w-[calc(100%-16px)]"
+        : "text-gray-500 hover:text-gray-900 font-medium bg-transparent mx-2 w-[calc(100%-16px)]"
         }`}
       title={collapsed ? label : undefined}
     >
@@ -212,18 +213,7 @@ export default function AdminDashboard() {
             {activeTab === "Landing Page CMS" && <LandingPageCMSView />}
             {activeTab === "All Products" && <AllProductsView onAddProduct={() => setActiveTab("Add Product")} />}
             {activeTab === "Add Product" && <AddProduct />}
-            {/* Note: Reviews currently has no isolated mock data or view extracted, but was a simple placeholder */}
-            {activeTab === "Reviews" && (
-              <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
-                <Star size={48} className="mb-4 text-yellow-300 opacity-50" />
-                <h3 className="text-xl font-bold text-foreground mb-2">
-                  Reviews Management
-                </h3>
-                <p className="text-sm">
-                  View and moderate customer reviews here.
-                </p>
-              </div>
-            )}
+            {activeTab === "Reviews" && <ReviewsView />}
             {activeTab === "Orders" && <OrdersView />}
             {activeTab === "Reports & Analytics" && <ReportsAnalyticsView />}
             {activeTab === "Customers" && <CustomersView />}
