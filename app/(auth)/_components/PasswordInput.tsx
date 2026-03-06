@@ -18,11 +18,10 @@ const PasswordInput = forwardRef<HTMLInputElement, Props>(
     const id = useId();
 
     return (
-      <div className="space-y-1">
-        <label htmlFor={id} className="text-[12.7px] text-[#555555]">
+      <div className="space-y-0.5">
+        <label htmlFor={id} className="text-xs text-[#555555]">
           {label}
         </label>
-
         <div className="relative">
           <input
             ref={ref}
@@ -30,14 +29,13 @@ const PasswordInput = forwardRef<HTMLInputElement, Props>(
             type={show ? "text" : "password"}
             autoComplete={autoComplete}
             placeholder={placeholder}
-            className={`w-full rounded-[14px] bg-[#FFE6F0] border px-4 py-3 pr-12 text-sm focus:outline-none transition ${
+            className={`w-full rounded-[14px] bg-[#FFE6F0] border px-4 py-2 pr-12 text-sm focus:outline-none transition ${
               error
                 ? "border-red-500"
                 : "border-[#F7B9D0] focus:border-[#E15483]"
             }`}
             {...rest}
           />
-
           <button
             type="button"
             onClick={() => setShow((prev) => !prev)}
@@ -47,8 +45,7 @@ const PasswordInput = forwardRef<HTMLInputElement, Props>(
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
-
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        {error && <p className="text-red-500 text-xs mt-0.5">{error}</p>}
       </div>
     );
   },
