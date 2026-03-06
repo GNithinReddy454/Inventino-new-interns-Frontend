@@ -95,7 +95,7 @@ function PriceInputs({
           if (val < 0) return;
           setMaxPrice(val);
         }}
-className="flex-1 min-w-0 px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#D94F7A]"
+        className="flex-1 min-w-0 px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#D94F7A]"
       />
     </div>
   );
@@ -133,7 +133,6 @@ function ProductsContent() {
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [minPriceFetched, setMinPriceFetched] = useState<number | undefined>(undefined);
   const [maxPriceFetched, setMaxPriceFetched] = useState<number | undefined>(undefined);
-  // ✅ Global total — always shows count of ALL products regardless of filter
   const [globalTotal, setGlobalTotal] = useState<number>(0);
 
   const sortRef = useRef<HTMLDivElement>(null);
@@ -189,7 +188,7 @@ function ProductsContent() {
           total: 0, page: currentPage, limit: ITEMS_PER_PAGE, totalPages: 1,
         };
 
-        // ✅ CASE 1: Search
+        // CASE 1: Search
         if (debouncedSearch && debouncedSearch.trim() !== "") {
           console.log("🔍 Searching:", debouncedSearch.trim());
           const res = await productService.searchProducts(
@@ -198,33 +197,29 @@ function ProductsContent() {
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
 
-        //
-        // ✅ CASE 2: Featured (no other filters) → just get ALL products
-} else if (
-  sortBy === "Featured" &&
-  selectedCategory === "All Products" &&
-  minPrice === undefined &&
-  maxPrice === undefined
-) {
-  console.log("📦 Fetching all products (default)");
-  const params: Record<string, any> = {
-    page: currentPage,
-    limit: ITEMS_PER_PAGE,
-  };
-  const res = await productService.getAll(params);
-  items = res.data?.data?.items ?? [];
-  metaData = res.data?.data?.meta ?? metaData;
+        // CASE 2: No filters → get all products with backend pagination
+        } else if (
+          sortBy === "Featured" &&
+          selectedCategory === "All Products" &&
+          minPrice === undefined &&
+          maxPrice === undefined
+        ) {
+          console.log("📦 Fetching all products (default)");
+          const res = await productService.getAll({ page: currentPage, limit: ITEMS_PER_PAGE });
+          items = res.data?.data?.items ?? [];
+          metaData = res.data?.data?.meta ?? metaData;
 
-        // ✅ CASE 3: Category / sort / price filters
+        // CASE 3: Category / sort / price filters → backend handles everything
         } else {
           const params: Record<string, any> = {
             page: currentPage,
             limit: ITEMS_PER_PAGE,
-            sort: SORT_MAP[sortBy] ?? "newest",
           };
+          const apiSort = SORT_MAP[sortBy];
+          if (apiSort && apiSort !== "featured") params.sort = apiSort;
           if (selectedCategory !== "All Products") params.category = selectedCategory;
-          if (minPrice !== undefined) params.minPrice = minPrice;
-          if (maxPrice !== undefined) params.maxPrice = maxPrice;
+          if (minPrice !== undefined) params.minPrice = Number(minPrice);
+          if (maxPrice !== undefined) params.maxPrice = Number(maxPrice);
 
           console.log("📦 Fetching with params:", params);
           const res = await productService.getAll(params);
@@ -254,14 +249,13 @@ function ProductsContent() {
 
   }, [currentPage, sortBy, selectedCategory, debouncedSearch, minPrice, maxPrice]);
 
-  // ✅ Fetch category counts + global total + price range
+  // ── Fetch category counts + global total + price range ──
   useEffect(() => {
     const fetchCounts = async () => {
       try {
         const res = await productService.getAll({ limit: 999 });
         const items: ApiProduct[] = res.data?.data?.items ?? [];
 
-        // ✅ Global total — all products regardless of any filter
         setGlobalTotal(res.data?.data?.meta?.total ?? items.length);
 
         const counts: Record<string, number> = {};
@@ -334,7 +328,6 @@ function ProductsContent() {
         }`}
       >
         <span>All Products</span>
-        {/* ✅ Always shows global total, not filtered total */}
         <span className={`${vertical ? "inline" : "hidden lg:inline"} bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs ${
           selectedCategory === "All Products" && vertical ? "bg-white/30 text-white" : ""
         }`}>
@@ -426,9 +419,8 @@ function ProductsContent() {
       <div className="flex flex-col lg:flex-row gap-8">
 
         {/* Desktop Sidebar */}
-        
-         <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-16 h-fit overflow-visible"> 
-<div className="bg-white p-6 pb-8 rounded-2xl shadow-sm border border-gray-100">
+        <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-16 h-fit overflow-visible">
+          <div className="bg-white p-6 pb-8 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-5">
               <h3 className="font-bold text-gray-900">Filters</h3>
               <div className="flex items-center gap-2">
