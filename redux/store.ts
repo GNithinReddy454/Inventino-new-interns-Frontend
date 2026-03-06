@@ -6,6 +6,7 @@ import notificationsReducer from "./notificationslice";
 import securityReducer from "./securityslice";
 import appearanceReducer from "./appearanceslice";
 import authReducer from "./authslice"; // ← new
+import adminReducer from "./adminSlice";
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     security: securityReducer,
     appearance: appearanceReducer,
     auth: authReducer, // ← new
+    admin: adminReducer,
   },
 });
 

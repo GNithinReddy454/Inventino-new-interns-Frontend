@@ -3,6 +3,9 @@
 import { useState, useRef } from "react";
 import { ChevronDown, X, Eye, Upload, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useAppDispatch } from "@/redux/store";
+import { addProduct } from "@/redux/adminSlice";
 
 export default function AddProduct() {
   // Refs
@@ -62,6 +65,8 @@ export default function AddProduct() {
     show: false,
   });
   const [showPreview, setShowPreview] = useState(false);
+  const router = useRouter();
+  const dispatch = useAppDispatch();
 
   // Tag handlers
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -161,37 +166,35 @@ export default function AddProduct() {
 
     try {
       setIsLoading(true);
-      const token = localStorage.getItem("token") || "";
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/products`,
-        {
-          method: "POST",
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-          body: formData,
-        },
-      );
 
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+      const newProduct = {
+        id: `#PRD-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+        name,
+        price,
+        stock,
+        category,
+        subCategory,
+        material,
+        discount,
+        tags,
+        colors: selectedColors,
+        isFeatured,
+        reviewsEnabled,
+        freeShipping,
+        status: "Active",
+        imageUrl: selectedFiles.length > 0 ? URL.createObjectURL(selectedFiles[0]) : null,
+      };
+
+      dispatch(addProduct(newProduct));
 
       triggerToast("Product added successfully", "success");
-      setError("");
-      form.reset();
-      setTags([]);
-      setSelectedColors([]);
-      setIsFeatured(true);
-      setReviewsEnabled(false);
-      setFreeShipping(true);
-      setSelectedFiles([]);
-      setStoryImage(null);
-      setStoryImagePreview(null);
-      setStoryTitle("");
-      setStoryContent("");
-      setQuoteText("");
-      setQuoteAuthor("");
+
+      setTimeout(() => {
+        router.push("/admin");
+      }, 700);
+
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : String(err) || "Network error";
+      const msg = err instanceof Error ? err.message : String(err) || "An error occurred";
       setError(msg);
       triggerToast(msg, "error");
     } finally {

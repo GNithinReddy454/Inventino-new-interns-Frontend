@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { ChevronDown, MoreVertical, Search, Users } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
-import { CUSTOMERS_DATA } from "../_data/mockData";
 import { exportToCSV } from "./exportUtils";
+import Pagination from "./Pagination";
+import { getAdminCustomers, AdminCustomer } from "@/services/admin.service";
 
 export default function CustomersView() {
     const [search, setSearch] = useState("");
@@ -11,10 +12,23 @@ export default function CustomersView() {
     const [activeTab, setActiveTab] = useState("All Customers");
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [CUSTOMERS_DATA, setCustomersData] = useState<AdminCustomer[]>([]);
 
     useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 1500);
-        return () => clearTimeout(timer);
+        const fetchCustomers = async () => {
+            setIsLoading(true);
+            try {
+                const data = await getAdminCustomers();
+                setCustomersData(data ?? []);
+            } catch (err) {
+                console.error("Failed to fetch admin customers:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchCustomers();
     }, []);
 
     const tabs = ["All Customers", "Returns", "Replacements", "Support"];
@@ -23,9 +37,11 @@ export default function CustomersView() {
         const matchSearch =
             c.name.toLowerCase().includes(search.toLowerCase()) ||
             c.email.toLowerCase().includes(search.toLowerCase());
-        const matchType = typeFilter === "All Types" || c.type === typeFilter;
+        const matchType = typeFilter === "All Types" || c.customerType === typeFilter;
         return matchSearch && matchType;
     });
+
+    const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const typeBadge = (type: string) => {
         const map: Record<string, string> = {
@@ -69,10 +85,10 @@ export default function CustomersView() {
                     Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
                 ) : (
                     [
-                        { label: "Total Customers", value: "8,426", color: "text-primary" },
-                        { label: "Active Returns", value: "12", color: "text-primary" },
-                        { label: "Replacements", value: "8", color: "text-primary" },
-                        { label: "Support Tickets", value: "23", color: "text-primary" },
+                        { label: "Total Customers", value: CUSTOMERS_DATA.length.toLocaleString(), color: "text-primary" },
+                        { label: "New", value: CUSTOMERS_DATA.filter((c: any) => c.customerType === "New").length, color: "text-primary" },
+                        { label: "Regular", value: CUSTOMERS_DATA.filter((c: any) => c.customerType === "Regular").length, color: "text-primary" },
+                        { label: "VIP", value: CUSTOMERS_DATA.filter((c: any) => c.customerType === "VIP").length, color: "text-primary" },
                     ].map((c) => (
                         <div
                             key={c.label}
@@ -190,26 +206,23 @@ export default function CustomersView() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filtered.map((c: any) => (
+                                    paginated.map((c: any) => (
                                         <tr
-                                            key={c.id}
+                                            key={c._id}
                                             className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/20 transition-colors"
                                         >
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div
-                                                        className={`w-10 h-10 rounded-full ${c.bg} flex items-center justify-center text-white text-xs font-bold shrink-0 hidden md:flex`}
+                                                        className={`w-10 h-10 rounded-full bg-[#E91E63] flex items-center justify-center text-white text-xs font-bold shrink-0 hidden md:flex`}
                                                     >
-                                                        {c.initials}
+                                                        {c.name.slice(0, 2).toUpperCase()}
                                                     </div>
                                                     <div className="flex md:block justify-between w-full md:w-auto items-center">
                                                         <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Customer</span>
                                                         <div className="text-right md:text-left">
                                                             <p className="font-bold text-foreground text-sm leading-tight">
                                                                 {c.name}
-                                                            </p>
-                                                            <p className="text-xs text-muted-foreground mt-0.5">
-                                                                {c.since}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -221,27 +234,27 @@ export default function CustomersView() {
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 text-foreground font-semibold flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Total Orders</span>
-                                                {c.orders}
+                                                {c.totalOrders}
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Total Spent</span>
-                                                {c.spent}
+                                                ₹{c.totalSpent?.toLocaleString() ?? 0}
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Type</span>
-                                                {typeBadge(c.type)}
+                                                {typeBadge(c.customerType)}
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
                                                 <button
                                                     onClick={() =>
-                                                        setOpenMenu(openMenu === c.id ? null : c.id)
+                                                        setOpenMenu(openMenu === c._id ? null : c._id)
                                                     }
                                                     className="text-muted-foreground hover:text-foreground md:p-1.5 px-4 py-2 bg-muted md:bg-transparent rounded-lg hover:bg-muted/80 transition-colors flex items-center gap-2 text-xs font-bold"
                                                 >
                                                     <span className="md:hidden">Actions</span>
                                                     <MoreVertical size={16} />
                                                 </button>
-                                                {openMenu === c.id && (
+                                                {openMenu === c._id && (
                                                     <div className="absolute right-0 md:right-6 top-12 md:top-8 z-20 bg-white border border-border rounded-xl shadow-xl py-2 w-48 text-sm">
                                                         <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">
                                                             View Profile
@@ -252,7 +265,13 @@ export default function CustomersView() {
                                                         <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">
                                                             View Orders
                                                         </button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500">
+                                                        <button
+                                                            className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500"
+                                                            onClick={() => {
+                                                                setCustomersData(prev => prev.filter(cu => cu._id !== c._id));
+                                                                setOpenMenu(null);
+                                                            }}
+                                                        >
                                                             Block Customer
                                                         </button>
                                                     </div>
@@ -263,18 +282,13 @@ export default function CustomersView() {
                                 )}
                             </tbody>
                         </table>
-                        <div className="px-6 py-4 border-t border-border bg-muted/10 flex items-center justify-between">
-                            <p className="text-xs text-muted-foreground">
-                                Showing{" "}
-                                <span className="font-bold text-foreground">
-                                    {filtered.length}
-                                </span>{" "}
-                                of {CUSTOMERS_DATA.length} customers
-                            </p>
-                            <button className="text-xs font-bold text-primary hover:text-primary-dark transition-colors">
-                                View All &rarr;
-                            </button>
-                        </div>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalItems={filtered.length}
+                            pageSize={pageSize}
+                            onPageChange={(p) => { setCurrentPage(p); setOpenMenu(null); }}
+                            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                        />
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
@@ -283,6 +297,6 @@ export default function CustomersView() {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
