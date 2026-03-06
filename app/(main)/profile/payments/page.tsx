@@ -10,9 +10,6 @@ import {
 } from "lucide-react";
 import { paymentService, PaymentMethod } from "@/services/payment.service";
 
-// Helper to format masked number
-const formatMaskedNumber = (last4: string) => `•••• •••• •••• ${last4}`;
-
 // Helper to format expiry (MM/YY)
 const formatExpiry = (month: string, year: string) => `${month}/${year.slice(-2)}`;
 
@@ -136,8 +133,9 @@ export default function PaymentMethodsPage() {
                   </div>
                 </div>
 
+                {/* Use cardNumber directly from backend - it already includes the masked format */}
                 <p className="text-lg font-semibold tracking-[0.18em] mt-4">
-                  {formatMaskedNumber(card.last4)}
+                  {card.cardNumber}
                 </p>
 
                 <div className="flex items-end justify-between mt-3">
@@ -181,7 +179,7 @@ export default function PaymentMethodsPage() {
   );
 }
 
-// Modal component (no Stripe – uses test token)
+// Modal component with full validation and customerId
 function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (card: PaymentMethod) => void }) {
   const [holderName, setHolderName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
@@ -189,46 +187,91 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   const [cvv, setCvv] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Detect card brand from first digits
-  const detectBrand = (num: string): string => {
+  // Allowed brands as per backend enum
+  const allowedBrands = ["VISA", "MASTERCARD", "AMEX", "DISCOVER", "JCB", "DINERS"];
+
+  // Detect card brand from first digits and check if allowed
+  const detectBrand = (num: string): { brand: string; isValid: boolean } => {
     const cleaned = num.replace(/\s/g, "");
-    if (cleaned.startsWith("4")) return "VISA";
-    if (cleaned.startsWith("5")) return "MASTERCARD";
-    if (cleaned.startsWith("3")) return "AMEX";
-    return "UNKNOWN";
+    if (cleaned.startsWith("4")) return { brand: "VISA", isValid: true };
+    if (cleaned.startsWith("5")) return { brand: "MASTERCARD", isValid: true };
+    if (cleaned.startsWith("3")) {
+      if (cleaned.startsWith("34") || cleaned.startsWith("37")) return { brand: "AMEX", isValid: true };
+      if (cleaned.startsWith("30") || cleaned.startsWith("36") || cleaned.startsWith("38") || cleaned.startsWith("39"))
+        return { brand: "DINERS", isValid: true };
+    }
+    if (cleaned.startsWith("6")) return { brand: "DISCOVER", isValid: true };
+    if (cleaned.startsWith("35")) return { brand: "JCB", isValid: true };
+    return { brand: "UNKNOWN", isValid: false };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    // Trim inputs
+    const trimmedHolder = holderName.trim();
+    if (!trimmedHolder) {
+      setFormError("Card holder name is required.");
+      return;
+    }
+
+    const cleanedNumber = cardNumber.replace(/\s/g, "");
+    if (cleanedNumber.length < 13 || cleanedNumber.length > 19) {
+      setFormError("Please enter a valid card number (13-19 digits).");
+      return;
+    }
+
+    // Detect and validate brand
+    const { brand, isValid } = detectBrand(cleanedNumber);
+    if (!isValid) {
+      setFormError("Card type not supported. Please use Visa, MasterCard, American Express, Discover, JCB, or Diners Club.");
+      return;
+    }
+
+    // CVV: 3 or 4 digits (Amex uses 4)
+    const cleanedCvv = cvv.replace(/\s/g, "");
+    const expectedCvvLength = brand === "AMEX" ? 4 : 3;
+    if (!/^\d+$/.test(cleanedCvv) || cleanedCvv.length !== expectedCvvLength) {
+      setFormError(`CVV must be ${expectedCvvLength} digits.`);
+      return;
+    }
+
+    // Expiry: must be in MM/YY format
+    if (!/^\d{2}\/\d{2}$/.test(expiry)) {
+      setFormError("Please enter expiry in MM/YY format (e.g., 12/25).");
+      return;
+    }
+
+    const [month, year] = expiry.split("/");
+    const fullYear = year.length === 2 ? `20${year}` : year;
+
+    const last4 = cleanedNumber.slice(-4);
+
     setLoading(true);
-
     try {
-      // Use the test token from your API example
-      const testToken = "tok_stripe_1739564880"; // Confirm with backend team
-
-      // Parse expiry (MM/YY)
-      const [month, year] = expiry.split("/");
-      const fullYear = year.length === 2 ? `20${year}` : year;
-      const last4 = cardNumber.replace(/\s/g, "").slice(-4);
-      const brand = detectBrand(cardNumber);
-
+      const testToken = "tok_stripe_1739564880"; // test token – confirm with backend team
+      // Add a placeholder customerId (backend requires it)
       const payload = {
         paymentToken: testToken,
+        customerId: "cus_test_123", // temporary test value; adjust as needed
         brand,
         last4,
         expiryMonth: month.padStart(2, "0"),
         expiryYear: fullYear,
-        cardholderName: holderName,
+        cardholderName: trimmedHolder,
         isDefault,
-        gateway: "stripe", // or any value your backend expects
+        gateway: "stripe",
       };
-
       const newCard = await paymentService.add(payload);
       onSuccess(newCard);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to add card. Please try again.");
+      // Try to extract a meaningful error from the response
+      const serverMsg = err?.response?.data?.message || "Failed to add card. Please try again.";
+      setFormError(serverMsg);
     } finally {
       setLoading(false);
     }
@@ -239,14 +282,25 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
       <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-gray-900">Add New Card</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"
+          >
             <Plus size={18} className="rotate-45" />
           </button>
         </div>
 
+        {formError && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg p-3 mb-4">
+            {formError}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Card Holder Name</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              Card Holder Name
+            </label>
             <input
               type="text"
               required
@@ -257,11 +311,13 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Card Number</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              Card Number
+            </label>
             <input
               type="text"
               required
-              maxLength={16}
+              maxLength={19}
               placeholder="•••• •••• •••• ••••"
               value={cardNumber}
               onChange={(e) => setCardNumber(e.target.value)}
@@ -270,7 +326,9 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Expiry (MM/YY)</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                Expiry (MM/YY)
+              </label>
               <input
                 type="text"
                 required
@@ -282,11 +340,13 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">CVV</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                CVV
+              </label>
               <input
                 type="password"
                 required
-                maxLength={3}
+                maxLength={4}
                 placeholder="•••"
                 value={cvv}
                 onChange={(e) => setCvv(e.target.value)}
@@ -302,13 +362,23 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
               onChange={(e) => setIsDefault(e.target.checked)}
               className="rounded border-gray-300 text-pink-600 focus:ring-pink-200"
             />
-            <label htmlFor="isDefault" className="text-sm text-gray-600">Set as default payment method</label>
+            <label htmlFor="isDefault" className="text-sm text-gray-600">
+              Set as default payment method
+            </label>
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 h-11 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 h-11 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={loading} className="flex-1 h-11 rounded-lg bg-[#D94F7A] text-white text-sm font-semibold hover:bg-[#C0426A] disabled:opacity-50 transition-colors">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 h-11 rounded-lg bg-[#D94F7A] text-white text-sm font-semibold hover:bg-[#C0426A] disabled:opacity-50 transition-colors"
+            >
               {loading ? "Adding..." : "Save Card"}
             </button>
           </div>

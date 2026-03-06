@@ -3,39 +3,49 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { newsletterService } from "@/services/newsletter.service";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
+    if (!email) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await newsletterService.subscribe(email);
       setIsSubscribed(true);
       setEmail("");
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to subscribe. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <footer className="bg-[#1f2937] text-gray-300 w-full">
       <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 py-16 md:py-20">
-
         {/* 4 Column Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
-
           {/* Column 1 - Logo & Description */}
           <div className="space-y-5">
             <Link href="/">
               <Image
-             src="/logo.png"
-              alt="Inventino"
-              width={120}
-               height={40}
-              className="object-contain mb-2"
-           />
+                src="/logo.png"
+                alt="Inventino"
+                width={120}
+                height={40}
+                className="object-contain mb-2"
+              />
             </Link>
-
             <p className="text-gray-400 text-sm leading-relaxed">
               Crafting memories, one piece at a time. Every handmade treasure
               tells a unique story of passion and dedication.
@@ -112,31 +122,35 @@ const Footer = () => {
                   Get the latest arrivals and special offers.
                 </p>
 
-                <form onSubmit={handleSubmit} className="mt-3 w-full max-w-sm">
-                  <div className="flex items-center bg-[#111827] border border-gray-600 rounded-full overflow-hidden transition-all duration-300 focus-within:border-pink-500 focus-within:shadow-lg focus-within:shadow-pink-500/20">
+                {error && (
+                  <div className="bg-red-900/30 border border-red-500/40 p-3 rounded-lg text-sm text-red-300">
+                    {error}
+                  </div>
+                )}
 
+                <form onSubmit={handleSubmit} className="mt-3 w-full max-w-sm">
+                  <div className="flex items-stretch">
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email"
-                      className="flex-1 px-5 py-3 bg-transparent text-gray-200 placeholder-gray-400 focus:outline-none text-sm"
+                      className="flex-1 px-5 py-3 bg-[#111827] border border-gray-600 rounded-l-full text-gray-200 placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-sm"
+                      disabled={loading}
                     />
-
                     <button
                       type="submit"
-                      className="h-10 w-10 flex items-center justify-center bg-pink-600 hover:bg-pink-700 transition-colors duration-300 rounded-full mr-1"
+                      disabled={loading}
+                      className="w-12 flex items-center justify-center bg-pink-600 hover:bg-pink-700 disabled:bg-pink-800 disabled:cursor-not-allowed rounded-r-full transition-colors duration-300"
                     >
-                      <ArrowRight size={18} />
+                      {loading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
                     </button>
-
                   </div>
                 </form>
               </>
             )}
           </div>
-
         </div>
 
         {/* Bottom Bar */}

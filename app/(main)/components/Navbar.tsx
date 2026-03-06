@@ -362,7 +362,7 @@ const Navbar = () => {
 
                 {user && showDropdown && (
                   <div
-                    className="absolute right-0 top-full mt-2 w-64 bg-white border border-pink-100 rounded-3xl shadow-xl z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+                    className="absolute right-0 top-full mt-2 w-64 bg-white border border-pink-100 rounded-3xl shadow-xl z-60 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
                     onMouseLeave={() => setShowDropdown(false)}
                   >
                     <div className="p-4 border-b border-pink-50 bg-pink-50/30">
