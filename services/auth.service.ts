@@ -1,5 +1,5 @@
 import apiClient from "@/lib/api";
-import { AuthResponse, ApiResponse } from "@/lib/types";
+import { AuthResponse, ApiResponse, User } from "@/lib/types";
 
 export const authService = {
   // Uses User interface for credentials to avoid 'any'

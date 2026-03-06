@@ -4,13 +4,8 @@ import { Address, OrderResponse, PaymentMethod } from "@/lib/types";
 /**
  * Order Service - All order operations
  *
- * Handles:
- * - Placing orders
- * - Getting order history
- * - Getting order details
- * - Cancelling orders
- * - Tracking orders
- * - Order summary calculations
+ * Base URL is already: http://localhost:8080/api
+ * So all paths here start with /orders (no /api prefix)
  */
 export const orderService = {
   /**
@@ -71,6 +66,7 @@ export const orderService = {
 
   /**
    * Get user's order history
+   * GET http://localhost:8080/api/orders
    */
   async getOrders() {
     const response = await apiClient.get("/orders");
@@ -79,6 +75,7 @@ export const orderService = {
 
   /**
    * Get single order details
+   * GET http://localhost:8080/api/orders/:id
    */
   async getOrderDetails(orderId: string) {
     const response = await apiClient.get(`/orders/${orderId}`);
@@ -87,6 +84,7 @@ export const orderService = {
 
   /**
    * Cancel an order
+   * PATCH http://localhost:8080/api/orders/:id/cancel
    */
   async cancelOrder(orderId: string, reason?: string) {
     const response = await apiClient.post(`/orders/${orderId}/cancel`, {
@@ -97,6 +95,7 @@ export const orderService = {
 
   /**
    * Track order status
+   * GET http://localhost:8080/api/orders/:id/tracking
    */
   async trackOrder(orderId: string) {
     const response = await apiClient.get(`/orders/${orderId}/tracking`);
@@ -105,7 +104,7 @@ export const orderService = {
 
   /**
    * Get order summary (subtotal, tax, shipping, etc.)
-   * Called before placing order to show final amounts
+   * GET http://localhost:8080/api/orders/summary
    */
   async getOrderSummary() {
     const response = await apiClient.get("/orders/summary");
@@ -114,6 +113,7 @@ export const orderService = {
 
   /**
    * Apply coupon/discount to order
+   * POST http://localhost:8080/api/orders/discount
    */
   async applyDiscount(discountCode: string) {
     const response = await apiClient.post("/orders/discount", {
@@ -124,6 +124,7 @@ export const orderService = {
 
   /**
    * Get return/refund history
+   * GET http://localhost:8080/api/orders/returns
    */
   async getReturns() {
     const response = await apiClient.get("/orders/returns");
@@ -132,6 +133,7 @@ export const orderService = {
 
   /**
    * Request return for order item
+   * POST http://localhost:8080/api/orders/:id/returns
    */
   async requestReturn(orderId: string, itemId: string, reason?: string) {
     const response = await apiClient.post(`/orders/${orderId}/returns`, {
