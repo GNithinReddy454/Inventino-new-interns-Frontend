@@ -9,7 +9,7 @@ import {
 } from "react";
 
 export type Product = {
-  id: number;
+  id: number | string;   // ✅ supports both static (number) and API (string _id)
   name: string;
   image: string;
   badge?: string;
@@ -24,8 +24,8 @@ type CartContextType = {
   cart: Product[];
   addToCart: (product: Product, quantity?: number) => void;
   handleBag: (product: Product, quantity?: number) => void;
-  updateQuantity: (productId: number, newQuantity: number) => void;
-  removeFromCart: (productId: number) => void;
+  updateQuantity: (productId: number | string, newQuantity: number) => void;
+  removeFromCart: (productId: number | string) => void;
   clearCart: () => void;
   cartTotal: number;
 };
@@ -34,12 +34,9 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<Product[]>([]);
-  // To fix Hydration issues, we track when the component has mounted
   const [mounted, setMounted] = useState(false);
 
-  // Load from LocalStorage only after mounting to avoid hydration mismatch
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const savedCart = localStorage.getItem("cart");
     if (savedCart) {
@@ -51,15 +48,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Save to LocalStorage on change
   useEffect(() => {
     if (mounted) {
       localStorage.setItem("cart", JSON.stringify(cart));
     }
   }, [cart, mounted]);
 
-  // FIX: Added missing updateQuantity logic
-  const updateQuantity = (productId: number, newQuantity: number) => {
+  const updateQuantity = (productId: number | string, newQuantity: number) => {
     setCart((prevCart) =>
       prevCart.map((item) =>
         item.id === productId
@@ -87,7 +82,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const handleBag = addToCart;
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = (productId: number | string) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
   };
 
