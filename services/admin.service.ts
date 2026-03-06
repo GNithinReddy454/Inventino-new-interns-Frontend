@@ -123,7 +123,7 @@ async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
 export const getDashboard = (): Promise<DashboardData | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.get<ApiResponse<DashboardData>>(
-            "/api/admin/dashboard"
+            "/admin/dashboard"
         );
         return res.data;
     });
@@ -135,7 +135,7 @@ export const getDashboard = (): Promise<DashboardData | null> =>
 export const getAnalytics = (period: string = "30d"): Promise<AnalyticsData | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.get<ApiResponse<AnalyticsData>>(
-            `/api/admin/analytics?period=${period}`
+            `/admin/analytics?period=${period}`
         );
         return res.data;
     });
@@ -147,7 +147,7 @@ export const getAnalytics = (period: string = "30d"): Promise<AnalyticsData | nu
 export const getAdminProducts = (): Promise<AdminProduct[] | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.get<ApiResponse<AdminProduct[]>>(
-            "/api/admin/products"
+            "/admin/products"
         );
         return res.data;
     });
@@ -159,7 +159,7 @@ export const getAdminProducts = (): Promise<AdminProduct[] | null> =>
 export const getAdminOrders = (): Promise<AdminOrder[] | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.get<ApiResponse<AdminOrder[]>>(
-            "/api/admin/orders"
+            "/admin/orders"
         );
         return res.data;
     });
@@ -171,7 +171,7 @@ export const getAdminOrders = (): Promise<AdminOrder[] | null> =>
 export const getAdminCustomers = (): Promise<AdminCustomer[] | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.get<ApiResponse<AdminCustomer[]>>(
-            "/api/admin/customers"
+            "/admin/customers"
         );
         return res.data;
     });
@@ -183,7 +183,7 @@ export const getAdminCustomers = (): Promise<AdminCustomer[] | null> =>
 export const getAdminReviews = (): Promise<AdminReview[] | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.get<ApiResponse<AdminReview[]>>(
-            "/api/admin/reviews"
+            "/admin/reviews"
         );
         return res.data;
     });
@@ -194,7 +194,7 @@ export const getAdminReviews = (): Promise<AdminReview[] | null> =>
  */
 export const getCMSData = (): Promise<CMSData | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<CMSData>>("/api/admin/cms");
+        const res = await apiMethods.get<ApiResponse<CMSData>>("/admin/cms");
         return res.data;
     });
 
@@ -205,7 +205,7 @@ export const getCMSData = (): Promise<CMSData | null> =>
 export const updateCMSData = (data: Partial<CMSData>): Promise<{ message: string } | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.put<{ statusCode: number; message: string }>(
-            "/api/admin/cms",
+            "/admin/cms",
             data
         );
         return res;
@@ -218,7 +218,7 @@ export const updateCMSData = (data: Partial<CMSData>): Promise<{ message: string
 export const getAdminSettings = (): Promise<SettingsData | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.get<ApiResponse<SettingsData>>(
-            "/api/admin/settings"
+            "/admin/settings"
         );
         return res.data;
     });
@@ -230,7 +230,7 @@ export const getAdminSettings = (): Promise<SettingsData | null> =>
 export const updateAdminSettings = (data: Partial<SettingsData>): Promise<{ message: string } | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.put<{ statusCode: number; message: string }>(
-            "/api/admin/settings",
+            "/admin/settings",
             data
         );
         return res;

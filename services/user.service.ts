@@ -2,7 +2,7 @@ import apiClient from "@/lib/api";
 
 /**
  * User Service
- * Handles all /api/users/* endpoints
+ * Handles all /users/* endpoints
  *
  * Routes (from backend docs):
  *   GET    /users/me         → Get current user profile (Auth token required)

@@ -36,7 +36,7 @@ export const orderService = {
     };
 
     try {
-      const response = await apiClient.post("/api/orders", {
+      const response = await apiClient.post("/orders", {
         shippingAddress: formattedAddress,
         paymentMethod,
         cardDetails,
@@ -73,7 +73,7 @@ export const orderService = {
    * Get user's order history
    */
   async getOrders() {
-    const response = await apiClient.get("/api/orders");
+    const response = await apiClient.get("/orders");
     return response.data;
   },
 
@@ -81,7 +81,7 @@ export const orderService = {
    * Get single order details
    */
   async getOrderDetails(orderId: string) {
-    const response = await apiClient.get(`/api/orders/${orderId}`);
+    const response = await apiClient.get(`/orders/${orderId}`);
     return response.data;
   },
 
@@ -89,7 +89,7 @@ export const orderService = {
    * Cancel an order
    */
   async cancelOrder(orderId: string, reason?: string) {
-    const response = await apiClient.post(`/api/orders/${orderId}/cancel`, {
+    const response = await apiClient.post(`/orders/${orderId}/cancel`, {
       reason,
     });
     return response.data;
@@ -99,7 +99,7 @@ export const orderService = {
    * Track order status
    */
   async trackOrder(orderId: string) {
-    const response = await apiClient.get(`/api/orders/${orderId}/tracking`);
+    const response = await apiClient.get(`/orders/${orderId}/tracking`);
     return response.data;
   },
 
@@ -108,7 +108,7 @@ export const orderService = {
    * Called before placing order to show final amounts
    */
   async getOrderSummary() {
-    const response = await apiClient.get("/api/orders/summary");
+    const response = await apiClient.get("/orders/summary");
     return response.data;
   },
 
@@ -116,7 +116,7 @@ export const orderService = {
    * Apply coupon/discount to order
    */
   async applyDiscount(discountCode: string) {
-    const response = await apiClient.post("/api/orders/discount", {
+    const response = await apiClient.post("/orders/discount", {
       code: discountCode,
     });
     return response.data;
@@ -126,7 +126,7 @@ export const orderService = {
    * Get return/refund history
    */
   async getReturns() {
-    const response = await apiClient.get("/api/orders/returns");
+    const response = await apiClient.get("/orders/returns");
     return response.data;
   },
 
@@ -134,7 +134,7 @@ export const orderService = {
    * Request return for order item
    */
   async requestReturn(orderId: string, itemId: string, reason?: string) {
-    const response = await apiClient.post(`/api/orders/${orderId}/returns`, {
+    const response = await apiClient.post(`/orders/${orderId}/returns`, {
       itemId,
       reason,
     });
