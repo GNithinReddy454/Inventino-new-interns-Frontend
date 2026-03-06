@@ -86,8 +86,10 @@ export const orderService = {
    * Cancel an order
    * PATCH http://localhost:8080/api/orders/:id/cancel
    */
-  async cancelOrder(orderId: string) {
-    const response = await apiClient.patch(`/orders/${orderId}/cancel`);
+  async cancelOrder(orderId: string, reason?: string) {
+    const response = await apiClient.post(`/orders/${orderId}/cancel`, {
+      reason,
+    });
     return response.data;
   },
 

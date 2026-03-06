@@ -30,6 +30,7 @@ import ReportsAnalyticsView from "./_components/ReportsAnalyticsView";
 import SettingsView from "./_components/SettingsView";
 import LandingPageCMSView from "./_components/LandingPageCMSView";
 import ReviewsView from "./_components/ReviewsView";
+import CustomerProfileView from "./_components/CustomerProfileView";
 
 // ----- Type Definitions -----
 interface NavItemProps {
@@ -67,6 +68,7 @@ function NavItem({ icon: Icon, label, active, onClick, collapsed }: NavItemProps
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   const navigationGroups = [
     {
@@ -143,7 +145,7 @@ export default function AdminDashboard() {
                     key={item.label}
                     icon={item.icon}
                     label={item.label}
-                    active={activeTab === item.label || (activeTab === "Landing Page CMS" && item.label === "CMS")}
+                    active={activeTab === item.label || (activeTab === "Landing Page CMS" && item.label === "CMS") || (activeTab === "Customer Profile" && item.label === "Customers")}
                     onClick={() => {
                       if (item.label === "CMS") setActiveTab("Landing Page CMS");
                       else setActiveTab(item.label);
@@ -216,7 +218,23 @@ export default function AdminDashboard() {
             {activeTab === "Reviews" && <ReviewsView />}
             {activeTab === "Orders" && <OrdersView />}
             {activeTab === "Reports & Analytics" && <ReportsAnalyticsView />}
-            {activeTab === "Customers" && <CustomersView />}
+            {activeTab === "Customers" && (
+              <CustomersView
+                onViewProfile={(id) => {
+                  setSelectedCustomerId(id);
+                  setActiveTab("Customer Profile");
+                }}
+              />
+            )}
+            {activeTab === "Customer Profile" && selectedCustomerId && (
+              <CustomerProfileView
+                customerId={selectedCustomerId}
+                onBack={() => {
+                  setActiveTab("Customers");
+                  setSelectedCustomerId(null);
+                }}
+              />
+            )}
             {activeTab === "Settings" && <SettingsView />}
           </div>
         </div>

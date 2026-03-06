@@ -16,7 +16,7 @@ export const addressService = {
    * Get all user addresses
    */
   async getAddresses() {
-    const response = await apiClient.get("/api/addresses");
+    const response = await apiClient.get("/addresses");
     return response.data;
   },
 
@@ -24,7 +24,7 @@ export const addressService = {
    * Get single address by ID
    */
   async getAddressById(id: string) {
-    const response = await apiClient.get(`/api/addresses/${id}`);
+    const response = await apiClient.get(`/addresses/${id}`);
     return response.data;
   },
 
@@ -32,7 +32,7 @@ export const addressService = {
    * Add new address
    */
   async addAddress(addressData: Partial<Address>) {
-    const response = await apiClient.post("/api/addresses", addressData);
+    const response = await apiClient.post("/addresses", addressData);
     return response.data;
   },
 
@@ -40,7 +40,7 @@ export const addressService = {
    * Update existing address
    */
   async updateAddress(id: string, addressData: Partial<Address>) {
-    const response = await apiClient.put(`/api/addresses/${id}`, addressData);
+    const response = await apiClient.put(`/addresses/${id}`, addressData);
     return response.data;
   },
 
@@ -48,7 +48,7 @@ export const addressService = {
    * Delete address
    */
   async deleteAddress(id: string) {
-    const response = await apiClient.delete(`/api/addresses/${id}`);
+    const response = await apiClient.delete(`/addresses/${id}`);
     return response.data;
   },
 
@@ -56,7 +56,7 @@ export const addressService = {
    * Set address as default
    */
   async setDefaultAddress(id: string) {
-    const response = await apiClient.patch(`/api/addresses/${id}/set-default`);
+    const response = await apiClient.patch(`/addresses/${id}/set-default`);
     return response.data;
   },
 
@@ -64,7 +64,7 @@ export const addressService = {
    * Get default address
    */
   async getDefaultAddress() {
-    const response = await apiClient.get("/api/addresses/default");
+    const response = await apiClient.get("/addresses/default");
     return response.data;
   },
 
@@ -73,7 +73,7 @@ export const addressService = {
    */
   async validateAddress(addressData: Partial<Address>) {
     const response = await apiClient.post(
-      "/api/addresses/validate",
+      "/addresses/validate",
       addressData,
     );
     return response.data;

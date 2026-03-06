@@ -215,69 +215,153 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                 </div>
             )}
 
-            {/* Recent Orders Table (Full Width) */}
-            <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8 overflow-hidden">
-                <div className="flex justify-between items-center mb-8">
-                    <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Recent Activity</h3>
+            {/* Recent Orders Table */}
+            <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8 overflow-visible relative">
+                <div className="flex justify-between items-center mb-6 text-sm">
+                    <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Recent Orders</h3>
+                    <button className="text-[#E91E63] font-bold text-[12px] hover:underline flex items-center gap-1">View All &rarr;</button>
                 </div>
-                {isLoading ? (
-                    <div className="space-y-4">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="flex gap-4">
-                                <Skeleton className="h-10 flex-1" />
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="space-y-3.5 text-sm relative">
-                        {[
-                            { text: "New order received", time: "2 minutes ago", icon: <span className="text-[14px]">🎉</span> },
-                            { text: "Order shipped", time: "15 minutes ago", icon: <Check size={14} className="text-white" strokeWidth={4} />, iconBg: "bg-[#22C55E]" },
-                            { text: "New 5-star review", time: "1 hour ago", icon: <Star size={12} className="text-yellow-400 fill-yellow-400" /> },
-                            { text: "New product added", time: "3 hours ago", icon: <span className="text-[14px]">📦</span> },
-                        ].map((act, i) => (
-                            <div key={i} className="flex gap-4 relative justify-start items-center bg-[#FAFAFA] rounded-xl p-4 transition-colors hover:bg-gray-100/50">
-                                <div className="w-9 h-9 bg-white rounded-full flex shrink-0 items-center justify-center shadow-sm text-center">
-                                    {act.iconBg ? (
-                                        <div className={`${act.iconBg} w-5 h-5 rounded flex items-center justify-center`}>
-                                            {act.icon}
+                <div className="overflow-x-auto w-full">
+                    <table className="w-full text-left text-[12px] whitespace-nowrap">
+                        <thead className="text-gray-400 font-black uppercase tracking-widest border-b border-gray-100 hidden md:table-header-group">
+                            <tr>
+                                <th className="px-1 py-4 font-bold">ORDER ID</th>
+                                <th className="px-4 py-4 font-bold">CUSTOMER</th>
+                                <th className="px-4 py-4 font-bold">PRODUCT</th>
+                                <th className="px-4 py-4 font-bold">AMOUNT</th>
+                                <th className="px-4 py-4 font-bold">STATUS</th>
+                                <th className="px-4 py-4 font-bold">DATE</th>
+                                <th className="px-4 py-4 font-bold md:text-right">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {[
+                                { id: "#ORD-2024-001", initials: "SM", customer: "Sarah Miller", product: "Rose Gold Bracelet", amount: "$89.99", status: "Completed", date: "Feb 6, 2026" },
+                                { id: "#ORD-2024-002", initials: "JD", customer: "John Davis", product: "Pearl Necklace Set", amount: "$129.99", status: "Processing", date: "Feb 6, 2026" },
+                                { id: "#ORD-2024-003", initials: "EB", customer: "Emily Brown", product: "Boho Beaded Set", amount: "$44.99", status: "Pending", date: "Feb 5, 2026" },
+                                { id: "#ORD-2024-004", initials: "MW", customer: "Michael Wilson", product: "Crochet Pouch", amount: "$39.99", status: "Completed", date: "Feb 5, 2026" },
+                                { id: "#ORD-2024-005", initials: "OJ", customer: "Olivia Johnson", product: "Classic Earrings", amount: "$54.99", status: "Cancelled", date: "Feb 4, 2026" },
+                            ].map((order, i) => (
+                                <tr key={i} className="group hover:bg-gray-50/50 transition-colors">
+                                    <td className="px-1 py-4 font-bold text-[13px] text-gray-900">{order.id}</td>
+                                    <td className="px-4 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-[#E91E63] flex items-center justify-center text-white text-[11px] font-bold shadow-sm">{order.initials}</div>
+                                            <span className="font-bold text-[13px] text-gray-900">{order.customer}</span>
                                         </div>
-                                    ) : act.icon}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-bold text-[13.5px] text-gray-900 leading-tight mb-1">{act.text}</p>
-                                    <p className="text-[11px] text-gray-400 font-medium">{act.time}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                                    </td>
+                                    <td className="px-4 py-4 text-gray-600 font-medium">{order.product}</td>
+                                    <td className="px-4 py-4 font-bold text-[13px] text-gray-900">{order.amount}</td>
+                                    <td className="px-4 py-4">
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                                            order.status === "Completed" ? "bg-[#F0FDF4] text-[#16A34A]" :
+                                            order.status === "Processing" ? "bg-[#EFF6FF] text-[#2563EB]" :
+                                            order.status === "Pending" ? "bg-[#FFF7ED] text-[#EA580C]" :
+                                            "bg-[#FEF2F2] text-[#DC2626]"
+                                        }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${
+                                                order.status === "Completed" ? "bg-[#22C55E]" :
+                                                order.status === "Processing" ? "bg-[#3B82F6]" :
+                                                order.status === "Pending" ? "bg-[#F97316]" :
+                                                "bg-[#EF4444]"
+                                            }`}></span>
+                                            {order.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-4 text-gray-600 font-medium">{order.date}</td>
+                                    <td className="px-4 py-4 md:text-right relative">
+                                        <button 
+                                            onClick={() => setOpenDropdownId(openDropdownId === order.id ? null : order.id)}
+                                            className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                        >
+                                            <MoreVertical size={16} />
+                                        </button>
+                                        {openDropdownId === order.id && (
+                                            <div className="absolute right-0 top-12 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-2 w-32 text-[12px] font-bold text-left">
+                                                <button className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-2">
+                                                    <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                    Edit Product
+                                                </button>
+                                                <button className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500 flex items-center gap-2">
+                                                    <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            {/* Bottom Row: Top Products */}
-            <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8">
-                <div className="flex justify-between items-center mb-8">
-                    <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Top Products</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Bottom Row: Top Products */}
+                <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8">
+                    <div className="flex justify-between items-center mb-8">
+                        <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Top Products</h3>
+                        <button className="text-[#E91E63] font-bold text-[12px] hover:underline flex items-center gap-1">View All &rarr;</button>
+                    </div>
+                    <div className="space-y-6">
+                        {[
+                            { name: "Rose Gold Bracelet", category: "Jewelry", sales: "245", color: "bg-[#DBA379]" },
+                            { name: "Pearl Necklace", category: "Jewelry", sales: "198", color: "bg-[#BCC1C4]" },
+                            { name: "Boho Beaded Set", category: "Accessories", sales: "156", color: "bg-[#678F7A]" },
+                            { name: "Crochet Pouch", category: "Accessories", sales: "142", color: "bg-[#F0DA79]" },
+                        ].map((prod, i) => (
+                            <div key={i} className="flex items-center gap-4">
+                                <div className={`w-[52px] h-[52px] rounded-xl flex shrink-0 ${prod.color}`}></div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-[13px] text-gray-900 truncate mb-0.5">{prod.name}</p>
+                                    <p className="text-[10px] font-medium text-gray-400 tracking-wide uppercase">{prod.category}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-bold text-[15px] text-[#E91E63] leading-none mb-1 tracking-tight">{prod.sales}</p>
+                                    <p className="text-[8px] text-gray-400 uppercase tracking-widest font-black">SOLD</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <div className="space-y-6">
-                    {[
-                        { name: "Rose Gold Bracelet", category: "Jewelry", sales: "245", color: "bg-[#DBA379]" },
-                        { name: "Pearl Necklace", category: "Jewelry", sales: "198", color: "bg-[#BCC1C4]" },
-                        { name: "Boho Beaded Set", category: "Accessories", sales: "156", color: "bg-[#678F7A]" },
-                        { name: "Crochet Pouch", category: "Accessories", sales: "142", color: "bg-[#F0DA79]" },
-                    ].map((prod, i) => (
-                        <div key={i} className="flex items-center gap-4">
-                            <div className={`w-[52px] h-[52px] rounded-xl flex shrink-0 ${prod.color}`}></div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-bold text-[13px] text-gray-900 truncate mb-0.5">{prod.name}</p>
-                                <p className="text-[10px] font-medium text-gray-400 tracking-wide uppercase">{prod.category}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="font-bold text-[15px] text-[#E91E63] leading-none mb-1 tracking-tight">{prod.sales}</p>
-                                <p className="text-[8px] text-gray-400 uppercase tracking-widest font-black">SOLD</p>
-                            </div>
+
+                {/* Recent Activity */}
+                <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8 overflow-hidden">
+                    <div className="flex justify-between items-center mb-8">
+                        <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Recent Activity</h3>
+                    </div>
+                    {isLoading ? (
+                        <div className="space-y-4">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                                <div key={i} className="flex gap-4">
+                                    <Skeleton className="h-10 flex-1" />
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    ) : (
+                        <div className="space-y-3.5 text-sm relative">
+                            {[
+                                { text: "New order received", time: "2 minutes ago", icon: <span className="text-[14px]">🎉</span> },
+                                { text: "Order shipped", time: "15 minutes ago", icon: <Check size={14} className="text-white" strokeWidth={4} />, iconBg: "bg-[#22C55E]" },
+                                { text: "New 5-star review", time: "1 hour ago", icon: <Star size={12} className="text-yellow-400 fill-yellow-400" /> },
+                                { text: "New product added", time: "3 hours ago", icon: <span className="text-[14px]">📦</span> },
+                            ].map((act, i) => (
+                                <div key={i} className="flex gap-4 relative justify-start items-center bg-[#FAFAFA] rounded-xl p-4 transition-colors hover:bg-gray-100/50">
+                                    <div className="w-9 h-9 bg-white rounded-full flex shrink-0 items-center justify-center shadow-sm text-center">
+                                        {act.iconBg ? (
+                                            <div className={`${act.iconBg} w-5 h-5 rounded flex items-center justify-center`}>
+                                                {act.icon}
+                                            </div>
+                                        ) : act.icon}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-bold text-[13.5px] text-gray-900 leading-tight mb-1">{act.text}</p>
+                                        <p className="text-[11px] text-gray-400 font-medium">{act.time}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
