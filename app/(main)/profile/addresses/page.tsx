@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -10,21 +10,22 @@ import {
   Home,
   Briefcase,
   Globe,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { addressService } from "@/services/address.service";
 
 interface SavedAddress {
-  id: string;
-  type: string;
-  firstName: string;
-  lastName: string;
-  streetAddress: string;
-  apartment?: string;
+  _id: string;
+  addressType: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  street: string;
   city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  landmark?: string;
+  state?: string;
+  pincode: string;
+  country?: string;
   isDefault: boolean;
 }
 
@@ -106,62 +107,126 @@ export default function AddressesPage() {
   const [showForm, setShowForm] = useState(false);
   const [setAsDefault, setSetAsDefault] = useState(false);
   const [selectedType, setSelectedType] = useState<AddressType>("Home");
-
-  const [addresses, setAddresses] = useState<SavedAddress[]>([
-    {
-      id: "1",
-      type: "Home",
-      firstName: "John",
-      lastName: "Doe",
-      streetAddress: "123 Main Street",
-      city: "New York",
-      state: "NY",
-      zipCode: "10001",
-      country: "United States",
-      isDefault: true,
-    },
-  ]);
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingAddress, setEditingAddress] = useState<SavedAddress | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const empty = {
     fullName: "",
     phone: "",
     email: "",
-    streetAddress: "",
+    street: "",
     apartment: "",
     city: "",
     state: "",
-    zipCode: "",
-    country: "United States",
+    pincode: "",
+    country: "India",
     landmark: "",
   };
   const [form, setForm] = useState(empty);
   const set = (id: string, v: string) => setForm((p) => ({ ...p, [id]: v }));
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const [first, ...rest] = form.fullName.trim().split(" ");
-    setAddresses((p) => [
-      ...p,
-      {
-        id: Date.now().toString(),
-        type: selectedType,
-        firstName: first || "",
-        lastName: rest.join(" "),
-        streetAddress: form.streetAddress,
-        apartment: form.apartment,
-        city: form.city,
-        state: form.state,
-        zipCode: form.zipCode,
-        country: form.country,
-        landmark: form.landmark,
-        isDefault: setAsDefault || p.length === 0,
-      },
-    ]);
+  /* ── Fetch addresses on mount ─────────────────────────────────────────── */
+  useEffect(() => {
+    fetchAddresses();
+  }, []);
+
+  async function fetchAddresses() {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await addressService.getAddresses();
+      setAddresses(response?.data ?? []);
+    } catch (err: any) {
+      setError("Failed to load addresses. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* ── Open edit form ───────────────────────────────────────────────────── */
+  function openEdit(addr: SavedAddress) {
+    setEditingAddress(addr);
+    setSelectedType((addr.addressType as AddressType) ?? "Home");
+    setSetAsDefault(addr.isDefault);
+    setForm({
+      fullName: addr.fullName ?? "",
+      phone: addr.phone ?? "",
+      email: addr.email ?? "",
+      street: addr.street ?? "",
+      apartment: "",
+      city: addr.city ?? "",
+      state: addr.state ?? "",
+      pincode: addr.pincode ?? "",
+      country: addr.country ?? "India",
+      landmark: "",
+    });
+    setShowForm(true);
+  }
+
+  /* ── Reset form & close ───────────────────────────────────────────────── */
+  function closeForm() {
     setShowForm(false);
+    setEditingAddress(null);
     setForm(empty);
     setSelectedType("Home");
     setSetAsDefault(false);
-  };
+  }
+
+  /* ── Submit: add or update ────────────────────────────────────────────── */
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    const payload = {
+      fullName: form.fullName,
+      phone: form.phone,
+      email: form.email,
+      street: form.street,
+      city: form.city,
+      state: form.state,
+      pincode: form.pincode,
+      country: form.country,
+      isDefault: setAsDefault,
+      addressType: selectedType,
+    };
+
+    try {
+      if (editingAddress) {
+        await addressService.updateAddress(editingAddress._id, payload);
+      } else {
+        await addressService.addAddress(payload);
+      }
+      await fetchAddresses();
+      closeForm();
+    } catch (err: any) {
+      setError(
+        editingAddress
+          ? "Failed to update address. Please try again."
+          : "Failed to add address. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  /* ── Delete ───────────────────────────────────────────────────────────── */
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    setError(null);
+    try {
+      await addressService.deleteAddress(id);
+      setAddresses((prev) => prev.filter((a) => a._id !== id));
+    } catch (err: any) {
+      setError("Failed to delete address. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div
@@ -185,10 +250,7 @@ export default function AddressesPage() {
           {showForm ? (
             <button
               type="button"
-              onClick={() => {
-                setShowForm(false);
-                setForm(empty);
-              }}
+              onClick={closeForm}
               style={{
                 width: 36,
                 height: 36,
@@ -235,15 +297,36 @@ export default function AddressesPage() {
                 lineHeight: 1.3,
               }}
             >
-              {showForm ? "Add New Address" : "Saved Addresses"}
+              {showForm
+                ? editingAddress
+                  ? "Edit Address"
+                  : "Add New Address"
+                : "Saved Addresses"}
             </h1>
             <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>
               {showForm
-                ? "Fill in the details below to add a new delivery address"
+                ? "Fill in the details below to save your delivery address"
                 : "Manage your saved delivery addresses"}
             </p>
           </div>
         </div>
+
+        {/* ── Global error banner ─────────────────────────────────────────── */}
+        {error && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "#FEF2F2",
+              border: "1px solid #FECACA",
+              color: "#DC2626",
+              fontSize: 13,
+            }}
+          >
+            {error}
+          </div>
+        )}
 
         {!showForm ? (
           /* ── Address list ──────────────────────────────────────────────── */
@@ -283,145 +366,173 @@ export default function AddressesPage() {
               Add New Address
             </button>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
-                gap: 16,
-              }}
-            >
-              {addresses.map((addr) => (
-                <div
-                  key={addr.id}
-                  style={{
-                    background: "#fff",
-                    padding: 20,
-                    borderRadius: 16,
-                    border: "1px solid #fce7f0",
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-                    position: "relative",
-                  }}
-                >
-                  {addr.isDefault && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: 14,
-                        right: 14,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: "#059669",
-                        background: "#ecfdf5",
-                        borderRadius: 99,
-                        padding: "2px 8px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <CheckCircle2 size={11} /> Default
-                    </span>
-                  )}
+            {loading ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  padding: "40px 0",
+                  color: "#D94F7A",
+                }}
+              >
+                <Loader2 size={28} style={{ animation: "spin 1s linear infinite" }} />
+                <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
+                  gap: 16,
+                }}
+              >
+                {addresses.map((addr) => (
                   <div
+                    key={addr._id}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      marginBottom: 10,
+                      background: "#fff",
+                      padding: 20,
+                      borderRadius: 16,
+                      border: "1px solid #fce7f0",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+                      position: "relative",
+                      opacity: deletingId === addr._id ? 0.5 : 1,
+                      transition: "opacity 0.2s",
                     }}
                   >
-                    <span
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 10,
-                        background: "#fff5f8",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#D94F7A",
-                      }}
-                    >
-                      {addr.type === "Home" ? (
-                        <Home size={15} />
-                      ) : addr.type === "Office" ? (
-                        <Briefcase size={15} />
-                      ) : (
-                        <Globe size={15} />
-                      )}
-                    </span>
-                    <div>
-                      <p
+                    {addr.isDefault && (
+                      <span
                         style={{
+                          position: "absolute",
+                          top: 14,
+                          right: 14,
+                          fontSize: 11,
                           fontWeight: 600,
-                          fontSize: 13.5,
-                          color: "#111827",
+                          color: "#059669",
+                          background: "#ecfdf5",
+                          borderRadius: 99,
+                          padding: "2px 8px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
                         }}
                       >
-                        {addr.type}
-                      </p>
-                      <p style={{ fontSize: 12, color: "#6B7280" }}>
-                        {addr.firstName} {addr.lastName}
-                      </p>
-                    </div>
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: "#6B7280",
-                      lineHeight: 1.6,
-                      marginBottom: 14,
-                    }}
-                  >
-                    {addr.streetAddress}
-                    <br />
-                    {addr.city}, {addr.state} {addr.zipCode}
-                    <br />
-                    {addr.country}
-                  </p>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
+                        <CheckCircle2 size={11} /> Default
+                      </span>
+                    )}
+                    <div
                       style={{
-                        flex: 1,
-                        padding: "7px 0",
-                        borderRadius: 8,
-                        border: "1px solid #E5E7EB",
-                        background: "#F9FAFB",
-                        color: "#374151",
-                        fontSize: 12.5,
-                        fontWeight: 600,
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center",
-                        gap: 5,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
+                        gap: 10,
+                        marginBottom: 10,
                       }}
                     >
-                      <Edit2 size={12} /> Edit
-                    </button>
-                    <button
-                      onClick={() =>
-                        setAddresses((p) => p.filter((a) => a.id !== addr.id))
-                      }
+                      <span
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 10,
+                          background: "#fff5f8",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#D94F7A",
+                        }}
+                      >
+                        {addr.addressType === "Home" ? (
+                          <Home size={15} />
+                        ) : addr.addressType === "Office" ? (
+                          <Briefcase size={15} />
+                        ) : (
+                          <Globe size={15} />
+                        )}
+                      </span>
+                      <div>
+                        <p
+                          style={{
+                            fontWeight: 600,
+                            fontSize: 13.5,
+                            color: "#111827",
+                          }}
+                        >
+                          {addr.addressType}
+                        </p>
+                        <p style={{ fontSize: 12, color: "#6B7280" }}>
+                          {addr.fullName}
+                        </p>
+                      </div>
+                    </div>
+                    <p
                       style={{
-                        padding: "7px 10px",
-                        borderRadius: 8,
-                        border: "none",
-                        background: "#FEF2F2",
-                        color: "#EF4444",
-                        cursor: "pointer",
+                        fontSize: 12,
+                        color: "#6B7280",
+                        lineHeight: 1.6,
+                        marginBottom: 14,
                       }}
                     >
-                      <Trash2 size={15} />
-                    </button>
+                      {addr.street}
+                      <br />
+                      {addr.city}
+                      {addr.state ? `, ${addr.state}` : ""} {addr.pincode}
+                      {addr.country ? (
+                        <>
+                          <br />
+                          {addr.country}
+                        </>
+                      ) : null}
+                    </p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => openEdit(addr)}
+                        style={{
+                          flex: 1,
+                          padding: "7px 0",
+                          borderRadius: 8,
+                          border: "1px solid #E5E7EB",
+                          background: "#F9FAFB",
+                          color: "#374151",
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 5,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        <Edit2 size={12} /> Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(addr._id)}
+                        disabled={deletingId === addr._id}
+                        style={{
+                          padding: "7px 10px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: "#FEF2F2",
+                          color: "#EF4444",
+                          cursor: deletingId === addr._id ? "not-allowed" : "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {deletingId === addr._id ? (
+                          <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} />
+                        ) : (
+                          <Trash2 size={15} />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
-          /* ── Add address form ──────────────────────────────────────────── */
+          /* ── Add / Edit address form ────────────────────────────────────── */
           <div
             style={{
               background: "#fff",
@@ -508,7 +619,7 @@ export default function AddressesPage() {
                     <input
                       className="input-basic"
                       type="tel"
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="+91 98456 71230"
                       value={form.phone}
                       onChange={(e) => set("phone", e.target.value)}
                       required
@@ -546,9 +657,9 @@ export default function AddressesPage() {
                   <Field label="Street Address" required>
                     <input
                       className="input-basic"
-                      placeholder="123 Main Street"
-                      value={form.streetAddress}
-                      onChange={(e) => set("streetAddress", e.target.value)}
+                      placeholder="78 Jubilee Hills"
+                      value={form.street}
+                      onChange={(e) => set("street", e.target.value)}
                       required
                     />
                   </Field>
@@ -562,23 +673,6 @@ export default function AddressesPage() {
                     />
                   </Field>
 
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      style={{ accentColor: "#D94F7A", width: 13, height: 13 }}
-                    />
-                    <span style={{ fontSize: 12, color: "#6B7280" }}>
-                      Building name, floor, or unit number
-                    </span>
-                  </label>
-
                   <div
                     style={{
                       display: "grid",
@@ -589,7 +683,7 @@ export default function AddressesPage() {
                     <Field label="City" required>
                       <input
                         className="input-basic"
-                        placeholder="New York"
+                        placeholder="Hyderabad"
                         value={form.city}
                         onChange={(e) => set("city", e.target.value)}
                         required
@@ -611,6 +705,11 @@ export default function AddressesPage() {
                           <option value="TX">Texas</option>
                           <option value="FL">Florida</option>
                           <option value="IL">Illinois</option>
+                          <option value="Telangana">Telangana</option>
+                          <option value="Maharashtra">Maharashtra</option>
+                          <option value="Karnataka">Karnataka</option>
+                          <option value="Tamil Nadu">Tamil Nadu</option>
+                          <option value="Delhi">Delhi</option>
                         </select>
                         <Chevron />
                       </div>
@@ -627,9 +726,9 @@ export default function AddressesPage() {
                     <Field label="ZIP / Postal Code" required>
                       <input
                         className="input-basic"
-                        placeholder="10001"
-                        value={form.zipCode}
-                        onChange={(e) => set("zipCode", e.target.value)}
+                        placeholder="500033"
+                        value={form.pincode}
+                        onChange={(e) => set("pincode", e.target.value)}
                         required
                       />
                     </Field>
@@ -640,8 +739,8 @@ export default function AddressesPage() {
                           value={form.country}
                           onChange={(e) => set("country", e.target.value)}
                         >
-                          <option value="United States">United States</option>
                           <option value="India">India</option>
+                          <option value="United States">United States</option>
                           <option value="United Kingdom">United Kingdom</option>
                           <option value="Canada">Canada</option>
                           <option value="Australia">Australia</option>
@@ -766,10 +865,8 @@ export default function AddressesPage() {
               <div style={{ padding: "20px 24px", display: "flex", gap: 12 }}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setForm(empty);
-                  }}
+                  onClick={closeForm}
+                  disabled={submitting}
                   style={{
                     flex: 1,
                     height: 46,
@@ -780,13 +877,15 @@ export default function AddressesPage() {
                     fontSize: 14,
                     fontWeight: 600,
                     fontFamily: "inherit",
-                    cursor: "pointer",
+                    cursor: submitting ? "not-allowed" : "pointer",
+                    opacity: submitting ? 0.6 : 1,
                   }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
+                  disabled={submitting}
                   style={{
                     flex: 1,
                     height: 46,
@@ -797,11 +896,25 @@ export default function AddressesPage() {
                     fontSize: 14,
                     fontWeight: 600,
                     fontFamily: "inherit",
-                    cursor: "pointer",
+                    cursor: submitting ? "not-allowed" : "pointer",
                     boxShadow: "0 4px 14px rgba(217,79,122,0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    opacity: submitting ? 0.8 : 1,
                   }}
                 >
-                  Save Address
+                  {submitting && (
+                    <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                  )}
+                  {submitting
+                    ? editingAddress
+                      ? "Updating..."
+                      : "Saving..."
+                    : editingAddress
+                    ? "Update Address"
+                    : "Save Address"}
                 </button>
               </div>
             </form>

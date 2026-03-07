@@ -18,7 +18,8 @@ import {
 import { useAuth } from "@/app/(main)/components/authContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { useStore } from "@/lib/storeContext";
+import { useAppSelector, useAppDispatch } from "@/redux/store";
+import { fetchCart } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { productService } from "@/services/product.service"; // ✅ API service
 
@@ -33,9 +34,13 @@ interface SearchProduct {
 
 const Navbar = () => {
   const pathname = usePathname();
-  const { savedItems } = useStore();
-  const { cart } = useCart();
+  const { items: savedItems = [] } = useAppSelector((state: any) => state.wishlist);
+  const { totalItems: reduxBagCount = 0 } = useAppSelector((state: any) => state.cart);
+  const { cart: localCart } = useCart();
   const { user, logout } = useAuth();
+
+  const bagCount = user ? reduxBagCount : localCart.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
+  const dispatch = useAppDispatch();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -48,10 +53,9 @@ const Navbar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const bagCount = cart.reduce(
-    (total, item) => total + (item.quantity || 1),
-    0
-  );
+  useEffect(() => {
+    dispatch(fetchCart());
+  }, [dispatch, user]);
 
   // ── Search state ──────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
@@ -159,18 +163,16 @@ const Navbar = () => {
   // ── UI helpers (unchanged) ────────────────────────────────────────────
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path;
-    return `transition-all duration-300 pb-1 ${
-      isActive
-        ? "text-pink-600 font-bold border-b-2 border-pink-600"
-        : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
-    }`;
+    return `transition-all duration-300 pb-1 ${isActive
+      ? "text-pink-600 font-bold border-b-2 border-pink-600"
+      : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
+      }`;
   };
 
   const getMobileLinkStyle = (path: string) => {
     const isActive = pathname === path;
-    return `text-lg font-bold transition-all duration-300 w-fit ${
-      isActive ? "text-pink-600" : "text-gray-800"
-    }`;
+    return `text-lg font-bold transition-all duration-300 w-fit ${isActive ? "text-pink-600" : "text-gray-800"
+      }`;
   };
 
   const iconCircleStyle =
@@ -483,9 +485,8 @@ const Navbar = () => {
 
       {/* MOBILE MENU DRAWER */}
       <div
-        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${
-          isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
       >
         <div
           className="absolute inset-0 bg-black/50 backdrop-blur-md"
@@ -493,9 +494,8 @@ const Navbar = () => {
         ></div>
 
         <div
-          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${
-            isMenuOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-0" : "translate-x-full"
+            }`}
         >
           <div className="flex justify-between items-center mb-8 pb-4">
             <span className="font-bold text-pink-600 text-xl font-serif">

@@ -2,7 +2,9 @@
 import { useState, useRef, useCallback } from "react";
 import { Heart, Share2 } from "lucide-react";
 import Link from "next/link";
-import { useStore } from "@/lib/storeContext";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
+import { addToCart as reduxAddToCart } from "@/redux/cartslice";
 import { useCart, Product } from "@/lib/cartContext";
 import { useToast } from "@/app/components/GlobalToast";
 import { Roboto } from "next/font/google";
@@ -82,11 +84,14 @@ export default function ProductCard({
   onAdd,
   buttonBg = "#E8456A",
 }: ProductCardProps) {
-  const { handleSaved, savedItems } = useStore();
+  const dispatch = useAppDispatch();
+  const { items: wishlistItems = [] } = useAppSelector((state: any) => state.wishlist);
   const { cart, addToCart, updateQuantity, removeFromCart } = useCart();
   const { showToast } = useToast();
 
-  const isSaved = savedItems.some((item) => item.id === product.id);
+  const isSaved = wishlistItems.some((wItem: any) =>
+    wItem.product?._id === product.id || wItem.product?.id === product.id
+  );
 
   const images: string[] =
     product.images?.length && product.images.length > 1
@@ -148,6 +153,7 @@ export default function ProductCard({
     e.preventDefault();
     e.stopPropagation();
     addToCart(cartProduct, 1);
+    dispatch(reduxAddToCart({ productId: String(product.id), quantity: 1 }));
     onAdd?.(productName);
     showToast("Success!", "Added to bag ", "success");
   };
@@ -205,10 +211,11 @@ export default function ProductCard({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              handleSaved(cartProduct as any);
               if (!isSaved) {
+                dispatch(addWishlistItem(String(product.id)));
                 showToast("Success!", "Added to wishlist", "success");
               } else {
+                dispatch(removeWishlistItem(String(product.id)));
                 showToast("Removed", "Removed from wishlist", "info");
               }
             }}

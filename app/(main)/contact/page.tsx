@@ -1,14 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Send, Sparkles, Globe } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Mail, Send, Sparkles, Globe, Loader2 } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { submitContact, resetContactState } from "@/redux/contactslice";
 
 export default function ContactPage() {
-  const [submitted, setSubmitted] = useState(false);
+  const dispatch = useAppDispatch();
+  const router = useRouter();
+  const { isLoading, success, error } = useAppSelector((state) => state.contact);
+  const { user } = useAppSelector((state) => state.auth);
+
+  const [authError, setAuthError] = useState("");
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    subject: "",
+    message: ""
+  });
+
+  useEffect(() => {
+    return () => {
+      dispatch(resetContactState());
+    };
+  }, [dispatch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    if (!user) {
+      setAuthError("Authentication required. Please log in to submit an inquiry.");
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
+      return;
+    }
+    setAuthError("");
+    dispatch(submitContact(formData));
   };
 
   return (
@@ -60,7 +88,7 @@ export default function ContactPage() {
 
           {/* RIGHT: Professional Message Form */}
           <div className="bg-white p-10 md:p-12 rounded-[40px] shadow-2xl shadow-pink-100/40 border border-pink-50 relative overflow-hidden">
-            {submitted ? (
+            {success ? (
               <div className="text-center py-20 animate-in zoom-in duration-500">
                 <Sparkles className="w-12 h-12 text-pink-500 mx-auto mb-6" />
                 <h3 className="text-3xl font-serif font-medium text-gray-900 mb-4">
@@ -71,7 +99,10 @@ export default function ContactPage() {
                   shortly.
                 </p>
                 <button
-                  onClick={() => setSubmitted(false)}
+                  onClick={() => {
+                    dispatch(resetContactState());
+                    setFormData({ fullName: "", email: "", subject: "", message: "" });
+                  }}
                   className="mt-10 text-pink-600 font-semibold hover:text-pink-800 transition-colors"
                 >
                   Send another inquiry
@@ -83,37 +114,52 @@ export default function ContactPage() {
                   Direct Inquiry
                 </h3>
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {(error || authError) && (
+                    <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm font-medium">
+                      {authError || error}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <input
                       required
                       type="text"
                       placeholder="Full Name"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                       className="w-full px-6 py-4 rounded-2xl bg-pink-50/20 border border-pink-100 focus:outline-none focus:ring-1 focus:ring-pink-400 transition-all"
                     />
                     <input
                       required
                       type="email"
                       placeholder="Email Address"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="w-full px-6 py-4 rounded-2xl bg-pink-50/20 border border-pink-100 focus:outline-none focus:ring-1 focus:ring-pink-400 transition-all"
                     />
                   </div>
                   <input
+                    required
                     type="text"
                     placeholder="Subject"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     className="w-full px-6 py-4 rounded-2xl bg-pink-50/20 border border-pink-100 focus:outline-none focus:ring-1 focus:ring-pink-400 transition-all"
                   />
                   <textarea
                     required
                     placeholder="How can our concierge assist you today?"
                     rows={5}
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     className="w-full px-6 py-4 rounded-2xl bg-pink-50/20 border border-pink-100 focus:outline-none focus:ring-1 focus:ring-pink-400 transition-all resize-none"
                   ></textarea>
                   <button
                     type="submit"
-                    className="w-full bg-[#1A0F13] text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-pink-600 transition-all duration-500 shadow-xl"
+                    disabled={isLoading}
+                    className="w-full bg-[#1A0F13] text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-pink-600 transition-all duration-500 shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    Send Message
-                    <Send size={18} />
+                    {isLoading ? "Sending..." : "Send Message"}
+                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                   </button>
                 </form>
               </>

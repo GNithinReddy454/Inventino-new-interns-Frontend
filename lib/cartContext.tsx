@@ -37,15 +37,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const savedCart = localStorage.getItem("cart");
-    if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart));
-      } catch (e) {
-        console.error("Failed to parse cart", e);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTimeout(() => {
+      const savedCart = localStorage.getItem("cart");
+      if (savedCart) {
+        try {
+          setCart(JSON.parse(savedCart));
+        } catch (e) {
+          console.error("Failed to parse cart", e);
+        }
       }
-    }
+      setMounted(true);
+    }, 0);
   }, []);
 
   useEffect(() => {

@@ -13,13 +13,16 @@ import {
   ArrowLeft,
   CheckCircle2,
 } from "lucide-react";
-import { useCart } from "@/lib/cartContext";
-import { useStore } from "@/lib/storeContext";
 import { useRouter } from "next/navigation";
-import type { Product as StoreProduct } from "@/lib/products";
+import { useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { addWishlistItem } from "@/redux/wishlistslice";
+import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode } from "@/redux/cartslice";
+import { useCart } from "@/lib/cartContext";
+import { useAuth } from "@/app/(main)/components/authContext";
 
 interface CartItem {
-  id: number;
+  productId: string;
   name: string;
   price: number;
   image: string;
@@ -34,20 +37,31 @@ interface ToastState {
 }
 
 interface AnimatingItem {
-  id: number;
+  id: string;
   type: "wishlist" | "remove";
 }
 
 export default function BagPage() {
-  const {
-    cart = [],
-    removeFromCart,
-    updateQuantity,
-    cartTotal = 0,
-    clearCart,
-  } = useCart();
-  const { handleSaved, savedItems = [] } = useStore();
+  const dispatch = useAppDispatch();
+  const { items: reduxCart = [], totalAmount: reduxCartTotal = 0, discount: storeDiscount = 0, promoCode: storePromoCode } = useAppSelector((state: any) => state.cart);
+  const { items: savedItems = [] } = useAppSelector((state: any) => state.wishlist);
   const router = useRouter();
+  const { user } = useAuth();
+  const { cart: localCart, cartTotal: localCartTotal, updateQuantity: updateLocalQuantity, removeFromCart: removeLocalCart, clearCart: clearLocalCart } = useCart();
+
+  const cart = user ? reduxCart : localCart.map((item: any) => ({
+    productId: String(item.id),
+    name: item.name,
+    price: item.price,
+    image: item.image,
+    quantity: item.quantity || 1,
+    originalPrice: item.originalPrice,
+  }));
+  const cartTotal = user ? reduxCartTotal : localCartTotal;
+
+  useEffect(() => {
+    dispatch(fetchCart());
+  }, [dispatch]);
 
   const [animatingItem, setAnimatingItem] = useState<AnimatingItem | null>(null);
   const [promoCode, setPromoCode] = useState("");
@@ -68,72 +82,65 @@ export default function BagPage() {
   );
 
   const handleAction = (item: CartItem, type: "wishlist" | "remove") => {
-    setAnimatingItem({ id: item.id, type });
+    setAnimatingItem({ id: item.productId, type });
     setTimeout(() => {
+      const itemId = String((item as any)._id || item.productId);
       if (type === "wishlist") {
-        if (!savedItems.some((si: StoreProduct) => si.id === item.id)) {
-          const productToSave: StoreProduct = {
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            image: item.image,
-            rating: 0,
-            reviews: 0,
-            badge: "",
-            category: "necklaces",
-          };
-          handleSaved(productToSave);
+        if (!savedItems.some((si: any) => String(si.product?._id) === itemId || String(si.product?.id) === itemId || si.product?._id === itemId)) {
+          dispatch(addWishlistItem(itemId));
         }
       }
-      if (removeFromCart) {
-        removeFromCart(item.id);
+      if (user) {
+        dispatch(removeFromCart(item.productId));
+      } else {
+        removeLocalCart(item.productId as unknown as number);
       }
       setAnimatingItem(null);
     }, 400);
   };
 
   const handleApplyPromo = () => {
-    if (promoCode.trim().toUpperCase() === "SAVE10") {
-      setPromoApplied(true);
-      setPromoError("");
-    } else {
-      setPromoApplied(false);
-      setPromoError("Invalid promo code. Try SAVE10.");
+    if (promoCode.trim().length > 0) {
+      dispatch(applyPromoCode(promoCode.trim())).then((action) => {
+        if (applyPromoCode.fulfilled.match(action)) {
+          setPromoApplied(true);
+          setPromoError("");
+        } else {
+          setPromoApplied(false);
+          setPromoError((action.payload as string) || "Invalid promo code");
+        }
+      });
     }
   };
 
   const handleAddAllToWishlist = () => {
-    cart.forEach((item: CartItem) => {
-      if (!savedItems.some((si: StoreProduct) => si.id === item.id)) {
-        const productToSave: StoreProduct = {
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          image: item.image,
-          rating: 0,
-          reviews: 0,
-          badge: "",
-          category: "necklaces",
-        };
-        handleSaved(productToSave);
+    cart.forEach((item: any) => {
+      const itemId = String(item._id || item.productId);
+      if (!savedItems.some((si: any) =>
+        String(si.product?._id) === itemId ||
+        String(si.product?.id) === itemId ||
+        si.product?._id === itemId
+      )) {
+        dispatch(addWishlistItem(itemId));
       }
     });
     if (cart.length > 0) {
       triggerToast(
-        `${cart.length} item${cart.length > 1 ? "s" : ""} added to your wishlist`,
+        `${cart.length} item${cart.length > 1 ? "s" : ""} moved to your wishlist`,
       );
+      if (user) dispatch(clearCart());
+      else clearLocalCart();
     } else {
       triggerToast("No items in cart to move", "Cart is empty");
     }
   };
 
   const handleRemoveAllFromCart = () => {
-    if (clearCart) {
-      clearCart();
-    }
+    if (user) dispatch(clearCart());
+    else clearLocalCart();
   };
 
-  const discount = promoApplied ? cartTotal * 0.1 : 0;
+  const discount = promoApplied ? storeDiscount : 0;
   const discountedTotal = cartTotal - discount;
   const tax = discountedTotal * 0.08;
   const finalTotal = discountedTotal + tax;
@@ -166,11 +173,10 @@ export default function BagPage() {
     <div className="bg-[#fafafa] min-h-screen w-full max-w-[100vw] overflow-x-hidden py-6 px-4 md:px-12 font-sans">
       {/* Toast */}
       <div
-        className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-100 transition-all duration-300 ${
-          toast.show
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-4 pointer-events-none"
-        }`}
+        className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-100 transition-all duration-300 ${toast.show
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 translate-y-4 pointer-events-none"
+          }`}
       >
         <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-50 max-w-[88vw]">
           <div className="bg-[#E8456A] w-7 h-7 rounded-full flex items-center justify-center shrink-0">
@@ -252,34 +258,40 @@ export default function BagPage() {
               </div>
 
               <div className="divide-y divide-gray-200">
-                {cart.map((item: CartItem) => {
-                  const isAnimating = animatingItem?.id === item.id;
+                {cart.map((item: CartItem, idx: number) => {
+                  const isAnimating = animatingItem?.id === item.productId;
                   const actionType = animatingItem?.type;
+                  const itemId = (item as any)._id || item.productId || `item`;
                   return (
                     <div
-                      key={item.id}
-                      className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${
-                        isAnimating
-                          ? actionType === "wishlist"
-                            ? "opacity-0 -translate-y-16 scale-90"
-                            : "opacity-0 -translate-x-full"
-                          : "opacity-100 translate-x-0 translate-y-0"
-                      }`}
+                      key={`${itemId}-${idx}`}
+                      className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${isAnimating
+                        ? actionType === "wishlist"
+                          ? "opacity-0 -translate-y-16 scale-90"
+                          : "opacity-0 -translate-x-full"
+                        : "opacity-100 translate-x-0 translate-y-0"
+                        }`}
                     >
                       {/* Image */}
                       <Link
-                        href={`/products/${item.id}`}
+                        href={`/products/${item.productId}`}
                         className="block group shrink-0"
                       >
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
-                          <Image
-                            src={item.image}
-                            alt={item.name}
-                            width={128}
-                            height={128}
-                            className="w-full h-full object-cover"
-                            unoptimized
-                          />
+                          {item.image ? (
+                            <Image
+                              src={item.image}
+                              alt={item.name || "Product"}
+                              width={128}
+                              height={128}
+                              className="w-full h-full object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center p-2">
+                              No Image
+                            </div>
+                          )}
                         </div>
                       </Link>
 
@@ -288,7 +300,7 @@ export default function BagPage() {
                         <div className="text-left">
                           <div className="flex flex-row justify-between gap-2">
                             <Link
-                              href={`/products/${item.id}`}
+                              href={`/products/${item.productId}`}
                               className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300"
                             >
                               <h3 className="font-bold text-sm md:text-lg leading-tight line-clamp-2">
@@ -341,13 +353,17 @@ export default function BagPage() {
                         <div className="flex justify-start mt-2 md:mt-0 items-center">
                           <div className="flex items-center bg-[#FFF1F2] rounded-full p-0.5 border border-pink-50 shadow-sm h-9 md:h-10 w-fit">
                             <button
-                              onClick={() =>
-                                updateQuantity &&
-                                updateQuantity(
-                                  item.id,
-                                  Math.max(1, (item.quantity || 1) - 1),
-                                )
-                              }
+                              onClick={() => {
+                                const newQ = Math.max(1, (item.quantity || 1) - 1);
+                                if (user) {
+                                  dispatch(updateCartQuantity({
+                                    productId: item.productId,
+                                    quantity: newQ,
+                                  }))
+                                } else {
+                                  updateLocalQuantity(item.productId as unknown as number, newQ);
+                                }
+                              }}
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                               aria-label="Decrease quantity"
                             >
@@ -357,10 +373,17 @@ export default function BagPage() {
                               {item.quantity || 1}
                             </span>
                             <button
-                              onClick={() =>
-                                updateQuantity &&
-                                updateQuantity(item.id, (item.quantity || 1) + 1)
-                              }
+                              onClick={() => {
+                                const newQ = (item.quantity || 1) + 1;
+                                if (user) {
+                                  dispatch(updateCartQuantity({
+                                    productId: item.productId,
+                                    quantity: newQ,
+                                  }))
+                                } else {
+                                  updateLocalQuantity(item.productId as unknown as number, newQ);
+                                }
+                              }}
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                               aria-label="Increase quantity"
                             >
