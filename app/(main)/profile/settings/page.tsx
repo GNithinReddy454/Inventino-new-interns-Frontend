@@ -2,13 +2,6 @@
 import React, { useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 
-// Account actions
-import {
-  setField as setAccountField,
-  showSavedBanner as showAccountBanner,
-  hideSavedBanner as hideAccountBanner,
-} from "@/redux/accountslice";
-
 // Notifications actions
 import { toggleNotification } from "@/redux/notificationslice";
 
@@ -28,6 +21,9 @@ import {
   showSavedBanner as showAppearanceBanner,
   hideSavedBanner as hideAppearanceBanner,
 } from "@/redux/appearanceslice";
+
+// Auth actions for change password
+import { changePasswordAction } from "@/redux/authslice";
 
 // ── Inline SVG Icons ──────────────────────────────────────────────────────
 interface IconProps {
@@ -457,231 +453,6 @@ function SectionTitle({
 
 // ── Tab sections ──────────────────────────────────────────────────────────
 
-function AccountTab() {
-  const dispatch = useAppDispatch();
-
-  // ✅ Pull from auth (logged-in user) as the source of truth
-  const authUser = useAppSelector((s) => s.auth?.user);
-  const account = useAppSelector((s) => s.account);
-
-  // ✅ Editable fields: prefer account slice values (user may have edited them),
-  //    but fall back to auth data so the page is populated on first load
-  const displayName = account.name || authUser?.name || "";
-  const displayEmail = account.email || authUser?.email || "";
-  const displayPhone = account.phone || authUser?.phone || "";
-  const displayLocation = "";
-
-  // ✅ Avatar initial from auth name (always reflects login user)
-  const avatarInitial = (authUser?.name || account.name || "?")
-    .charAt(0)
-    .toUpperCase();
-
-  const save = () => {
-    dispatch(showAccountBanner());
-    setTimeout(() => dispatch(hideAccountBanner()), 3000);
-  };
-
-  return (
-    <div>
-      {/* Profile header card */}
-      <Card
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ position: "relative", flexShrink: 0 }}>
-          <div
-            style={{
-              width: 76,
-              height: 76,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #D94F7A, #9B59B6)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 26,
-              fontWeight: 700,
-              color: "white",
-              border: "3px solid white",
-              boxShadow: "0 4px 16px rgba(217,79,122,0.3)",
-            }}
-          >
-            {avatarInitial}
-          </div>
-          <button
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: 26,
-              height: 26,
-              borderRadius: "50%",
-              background: "#D94F7A",
-              border: "2px solid white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              color: "white",
-            }}
-          >
-            <Icons.Camera size={13} />
-          </button>
-        </div>
-        <div>
-          {/* ✅ Always shows the logged-in user's name from auth */}
-          <p
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: "#111827",
-              margin: "0 0 2px",
-            }}
-          >
-            {authUser?.name || account.name || "User"}
-          </p>
-          <p className="form-hint" style={{ margin: "0 0 8px" }}>
-            {authUser?.email || account.email || ""}
-          </p>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: "#D94F7A",
-              background: "#D94F7A15",
-              padding: "3px 10px",
-              borderRadius: 20,
-            }}
-          >
-            Premium Member
-          </span>
-        </div>
-      </Card>
-
-      {/* Personal information form */}
-      <Card>
-        <SectionTitle>Personal Information</SectionTitle>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <div>
-            <label className="form-label">
-              Full Name <span className="form-label-req">*</span>
-            </label>
-            <input
-              className="input-basic"
-              value={displayName}
-              placeholder="Your full name"
-              onChange={(e) =>
-                dispatch(setAccountField({ name: e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <label className="form-label">
-              Email Address <span className="form-label-req">*</span>
-            </label>
-            <input
-              className="input-basic"
-              type="email"
-              value={displayEmail}
-              placeholder="you@example.com"
-              onChange={(e) =>
-                dispatch(setAccountField({ email: e.target.value }))
-              }
-            />
-            <p className="form-hint">Used for login and order updates</p>
-          </div>
-          <div>
-            <label className="form-label">
-              Phone Number <span className="form-label-opt">(optional)</span>
-            </label>
-            <input
-              className="input-basic"
-              type="tel"
-              value={displayPhone}
-              placeholder="+91 00000 00000"
-              onChange={(e) =>
-                dispatch(setAccountField({ phone: e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <label className="form-label">
-              Location <span className="form-label-opt">(optional)</span>
-            </label>
-            <input
-              className="input-basic"
-              value={displayLocation}
-              placeholder="City, Country"
-              onChange={(e) =>
-                dispatch(setAccountField({ location: e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <label className="form-label">
-              Gender <span className="form-label-opt">(optional)</span>
-            </label>
-            <div className="select-wrapper">
-              <select
-                className={`input-select${!account.gender ? " placeholder-active" : ""}`}
-                value={account.gender}
-                onChange={(e) =>
-                  dispatch(setAccountField({ gender: e.target.value }))
-                }
-              >
-                <option value="" disabled>
-                  Select gender
-                </option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-                <option value="prefer-not">Prefer not to say</option>
-              </select>
-              <span className="select-chevron">
-                <Icons.ChevronDown size={13} />
-              </span>
-            </div>
-          </div>
-        </div>
-        <div style={{ marginTop: 22 }}>
-          <button
-            className="save-btn"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              background: "#D94F7A",
-              color: "white",
-              border: "none",
-              borderRadius: 8,
-              padding: "0 20px",
-              height: 44,
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: "'Roboto', sans-serif",
-            }}
-            onClick={save}
-          >
-            Update Account
-          </button>
-        </div>
-        {account.savedBanner && (
-          <SuccessBanner message="Account updated successfully!" />
-        )}
-      </Card>
-    </div>
-  );
-}
-
 function NotificationsTab({ accentColor }: { accentColor: string }) {
   const dispatch = useAppDispatch();
   const items = useAppSelector((s) => s.notifications.items);
@@ -691,7 +462,7 @@ function NotificationsTab({ accentColor }: { accentColor: string }) {
       <Card>
         <SectionTitle icon={Icons.Bell}>Notification Preferences</SectionTitle>
         <p className="form-hint" style={{ marginTop: -10, marginBottom: 16 }}>
-          Choose what updates you'd like to receive.
+          Choose what updates you&apos;d like to receive.
         </p>
         <div>
           {items.map((item) => (
@@ -773,10 +544,12 @@ function NotificationsTab({ accentColor }: { accentColor: string }) {
 function SecurityTab({ accentColor }: { accentColor: string }) {
   const dispatch = useAppDispatch();
   const security = useAppSelector((s) => s.security);
+  const { loading } = useAppSelector((state) => state.auth);
 
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const pwdStrength = (() => {
     const p = security.newPwd;
@@ -789,11 +562,11 @@ function SecurityTab({ accentColor }: { accentColor: string }) {
     return s;
   })();
   const strengthLabel = ["", "Weak", "Fair", "Good", "Strong"][pwdStrength];
-  const strengthColor = ["", "#ef4444", "#f59e0b", "#3b82f6", "#22c55e"][
-    pwdStrength
-  ];
+  const strengthColor = ["", "#ef4444", "#f59e0b", "#3b82f6", "#22c55e"][pwdStrength];
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    setApiError(null);
+    // Validate
     const errs: { current?: string; newPwd?: string; confirm?: string } = {};
     if (!security.current) errs.current = "Current password is required.";
     if (!security.newPwd || security.newPwd.length < 8)
@@ -802,14 +575,29 @@ function SecurityTab({ accentColor }: { accentColor: string }) {
       errs.confirm = "Passwords do not match.";
     dispatch(setSecurityErrors(errs));
     if (Object.keys(errs).length) return;
-    dispatch(securitySubmitSuccess());
-    setTimeout(() => dispatch(hideSecurityBanner()), 3000);
+
+    try {
+      const result = await dispatch(
+        changePasswordAction({
+          oldPassword: security.current,
+          newPassword: security.newPwd,
+        })
+      ).unwrap();
+
+      // Success
+      dispatch(securitySubmitSuccess());
+      setTimeout(() => dispatch(hideSecurityBanner()), 3000);
+      // Clear form
+      dispatch(setSecurityField({ current: "", newPwd: "", confirm: "" }));
+    } catch (err: any) {
+      setApiError(err?.message || "Failed to change password. Please try again.");
+    }
   };
 
   const btnStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
-    background: accentColor,
+    background: loading ? "#aaa" : accentColor,
     color: "white",
     border: "none",
     borderRadius: 8,
@@ -817,8 +605,9 @@ function SecurityTab({ accentColor }: { accentColor: string }) {
     height: 44,
     fontSize: 13.5,
     fontWeight: 600,
-    cursor: "pointer",
+    cursor: loading ? "not-allowed" : "pointer",
     fontFamily: "'Roboto', sans-serif",
+    opacity: loading ? 0.6 : 1,
   };
 
   return (
@@ -885,12 +674,35 @@ function SecurityTab({ accentColor }: { accentColor: string }) {
             error={security.errors.confirm}
           />
         </div>
+
+        {apiError && (
+          <div
+            style={{
+              marginTop: 16,
+              background: "#fee2e2",
+              border: "1px solid #fecaca",
+              borderRadius: 8,
+              padding: "10px 14px",
+              color: "#b91c1c",
+              fontSize: 13,
+            }}
+          >
+            {apiError}
+          </div>
+        )}
+
         {security.savedBanner && (
           <SuccessBanner message="Password changed successfully!" />
         )}
+
         <div style={{ marginTop: 20 }}>
-          <button className="save-btn" style={btnStyle} onClick={handleSubmit}>
-            Change Password
+          <button
+            className="save-btn"
+            style={btnStyle}
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? "Changing..." : "Change Password"}
           </button>
         </div>
       </Card>
@@ -1148,12 +960,10 @@ interface TabDef {
 
 function SettingsInner() {
   const accentColor = useAppSelector((s) => s.appearance.accentColor);
-  const [activeTab, setActiveTab] = useState("account");
-  // ✅ Single state for mobile sidebar — only used on mobile
+  const [activeTab, setActiveTab] = useState("notifications");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const tabs: TabDef[] = [
-    { id: "account", label: "Account Settings", Icon: Icons.User },
     { id: "notifications", label: "Notifications", Icon: Icons.Bell },
     { id: "security", label: "Password & Security", Icon: Icons.Shield },
     { id: "appearance", label: "Appearance", Icon: Icons.Palette },
@@ -1205,13 +1015,10 @@ function SettingsInner() {
         .notif-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; }
         .notif-row + .notif-row { border-top: 1px solid #fce8f0; }
 
-        /* ── Sidebar layout ── */
-        /* Desktop: show the sidebar, hide mobile overlay and top bar */
         .s-sidebar        { width: 224px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; }
         .s-mobile-topbar  { display: none; }
         .s-mobile-overlay { display: none; }
 
-        /* Mobile: hide desktop sidebar, show topbar and overlay when open */
         @media (max-width: 768px) {
           .s-root          { flex-direction: column !important; padding: 0 !important; }
           .s-sidebar        { display: none !important; }
@@ -1222,7 +1029,6 @@ function SettingsInner() {
             position: fixed; inset: 0; z-index: 50;
             background: white; padding: 24px 20px;
             overflow-y: auto; gap: 4px;
-            /* hidden by default, shown when .open */
             transform: translateX(-100%);
             transition: transform 0.25s ease;
           }
@@ -1241,7 +1047,6 @@ function SettingsInner() {
           fontFamily: "'Roboto', sans-serif",
         }}
       >
-        {/* ✅ Mobile top bar — only visible on mobile via CSS */}
         <div
           className="s-mobile-topbar"
           style={{
@@ -1282,7 +1087,6 @@ function SettingsInner() {
           </button>
         </div>
 
-        {/* ✅ Mobile sidebar overlay — slides in from left on mobile only */}
         <div className={`s-mobile-overlay${sidebarOpen ? " open" : ""}`}>
           <p
             style={{
@@ -1319,7 +1123,6 @@ function SettingsInner() {
             alignItems: "flex-start",
           }}
         >
-          {/* ✅ Desktop sidebar — single sidebar, hidden on mobile via CSS */}
           <div className="s-sidebar">
             <p
               style={{
@@ -1347,13 +1150,11 @@ function SettingsInner() {
             ))}
           </div>
 
-          {/* Main content */}
           <div
             className="s-main fade-in"
             key={activeTab}
             style={{ flex: 1, minWidth: 0, padding: "0 2px" }}
           >
-            {activeTab === "account" && <AccountTab />}
             {activeTab === "notifications" && (
               <NotificationsTab accentColor={accentColor} />
             )}

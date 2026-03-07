@@ -16,7 +16,7 @@ export const cartService = {
    * Get all items in user's cart
    */
   async getCart(): Promise<CartResponse> {
-    const response = await apiClient.get("/api/cart");
+    const response = await apiClient.get("/cart");
     return response.data;
   },
 
@@ -26,7 +26,7 @@ export const cartService = {
    * @param quantity - Quantity (default: 1)
    */
   async addToCart(productId: string, quantity: number = 1) {
-    const response = await apiClient.post("/api/cart", { productId, quantity });
+    const response = await apiClient.post("/cart", { productId, quantity });
     return response.data;
   },
 
@@ -36,7 +36,7 @@ export const cartService = {
    * @param quantity - New quantity
    */
   async updateCartQuantity(productId: string, quantity: number) {
-    const response = await apiClient.put(`/api/cart/${productId}`, {
+    const response = await apiClient.put(`/cart/${productId}`, {
       quantity,
     });
     return response.data;
@@ -47,7 +47,7 @@ export const cartService = {
    * @param productId - Product ID to remove
    */
   async removeFromCart(productId: string) {
-    const response = await apiClient.delete(`/api/cart/${productId}`);
+    const response = await apiClient.delete(`/cart/${productId}`);
     return response.data;
   },
 
@@ -55,7 +55,7 @@ export const cartService = {
    * Clear entire cart
    */
   async clearCart() {
-    const response = await apiClient.delete("/api/cart");
+    const response = await apiClient.delete("/cart");
     return response.data;
   },
 
@@ -64,7 +64,7 @@ export const cartService = {
    * @param code - Promo code
    */
   async applyPromoCode(code: string) {
-    const response = await apiClient.post("/api/cart/promo", { code });
+    const response = await apiClient.post("/cart/promo", { code });
     return response.data;
   },
 };

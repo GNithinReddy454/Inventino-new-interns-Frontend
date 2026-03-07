@@ -38,6 +38,8 @@ apiClient.interceptors.response.use(
   (error: AxiosError) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
       localStorage.removeItem("token");
+      localStorage.removeItem("inventino_user");
+      // Ideally trigger a global event or page refresh, but clearing is a start
     }
     return Promise.reject(error);
   },

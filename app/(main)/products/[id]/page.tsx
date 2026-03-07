@@ -16,11 +16,13 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCart } from "@/lib/cartContext";
-import { useStore } from "@/lib/storeContext";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
 import ProductReviews from "@/app/components/ProductReviews";
 import ProductCard from "@/app/components/ProductCard";
 import { productService } from "@/services/product.service";
 import { useToast } from "@/app/components/GlobalToast";
+import { addToCart as reduxAddToCart } from "@/redux/cartslice";
 
 // --- TYPES ---
 interface Product {
@@ -41,7 +43,8 @@ export default function ProductDetailsPage() {
   const params = useParams();
   const productId = params?.id as string;
   const { addToCart } = useCart();
-  const { handleSaved, savedItems = [] } = useStore();
+  const dispatch = useAppDispatch();
+  const { items: savedItems = [] } = useAppSelector((state: any) => state.wishlist);
   const { showToast } = useToast();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -49,7 +52,6 @@ export default function ProductDetailsPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState(0);
-  const [isAdded, setIsAdded] = useState(false);
   const [showBottomReviews, setShowBottomReviews] = useState(false);
   const [activeAccordion, setActiveAccordion] = useState<string | null>(null);
   const [isZoomMode, setIsZoomMode] = useState(false);
@@ -170,7 +172,7 @@ export default function ProductDetailsPage() {
     );
   }
 
-  const isSaved = (savedItems as any).some((item: any) => item.id === product.id);
+  const isSaved = (savedItems as any).some((si: any) => si.product?._id === String(product.id) || si.product?.id === product.id);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isZoomMode) return;
@@ -183,17 +185,17 @@ export default function ProductDetailsPage() {
 
   const handleAddToCart = () => {
     addToCart(product as any, quantity);
-    setIsAdded(true);
-    setTimeout(() => setIsAdded(false), 3500);
+    dispatch(reduxAddToCart({ productId: String(product?.id), quantity }));
     showToast("Success!", "Added to bag", "success");
   };
 
   const handleWishlist = () => {
-    handleSaved(product as any);
-    const willBeSaved = !(savedItems as any).some((item: any) => item.id === product.id);
+    const willBeSaved = !isSaved;
     if (willBeSaved) {
+      dispatch(addWishlistItem(String(product.id)));
       showToast("Success!", "Added to wishlist", "success");
     } else {
+      dispatch(removeWishlistItem(String(product.id)));
       showToast("Removed", "Removed from wishlist", "info");
     }
   };
@@ -273,9 +275,8 @@ export default function ProductDetailsPage() {
               <div className="absolute top-4 right-4 flex flex-col gap-3 z-20">
                 <button
                   onClick={handleWishlist}
-                  className={`p-3 rounded-full shadow-md transition-all active:scale-90 ${
-                    isSaved ? "bg-[#D94F7A] text-white" : "bg-white/90 text-gray-400 hover:text-[#D94F7A]"
-                  }`}
+                  className={`p-3 rounded-full shadow-md transition-all active:scale-90 ${isSaved ? "bg-[#D94F7A] text-white" : "bg-white/90 text-gray-400 hover:text-[#D94F7A]"
+                    }`}
                 >
                   <Heart size={20} fill={isSaved ? "currentColor" : "none"} />
                 </button>
@@ -322,9 +323,8 @@ export default function ProductDetailsPage() {
               {product.images.map((_, idx) => (
                 <div
                   key={idx}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    selectedImage === idx ? "w-5 bg-[#D94F7A]" : "w-1.5 bg-gray-300"
-                  }`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${selectedImage === idx ? "w-5 bg-[#D94F7A]" : "w-1.5 bg-gray-300"
+                    }`}
                 />
               ))}
             </div>
@@ -343,11 +343,10 @@ export default function ProductDetailsPage() {
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
-                  className={`shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-2xl overflow-hidden border-2 transition-all snap-center ${
-                    selectedImage === idx
-                      ? "border-[#D94F7A] ring-4 ring-[#D94F7A]/10 scale-95"
-                      : "border-gray-100 hover:border-gray-300"
-                  }`}
+                  className={`shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-2xl overflow-hidden border-2 transition-all snap-center ${selectedImage === idx
+                    ? "border-[#D94F7A] ring-4 ring-[#D94F7A]/10 scale-95"
+                    : "border-gray-100 hover:border-gray-300"
+                    }`}
                 >
                   <img src={img} className="w-full h-full object-cover" />
                 </button>
@@ -388,9 +387,8 @@ export default function ProductDetailsPage() {
                 <button
                   key={idx}
                   onClick={() => setSelectedColor(idx)}
-                  className={`w-9 h-9 rounded-full border-2 transition-all hover:scale-110 shadow-sm ${
-                    selectedColor === idx ? "border-gray-900 scale-110" : "border-gray-200"
-                  }`}
+                  className={`w-9 h-9 rounded-full border-2 transition-all hover:scale-110 shadow-sm ${selectedColor === idx ? "border-gray-900 scale-110" : "border-gray-200"
+                    }`}
                   style={{ backgroundColor: col }}
                 />
               ))}
@@ -416,18 +414,9 @@ export default function ProductDetailsPage() {
             </div>
             <button
               onClick={handleAddToCart}
-              disabled={isAdded}
-              className={`flex-1 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 h-14 transition-all ${
-                isAdded
-                  ? "bg-emerald-600 text-white shadow-emerald-100"
-                  : "bg-[#D94F7A] hover:bg-[#b83d63] text-white"
-              }`}
+              className="flex-1 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 h-14 transition-all bg-[#D94F7A] hover:bg-[#b83d63] text-white"
             >
-              {isAdded ? (
-                <><CheckCircle2 size={18} strokeWidth={3} /> Added</>
-              ) : (
-                <><ShoppingBag size={18} /> Add to Bag</>
-              )}
+              <ShoppingBag size={18} /> Add to Bag
             </button>
           </div>
 
@@ -561,9 +550,9 @@ export default function ProductDetailsPage() {
             className="flex gap-6 overflow-x-auto pb-8 no-scrollbar snap-x scroll-smooth"
           >
             {[1, 2, 3, 4, 5, 6].map((offset) => (
-              <div 
-                key={offset} 
-                className="snap-start shrink-0" 
+              <div
+                key={offset}
+                className="snap-start shrink-0"
                 // FIXED: width: 80% on mobile for "peek" effect, 25% on desktop
                 style={{ width: "clamp(250px, 80%, calc(25% - 18px))" }}
               >
@@ -588,7 +577,7 @@ export default function ProductDetailsPage() {
           className="max-w-7xl mx-auto pb-20 px-6 pt-10 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-1000"
         >
           {/* ✅ productId passed here so reviews API uses the correct MongoDB _id */}
-          <ProductReviews productId={productId} isLoggedIn={false} hasPurchased={false} />
+          <ProductReviews productId={productId} isLoggedIn={false} />
         </div>
       )}
 

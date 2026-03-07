@@ -1,18 +1,39 @@
 import { useState, useEffect } from "react";
 import { Download, TrendingUp } from "lucide-react";
 import { Skeleton } from "./Skeleton";
-import { TOP_PRODUCTS } from "../_data/mockData";
 import CategoryProgress from "./CategoryProgress";
 import { exportToCSV } from "./exportUtils";
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from "recharts";
+import { getAnalytics, AnalyticsData } from "@/services/admin.service";
+
+const PERIOD_MAP: Record<string, string> = {
+    "Today": "7d",
+    "Last 7 Days": "7d",
+    "This Month": "30d",
+    "This Year": "1y",
+};
 
 export default function ReportsAnalyticsView() {
     const [period, setPeriod] = useState("This Month");
     const [isLoading, setIsLoading] = useState(true);
+    const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
     useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 1500);
-        return () => clearTimeout(timer);
-    }, []);
+        const fetchAnalytics = async () => {
+            setIsLoading(true);
+            try {
+                const data = await getAnalytics(PERIOD_MAP[period] || "30d");
+                setAnalyticsData(data);
+            } catch (err) {
+                console.error("Failed to fetch analytics:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchAnalytics();
+    }, [period]);
 
     const regions = [
         { name: "North America", sales: 45, value: "$21,450" },
@@ -20,6 +41,27 @@ export default function ReportsAnalyticsView() {
         { name: "Asia", sales: 15, value: "$7,150" },
         { name: "Other", sales: 10, value: "$2,380" },
     ];
+
+    const salesChartData: Record<string, { label: string; value: number }[]> = {
+        "Today": [
+            { label: "6am", value: 220 }, { label: "9am", value: 780 }, { label: "12pm", value: 1340 },
+            { label: "3pm", value: 850 }, { label: "6pm", value: 1200 }, { label: "9pm", value: 640 },
+        ],
+        "Last 7 Days": [
+            { label: "Mon", value: 3200 }, { label: "Tue", value: 5100 }, { label: "Wed", value: 2700 },
+            { label: "Thu", value: 6400 }, { label: "Fri", value: 7100 }, { label: "Sat", value: 8200 }, { label: "Sun", value: 5500 },
+        ],
+        "This Month": [
+            { label: "Wk 1", value: 12400 }, { label: "Wk 2", value: 18900 }, { label: "Wk 3", value: 15200 }, { label: "Wk 4", value: 21300 },
+        ],
+        "This Year": [
+            { label: "Jan", value: 32000 }, { label: "Feb", value: 28000 }, { label: "Mar", value: 41000 },
+            { label: "Apr", value: 36000 }, { label: "May", value: 45000 }, { label: "Jun", value: 52000 },
+            { label: "Jul", value: 49000 }, { label: "Aug", value: 58000 }, { label: "Sep", value: 54000 },
+            { label: "Oct", value: 61000 }, { label: "Nov", value: 67000 }, { label: "Dec", value: 72000 },
+        ],
+    };
+    const activeChartData = salesChartData[period] || salesChartData["This Month"];
 
     return (
         <div className="space-y-6 w-full">
@@ -47,7 +89,7 @@ export default function ReportsAnalyticsView() {
                         <option>This Year</option>
                     </select>
                     <button
-                        onClick={() => exportToCSV(TOP_PRODUCTS, "top_products_report.csv", ["color"])}
+                        onClick={() => exportToCSV(analyticsData ? [analyticsData] : [], "analytics_report.csv", [])}
                         className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-sm shrink-0"
                     >
                         <Download size={16} />
@@ -66,10 +108,18 @@ export default function ReportsAnalyticsView() {
                                 Sales Report
                             </h3>
                             <p className="text-3xl font-bold text-primary mt-2 flex items-center gap-3">
-                                $45,280.00
-                                <span className="text-sm text-green-500 flex items-center bg-green-50 px-2 py-1 rounded-lg">
-                                    <TrendingUp size={14} className="mr-1" /> +12.5%
-                                </span>
+                                {analyticsData
+                                    ? `₹${analyticsData.revenue.current.toLocaleString()}`
+                                    : "—"}
+                                {analyticsData && (
+                                    <span className={`text-sm flex items-center px-2 py-1 rounded-lg ${analyticsData.revenue.trend >= 0
+                                            ? "text-green-500 bg-green-50"
+                                            : "text-red-500 bg-red-50"
+                                        }`}>
+                                        <TrendingUp size={14} className="mr-1" />
+                                        {analyticsData.revenue.trend >= 0 ? "+" : ""}{analyticsData.revenue.trend}%
+                                    </span>
+                                )}
                             </p>
                         </div>
                         <div className="flex gap-2">
@@ -89,26 +139,25 @@ export default function ReportsAnalyticsView() {
 
                     {isLoading ? (
                         <div className="h-64 flex items-end justify-between gap-1 md:gap-2">
-                            {/* Predefined heights for skeleton bars to avoid Math.random() hydration issues */}
                             {[30, 70, 45, 60, 50, 80, 40, 75, 55, 65, 35, 85, 45, 60].map((h, i) => (
                                 <Skeleton key={i} className="w-full h-full rounded-t-sm" style={{ height: `${h}%` }} />
                             ))}
                         </div>
                     ) : (
-                        <div className="h-64 flex items-end justify-between gap-1 md:gap-2">
-                            {[40, 65, 45, 80, 55, 90, 75, 100, 85, 120, 95, 110, 80, 95].map(
-                                (h, i) => (
-                                    <div
-                                        key={i}
-                                        className="w-full bg-blue-100 rounded-t-sm hover:bg-blue-500 transition-colors cursor-pointer group relative"
-                                        style={{ height: `${h}%` }}
-                                    >
-                                        <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] py-1 px-2 rounded font-bold transition-opacity whitespace-nowrap z-10">
-                                            ${(h * 125).toLocaleString()}
-                                        </div>
-                                    </div>
-                                ),
-                            )}
+                        <div style={{ height: 240 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={activeChartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={28}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: 600 }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 10, fill: "#9ca3af" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                                    <Tooltip
+                                        cursor={{ fill: "#f9fafb", radius: 4 }}
+                                        contentStyle={{ borderRadius: 10, border: "1px solid #f3f4f6", fontSize: 12 }}
+                                        formatter={(v: number | undefined) => [`$${(v ?? 0).toLocaleString()}`, "Sales"]}
+                                    />
+                                    <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
                     )}
                     <div className="flex justify-between text-[10px] text-muted-foreground mt-4 font-bold px-2">
@@ -144,7 +193,11 @@ export default function ReportsAnalyticsView() {
                                     </div>
                                 ))
                             ) : (
-                                TOP_PRODUCTS.slice(0, 3).map((prod: any, i: number) => (
+                                [
+                                    { name: "Rose Gold Bracelet", category: "Jewelry", sales: "245", color: "bg-[#DBA379]" },
+                                    { name: "Pearl Necklace", category: "Jewelry", sales: "198", color: "bg-[#BCC1C4]" },
+                                    { name: "Boho Beaded Set", category: "Accessories", sales: "156", color: "bg-[#678F7A]" },
+                                ].map((prod: any, i: number) => (
                                     <div key={i} className="flex items-center gap-3">
                                         <div
                                             className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-foreground shrink-0 shadow-sm ${prod.color}`}

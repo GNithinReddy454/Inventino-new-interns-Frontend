@@ -1,9 +1,11 @@
-
 "use client";
 
-import { useState, useCallback } from "react";
-import { useStore } from "@/lib/storeContext";
+import { useState, useCallback, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { fetchWishlist, removeWishlistItem, clearWishlist, addWishlistItem } from "@/redux/wishlistslice";
+import { addToCart as reduxAddToCart } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
+import { useAuth } from "@/app/(main)/components/authContext";
 import {
   Heart,
   ShoppingCart,
@@ -74,15 +76,21 @@ function getBadgeInfo(badge: any): { text: string; color: string } | null {
 }
 
 export default function WishlistPage() {
-  const { savedItems, handleSaved } = useStore();
+  const dispatch = useAppDispatch();
+  const { items: savedItems, isLoading, error } = useAppSelector((state) => state.wishlist);
   const { addToCart } = useCart();
+  const { user } = useAuth();
 
   const [toast, setToast] = useState<{
     title?: string;
     message: string;
     show: boolean;
   }>({ title: "Added to cart!", message: "", show: false });
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    dispatch(fetchWishlist());
+  }, [dispatch]);
 
   const triggerToast = useCallback(
     (message: string, title: string = "Added to cart!") => {
@@ -94,21 +102,30 @@ export default function WishlistPage() {
 
   const handleAddToCart = useCallback(
     (item: any) => {
-      addToCart(item, 1);
-      handleSaved(item);
+      const pId = String(item._id || item.id);
+      if (user) {
+        dispatch(reduxAddToCart({ productId: pId, quantity: 1 }));
+      } else {
+        addToCart(item, 1);
+      }
+      dispatch(removeWishlistItem(pId));
       triggerToast(`${item.name || item.title} added to cart`);
     },
-    [addToCart, handleSaved, triggerToast],
+    [addToCart, dispatch, triggerToast, user],
   );
 
   const handleAddAllToCart = () => {
     if (!selectedIds.length) return;
     let count = 0;
     selectedIds.forEach((id) => {
-      const item = savedItems.find((p) => p.id === id);
-      if (item) {
-        addToCart(item as any, 1);
-        handleSaved(item);
+      const itemWrapper = savedItems.find((p: any) => p.product?._id === id || p.product?.id === id);
+      if (itemWrapper && itemWrapper.product) {
+        if (user) {
+          dispatch(reduxAddToCart({ productId: String(id), quantity: 1 }));
+        } else {
+          addToCart(itemWrapper.product as any, 1);
+        }
+        dispatch(removeWishlistItem(id));
         count++;
       }
     });
@@ -119,26 +136,31 @@ export default function WishlistPage() {
   const handleRemoveSelected = () => {
     if (!selectedIds.length) return;
     selectedIds.forEach((id) => {
-      const item = savedItems.find((p) => p.id === id);
-      if (item) handleSaved(item);
+      dispatch(removeWishlistItem(id));
     });
     setSelectedIds([]);
   };
 
   const handleRemoveAll = () => {
-    savedItems.forEach((item) => handleSaved(item));
+    dispatch(clearWishlist());
     setSelectedIds([]);
   };
 
   const handleAddEntireWishlistToCart = () => {
     if (!savedItems.length) return;
     let count = 0;
-    savedItems.forEach((item) => {
-      addToCart(item as any, 1);
-      // Remove from wishlist at the same time
-      handleSaved(item);
-      count++;
+    savedItems.forEach((itemWrapper: any) => {
+      if (itemWrapper.product) {
+        const pId = String(itemWrapper.product._id || itemWrapper.product.id);
+        if (user) {
+          dispatch(reduxAddToCart({ productId: pId, quantity: 1 }));
+        } else {
+          addToCart(itemWrapper.product as any, 1);
+        }
+        count++;
+      }
     });
+    dispatch(clearWishlist());
     triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart`);
     setSelectedIds([]);
   };
@@ -147,10 +169,10 @@ export default function WishlistPage() {
     setSelectedIds(
       selectedIds.length === savedItems.length
         ? []
-        : savedItems.map((i) => i.id),
+        : savedItems.filter((i: any) => i.product).map((i: any) => i.product._id),
     );
 
-  const toggleSelect = (id: number) =>
+  const toggleSelect = (id: string) =>
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
@@ -162,11 +184,10 @@ export default function WishlistPage() {
     <div className="w-full bg-[#FFF9FD] font-sans min-h-screen">
       {/* ── Toast ── */}
       <div
-        className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${
-          toast.show
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-4 pointer-events-none"
-        }`}
+        className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${toast.show
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 translate-y-4 pointer-events-none"
+          }`}
       >
         <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-[200px] max-w-[88vw]">
           <div className="bg-[#E8456A] w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0">
@@ -241,25 +262,38 @@ export default function WishlistPage() {
               </span>
             </label>
 
-            {/* Remove All */}
-            <button
-              onClick={handleRemoveAll}
-              className="inline-flex items-center gap-1.5 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-red-300 hover:text-red-500 transition-colors text-xs font-semibold text-gray-700 group whitespace-nowrap"
-            >
-              <Trash2
-                size={14}
-                className="text-gray-400 group-hover:text-red-500 transition-colors"
-              />
-              Remove All
-            </button>
+            {/* Remove All Selected / Remove All */}
+            {selectedIds.length > 0 ? (
+              <button
+                onClick={handleRemoveSelected}
+                className="inline-flex items-center gap-1.5 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-red-300 hover:text-red-500 transition-colors text-xs font-semibold text-gray-700 group whitespace-nowrap"
+              >
+                <Trash2
+                  size={14}
+                  className="text-gray-400 group-hover:text-red-500 transition-colors"
+                />
+                Remove Selected
+              </button>
+            ) : (
+              <button
+                onClick={handleRemoveAll}
+                className="inline-flex items-center gap-1.5 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-red-300 hover:text-red-500 transition-colors text-xs font-semibold text-gray-700 group whitespace-nowrap"
+              >
+                <Trash2
+                  size={14}
+                  className="text-gray-400 group-hover:text-red-500 transition-colors"
+                />
+                Remove All
+              </button>
+            )}
 
-            {/* Add All to Bag */}
+            {/* Add All to Cart */}
             <button
-              onClick={handleAddEntireWishlistToCart}
+              onClick={selectedIds.length > 0 ? handleAddAllToCart : handleAddEntireWishlistToCart}
               className="inline-flex items-center gap-1.5 cursor-pointer bg-[#E8456A] text-white rounded-xl px-3 py-2 shadow-sm hover:bg-[#c73358] transition-colors text-xs font-semibold whitespace-nowrap"
             >
               <ShoppingBag size={14} className="text-white" />
-              Add All to Bag
+              {selectedIds.length > 0 ? "Add Selected to Cart" : "Add All to Cart"}
             </button>
 
             {/* Count badge */}
@@ -271,8 +305,25 @@ export default function WishlistPage() {
           </div>
         )}
 
-        {/* ── Empty state ── */}
-        {savedItems.length === 0 ? (
+        {/* ── Error / Unauthenticated state ── */}
+        {!isLoading && error ? (
+          <div className="text-center py-16 sm:py-24 bg-white rounded-[28px] border-2 border-dashed border-red-200 px-6">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+              Authentication Required
+            </h3>
+            <p className="text-gray-400 text-sm mb-7 max-w-md mx-auto">
+              {error === "Unauthorized" || error.toLowerCase().includes("unauth") || error.includes("invalid token")
+                ? "Please log in to your account to view and manage your wishlist."
+                : error}
+            </p>
+            <Link
+              href="/login?redirect=/wishlist"
+              className="inline-flex items-center gap-2 bg-[#E8456A] text-white px-8 py-2.5 rounded-2xl font-bold hover:bg-[#c73358] transition-all shadow-md shadow-pink-100 uppercase tracking-widest text-xs"
+            >
+              Log In Now
+            </Link>
+          </div>
+        ) : !isLoading && savedItems.length === 0 ? (
           <div className="text-center py-16 sm:py-24 bg-white rounded-[28px] border-2 border-dashed border-[#F3D6EE] px-6">
             <h3 className="text-lg sm:text-xl font-bold text-gray-900">
               Your wishlist is empty
@@ -287,11 +338,18 @@ export default function WishlistPage() {
               Explore Treasures
             </Link>
           </div>
+        ) : isLoading && savedItems.length === 0 ? (
+          <div className="text-center py-16 sm:py-24">
+            <p className="text-gray-400 text-sm">Loading your wishlist...</p>
+          </div>
         ) : (
           /* ── Product Grid ── */
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
-            {savedItems.map((item: any) => {
-              const isSelected = selectedIds.includes(item.id);
+            {savedItems.map((apiItem: any) => {
+              const item = apiItem.product || {};
+              if (!item._id) return null;
+
+              const isSelected = selectedIds.includes(item._id);
               const name = item.name || item.title || "";
               const image = item.images?.[0] || item.image || "";
               const rating =
@@ -302,24 +360,29 @@ export default function WishlistPage() {
 
               return (
                 <div
-                  key={item.id}
-                  className={`relative bg-white rounded-2xl overflow-hidden border flex flex-col shadow-sm transition-all duration-300 hover:shadow-[0_6px_24px_rgba(232,69,106,0.13)] ${
-                    isSelected
-                      ? "ring-2 ring-[#E8456A] ring-offset-1 border-transparent"
-                      : "border-gray-100 hover:border-pink-100"
-                  }`}
+                  key={item._id}
+                  className={`relative bg-white rounded-2xl overflow-hidden border flex flex-col shadow-sm transition-all duration-300 hover:shadow-[0_6px_24px_rgba(232,69,106,0.13)] ${isSelected
+                    ? "ring-2 ring-[#E8456A] ring-offset-1 border-transparent"
+                    : "border-gray-100 hover:border-pink-100"
+                    }`}
                 >
                   {/* ── Image ── */}
                   <div className="relative aspect-square overflow-hidden bg-gray-50">
                     <Link
-                      href={`/products/${item.id}`}
+                      href={`/products/${item._id}`}
                       className="absolute inset-0"
                     >
-                      <img
-                        src={image}
-                        alt={name}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                      />
+                      {image ? (
+                        <img
+                          src={image}
+                          alt={name}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                          No Image
+                        </div>
+                      )}
                     </Link>
 
                     {/* ── TOP ROW: badge (left) + share (right) — never collide ── */}
@@ -344,7 +407,7 @@ export default function WishlistPage() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            handleSaved(item);
+                            dispatch(removeWishlistItem(item._id));
                             triggerToast(
                               `${name} removed from the wishlist`,
                               "Removed from Wishlist",
@@ -376,15 +439,14 @@ export default function WishlistPage() {
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => toggleSelect(item.id)}
+                          onChange={() => toggleSelect(item._id)}
                           className="sr-only peer"
                         />
                         <div
-                          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 shadow transition-all flex items-center justify-center ${
-                            isSelected
-                              ? "border-[#E8456A] bg-[#E8456A]"
-                              : "border-white/80 bg-black/10 hover:bg-white/90 hover:border-[#E8456A]"
-                          }`}
+                          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 shadow transition-all flex items-center justify-center ${isSelected
+                            ? "border-[#E8456A] bg-[#E8456A]"
+                            : "border-white/80 bg-black/10 hover:bg-white/90 hover:border-[#E8456A]"
+                            }`}
                         >
                           <svg
                             className={`w-2.5 h-2.5 text-white transition-opacity ${isSelected ? "opacity-100" : "opacity-0"}`}
@@ -409,7 +471,7 @@ export default function WishlistPage() {
                     {/* Category + Stars */}
                     <div className="flex items-center justify-between mb-0.5 gap-1">
                       <span className="text-[9px] sm:text-[10px] text-[#E8456A] font-bold uppercase tracking-widest truncate leading-none">
-                        {item.category}
+                        {item.category || "Jewelry"}
                       </span>
                       <div className="flex items-center gap-0.5 flex-shrink-0">
                         <StarRating rating={rating} />
@@ -420,7 +482,7 @@ export default function WishlistPage() {
                     </div>
 
                     {/* Name */}
-                    <Link href={`/products/${item.id}`}>
+                    <Link href={`/products/${item._id}`}>
                       <h3 className="font-bold text-gray-900 text-[11px] sm:text-sm leading-snug line-clamp-2 hover:text-[#E8456A] transition-colors mt-1 mb-1.5">
                         {name}
                       </h3>
@@ -445,10 +507,13 @@ export default function WishlistPage() {
                         className="flex-1 inline-flex items-center justify-center gap-1 bg-[#E8456A] hover:bg-[#c73358] text-white py-1.5 sm:py-2 rounded-lg text-[9px] sm:text-[11px] font-bold uppercase tracking-wide transition-all active:scale-95 shadow-sm shadow-pink-100"
                       >
                         <ShoppingBag size={10} className="flex-shrink-0" />
-                        ADD TO BAG
+                        Add to Cart
                       </button>
                       <button
-                        onClick={() => handleSaved(item)}
+                        onClick={() => {
+                          dispatch(removeWishlistItem(item._id));
+                          triggerToast("Removed from Wishlist", "Removed");
+                        }}
                         title="Remove from wishlist"
                         className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-400 hover:bg-red-50 transition-all active:scale-95"
                       >

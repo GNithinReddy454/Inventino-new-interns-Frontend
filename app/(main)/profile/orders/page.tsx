@@ -14,7 +14,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { orderService } from "@/services/order.service";
-import { log } from "console";
+
 
 type TabType = "all" | "delivered" | "cancelled";
 type OrderStatus = "Delivered" | "Shipped" | "Processing" | "Cancelled";
@@ -27,20 +27,29 @@ interface OrderItem {
 }
 
 interface Order {
-  id: string;
+  id: string;        // orderNumber — used for display & links
+  backendId: string; // raw DB id — used for cancel API call
   date: string;
   total: string;
   status: OrderStatus;
   items: OrderItem[];
 }
 
-// ── Map API orderStatus (lowercase) → UI OrderStatus ─────────────────────────
+// ── Map every possible API orderStatus → UI OrderStatus ──────────────────────
 const API_STATUS_MAP: Record<string, OrderStatus> = {
+  // common backend values
   delivered: "Delivered",
   shipped: "Shipped",
   processing: "Processing",
   created: "Processing",
+  pending: "Processing",
+  confirmed: "Processing",
+  out_for_delivery: "Shipped",
+  in_transit: "Shipped",
   cancelled: "Cancelled",
+  canceled: "Cancelled",
+  refunded: "Cancelled",
+  returned: "Cancelled",
 };
 
 const statusConfig = {
@@ -63,16 +72,27 @@ const statusConfig = {
 };
 
 // ── Map a single API order → internal Order ───────────────────────────────────
+// API shape: { orderNumber, status, pricing.total, createdAt, items[{name, imageUrl, price, quantity}] }
 function mapApiOrder(apiOrder: any): Order {
+  // Backend field is "status", NOT "orderStatus"
+  const rawStatus = (apiOrder.status ?? "").toLowerCase().trim();
+  const mappedStatus: OrderStatus = API_STATUS_MAP[rawStatus] ?? "Processing";
+
+  console.log(
+    `Order ${apiOrder.orderNumber}: API status="${apiOrder.status}" → UI status="${mappedStatus}"`,
+  );
+
   return {
-    id: apiOrder.orderNumber,
+    id: apiOrder.orderNumber,                          // e.g. "ORD-004"
+    backendId: apiOrder.orderNumber,                   // no top-level _id in response; orderNumber is the cancel key
     date: new Date(apiOrder.createdAt).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
     }),
-    total: `₹${Number(apiOrder.total).toFixed(2)}`,
-    status: API_STATUS_MAP[apiOrder.orderStatus?.toLowerCase()] ?? "Processing",
+    // total lives inside pricing.total
+    total: `₹${Number(apiOrder.pricing?.total ?? 0).toFixed(2)}`,
+    status: mappedStatus,
     items: (apiOrder.items ?? []).map((item: any) => ({
       name: item.name ?? "Product",
       variant: `Qty: ${item.quantity ?? 1}`,
@@ -84,7 +104,8 @@ function mapApiOrder(apiOrder: any): Order {
 
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<TabType>("all");
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null); // stores orderNumber
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -95,7 +116,7 @@ export default function OrdersPage() {
       const response = await orderService.getOrders();
       if (response?.data && Array.isArray(response.data)) {
         setOrders(response.data.map(mapApiOrder));
-      // console.log("fetched orders:",response.data)
+        console.log("Raw API orders:", response.data);
       }
     } catch (err) {
       console.error("Failed to fetch orders:", err);
@@ -121,13 +142,25 @@ export default function OrdersPage() {
     return true;
   });
 
-  const handleCancelOrder = (id: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === id ? { ...o, status: "Cancelled" as OrderStatus } : o,
-      ),
-    );
-    setCancellingId(null);
+  // ── Cancel order via API ──────────────────────────────────────────────────
+  const handleCancelOrder = async (orderNumber: string) => {
+    const order = orders.find((o) => o.id === orderNumber);
+    if (!order) return;
+
+    try {
+      setCancelLoading(true);
+      await orderService.cancelOrder(order.backendId); // use real DB id
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderNumber ? { ...o, status: "Cancelled" as OrderStatus } : o,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to cancel order:", err);
+    } finally {
+      setCancelLoading(false);
+      setCancellingId(null);
+    }
   };
 
   return (
@@ -140,6 +173,7 @@ export default function OrdersPage() {
       }}
     >
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
+        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -422,7 +456,7 @@ export default function OrdersPage() {
                     ))}
                   </div>
 
-                  {/* Action buttons */}
+                  {/* Action buttons — per status, matching file 2 layout */}
                   <div
                     style={{
                       borderTop: "1px solid #fef3f7",
@@ -437,6 +471,7 @@ export default function OrdersPage() {
                               : "1fr",
                     }}
                   >
+                    {/* ── Delivered ── */}
                     {order.status === "Delivered" && (
                       <>
                         <Link
@@ -500,7 +535,7 @@ export default function OrdersPage() {
                           <RotateCcw size={13} /> Return/Exchange
                         </Link>
                         <Link
-                          href={`/profile/reviews/write?orderId=${order.id}&productName=${encodeURIComponent(order.items[0].name)}`}
+                          href={`/profile/reviews/write?orderId=${order.id}&productName=${encodeURIComponent(order.items[0]?.name ?? "")}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -518,6 +553,7 @@ export default function OrdersPage() {
                       </>
                     )}
 
+                    {/* ── Shipped ── */}
                     {order.status === "Shipped" && (
                       <>
                         <Link
@@ -574,6 +610,7 @@ export default function OrdersPage() {
                       </>
                     )}
 
+                    {/* ── Processing ── */}
                     {order.status === "Processing" && (
                       <>
                         <button
@@ -632,6 +669,7 @@ export default function OrdersPage() {
                       </>
                     )}
 
+                    {/* ── Cancelled ── */}
                     {order.status === "Cancelled" && (
                       <div
                         style={{
@@ -652,7 +690,7 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* Cancel Modal */}
+      {/* Cancel Confirmation Modal */}
       {cancellingId && (
         <div
           style={{
@@ -693,6 +731,7 @@ export default function OrdersPage() {
             <div style={{ display: "flex", gap: 12 }}>
               <button
                 onClick={() => setCancellingId(null)}
+                disabled={cancelLoading}
                 style={{
                   flex: 1,
                   padding: "10px 0",
@@ -702,14 +741,16 @@ export default function OrdersPage() {
                   color: "#6b7280",
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: "pointer",
+                  cursor: cancelLoading ? "not-allowed" : "pointer",
                   fontFamily: "inherit",
+                  opacity: cancelLoading ? 0.6 : 1,
                 }}
               >
                 Keep Order
               </button>
               <button
                 onClick={() => handleCancelOrder(cancellingId)}
+                disabled={cancelLoading}
                 style={{
                   flex: 1,
                   padding: "10px 0",
@@ -719,11 +760,12 @@ export default function OrdersPage() {
                   color: "#fff",
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: "pointer",
+                  cursor: cancelLoading ? "not-allowed" : "pointer",
                   fontFamily: "inherit",
+                  opacity: cancelLoading ? 0.7 : 1,
                 }}
               >
-                Yes, Cancel
+                {cancelLoading ? "Cancelling..." : "Yes, Cancel"}
               </button>
             </div>
           </div>

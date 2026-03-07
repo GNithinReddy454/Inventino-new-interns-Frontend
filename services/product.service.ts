@@ -1,4 +1,3 @@
-
 import apiClient from "@/lib/api";
 import {
   GetAllProductsParams,
@@ -83,5 +82,10 @@ export const productService = {
     const response = await apiClient.patch(`/products/${id}/status`, data);
     return response.data;
   },
-};
 
+  // GET /products/:productId/similar
+  async getSimilar(productId: string) {
+    const response = await apiClient.get(`/products/${productId}/similar`);
+    return response.data;
+  },
+};

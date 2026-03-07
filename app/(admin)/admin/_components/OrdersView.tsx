@@ -1,21 +1,34 @@
 import { useState, useEffect } from "react";
 import { ChevronDown, MoreVertical, Search, ShoppingCart, TrendingUp } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
-import { RECENT_ORDERS } from "../_data/mockData"; // You will need to move ORDERS_DATA to mockData later, or I can paste it now
 import { exportToCSV } from "./exportUtils";
+import Pagination from "./Pagination";
+import { getAdminOrders, AdminOrder } from "@/services/admin.service";
 
-export default function OrdersView({ ORDERS_DATA = RECENT_ORDERS }: any) {
+export default function OrdersView() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All Status");
     const [dateFilter, setDateFilter] = useState("All Dates");
     const [sort, setSort] = useState("Newest");
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [ORDERS_DATA, setOrdersData] = useState<AdminOrder[]>([]);
 
     useEffect(() => {
-        // Simulate API fetch delay
-        const timer = setTimeout(() => setIsLoading(false), 1500);
-        return () => clearTimeout(timer);
+        const fetchOrders = async () => {
+            setIsLoading(true);
+            try {
+                const data = await getAdminOrders();
+                setOrdersData(data ?? []);
+            } catch (err) {
+                console.error("Failed to fetch admin orders:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchOrders();
     }, []);
 
     const statuses = [
@@ -134,14 +147,14 @@ export default function OrdersView({ ORDERS_DATA = RECENT_ORDERS }: any) {
 
     const filtered = ORDERS_DATA.filter((o: any) => {
         const matchSearch =
-            o.id.toLowerCase().includes(search.toLowerCase()) ||
-            o.customer.toLowerCase().includes(search.toLowerCase());
+            o._id.toLowerCase().includes(search.toLowerCase()) ||
+            (o.trackingNumber || "").toLowerCase().includes(search.toLowerCase());
         const matchStatus =
             statusFilter === "All Status" || o.status === statusFilter;
         return matchSearch && matchStatus;
-    }).sort((a: any, b: any) =>
-        sort === "Oldest" ? a.id.localeCompare(b.id) : b.id.localeCompare(a.id),
-    );
+    });
+
+    const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const statusBadge = (status: string) => {
         const map: Record<string, string> = {
@@ -326,14 +339,14 @@ export default function OrdersView({ ORDERS_DATA = RECENT_ORDERS }: any) {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filtered.map((order: any) => (
+                                    paginated.map((order: any) => (
                                         <tr
-                                            key={order.id}
+                                            key={order._id}
                                             className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors"
                                         >
                                             <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground font-mono text-xs flex justify-between md:table-cell">
                                                 <span className="md:hidden text-muted-foreground uppercase tracking-wider">Order ID</span>
-                                                {order.id}
+                                                {order._id.slice(-8).toUpperCase()}
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex items-center gap-3">
@@ -361,15 +374,17 @@ export default function OrdersView({ ORDERS_DATA = RECENT_ORDERS }: any) {
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Amount</span>
-                                                {order.amount}
+                                                ₹{order.totalAmount?.toLocaleString() ?? "—"}
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Status</span>
                                                 {statusBadge(order.status)}
                                             </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 text-sm text-muted-foreground font-mono flex justify-between md:table-cell items-center">
+                                            <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Tracking</span>
-                                                {order.tracking}
+                                                <span className="bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded-lg text-xs font-bold font-mono">
+                                                    {order.trackingNumber || "N/A"}
+                                                </span>
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
                                                 <button
@@ -386,7 +401,16 @@ export default function OrdersView({ ORDERS_DATA = RECENT_ORDERS }: any) {
                                                         <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">
                                                             View Details
                                                         </button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">
+                                                        <button
+                                                            className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground"
+                                                            onClick={() => {
+                                                                const newStatus = order.status === "pending" ? "processing" :
+                                                                    order.status === "processing" ? "shipped" :
+                                                                        "completed";
+                                                                setOrdersData(prev => prev.map(o => o._id === order._id ? { ...o, status: newStatus } : o));
+                                                                setOpenMenu(null);
+                                                            }}
+                                                        >
                                                             Update Status
                                                         </button>
                                                         <button
@@ -395,7 +419,13 @@ export default function OrdersView({ ORDERS_DATA = RECENT_ORDERS }: any) {
                                                         >
                                                             Print Invoice
                                                         </button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500">
+                                                        <button
+                                                            className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500"
+                                                            onClick={() => {
+                                                                setOrdersData(prev => prev.filter(o => o._id !== order._id));
+                                                                setOpenMenu(null);
+                                                            }}
+                                                        >
                                                             Cancel Order
                                                         </button>
                                                     </div>
@@ -408,18 +438,20 @@ export default function OrdersView({ ORDERS_DATA = RECENT_ORDERS }: any) {
                         </table>
                     </div>
 
-                    {/* Footer */}
-                    <div className="px-6 py-4 border-t border-border bg-muted/20 flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">
-                            Showing{" "}
-                            <span className="font-bold text-foreground">{filtered.length}</span>{" "}
-                            of {ORDERS_DATA.length} orders
-                        </p>
+                    {/* Pagination Footer */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-6 py-3 border-t border-border bg-muted/20">
+                        <Pagination
+                            currentPage={currentPage}
+                            totalItems={filtered.length}
+                            pageSize={pageSize}
+                            onPageChange={(p) => { setCurrentPage(p); setOpenMenu(null); }}
+                            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                        />
                         <button
-                            className="text-xs font-bold text-primary hover:text-primary-dark transition-colors"
+                            className="text-xs font-bold text-primary hover:text-primary-dark transition-colors shrink-0"
                             onClick={() => exportToCSV(filtered, "orders.csv", ["initials", "bg"])}
                         >
-                            Export CSV &rarr;
+                            Export CSV →
                         </button>
                     </div>
                 </div>

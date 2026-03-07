@@ -1,16 +1,113 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
-import { products } from "@/lib/products";
 import ClientOnly from "./ClientOnly";
 import ProductCard from "./ProductCard";
 
+interface ProductImage {
+  id: string;
+  url: string;
+  _id?: string;
+}
+
+interface Product {
+  _id: string;
+  name: string;
+  slug: string;
+  description: string;
+  price: number;
+  discountPrice?: number;
+  category: string;
+  material: string;
+  size?: string;
+  color?: string;
+  stock: number;
+  images: ProductImage[];
+  isActive: boolean;
+  isDeleted: boolean;
+  ratingsAverage?: number;
+  ratingsCount?: number;
+  trendy?: boolean;
+  bestSeller?: boolean;
+  hashtags?: string[];
+  productId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
+
+/** Convert a raw image URL (relative or absolute) to a full URL */
+function resolveUrl(url: string): string {
+  if (!url || url.includes("undefined")) return "";
+  return url.startsWith("http") ? url : `${BASE_URL}${url}`;
+}
+
+/** Map API product → shape that ProductCard expects */
+function normalizeProduct(p: Product) {
+  // ProductCard expects:
+  //   image: string          (single primary image)
+  //   images?: string[]      (array of strings for slideshow)
+  const resolvedImages = p.images
+    .map((img) => resolveUrl(img.url))
+    .filter(Boolean);
+
+  return {
+    id: p._id,
+    name: p.name,
+    slug: p.slug,
+    description: p.description,
+    price: p.price,
+    originalPrice: p.discountPrice ? p.price : undefined, // show strikethrough if discounted
+    category: p.category,
+    material: p.material,
+    size: p.size,
+    color: p.color,
+    stock: p.stock,
+    image: resolvedImages[0] ?? "",       // ✅ single string — required by ProductCard
+    images: resolvedImages,               // ✅ string[] — for the slideshow
+    rating: p.ratingsAverage ?? 0,
+    reviews: p.ratingsCount ?? 0,
+    badge: p.bestSeller
+      ? "BEST SELLER"
+      : p.trendy
+        ? "TRENDY"
+        : undefined,
+    tags: p.hashtags ?? [p.category, "Adjustable"].filter(Boolean),
+  };
+}
+
 export default function BestSellers() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Adjusted to 8 products so there are exactly 2 full pages on desktop (4 per page)
-  const bestSellerProducts = products.slice(0, 8);
+  useEffect(() => {
+    const fetchBestSellers = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/products?category=all`
+        );
+        if (!res.ok) throw new Error("Failed to fetch best sellers");
+        const data = await res.json();
+        const allProducts: Product[] = data?.data?.items ?? [];
+        const bestSellers = allProducts
+          .filter((p) => p.bestSeller === true)
+          .slice(0, 8);
+        // Fallback: if none flagged as bestSeller, show first 8
+        setProducts(bestSellers.length > 0 ? bestSellers : allProducts.slice(0, 8));
+      } catch (err: any) {
+        setError(err.message || "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBestSellers();
+  }, []);
 
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current || !scrollRef.current.children.length) return;
@@ -21,21 +118,17 @@ export default function BestSellers() {
       firstChild.clientWidth +
       parseInt(window.getComputedStyle(container).gap || "0");
 
-    // Disable CSS smooth scrolling and snapping while animating to prevent conflicts
     container.style.scrollBehavior = "auto";
     container.style.scrollSnapType = "none";
 
     const startPos = container.scrollLeft;
     const targetPos = dir === "right" ? startPos + amount : startPos - amount;
-
-    const duration = 600; // 600ms for a slow smooth effect
+    const duration = 600;
     const startTime = performance.now();
 
     const animateScroll = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-
-      // easeInOutCubic
       const easeProgress =
         progress < 0.5
           ? 4 * Math.pow(progress, 3)
@@ -46,7 +139,6 @@ export default function BestSellers() {
       if (elapsed < duration) {
         requestAnimationFrame(animateScroll);
       } else {
-        // Restore CSS smooth scrolling and snapping
         container.style.scrollBehavior = "";
         container.style.scrollSnapType = "";
       }
@@ -68,44 +160,67 @@ export default function BestSellers() {
           </p>
         </div>
 
-        {/* Scrollable row + arrows */}
-        <div className="relative group px-12 sm:px-0">
-          {/* Left Arrow */}
-          <button
-            onClick={() => scroll("left")}
-            className="absolute left-0 sm:-left-3 md:-left-6 lg:-left-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
-            aria-label="Scroll left"
-          >
-            ❮
-          </button>
-
-          {/* Cards */}
-          <div
-            ref={scrollRef}
-            className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-12 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory items-stretch px-2 sm:px-4"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            {bestSellerProducts.map((product) => (
+        {/* Loading State */}
+        {loading && (
+          <div className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-12 overflow-hidden px-2 sm:px-4">
+            {Array.from({ length: 4 }).map((_, i) => (
               <div
-                key={product.id}
-                className="snap-center flex-shrink-0 w-full sm:w-[calc(50%-1.5rem)] md:w-[calc(33.3333%-2rem)] lg:w-[calc(25%-2.25rem)]"
-              >
-                <div className="h-full">
-                  <ProductCard product={product} />
-                </div>
-              </div>
+                key={i}
+                className="flex-shrink-0 w-full sm:w-[calc(50%-1.5rem)] md:w-[calc(33.3333%-2rem)] lg:w-[calc(25%-2.25rem)] h-80 bg-pink-200 rounded-2xl animate-pulse"
+              />
             ))}
           </div>
+        )}
 
-          {/* Right Arrow */}
-          <button
-            onClick={() => scroll("right")}
-            className="absolute right-0 sm:-right-3 md:-right-6 lg:-right-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
-            aria-label="Scroll right"
-          >
-            ❯
-          </button>
-        </div>
+        {/* Error State */}
+        {error && !loading && (
+          <p className="text-center text-red-500 text-sm py-8">{error}</p>
+        )}
+
+        {/* Scrollable row + arrows */}
+        {!loading && !error && products.length > 0 && (
+          <div className="relative group px-12 sm:px-0">
+            <button
+              onClick={() => scroll("left")}
+              className="absolute left-0 sm:-left-3 md:-left-6 lg:-left-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
+              aria-label="Scroll left"
+            >
+              ❮
+            </button>
+
+            <div
+              ref={scrollRef}
+              className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-12 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory items-stretch px-2 sm:px-4"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {products.map((product) => (
+                <div
+                  key={product._id}
+                  className="snap-center flex-shrink-0 w-full sm:w-[calc(50%-1.5rem)] md:w-[calc(33.3333%-2rem)] lg:w-[calc(25%-2.25rem)]"
+                >
+                  <div className="h-full">
+                    <ProductCard product={normalizeProduct(product)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => scroll("right")}
+              className="absolute right-0 sm:-right-3 md:-right-6 lg:-right-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
+              aria-label="Scroll right"
+            >
+              ❯
+            </button>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && products.length === 0 && (
+          <p className="text-center text-gray-400 text-sm py-8">
+            No best sellers found.
+          </p>
+        )}
 
         {/* View All Button */}
         <div className="text-center mt-10">

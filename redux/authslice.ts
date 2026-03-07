@@ -49,7 +49,7 @@ export const forgotPasswordAction = createAsyncThunk<ApiResponse<null>, string>(
   "auth/forgotPassword",
   async (email, { rejectWithValue }) => {
     try {
-      return await authService.forgotPassword(email);
+      return await authService.requestPasswordReset(email);
     } catch (err: unknown) {
       return rejectWithValue(getErrorMessage(err) || "Failed to send reset link");
     }

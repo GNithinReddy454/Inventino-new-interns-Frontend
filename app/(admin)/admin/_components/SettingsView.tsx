@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Toggle from "./Toggle";
 import { Skeleton } from "./Skeleton";
 import { useToast } from "@/app/components/GlobalToast";
+import { getAdminSettings, updateAdminSettings } from "@/services/admin.service";
 
 // Zod Schema for Settings
 const settingsSchema = z.object({
@@ -27,13 +28,14 @@ const defaultValues: SettingsFormData = {
 };
 
 export default function SettingsView() {
+    const { showToast } = useToast();
+
     const [notifications, setNotifications] = useState({
         orderNotifications: true,
         lowStockAlerts: true,
         customerMessages: true,
         reviewNotifications: false,
     });
-
     const [payment, setPayment] = useState({
         freeShippingThreshold: "$50.00",
         standardShippingRate: "$5.99",
@@ -41,16 +43,9 @@ export default function SettingsView() {
         paypalIntegration: true,
         cashOnDelivery: false,
     });
-
     const [twoFactor, setTwoFactor] = useState(false);
     const [taxEnabled, setTaxEnabled] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
-    const { showToast } = useToast();
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 1500);
-        return () => clearTimeout(timer);
-    }, []);
 
     // Initialize React Hook Form for the primary settings block
     const {
@@ -63,11 +58,47 @@ export default function SettingsView() {
         defaultValues,
     });
 
+    useEffect(() => {
+        const fetchSettings = async () => {
+            setIsLoading(true);
+            try {
+                const data = await getAdminSettings();
+                if (data) {
+                    if (data.notifications?.orderNotifications !== undefined) {
+                        setNotifications(prev => ({ ...prev, orderNotifications: data.notifications.orderNotifications }));
+                    }
+                    if (data.security?.twoFactorEnabled !== undefined) {
+                        setTwoFactor(data.security.twoFactorEnabled);
+                    }
+                    if (data.paymentRules?.freeShippingThreshold !== undefined) {
+                        setPayment(prev => ({ ...prev, freeShippingThreshold: `$${data.paymentRules.freeShippingThreshold}` }));
+                    }
+                    if (data.storeInfo?.currency) {
+                        reset({ ...defaultValues, storeCurrency: data.storeInfo.currency });
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch admin settings:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchSettings();
+    }, [reset]);
+
     const onSubmitStoreInfo = async (data: SettingsFormData) => {
-        // Simulate API call
-        console.log("Saving Store Info:", data);
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        showToast("Success", "Store settings saved successfully!", "success");
+        try {
+            await updateAdminSettings({
+                storeInfo: { currency: data.storeCurrency },
+                notifications: { orderNotifications: notifications.orderNotifications },
+                paymentRules: { freeShippingThreshold: parseFloat(payment.freeShippingThreshold.replace(/[^0-9.]/g, "")) },
+                security: { twoFactorEnabled: twoFactor },
+            });
+            showToast("Success", "Store settings saved successfully!", "success");
+        } catch (err) {
+            console.error("Failed to save settings:", err);
+            showToast("Error", "Failed to save settings. Please try again.", "error");
+        }
     };
 
     return (
@@ -274,11 +305,7 @@ export default function SettingsView() {
                                     label: "Review Notifications",
                                     desc: "Alert when customers leave product reviews",
                                 },
-                            ] as {
-                                key: keyof typeof notifications;
-                                label: string;
-                                desc: string;
-                            }[]
+                            ] as const
                         ).map((item) => (
                             <div
                                 key={item.key}
@@ -293,11 +320,11 @@ export default function SettingsView() {
                                     </p>
                                 </div>
                                 <Toggle
-                                    enabled={notifications[item.key]}
+                                    enabled={notifications[item.key as keyof typeof notifications]}
                                     onToggle={() =>
-                                        setNotifications((prev) => ({
+                                        setNotifications((prev: typeof notifications) => ({
                                             ...prev,
-                                            [item.key]: !prev[item.key],
+                                            [item.key]: !prev[item.key as keyof typeof notifications],
                                         }))
                                     }
                                 />
@@ -402,7 +429,7 @@ export default function SettingsView() {
                                         label: "Cash on Delivery",
                                         desc: "Enable COD payment option",
                                     },
-                                ] as { key: keyof typeof payment; label: string; desc: string }[]
+                                ] as const
                             ).map((item) => (
                                 <div
                                     key={item.key}
@@ -417,11 +444,11 @@ export default function SettingsView() {
                                         </p>
                                     </div>
                                     <Toggle
-                                        enabled={payment[item.key] as boolean}
+                                        enabled={payment[item.key as keyof typeof payment] as boolean}
                                         onToggle={() =>
-                                            setPayment((prev) => ({
+                                            setPayment((prev: typeof payment) => ({
                                                 ...prev,
-                                                [item.key]: !prev[item.key],
+                                                [item.key]: !prev[item.key as keyof typeof payment],
                                             }))
                                         }
                                     />
@@ -526,7 +553,7 @@ export default function SettingsView() {
                             </div>
                             <Toggle
                                 enabled={twoFactor}
-                                onToggle={() => setTwoFactor((prev) => !prev)}
+                                onToggle={() => setTwoFactor((prev: boolean) => !prev)}
                             />
                         </div>
 
@@ -588,7 +615,7 @@ export default function SettingsView() {
                             </div>
                             <Toggle
                                 enabled={taxEnabled}
-                                onToggle={() => setTaxEnabled((prev) => !prev)}
+                                onToggle={() => setTaxEnabled((prev: boolean) => !prev)}
                             />
                         </div>
 

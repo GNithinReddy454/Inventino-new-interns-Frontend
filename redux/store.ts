@@ -6,6 +6,10 @@ import notificationsReducer from "./notificationslice";
 import securityReducer from "./securityslice";
 import appearanceReducer from "./appearanceslice";
 import authReducer from "./authslice"; // ← new
+import adminReducer from "./adminSlice";
+import contactReducer from "./contactslice";
+import wishlistReducer from "./wishlistslice";
+import cartReducer from "./cartslice";
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +18,10 @@ export const store = configureStore({
     security: securityReducer,
     appearance: appearanceReducer,
     auth: authReducer, // ← new
+    admin: adminReducer,
+    contact: contactReducer,
+    wishlist: wishlistReducer,
+    cart: cartReducer,
   },
 });
 

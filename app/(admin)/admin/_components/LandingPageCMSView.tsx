@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { ChevronDown, Plus, Trash2, Upload } from "lucide-react";
+import { ChevronDown, Plus, Trash2, Upload, Search, Eye } from "lucide-react";
 import { Skeleton } from "./Skeleton";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Toggle from "./Toggle";
 import { useToast } from "@/app/components/GlobalToast";
+import { getCMSData, updateCMSData } from "@/services/admin.service";
 
 const featureSchema = z.object({
     title: z.string().min(3, "Feature title must be at least 3 characters"),
@@ -17,49 +18,38 @@ const featureSchema = z.object({
 type FeatureFormData = z.infer<typeof featureSchema>;
 
 export default function LandingPageCMSView() {
-    const [offerText, setOfferText] = useState(
-        "Free Shipping on Orders Over $50! Limited Time Offer",
-    );
+    const [offerText, setOfferText] = useState("");
     const [showOfferBar, setShowOfferBar] = useState(true);
-    const [bannerHeading, setBannerHeading] = useState("Created with love");
-    const [bannerText, setBannerText] = useState(
-        "Made for you with passion and dedication. Each piece tells a unique story.",
-    );
+    const [bannerHeading, setBannerHeading] = useState("");
+    const [bannerText, setBannerText] = useState("");
     const [bannerImage, setBannerImage] = useState<string | null>(null);
-
-    const [features, setFeatures] = useState([
-        {
-            id: 1,
-            title: "Virtual Try-On",
-            description:
-                "Experience our products virtually before making a purchase. Use AR technology to see how items look in your space.",
-            enabled: true,
-        },
-        {
-            id: 2,
-            title: "Book Try at Home",
-            description: "Schedule a doorstep trial of your favorite jewellery.",
-            enabled: true,
-        },
-        {
-            id: 3,
-            title: "Talk to an Expert",
-            description: "Need guidance? Speak to our jewellery consultant.",
-            enabled: false,
-        },
-    ]);
-
+    const [features, setFeatures] = useState<Array<{ id: number; title: string; description: string; enabled: boolean }>>([]);
     const [showAddModal, setShowAddModal] = useState(false);
     const { showToast } = useToast();
-
-    // Loading states for mock saves
     const [savingOffer, setSavingOffer] = useState(false);
     const [savingBanner, setSavingBanner] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Fetch CMS data on mount
     useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 1500);
-        return () => clearTimeout(timer);
+        const fetchCMS = async () => {
+            setIsLoading(true);
+            try {
+                const data = await getCMSData();
+                if (data) {
+                    setOfferText(data.offerBar.text);
+                    setShowOfferBar(data.offerBar.isActive);
+                    setBannerHeading(data.heroBanner.heading);
+                    setBannerText(data.heroBanner.text);
+                    setBannerImage(data.heroBanner.image || null);
+                }
+            } catch (err) {
+                console.error("Failed to fetch CMS data:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchCMS();
     }, []);
 
     const {
@@ -72,10 +62,8 @@ export default function LandingPageCMSView() {
         defaultValues: { status: "enabled" },
     });
 
-    const toggleFeature = (id: number) => {
-        setFeatures((prev) =>
-            prev.map((f) => (f.id === id ? { ...f, enabled: !f.enabled } : f)),
-        );
+    const triggerToggleFeature = (id: number) => {
+        setFeatures(prev => prev.map(f => f.id === id ? { ...f, enabled: !f.enabled } : f));
     };
 
     const openAddModal = () => {
@@ -84,7 +72,7 @@ export default function LandingPageCMSView() {
     };
 
     const onAddFeature = (data: FeatureFormData) => {
-        setFeatures((prev) => [
+        setFeatures(prev => [
             ...prev,
             {
                 id: Date.now(),
@@ -98,7 +86,7 @@ export default function LandingPageCMSView() {
     };
 
     const removeFeature = (id: number) => {
-        setFeatures((prev) => prev.filter((f) => f.id !== id));
+        setFeatures(prev => prev.filter(f => f.id !== id));
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,16 +107,28 @@ export default function LandingPageCMSView() {
 
     const handleSaveOffer = async () => {
         setSavingOffer(true);
-        await new Promise(r => setTimeout(r, 600));
-        setSavingOffer(false);
-        showToast("Success", "Offer bar settings saved!", "success");
+        try {
+            await updateCMSData({ offerBar: { text: offerText, isActive: showOfferBar } });
+            showToast("Success", "Offer bar settings saved!", "success");
+        } catch (err) {
+            console.error("Failed to save offer bar:", err);
+            showToast("Error", "Failed to save offer bar settings.", "error");
+        } finally {
+            setSavingOffer(false);
+        }
     };
 
     const handleSaveBanner = async () => {
         setSavingBanner(true);
-        await new Promise(r => setTimeout(r, 800));
-        setSavingBanner(false);
-        showToast("Success", "Hero banner updated successfully!", "success");
+        try {
+            await updateCMSData({ heroBanner: { heading: bannerHeading, text: bannerText, image: bannerImage || "" } });
+            showToast("Success", "Hero banner updated successfully!", "success");
+        } catch (err) {
+            console.error("Failed to save banner:", err);
+            showToast("Error", "Failed to update banner.", "error");
+        } finally {
+            setSavingBanner(false);
+        }
     };
 
     return (
@@ -334,8 +334,149 @@ export default function LandingPageCMSView() {
                 )}
             </div>
 
-            {/* 3. FEATURES MANAGEMENT */}
+            {/* 3. CATEGORIES SECTION */}
             <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
+                <div className="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 className="font-bold text-foreground text-base">
+                            Categories Section
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Preview of category display
+                        </p>
+                    </div>
+                    <button className="px-5 py-2.5 bg-[#DF4C77] text-white text-[13px] font-bold rounded-xl hover:bg-[#C83B61] transition-all shadow-sm shrink-0">
+                        + Add New Categories
+                    </button>
+                </div>
+
+                <div className="bg-[#FDF2F5] border border-pink-200 rounded-2xl p-6 relative">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-6">
+                        <Eye size={12} className="text-muted-foreground" /> CATEGORY PREVIEW
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {[
+                            { name: "Jewelry", icon: "💍" },
+                            { name: "Bags", icon: "👜" },
+                            { name: "Textiles", icon: "🧶" },
+                            { name: "Home Decor", icon: "🏠" },
+                            { name: "Art & Crafts", icon: "🎨" },
+                            { name: "Clothing", icon: "👗" }
+                        ].map((cat, i) => (
+                            <div key={i} className="bg-white rounded-xl py-6 flex flex-col items-center justify-center shadow-sm border border-transparent hover:border-pink-200 transition-all cursor-pointer">
+                                <span className="text-2xl mb-2.5">{cat.icon}</span>
+                                <span className="text-[13px] font-bold text-foreground text-center">{cat.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* 4. PRODUCT LISTING SECTION */}
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-6 mt-6">
+                <div className="mb-6">
+                    <h3 className="font-bold text-foreground text-base">
+                        Product Listing Section
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        List the Best of Best
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+                    {/* Left side */}
+                    <div className="flex flex-col">
+                        <h4 className="text-xs font-bold text-foreground mb-3">Available Products</h4>
+
+                        <div className="relative mb-3">
+                            <select className="w-full appearance-none px-4 py-3 bg-white border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-pink-300 cursor-pointer shadow-sm">
+                                <option>Best Sellers</option>
+                            </select>
+                            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                        </div>
+
+                        <div className="relative mb-4">
+                            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Search products..."
+                                className="w-full pl-10 pr-4 py-3 bg-white border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-pink-300 transition-all font-medium placeholder:font-normal placeholder:text-muted-foreground/70 shadow-sm"
+                            />
+                        </div>
+
+                        <div className="bg-[#DF4C77] text-white text-center py-3 rounded-xl text-sm font-bold mb-4 shadow-sm">
+                            1 Products Selected
+                        </div>
+
+                        <div className="space-y-3 flex-1 overflow-y-auto pr-1" style={{ maxHeight: "380px" }}>
+                            {[
+                                { id: 1, name: "Handmade Rose Gold Bracelet", price: "$34.99", stock: 45, color: "bg-[#D9A16C]", selected: false },
+                                { id: 2, name: "Pearl Necklace Set", price: "$129.99", stock: 8, color: "bg-[#BCC4C9]", selected: true },
+                                { id: 3, name: "Boho Beaded Bracelet", price: "$44.99", stock: 32, color: "bg-[#45AF4A]", selected: false },
+                                { id: 4, name: "Leather Tote Bag", price: "$159.99", stock: 15, color: "bg-[#FF67A1]", selected: false },
+                                { id: 5, name: "Gold Plated Earrings", price: "$94.99", stock: 12, color: "bg-[#FFDA00]", selected: false },
+                            ].map((prod) => (
+                                <div key={prod.id} className={`flex items-center gap-4 p-3.5 rounded-xl border ${prod.selected ? 'border-[#DF4C77] bg-[#FDF2F5]' : 'border-border bg-white'} cursor-pointer hover:border-pink-200 transition-colors shadow-sm`}>
+                                    <div className={`w-14 h-14 rounded-lg shrink-0 ${prod.color}`}></div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[13px] font-bold text-foreground truncate">{prod.name}</p>
+                                        <p className="text-[13px] text-[#DF4C77] font-bold mt-1">{prod.price}</p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">{prod.stock} in stock</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-4 mt-5 pt-5">
+                            <button className="flex-1 py-3 bg-white border border-border rounded-xl text-sm font-bold text-foreground hover:bg-muted transition-all shadow-sm">
+                                Clear All
+                            </button>
+                            <button className="flex-1 py-3 bg-[#DF4C77] text-white rounded-xl text-sm font-bold hover:bg-[#C83B61] transition-all shadow-sm">
+                                Save Selection
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Right side - Live Preview */}
+                    <div className="bg-[#f8f8f8] rounded-2xl p-6 relative flex flex-col items-center h-full border border-border">
+                        <div className="flex justify-between items-center mb-8 w-full">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">LIVE PREVIEW</span>
+                            <span className="bg-[#DF4C77] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">1 Products</span>
+                        </div>
+
+                        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mx-auto w-full max-w-[320px] mt-4">
+                            {/* Card Image Area */}
+                            <div className="bg-[#f5e0cf] h-[260px] relative w-full p-4 flex items-center justify-center">
+                                <span className="absolute top-4 left-4 bg-[#DF4C77] text-white text-[11px] font-bold px-3 py-1 rounded-full z-10 shadow-sm shadow-[#DF4C77]/30">New</span>
+                                {/* Stylized Image Representation */}
+                                <div className="relative w-[200px] h-[150px] bg-[#fffcf9] rounded shadow-sm flex before:content-[''] before:absolute before:inset-0 before:border-[3px] before:border-dashed before:border-[#ebd5c1] before:m-2">
+                                    <div className="w-1/2 h-full border-r border-[#e8d2bd] shadow-[inset_-5px_0_10px_rgba(0,0,0,0.02)] bg-[#fffcf9]"></div>
+                                    <div className="w-1/2 h-full bg-[#fdfaf5]"></div>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center text-white font-medium text-[15px] drop-shadow-md z-10 pointer-events-none">
+                                    Pearl Necklace Set
+                                </div>
+                            </div>
+
+                            {/* Card Details */}
+                            <div className="p-5 bg-white">
+                                <h4 className="font-bold text-[14px] text-foreground mb-2.5">Pearl Necklace Set</h4>
+                                <div className="flex items-center gap-1.5 mb-3">
+                                    <div className="flex text-[#FFD700] text-[13px]">
+                                        {"★★★★★".split('').map((star, i) => <span key={i}>{star}</span>)}
+                                    </div>
+                                    <span className="text-[12px] text-muted-foreground font-medium pt-0.5">4.7 / 5.0</span>
+                                </div>
+                                <p className="text-[#DF4C77] font-bold text-[16px]">$129.99</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 5. FEATURES MANAGEMENT */}
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-6 mt-6">
                 <div className="flex justify-between items-center mb-1">
                     <div>
                         <h3 className="font-bold text-foreground text-base">
@@ -393,7 +534,7 @@ export default function LandingPageCMSView() {
                                         </button>
                                         <Toggle
                                             enabled={feature.enabled}
-                                            onToggle={() => toggleFeature(feature.id)}
+                                            onToggle={() => triggerToggleFeature(feature.id)}
                                         />
                                     </div>
                                 </div>
