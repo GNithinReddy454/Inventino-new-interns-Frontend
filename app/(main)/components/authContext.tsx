@@ -33,8 +33,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const init = async () => {
       const storedUser = localStorage.getItem("inventino_user");
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
-        return;
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch { /* silently fail parsing */ }
       }
 
       const token = localStorage.getItem("token");
@@ -48,7 +49,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch {
           localStorage.removeItem("token");
+          localStorage.removeItem("inventino_user");
+          setUser(null);
+          dispatch(logoutAction());
         }
+      } else {
+        localStorage.removeItem("inventino_user");
+        setUser(null);
       }
     };
     init();

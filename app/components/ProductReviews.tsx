@@ -50,9 +50,11 @@ const MOCK_REVIEWS = [
 ];
 
 export default function ProductReviews({
+  productId,
   isLoggedIn = false,
   hasPurchased = false,
 }: {
+  productId?: string;
   isLoggedIn?: boolean;
   hasPurchased?: boolean;
 }) {
@@ -65,8 +67,9 @@ export default function ProductReviews({
   useEffect(() => {
     const fetchReviews = async () => {
       try {
+        const idToFetch = productId || "69a41f9db184e6fc00ba7f99";
         const response = await fetch(
-          "http://localhost:8080/api/reviews/product/69a41f9db184e6fc00ba7f99",
+          `http://localhost:8080/api/reviews/product/${idToFetch}`,
           { cache: "no-store" }
         );
 

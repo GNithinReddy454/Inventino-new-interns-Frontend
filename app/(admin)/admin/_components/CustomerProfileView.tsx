@@ -27,11 +27,14 @@ export default function CustomerProfileView({ customerId, onBack }: CustomerProf
         const fetchAll = async () => {
             setIsLoading(true);
             try {
-                let [custData, ordersData, reviewsData] = await Promise.all([
+                const fetched = await Promise.all([
                     getAdminCustomers(),
                     getAdminOrders(),
                     getAdminReviews()
                 ]);
+                let custData = fetched[0];
+                const ordersData = fetched[1];
+                const reviewsData = fetched[2];
 
 
                 // Fallback to mock data if empty
