@@ -77,10 +77,48 @@ export default function WriteReviewPage({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (rating === 0) return alert("Please select a star rating.");
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in to submit a review.");
+      return;
+    }
+
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
-    alert("Review submitted!");
+
+    try {
+      const response = await fetch(
+        "http://localhost:8080/api/reviews/product/69a41f9db184e6fc00ba7f99",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            rating,
+            comment: review,
+            ...(photos.length > 0 && { images: photos }),
+          }),
+        }
+      );
+
+      const json = await response.json();
+
+      if (response.ok && json.statusCode === 201) {
+        alert("Review submitted!");
+        setRating(0);
+        setReview("");
+        setPhotos([]);
+      } else {
+        alert(json.message || "Something went wrong. Please try again.");
+      }
+    } catch (error) {
+      console.error("Submit Error:", error);
+      alert("Failed to submit review. Please check your connection.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

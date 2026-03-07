@@ -1057,6 +1057,23 @@ export default function AddProduct() {
               </div>
             </div>
 
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => setShowPreview(true)}
+                className="flex-1 py-3.5 border border-[#E91E63] text-gray-700 rounded-xl text-sm font-bold bg-white hover:bg-pink-50 transition-all"
+              >
+                Preview
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex-1 py-3.5 bg-gradient-to-r from-[#e75a89] to-[#E91E63] text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50"
+              >
+                {isLoading ? "Publishing..." : "Publish Product"}
+              </button>
+            </div>
+
           </div>
 
           {/* Right Column: Settings */}

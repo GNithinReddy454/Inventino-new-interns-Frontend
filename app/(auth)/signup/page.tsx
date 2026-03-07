@@ -50,7 +50,7 @@ export default function SignupPage() {
 
   return (
     <AuthLayout title="Create Account" bgImage="/images/signup-bg.jpg">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-2.5">
         <AuthInput
           label="Full Name *"
           placeholder="Enter your full name"
@@ -87,7 +87,7 @@ export default function SignupPage() {
           {loading ? "Creating Account..." : "Sign Up"}
         </AuthButton>
         <GoogleButton text="Sign up with Google" />
-        <p className="text-center text-xs text-gray-500">
+        <p className="text-center text-xs text-gray-500 pt-1">
           Already have an account?{" "}
           <Link href="/login" className="text-[#E15483] font-bold hover:underline">
             Login

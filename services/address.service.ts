@@ -73,7 +73,7 @@ export const addressService = {
    */
   async validateAddress(addressData: Partial<Address>) {
     const response = await apiClient.post(
-      "/api/addresses/validate",
+      "/addresses/validate",
       addressData,
     );
     return response.data;

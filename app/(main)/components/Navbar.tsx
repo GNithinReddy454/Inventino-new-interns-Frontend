@@ -20,39 +20,15 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { useStore } from "@/lib/storeContext";
 import { useCart } from "@/lib/cartContext";
+import { productService } from "@/services/product.service"; // ✅ API service
 
-// Import product data statically
-import * as localProducts from "@/lib/products";
-import jsonProducts from "@/lib/products.json";
-
-// Define types for product data
-interface LocalProduct {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  image: string;
-  description?: string;
-  badge?: string;
-}
-
-interface JsonProduct {
-  title?: string;
-  name?: string;
-  category: string;
-  price: number;
-  images?: string[];
-  description?: string;
-  tags?: string[];
-}
-
+// Types for search results (based on API response)
 interface SearchProduct {
-  id: number;
+  id: string;
   name: string;
   category: string;
   price: number;
   image: string;
-  searchString: string;
 }
 
 const Navbar = () => {
@@ -77,7 +53,43 @@ const Navbar = () => {
     0
   );
 
-  // Measure actual heights on mount and resize
+  // ── Search state ──────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Debounced API call
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchQuery.trim().length > 1) {
+        productService
+          .searchProducts(searchQuery)
+          .then((response) => {
+            // Assuming response.data = { statusCode, message, data: { items } }
+            const items = response.data.data.items || [];
+            const mapped = items.map((p: any) => ({
+              id: p._id,
+              name: p.name,
+              category: p.category,
+              price: p.price,
+              image: p.images?.[0]?.url || "",
+            }));
+            setSearchResults(mapped);
+          })
+          .catch((err) => {
+            console.error("Search error:", err);
+            setSearchResults([]);
+          });
+      } else {
+        setSearchResults([]);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // ── Existing effects (unchanged) ──────────────────────────────────────
   useEffect(() => {
     const measureHeights = () => {
       if (announcementRef.current) {
@@ -87,24 +99,19 @@ const Navbar = () => {
         setNavbarHeight(navbarRef.current.offsetHeight);
       }
     };
-
     measureHeights();
     window.addEventListener("resize", measureHeights);
-
     return () => window.removeEventListener("resize", measureHeights);
   }, []);
 
-  // Handle scroll event with progress
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
       const progress = Math.min(scrollY / announcementHeight, 1);
       setScrollProgress(progress);
     };
-
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
-
     return () => window.removeEventListener("scroll", handleScroll);
   }, [announcementHeight]);
 
@@ -124,10 +131,6 @@ const Navbar = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutsideSearch = (event: MouseEvent) => {
@@ -153,40 +156,7 @@ const Navbar = () => {
     }
   };
 
-  // Build a unified searchable master list
-  const masterProductList: SearchProduct[] = [
-    ...(localProducts.products || []).map((p: LocalProduct) => ({
-      id: p.id,
-      name: p.name,
-      category: p.category,
-      price: p.price,
-      image: p.image,
-      searchString:
-        `${p.name} ${p.category} ${p.description || ""} ${p.badge || ""}`.toLowerCase(),
-    })),
-    ...(jsonProducts as JsonProduct[]).map((p, i) => ({
-      id: i + 11,
-      name: p.title || p.name || "",
-      category: p.category,
-      price: p.price,
-      image: p.images && p.images[0] ? p.images[0] : "",
-      searchString:
-        `${p.title || p.name} ${p.category} ${p.description || ""} ${(p.tags || []).join(" ")}`.toLowerCase(),
-    })),
-  ];
-
-  const searchResults = searchQuery.trim().length > 1
-    ? masterProductList
-        .filter((p) => {
-          const queryTerms = searchQuery
-            .toLowerCase()
-            .split(" ")
-            .filter(Boolean);
-          return queryTerms.every((term) => p.searchString.includes(term));
-        })
-        .slice(0, 5)
-    : [];
-
+  // ── UI helpers (unchanged) ────────────────────────────────────────────
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path;
     return `transition-all duration-300 pb-1 ${
@@ -272,7 +242,7 @@ const Navbar = () => {
                 </button>
               </form>
 
-              {/* SEARCH DROPDOWN */}
+              {/* SEARCH DROPDOWN – API results */}
               {showSearchResults && searchQuery.trim().length > 1 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden custom-scrollbar max-h-[80vh] overflow-y-auto">
                   {searchResults.length > 0 ? (
@@ -392,7 +362,7 @@ const Navbar = () => {
 
                 {user && showDropdown && (
                   <div
-                    className="absolute right-0 top-full mt-2 w-64 bg-white border border-pink-100 rounded-3xl shadow-xl z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+                    className="absolute right-0 top-full mt-2 w-64 bg-white border border-pink-100 rounded-3xl shadow-xl z-60 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
                     onMouseLeave={() => setShowDropdown(false)}
                   >
                     <div className="p-4 border-b border-pink-50 bg-pink-50/30">
