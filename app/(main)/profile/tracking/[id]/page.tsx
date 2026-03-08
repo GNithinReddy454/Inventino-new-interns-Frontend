@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -10,142 +10,141 @@ import {
   MapPin,
   Home,
 } from "lucide-react";
+import apiClient from "@/lib/api";
 
-const TRACKING_DATA: Record<
-  string,
-  {
-    orderId: string;
-    product: string;
-    estimatedDelivery: string;
-    carrier: string;
-    trackingNumber: string;
-    steps: { label: string; date: string; done: boolean; active: boolean }[];
-  }
-> = {
-  "ORD-2024-001": {
-    orderId: "#ORD-2024-001",
-    product: "Rose Gold Bracelet",
-    estimatedDelivery: "Feb 8, 2026",
-    carrier: "FedEx",
-    trackingNumber: "FX-928374650",
-    steps: [
-      {
-        label: "Order Placed",
-        date: "Feb 6, 2026 · 10:30 AM",
-        done: true,
-        active: false,
-      },
-      {
-        label: "Order Confirmed",
-        date: "Feb 6, 2026 · 11:00 AM",
-        done: true,
-        active: false,
-      },
-      {
-        label: "Shipped",
-        date: "Feb 7, 2026 · 2:00 PM",
-        done: true,
-        active: false,
-      },
-      {
-        label: "Out for Delivery",
-        date: "Feb 8, 2026 · 9:00 AM",
-        done: true,
-        active: false,
-      },
-      {
-        label: "Delivered",
-        date: "Feb 8, 2026 · 1:45 PM",
-        done: true,
-        active: true,
-      },
-    ],
-  },
-  "ORD-2024-002": {
-    orderId: "#ORD-2024-002",
-    product: "Pearl Necklace Set",
-    estimatedDelivery: "Feb 14, 2026",
-    carrier: "DHL",
-    trackingNumber: "DH-374829103",
-    steps: [
-      {
-        label: "Order Placed",
-        date: "Feb 10, 2026 · 9:15 AM",
-        done: true,
-        active: false,
-      },
-      {
-        label: "Order Confirmed",
-        date: "Feb 10, 2026 · 10:00 AM",
-        done: true,
-        active: false,
-      },
-      {
-        label: "Shipped",
-        date: "Feb 11, 2026 · 3:00 PM",
-        done: true,
-        active: true,
-      },
-      {
-        label: "Out for Delivery",
-        date: "Expected Feb 14, 2026",
-        done: false,
-        active: false,
-      },
-      {
-        label: "Delivered",
-        date: "Expected Feb 14, 2026",
-        done: false,
-        active: false,
-      },
-    ],
-  },
-  "ORD-2024-003": {
-    orderId: "#ORD-2024-003",
-    product: "Boho Beaded Set",
-    estimatedDelivery: "Feb 18, 2026",
-    carrier: "UPS",
-    trackingNumber: "UP-192837465",
-    steps: [
-      {
-        label: "Order Placed",
-        date: "Feb 13, 2026 · 8:00 AM",
-        done: true,
-        active: false,
-      },
-      {
-        label: "Order Confirmed",
-        date: "Feb 13, 2026 · 9:00 AM",
-        done: true,
-        active: true,
-      },
-      {
-        label: "Shipped",
-        date: "Expected Feb 15, 2026",
-        done: false,
-        active: false,
-      },
-      {
-        label: "Out for Delivery",
-        date: "Expected Feb 17, 2026",
-        done: false,
-        active: false,
-      },
-      {
-        label: "Delivered",
-        date: "Expected Feb 18, 2026",
-        done: false,
-        active: false,
-      },
-    ],
-  },
+// Status to step index mapping
+const STATUS_STEP_MAP: Record<string, number> = {
+  placed: 0,
+  confirmed: 1,
+  shipped: 2,
+  out_for_delivery: 3,
+  delivered: 4,
+};
+
+const buildSteps = (status: string) => {
+  const activeIndex = STATUS_STEP_MAP[status] ?? 0;
+
+  const stepDefs = [
+    { label: "Order Placed", expectedDate: "" },
+    { label: "Order Confirmed", expectedDate: "" },
+    { label: "Shipped", expectedDate: "" },
+    { label: "Out for Delivery", expectedDate: "" },
+    { label: "Delivered", expectedDate: "" },
+  ];
+
+  return stepDefs.map((step, i) => ({
+    label: step.label,
+    date:
+      i <= activeIndex
+        ? "Completed"
+        : "Pending",
+    done: i <= activeIndex,
+    active: i === activeIndex,
+  }));
+};
+
+type TrackingData = {
+  orderId: string;
+  product: string;
+  estimatedDelivery: string;
+  carrier: string;
+  trackingNumber: string;
+  steps: { label: string; date: string; done: boolean; active: boolean }[];
 };
 
 const stepIcons = [Package, CheckCircle2, Truck, Truck, Home];
 
-export default function TrackingPage({ params }: { params: { id: string } }) {
-  const data = TRACKING_DATA[params.id] ?? TRACKING_DATA["ORD-2024-001"];
+export default function TrackingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const [data, setData] = useState<TrackingData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchTracking = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await apiClient.get(`/orders/${id}/tracking`);
+        const apiData = response.data?.data;
+
+        setData({
+          orderId: `#${apiData.orderNumber}`,
+          product: apiData.product ?? "—",
+          estimatedDelivery: apiData.estimatedDelivery ?? "—",
+          carrier: apiData.carrier ?? "—",
+          trackingNumber: apiData.trackingNumber ?? "—",
+          steps: apiData.steps
+            ? apiData.steps.map((s: any) => ({
+                label: s.label,
+                date: s.date,
+                done: s.done,
+                active: s.active,
+              }))
+            : buildSteps(apiData.status ?? "placed"),
+        });
+      } catch (err: any) {
+        setError(
+          err.response?.data?.message ?? "Failed to fetch tracking details."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTracking();
+  }, [id]);
+
+  // ── Loading state ──
+  if (loading) {
+    return (
+      <div
+        style={{
+          background: "#fdf8f9",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Roboto, sans-serif",
+        }}
+      >
+        <p style={{ color: "#9ca3af", fontSize: 14 }}>
+          Loading tracking details…
+        </p>
+      </div>
+    );
+  }
+
+  // ── Error state ──
+  if (error || !data) {
+    return (
+      <div
+        style={{
+          background: "#fdf8f9",
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Roboto, sans-serif",
+          gap: 12,
+        }}
+      >
+        <p style={{ color: "#D94F7A", fontSize: 14 }}>
+          {error ?? "Something went wrong."}
+        </p>
+        <Link
+          href="/profile/orders"
+          style={{ fontSize: 13, color: "#9ca3af", textDecoration: "underline" }}
+        >
+          Back to Orders
+        </Link>
+      </div>
+    );
+  }
+
+  // ── Main UI (unchanged) ──
   return (
     <div
       style={{
