@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   RotateCcw,
@@ -15,7 +16,6 @@ import {
 } from "lucide-react";
 import { orderService } from "@/services/order.service";
 
-
 type TabType = "all" | "delivered" | "cancelled";
 type OrderStatus = "Delivered" | "Shipped" | "Processing" | "Cancelled";
 
@@ -27,17 +27,16 @@ interface OrderItem {
 }
 
 interface Order {
-  id: string;        // orderNumber — used for display & links
-  backendId: string; // raw DB id — used for cancel API call
+  id: string;        // orderNumber — used for display only
+  backendId: string; // MongoDB _id — used for ALL API calls & links
   date: string;
   total: string;
   status: OrderStatus;
   items: OrderItem[];
+  _raw: any;         // full raw API order — passed to Return/Exchange page
 }
 
-// ── Map every possible API orderStatus → UI OrderStatus ──────────────────────
 const API_STATUS_MAP: Record<string, OrderStatus> = {
-  // common backend values
   delivered: "Delivered",
   shipped: "Shipped",
   processing: "Processing",
@@ -71,26 +70,18 @@ const statusConfig = {
   },
 };
 
-// ── Map a single API order → internal Order ───────────────────────────────────
-// API shape: { orderNumber, status, pricing.total, createdAt, items[{name, imageUrl, price, quantity}] }
 function mapApiOrder(apiOrder: any): Order {
-  // Backend field is "status", NOT "orderStatus"
   const rawStatus = (apiOrder.status ?? "").toLowerCase().trim();
   const mappedStatus: OrderStatus = API_STATUS_MAP[rawStatus] ?? "Processing";
 
-  console.log(
-    `Order ${apiOrder.orderNumber}: API status="${apiOrder.status}" → UI status="${mappedStatus}"`,
-  );
-
   return {
-    id: apiOrder.orderNumber,                          // e.g. "ORD-004"
-    backendId: apiOrder.orderNumber,                   // no top-level _id in response; orderNumber is the cancel key
+    id: apiOrder.orderNumber,
+    backendId: apiOrder._id ?? apiOrder.id ?? apiOrder.orderNumber,
     date: new Date(apiOrder.createdAt).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
     }),
-    // total lives inside pricing.total
     total: `₹${Number(apiOrder.pricing?.total ?? 0).toFixed(2)}`,
     status: mappedStatus,
     items: (apiOrder.items ?? []).map((item: any) => ({
@@ -99,24 +90,24 @@ function mapApiOrder(apiOrder: any): Order {
       price: `₹${Number(item.price).toFixed(2)}`,
       image: item.imageUrl ?? "",
     })),
+    _raw: apiOrder, // preserve full raw order for passing to Return/Exchange page
   };
 }
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("all");
-  const [cancellingId, setCancellingId] = useState<string | null>(null); // stores orderNumber
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ── Fetch orders from API ─────────────────────────────────────────────────
   const fetchOrders = async () => {
     try {
       setLoading(true);
       const response = await orderService.getOrders();
       if (response?.data && Array.isArray(response.data)) {
         setOrders(response.data.map(mapApiOrder));
-        console.log("Raw API orders:", response.data);
       }
     } catch (err) {
       console.error("Failed to fetch orders:", err);
@@ -129,7 +120,6 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
-  // Re-fetch when "All Orders" tab is clicked
   const handleTabClick = (tab: TabType) => {
     setActiveTab(tab);
     if (tab === "all") fetchOrders();
@@ -142,14 +132,19 @@ export default function OrdersPage() {
     return true;
   });
 
-  // ── Cancel order via API ──────────────────────────────────────────────────
+  // Store full raw order in sessionStorage, then navigate to Return/Exchange page
+  const handleReturnExchange = (order: Order) => {
+    sessionStorage.setItem("returnExchangeOrder", JSON.stringify(order._raw));
+    router.push(`/profile/orders/return/${order.backendId}`);
+  };
+
   const handleCancelOrder = async (orderNumber: string) => {
     const order = orders.find((o) => o.id === orderNumber);
     if (!order) return;
 
     try {
       setCancelLoading(true);
-      await orderService.cancelOrder(order.backendId); // use real DB id
+      await orderService.cancelOrder(order.backendId);
       setOrders((prev) =>
         prev.map((o) =>
           o.id === orderNumber ? { ...o, status: "Cancelled" as OrderStatus } : o,
@@ -280,7 +275,7 @@ export default function OrdersPage() {
               const s = statusConfig[order.status];
               return (
                 <div
-                  key={order.id}
+                  key={order.backendId || order.id}
                   style={{
                     background: "#fff",
                     borderRadius: 16,
@@ -456,7 +451,7 @@ export default function OrdersPage() {
                     ))}
                   </div>
 
-                  {/* Action buttons — per status, matching file 2 layout */}
+                  {/* Action buttons */}
                   <div
                     style={{
                       borderTop: "1px solid #fef3f7",
@@ -475,7 +470,7 @@ export default function OrdersPage() {
                     {order.status === "Delivered" && (
                       <>
                         <Link
-                          href={`/profile/tracking/${order.id}`}
+                          href={`/profile/orders/${order.backendId}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -490,12 +485,12 @@ export default function OrdersPage() {
                             borderRight: "1px solid #fce7f3",
                           }}
                         >
-                          <Truck size={13} /> View Tracking
+                          <Eye size={13} /> View Details
                         </Link>
                         <button
                           onClick={() =>
                             window.open(
-                              `/profile/orders/invoice/${order.id}`,
+                              `/profile/orders/invoice/${order.backendId}`,
                               "_blank",
                             )
                           }
@@ -517,8 +512,9 @@ export default function OrdersPage() {
                         >
                           <FileText size={13} /> Download Invoice
                         </button>
-                        <Link
-                          href={`/profile/orders/return/${order.id}`}
+                        {/* ── Return/Exchange: uses handleReturnExchange to pass order data ── */}
+                        <button
+                          onClick={() => handleReturnExchange(order)}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -527,15 +523,18 @@ export default function OrdersPage() {
                             padding: "12px 8px",
                             fontSize: 12,
                             fontWeight: 500,
-                            textDecoration: "none",
+                            cursor: "pointer",
+                            background: "#fff",
                             color: "#374151",
+                            border: "none",
                             borderRight: "1px solid #fce7f3",
+                            fontFamily: "inherit",
                           }}
                         >
                           <RotateCcw size={13} /> Return/Exchange
-                        </Link>
+                        </button>
                         <Link
-                          href={`/profile/reviews/write?orderId=${order.id}&productName=${encodeURIComponent(order.items[0]?.name ?? "")}`}
+                          href={`/profile/reviews/write?orderId=${order.backendId}&productName=${encodeURIComponent(order.items[0]?.name ?? "")}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -557,7 +556,7 @@ export default function OrdersPage() {
                     {order.status === "Shipped" && (
                       <>
                         <Link
-                          href={`/profile/tracking/${order.id}`}
+                          href={`/profile/tracking/${order.backendId}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -575,7 +574,7 @@ export default function OrdersPage() {
                           <Truck size={13} /> Track Order
                         </Link>
                         <Link
-                          href={`/profile/orders/${order.id}`}
+                          href={`/profile/orders/${order.backendId}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -592,7 +591,7 @@ export default function OrdersPage() {
                           <Eye size={13} /> View Details
                         </Link>
                         <Link
-                          href="/contact-support"
+                          href="/contact"
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -651,7 +650,7 @@ export default function OrdersPage() {
                           <MapPin size={13} /> Modify Address
                         </Link>
                         <Link
-                          href="/contact-support"
+                          href="/contact"
                           style={{
                             display: "flex",
                             alignItems: "center",

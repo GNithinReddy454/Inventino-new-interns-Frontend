@@ -86,10 +86,8 @@ export const orderService = {
    * Cancel an order
    * PATCH http://localhost:8080/api/orders/:id/cancel
    */
-  async cancelOrder(orderId: string, reason?: string) {
-    const response = await apiClient.post(`/orders/${orderId}/cancel`, {
-      reason,
-    });
+  async cancelOrder(orderId: string) {
+    const response = await apiClient.patch(`/orders/${orderId}/cancel`);
     return response.data;
   },
 
@@ -98,7 +96,7 @@ export const orderService = {
    * GET http://localhost:8080/api/orders/:id/tracking
    */
   async trackOrder(orderId: string) {
-    const response = await apiClient.get(`/orders/${orderId}/tracking`);
+    const response = await apiClient.get(`/orders/tracking/${orderId}`);
     return response.data;
   },
 
@@ -123,7 +121,7 @@ export const orderService = {
   },
 
   /**
-   * Get return/refund history
+   * Get return history
    * GET http://localhost:8080/api/orders/returns
    */
   async getReturns() {
@@ -132,14 +130,56 @@ export const orderService = {
   },
 
   /**
-   * Request return for order item
-   * POST http://localhost:8080/api/orders/:id/returns
+   * Get exchange history
+   * GET http://localhost:8080/api/orders/exchanges
    */
-  async requestReturn(orderId: string, itemId: string, reason?: string) {
-    const response = await apiClient.post(`/orders/${orderId}/returns`, {
-      itemId,
-      reason,
-    });
+  async getExchanges() {
+    const response = await apiClient.get("/orders/exchanges");
+    return response.data;
+  },
+
+  /**
+   * Request return for a delivered order
+   * POST http://localhost:8080/api/orders/:id/returns
+   * :id      → orderId (from URL params, e.g. "ORD-004")
+   * productId → the actual product's ID (from order item)
+   * Body: { reason, items: [{ productId, quantity }], resolution }
+   */
+  async requestReturn(
+    orderId: string,
+    payload: {
+      reason: string;
+      items: { productId: string; quantity: number }[];
+      resolution: "refund" | "store_credit";
+    },
+  ) {
+    const response = await apiClient.post(`/orders/${orderId}/returns`, payload);
+    return response.data;
+  },
+
+  /**
+   * Request exchange for a delivered order
+   * POST http://localhost:8080/api/orders/:id/exchanges
+   * :id      → orderId (from URL params, e.g. "ORD-004")
+   * productId → the actual product's ID (from order item)
+   * Body: { productId, quantity, reasonForExchange, condition, exchangeDetails, comments }
+   */
+  async requestExchange(
+    orderId: string,
+    payload: {
+      productId: string;
+      quantity: number;
+      reasonForExchange: string;
+      condition: string;
+      exchangeDetails: {
+        newSize?: string | null;
+        newColor?: string | null;
+        newProductId?: string | null;
+      };
+      comments?: string;
+    },
+  ) {
+    const response = await apiClient.post(`/orders/${orderId}/exchanges`, payload);
     return response.data;
   },
 };
