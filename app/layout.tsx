@@ -34,9 +34,9 @@ export default function RootLayout({
     // - Both hide horizontal overflow visually
     // - BUT overflow-x-hidden creates a scroll container which BLOCKS touch scroll on iOS
     // - overflow-x-clip does NOT create a scroll container → touch scroll works normally
-    <html lang="en" className="overflow-x-clip">
+    <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col overflow-x-clip`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <ReduxProvider>
           <ToastProvider>
