@@ -103,9 +103,11 @@ export default function StoriesPage() {
   useEffect(() => {
     if (ratingSuccess) {
       showToast("Success", "Rating submitted successfully!", "success");
-      setUserRating(0);
-      setUserReview("");
-      dispatch(resetRatingState());
+      setTimeout(() => {
+        setUserRating(0);
+        setUserReview("");
+        dispatch(resetRatingState());
+      }, 0);
     }
     if (ratingError) {
       showToast("Error", ratingError, "error");

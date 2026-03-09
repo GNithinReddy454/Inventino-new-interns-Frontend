@@ -91,11 +91,6 @@ export const productService = {
     return response.data;
   },
 
-  // GET /products/:productId/story
-  async getStory(productId: string) {
-    const response = await apiClient.get(`/products/${productId}/story`);
-    return response.data;
-  },
 
   // POST /api/products/:productId/rating
   async submitRating(productId: string, rating: number, review?: string) {
