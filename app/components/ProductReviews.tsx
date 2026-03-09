@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Star, ThumbsUp, CheckCircle, ZoomIn, X } from "lucide-react";
 import Toast from "./toast";
+import { reviewService } from "@/services/review"; 
 
 // --- MOCK DATA ---
 const MOCK_REVIEWS = [
@@ -54,7 +55,7 @@ export default function ProductReviews({
   isLoggedIn = false,
   hasPurchased = false,
 }: {
-  productId?: string;
+  productId: string; // Made mandatory to avoid hardcoded IDs
   isLoggedIn?: boolean;
   hasPurchased?: boolean;
 }) {
@@ -65,17 +66,15 @@ export default function ProductReviews({
 
   // --- API INTEGRATION ---
   useEffect(() => {
+    // Only fetch if productId is provided
+    if (!productId) return;
+
     const fetchReviews = async () => {
       try {
-        const idToFetch = productId || "69a41f9db184e6fc00ba7f99";
-        const response = await fetch(
-          `http://localhost:8080/api/reviews/product/${idToFetch}`,
-          { cache: "no-store" }
-        );
+        // Pattern matched to orderService (no hardcoded ID strings here)
+        const json = await reviewService.getReviews(productId);
 
-        const json = await response.json();
-
-        if (response.ok && json.data?.reviews) {
+        if (json.statusCode === 200 && json.data?.reviews) {
           const apiReviews = json.data.reviews.map((rev: any) => ({
             id: rev._id,
             author: rev.user?.name || "Verified Buyer",
@@ -92,17 +91,19 @@ export default function ProductReviews({
             images: rev.images || [],
           }));
 
+          // Combining Mock and Real Data
           setReviews([...MOCK_REVIEWS, ...apiReviews]);
         } else {
           console.error("API Error Details:", json);
         }
-      } catch (error) {
-        console.error("Fetch Connection Error:", error);
+      } catch (error: any) {
+        // Error handling matched to order.ts style
+        console.error("Fetch Connection Error:", error.response?.data || error.message);
       }
     };
 
     fetchReviews();
-  }, []);
+  }, [productId]);
 
   return (
     <div className="bg-white py-16 border-t border-gray-100 relative">

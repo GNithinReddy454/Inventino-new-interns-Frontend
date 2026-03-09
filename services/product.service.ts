@@ -88,4 +88,13 @@ export const productService = {
     const response = await apiClient.get(`/products/${productId}/similar`);
     return response.data;
   },
+
+  // GET /products/:productId/story
+  // NOTE: productId here must be the PRD-xxx format ID, not the MongoDB _id
+  async getStory(productId: string) {
+    const response = await apiClient.get(`/products/${productId}/story`, {
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    return response.data;
+  },
 };
