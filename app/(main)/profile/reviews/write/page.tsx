@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, MouseEvent, ChangeEvent, FormEvent } from "react";
+import { reviewService } from "@/services/review"; // Ensure this service exists
 
 interface StarProps {
   filled: boolean;
@@ -48,10 +49,12 @@ function Star({
 
 interface WriteReviewPageProps {
   productName?: string;
+  productId?: string; 
 }
 
 export default function WriteReviewPage({
   productName = "Rose Gold Bracelet",
+  productId = "PRD-002", // Updated to match your API doc example
 }: WriteReviewPageProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [rating, setRating] = useState(0);
@@ -76,46 +79,43 @@ export default function WriteReviewPage({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (rating === 0) return alert("Please select a star rating.");
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("You must be logged in to submit a review.");
+    // Fallback: Prevent submission if productId is somehow missing
+    if (!productId) {
+      alert("Product information is missing. Please try again from the orders page.");
       return;
     }
+
+    if (rating === 0) return alert("Please select a star rating.");
 
     setSubmitting(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:8080/api/reviews/product/69a41f9db184e6fc00ba7f99",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            rating,
-            comment: review,
-            ...(photos.length > 0 && { images: photos }),
-          }),
-        }
-      );
+      // API Integration matching the order.ts service pattern
+      const response = await reviewService.submitReview(productId, {
+        rating,
+        comment: review,
+        ...(photos.length > 0 && { images: photos }),
+      });
 
-      const json = await response.json();
-
-      if (response.ok && json.statusCode === 201) {
+      // Handling response based on your API Documentation (statusCode 201)
+      if (response.statusCode === 201 || response.status === "success") {
         alert("Review submitted!");
         setRating(0);
         setReview("");
         setPhotos([]);
       } else {
-        alert(json.message || "Something went wrong. Please try again.");
+        alert(response.message || "Something went wrong. Please try again.");
       }
-    } catch (error) {
-      console.error("Submit Error:", error);
-      alert("Failed to submit review. Please check your connection.");
+    } catch (error: any) {
+      // Robust error logging and fallback messaging
+      console.error("Submit Error:", error.response?.data || error.message || error);
+      
+      const errorMessage = 
+        error.response?.data?.message || 
+        "Failed to submit review. Please check your connection.";
+      
+      alert(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -124,7 +124,6 @@ export default function WriteReviewPage({
   return (
     <div className="bg-[#fdf8f9] min-h-screen pb-20">
       <div className="max-w-3xl mx-auto px-3 sm:px-5 lg:px-6 py-6 sm:py-8 lg:py-10">
-        {/* ── Page Title ── */}
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
           Write a Review
         </h1>
@@ -136,7 +135,6 @@ export default function WriteReviewPage({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
-          {/* ── Write Your Thoughts Card ── */}
           <div className="bg-white rounded-2xl border border-pink-100 px-4 sm:px-8 py-6 sm:py-7">
             <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-4 sm:mb-5">
               Write Your Thoughts
@@ -162,7 +160,6 @@ export default function WriteReviewPage({
             </div>
           </div>
 
-          {/* ── Your Review textarea ── */}
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
               Your Review <span className="text-red-400">*</span>
@@ -184,19 +181,16 @@ export default function WriteReviewPage({
             </div>
           </div>
 
-          {/* ── Add Photos ── */}
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
               Add Photos{" "}
               <span className="font-normal text-gray-400">(Optional)</span>
             </label>
 
-            {/* Upload zone */}
             <div
               onClick={() => fileRef.current?.click()}
               className="rounded-xl border-2 border-dashed border-pink-100 bg-white px-4 py-8 sm:py-10 flex flex-col items-center justify-center gap-2.5 cursor-pointer hover:bg-pink-50/40 transition-colors"
             >
-              {/* Camera icon box */}
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
                 <svg
                   viewBox="0 0 24 24"
@@ -219,10 +213,6 @@ export default function WriteReviewPage({
 
               <button
                 type="button"
-                onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                  e.stopPropagation();
-                  fileRef.current?.click();
-                }}
                 className="mt-1 px-5 py-2 rounded-lg bg-[#D94F7A] text-white text-xs font-semibold hover:bg-[#C0426A] active:scale-95 transition-all border-0 cursor-pointer"
               >
                 Choose Photos
@@ -238,7 +228,6 @@ export default function WriteReviewPage({
               className="hidden"
             />
 
-            {/* Photo previews */}
             {photos.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-3">
                 {photos.map((src, idx) => (
@@ -246,7 +235,6 @@ export default function WriteReviewPage({
                     key={idx}
                     className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-pink-100 shrink-0"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={src}
                       alt={`upload-${idx}`}
@@ -257,7 +245,7 @@ export default function WriteReviewPage({
                       onClick={() =>
                         setPhotos((p) => p.filter((_, i) => i !== idx))
                       }
-                      className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white text-[10px] hover:bg-red-500 transition-colors border-0 cursor-pointer leading-none"
+                      className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white text-[10px] hover:bg-red-500 transition-colors border-0 cursor-pointer"
                     >
                       ✕
                     </button>
@@ -267,7 +255,6 @@ export default function WriteReviewPage({
             )}
           </div>
 
-          {/* ── Cancel / Submit ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
             <button
               type="button"
@@ -278,7 +265,7 @@ export default function WriteReviewPage({
             <button
               type="submit"
               disabled={submitting || rating === 0}
-              className="h-11 sm:h-12 rounded-xl bg-[#D94F7A] text-white text-xs sm:text-sm font-bold hover:bg-[#C0426A] disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-widest border-0"
+              className="h-11 sm:h-12 rounded-xl bg-[#D94F7A] text-white text-xs sm:text-sm font-bold hover:bg-[#C0426A] disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-widest border-0 cursor-pointer"
             >
               {submitting ? "Submitting…" : "Submit Review"}
             </button>
