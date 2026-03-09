@@ -88,4 +88,19 @@ export const productService = {
     const response = await apiClient.get(`/products/${productId}/similar`);
     return response.data;
   },
+
+  // GET /products/:productId/story
+  async getStory(productId: string) {
+    const response = await apiClient.get(`/products/${productId}/story`);
+    return response.data;
+  },
+
+  // POST /api/products/:productId/rating
+  async submitRating(productId: string, rating: number, review?: string) {
+    const response = await apiClient.post(`/products/${productId}/rating`, {
+      rating,
+      review: review || "",
+    });
+    return response.data;
+  },
 };
