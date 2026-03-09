@@ -9,6 +9,7 @@ import {
   fetchSimilarProducts,
   submitProductRating,
   resetRatingState,
+  setSimilarCurrentPage,
   SimilarProduct,
 } from "@/redux/storyslice";
 import { addToCart as reduxAddToCart } from "@/redux/cartslice";
@@ -73,6 +74,8 @@ export default function StoriesPage() {
     storyError,
     similarProducts,
     similarLoading,
+    similarTotalPages,
+    similarCurrentPage,
     ratingLoading,
     ratingSuccess,
     ratingError,
@@ -83,10 +86,19 @@ export default function StoriesPage() {
   const [userReview, setUserReview] = useState("");
   const currentProductId = DEFAULT_PRODUCT_IDS[activeIndex];
 
+  // Fetch story whenever product changes
   useEffect(() => {
     dispatch(fetchProductStory(currentProductId));
-    dispatch(fetchSimilarProducts(currentProductId));
   }, [currentProductId, dispatch]);
+
+  // Fetch similar products with pagination
+  useEffect(() => {
+    dispatch(fetchSimilarProducts({
+      productId: currentProductId,
+      page: similarCurrentPage,
+      limit: 4
+    }));
+  }, [currentProductId, similarCurrentPage, dispatch]);
 
   useEffect(() => {
     if (ratingSuccess) {
@@ -315,6 +327,29 @@ export default function StoriesPage() {
                   onAdd={(productName) => showToast("Added", `${productName} added to bag`, "success")}
                 />
               ))}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {similarTotalPages > 1 && (
+            <div className="flex justify-center items-center gap-6 mt-10">
+              <button
+                disabled={similarCurrentPage === 1 || similarLoading}
+                onClick={() => dispatch(setSimilarCurrentPage(similarCurrentPage - 1))}
+                className="px-6 py-2 rounded-full border border-[#E8456A] text-[#E8456A] font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pink-50 transition-all"
+              >
+                Previous
+              </button>
+              <span className="font-bold text-gray-600">
+                Page {similarCurrentPage} of {similarTotalPages}
+              </span>
+              <button
+                disabled={similarCurrentPage === similarTotalPages || similarLoading}
+                onClick={() => dispatch(setSimilarCurrentPage(similarCurrentPage + 1))}
+                className="px-6 py-2 rounded-full border border-[#E8456A] text-[#E8456A] font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pink-50 transition-all"
+              >
+                Next
+              </button>
             </div>
           )}
         </section>

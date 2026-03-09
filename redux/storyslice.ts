@@ -56,6 +56,8 @@ interface StoryState {
     similarProducts: SimilarProduct[];
     similarLoading: boolean;
     similarError: string | null;
+    similarTotalPages: number;
+    similarCurrentPage: number;
 
     ratingData: RatingData | null;
     ratingLoading: boolean;
@@ -71,6 +73,8 @@ const initialState: StoryState = {
     similarProducts: [],
     similarLoading: false,
     similarError: null,
+    similarTotalPages: 1,
+    similarCurrentPage: 1,
 
     ratingData: null,
     ratingLoading: false,
@@ -85,7 +89,6 @@ export const fetchProductStory = createAsyncThunk(
     async (productId: string, { rejectWithValue }) => {
         try {
             const response = await productService.getStory(productId);
-            // According to the docs, the structure is { statusCode, message, data: { ... } }
             return response?.data as StoryData;
         } catch (error: any) {
             return rejectWithValue(
@@ -97,11 +100,19 @@ export const fetchProductStory = createAsyncThunk(
 
 export const fetchSimilarProducts = createAsyncThunk(
     "story/fetchSimilar",
-    async (productId: string, { rejectWithValue }) => {
+    async ({ productId, page, limit }: { productId: string; page: number; limit: number }, { rejectWithValue }) => {
         try {
-            const response = await productService.getSimilar(productId);
-            // Docs show { success: true, data: [...] }
-            return (response?.data || []) as SimilarProduct[];
+            const response = await productService.getSimilar(productId, page, limit);
+            // If the backend doesn't support meta yet, we default to whatever comes back.
+            // If it returns { items, meta } the backend needs to be standard.
+            // But let's handle both based on common backend patterns.
+            const results = response?.data;
+            if (Array.isArray(results)) {
+                return { items: results, totalPages: 1, currentPage: page };
+            } else if (results && results.items) {
+                return { items: results.items, totalPages: results.meta?.totalPages || 1, currentPage: results.meta?.page || 1 };
+            }
+            return { items: [], totalPages: 1, currentPage: 1 };
         } catch (error: any) {
             return rejectWithValue(
                 error.response?.data?.message || "Failed to fetch similar products"
@@ -118,7 +129,6 @@ export const submitProductRating = createAsyncThunk(
     ) => {
         try {
             const response = await productService.submitRating(productId, rating, review);
-            // Docs show { statusCode: 200, message: "...", data: { ... } }
             return response?.data as RatingData;
         } catch (error: any) {
             return rejectWithValue(
@@ -138,6 +148,9 @@ const storySlice = createSlice({
             state.ratingSuccess = false;
             state.ratingError = null;
         },
+        setSimilarCurrentPage(state, action) {
+            state.similarCurrentPage = action.payload;
+        }
     },
     extraReducers: (builder) => {
         // fetchProductStory
@@ -161,7 +174,9 @@ const storySlice = createSlice({
         });
         builder.addCase(fetchSimilarProducts.fulfilled, (state, action) => {
             state.similarLoading = false;
-            state.similarProducts = action.payload;
+            state.similarProducts = action.payload.items;
+            state.similarCurrentPage = action.payload.currentPage;
+            state.similarTotalPages = action.payload.totalPages;
         });
         builder.addCase(fetchSimilarProducts.rejected, (state, action) => {
             state.similarLoading = false;
@@ -187,5 +202,5 @@ const storySlice = createSlice({
     },
 });
 
-export const { resetRatingState } = storySlice.actions;
+export const { resetRatingState, setSimilarCurrentPage } = storySlice.actions;
 export default storySlice.reducer;

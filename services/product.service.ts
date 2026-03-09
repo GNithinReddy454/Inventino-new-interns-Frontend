@@ -84,8 +84,10 @@ export const productService = {
   },
 
   // GET /products/:productId/similar
-  async getSimilar(productId: string) {
-    const response = await apiClient.get(`/products/${productId}/similar`);
+  async getSimilar(productId: string, page = 1, limit = 4) {
+    const response = await apiClient.get(`/products/${productId}/similar`, {
+      params: { page, limit },
+    });
     return response.data;
   },
 
