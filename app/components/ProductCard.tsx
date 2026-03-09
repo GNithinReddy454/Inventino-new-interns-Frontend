@@ -7,7 +7,7 @@ import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
 import { addToCart as reduxAddToCart } from "@/redux/cartslice";
 import { useCart, Product } from "@/lib/cartContext";
 import { useToast } from "@/app/components/GlobalToast";
-import { Roboto } from "next/font/google";
+
 export interface ProductCardProduct extends Product {
   title?: string;
   images?: string[];
@@ -22,7 +22,6 @@ interface ProductCardProps {
   buttonBg?: string;
 }
 
-// ── Star Rating ───────────────────────────────────────────────────────────────
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex items-center gap-0.5">
@@ -30,34 +29,16 @@ function StarRating({ rating }: { rating: number }) {
         const filled = rating >= star;
         const partial = !filled && rating > star - 1;
         return (
-          <svg
-            key={star}
-            width="11"
-            height="11"
-            viewBox="0 0 24 24"
-            className="flex-shrink-0"
-          >
+          <svg key={star} width="11" height="11" viewBox="0 0 24 24" className="flex-shrink-0">
             <defs>
               <linearGradient id={`star-grad-${star}-${rating}`}>
-                <stop
-                  offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`}
-                  stopColor="#E8456A"
-                />
-                <stop
-                  offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`}
-                  stopColor="#e5e7eb"
-                />
+                <stop offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`} stopColor="#E8456A" />
+                <stop offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`} stopColor="#e5e7eb" />
               </linearGradient>
             </defs>
             <polygon
               points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-              fill={
-                filled
-                  ? "#E8456A"
-                  : partial
-                    ? `url(#star-grad-${star}-${rating})`
-                    : "#e5e7eb"
-              }
+              fill={filled ? "#E8456A" : partial ? `url(#star-grad-${star}-${rating})` : "#e5e7eb"}
             />
           </svg>
         );
@@ -79,14 +60,10 @@ const MOCK_IMAGES = [
   "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400",
 ];
 
-export default function ProductCard({
-  product,
-  onAdd,
-  buttonBg = "#E8456A",
-}: ProductCardProps) {
+export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: ProductCardProps) {
   const dispatch = useAppDispatch();
   const { items: wishlistItems = [] } = useAppSelector((state: any) => state.wishlist);
-  const { cart, addToCart, updateQuantity, removeFromCart } = useCart();
+  const { addToCart } = useCart();
   const { showToast } = useToast();
 
   const isSaved = wishlistItems.some((wItem: any) =>
@@ -111,276 +88,161 @@ export default function ProductCard({
   }, [images.length]);
 
   const stopScroll = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     setCurrentSlide(0);
   }, []);
 
   const productName = product.name || product.title || "";
-  const tags: string[] =
-    product.tags ?? [product.category ?? "", "Adjustable"].filter(Boolean);
+  const tags: string[] = product.tags ?? [product.category ?? "", "Adjustable"].filter(Boolean);
 
   const cartProduct: Product = {
-    id: product.id,
-    name: productName,
-    image: images[0] ?? "",
-    price: product.price,
-    category: product.category,
-    badge: product.badge,
-    rating: product.rating,
-    reviews: product.reviews,
-  };
-
-  const [localQuantity, setLocalQuantity] = useState(1);
-
-  const handleIncreaseLocal = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setLocalQuantity((prev) => prev + 1);
-  };
-
-  const handleDecreaseLocal = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (localQuantity > 0) {
-      setLocalQuantity((prev) => prev - 1);
-    }
+    id: product.id, name: productName, image: images[0] ?? "",
+    price: product.price, category: product.category,
+    badge: product.badge, rating: product.rating, reviews: product.reviews,
   };
 
   const handleAdd = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     addToCart(cartProduct, 1);
     dispatch(reduxAddToCart({ productId: String(product.id), quantity: 1 }));
     onAdd?.(productName);
-    showToast("Success!", "Added to bag ", "success");
+    showToast("Success!", "Added to bag", "success");
   };
 
   const rating = typeof product.rating === "number" ? product.rating : 4.7;
-  const reviews = typeof product.reviews === "number" ? product.reviews : 5.0;
   const badgeText = getBadgeText(product.badge);
   let displayText = badgeText;
   let badgeColor = "bg-pink-500";
-
   if (badgeText) {
     const upper = badgeText.toUpperCase();
     if (upper === "BESTSELLER" || upper === "BEST SELLER") badgeColor = "bg-yellow-400";
-    else if (upper === "SALE") {
-      displayText = "HOT DEALS";
-      badgeColor = "bg-red-500";
-    }
+    else if (upper === "SALE") { displayText = "HOT DEALS"; badgeColor = "bg-red-500"; }
   }
-
-  const hasDiscount =
-    !!product.originalPrice && product.originalPrice > product.price;
+  const hasDiscount = !!product.originalPrice && product.originalPrice > product.price;
 
   return (
-    <Link
-      href={`/products/${product.id}`}
-      className="flex flex-col cursor-pointer h-full"
-      style={{
-        borderRadius: "16px",
-        overflow: "hidden",
-        background: "#fff",
-        boxShadow: "0 2px 16px rgba(0,0,0,0.10)",
-        transition: "box-shadow 0.2s",
-      }}
+    <div
+      className="relative h-full"
+      style={{ borderRadius: 16, overflow: "visible" }}
+      // Desktop mouse hover → image scroll
+      onMouseEnter={startScroll}
+      onMouseLeave={stopScroll}
+      // Real phone touch → image scroll (won't fire in DevTools emulator — browser limitation)
+      onTouchStart={startScroll}
+      onTouchEnd={stopScroll}
+      onTouchCancel={stopScroll}
     >
-      {/* ── IMAGE AREA ── */}
-      <div
-        className="relative aspect-[4/3] sm:aspect-square overflow-hidden rounded-t-2xl bg-gray-50 shrink-0"
-        onMouseEnter={startScroll}
-        onMouseLeave={stopScroll}
-      >
-        {/* Badge — top left */}
-        {badgeText && (
-          <div className="absolute top-3 left-3 z-10 pointer-events-none">
-            <span
-              className={`text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm shadow-sm ${badgeColor}`}
+      {/*
+        Pink bg + zoom handled by CSS .product-card-link:hover (desktop)
+        and .product-card-link:active (real phone touch + DevTools click-hold).
+        Add to your globals.css — already provided in globals.css output.
+      */}
+      <Link href={`/products/${product.id}`} className="product-card-link">
+
+        {/* IMAGE */}
+        <div className="relative w-full shrink-0 bg-gray-50" style={{ aspectRatio: "1/1", overflow: "hidden" }}>
+          {badgeText && (
+            <div className="absolute top-2 left-2 z-10 pointer-events-none">
+              <span className={`text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm shadow-sm ${badgeColor}`}>
+                {displayText}
+              </span>
+            </div>
+          )}
+
+          <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
+            <button
+              onClick={(e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (!isSaved) {
+                  dispatch(addWishlistItem(String(product.id)));
+                  showToast("Success!", "Added to wishlist", "success");
+                } else {
+                  dispatch(removeWishlistItem(String(product.id)));
+                  showToast("Removed", "Removed from wishlist", "info");
+                }
+              }}
+              className={`w-7 h-7 flex items-center justify-center rounded-full shadow-md transition-all duration-200 ${isSaved ? "bg-[#E8456A] text-white" : "bg-white text-gray-400"}`}
             >
-              {displayText}
-            </span>
+              <Heart size={13} fill={isSaved ? "currentColor" : "none"} strokeWidth={2} />
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-md text-gray-400"
+            >
+              <Share2 size={13} />
+            </button>
           </div>
-        )}
 
-        {/* Heart + Share — top right */}
-        <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!isSaved) {
-                dispatch(addWishlistItem(String(product.id)));
-                showToast("Success!", "Added to wishlist", "success");
-              } else {
-                dispatch(removeWishlistItem(String(product.id)));
-                showToast("Removed", "Removed from wishlist", "info");
-              }
-            }}
-            className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-200 ${isSaved
-              ? "bg-[#E8456A] text-white"
-              : "bg-white text-gray-400 hover:text-[#E8456A] hover:bg-pink-50"
-              }`}
-          >
-            <Heart
-              size={14}
-              fill={isSaved ? "currentColor" : "none"}
-              strokeWidth={2}
-            />
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-md text-gray-400 hover:text-[#E8456A] hover:bg-pink-50 transition-all duration-200"
-          >
-            <Share2 size={15} />
-          </button>
-        </div>
-
-        {/* Images */}
-        <div className="absolute inset-0 block pointer-events-none">
-          {images.map((img, idx) => {
-            const isBraceletsCharm = img.includes("bracelets-charm");
-            return (
+          <div className="absolute inset-0 pointer-events-none">
+            {images.map((img, idx) => (
               <img
-                key={idx}
-                src={img}
-                alt={productName}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${idx === currentSlide ? "opacity-100" : "opacity-0"
-                  } ${isBraceletsCharm ? "scale-[1.06]" : ""}`}
-              />
-            );
-          })}
-        </div>
-
-        {/* Dot indicators */}
-        {images.length > 1 && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 8,
-              left: "50%",
-              transform: "translateX(-50%)",
-              display: "flex",
-              gap: 4,
-              zIndex: 10,
-            }}
-          >
-            {images.map((_, idx) => (
-              <div
-                key={idx}
-                style={{
-                  borderRadius: 999,
-                  background: "white",
-                  opacity: idx === currentSlide ? 1 : 0.5,
-                  width: idx === currentSlide ? 12 : 6,
-                  height: 6,
-                  transition: "all 0.3s",
-                }}
-                className={`rounded-full transition-all duration-500 ${idx === currentSlide
-                  ? "w-4 h-1.5 bg-[#E8456A]"
-                  : "w-1.5 h-1.5 bg-white/70"
-                  }`}
+                key={idx} src={img} alt={productName}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${idx === currentSlide ? "opacity-100" : "opacity-0"}`}
               />
             ))}
           </div>
-        )}
-      </div>
 
-      {/* ── Card Body ── */}
-      <div className="flex flex-col flex-1 px-4 pb-4 pt-3">
-        {/* Category + Stars */}
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] text-[#E8456A] font-bold uppercase tracking-widest line-clamp-1">
-            {product.category}
-          </span>
-          <div className="flex items-center gap-1">
-            <StarRating rating={rating} />
-            <span className="text-[10px] text-gray-500">
-              {rating.toFixed(1)} / {reviews.toFixed(1)}
+          {images.length > 1 && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+              {images.map((_, idx) => (
+                <div key={idx} className={`rounded-full transition-all duration-300 ${idx === currentSlide ? "w-3 h-1.5 bg-[#E8456A]" : "w-1.5 h-1.5 bg-white/70"}`} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* BODY */}
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "10px 12px 12px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, gap: 4 }}>
+            <span style={{ fontSize: 9, color: "#E8456A", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+              {product.category}
             </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+              <StarRating rating={rating} />
+              <span style={{ fontSize: 9, color: "#6b7280", whiteSpace: "nowrap" }}>{rating.toFixed(1)}</span>
+            </div>
           </div>
-        </div>
 
-        {/* Product title */}
-        <div className="text-sm font-bold text-gray-900 leading-tight mb-1 line-clamp-2">
-          {productName}
-        </div>
-
-        {/* Description */}
-        {product.description && (
-          <div className="text-[11px] text-gray-400 leading-snug mb-2 line-clamp-2">
-            {product.description}
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {productName}
           </div>
-        )}
 
-        {/* Tags */}
-        {tags.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
-            {tags.slice(0, 3).map((tag, i) => (
-              <span
-                key={i}
-                className="text-[10px] text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-sm font-medium"
-              >
-                {typeof tag === "string"
-                  ? tag
-                  : ((tag as unknown as { text?: string })?.text ?? "")}
+          {tags.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 8 }}>
+              {tags.slice(0, 2).map((tag, i) => (
+                <span key={i} style={{ fontSize: 9, color: "#6b7280", background: "#f3f4f6", padding: "2px 6px", borderRadius: 3, fontWeight: 500 }}>
+                  {typeof tag === "string" ? tag : ((tag as any)?.text ?? "")}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: "auto" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 900, color: "#E8456A", lineHeight: 1, whiteSpace: "nowrap" }}>
+                ₹{product.price.toFixed(0)}
               </span>
-            ))}
+              {hasDiscount && (
+                <span style={{ fontSize: 10, color: "#9ca3af", textDecoration: "line-through", whiteSpace: "nowrap" }}>
+                  ₹{product.originalPrice!.toFixed(0)}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={handleAdd}
+              style={{
+                backgroundColor: buttonBg, color: "#fff",
+                fontSize: 9, fontWeight: 800, padding: "7px 10px",
+                borderRadius: 999, border: "none", cursor: "pointer",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+                whiteSpace: "nowrap", flexShrink: 0,
+              }}
+            >
+              Add to Bag
+            </button>
           </div>
-        )}
-
-        {/* ✅ Price + ADD TO BAG — pinned to bottom with mt-auto */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8,
-            marginTop: "auto",  // ✅ KEY FIX: always pushes to bottom
-          }}
-        >
-          {/* Price */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: "#E8456A", lineHeight: 1 }}>
-              ₹{product.price.toFixed(2)}
-            </span>
-            {hasDiscount && (
-              <span style={{ fontSize: 12, color: "#9CA3AF", textDecoration: "line-through" }}>
-                ₹{product.originalPrice!.toFixed(2)}
-              </span>
-            )}
-          </div>
-
-          {/* ADD TO BAG button */}
-          <button
-            onClick={handleAdd}
-            style={{
-              backgroundColor: buttonBg,
-              color: "#fff",
-              fontSize: 11,
-              fontWeight: 800,
-              padding: "9px 18px",
-              borderRadius: 999,
-              border: "none",
-              cursor: "pointer",
-              textTransform: "uppercase",
-              letterSpacing: "0.07em",
-              whiteSpace: "nowrap",
-              transition: "opacity 0.2s",
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = "0.88")}
-            onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            Add to Bag
-          </button>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
