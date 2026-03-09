@@ -37,7 +37,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setTimeout(() => {
       const savedCart = localStorage.getItem("cart");
       if (savedCart) {

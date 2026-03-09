@@ -419,7 +419,7 @@ function ProductsContent() {
       <div className="flex flex-col lg:flex-row gap-8">
 
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-16 h-fit overflow-visible">
+        <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-24 self-start">
           <div className="bg-white p-6 pb-8 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-5">
               <h3 className="font-bold text-gray-900">Filters</h3>
@@ -564,7 +564,7 @@ function ProductsContent() {
 
           {/* Grid */}
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : products.length === 0 && !error ? (
