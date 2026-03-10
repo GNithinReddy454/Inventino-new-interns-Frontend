@@ -108,7 +108,6 @@ export default function WishlistPage() {
       } else {
         addToCart(item, 1);
       }
-      dispatch(removeWishlistItem(pId));
       triggerToast(`${item.name || item.title} added to cart`);
     },
     [addToCart, dispatch, triggerToast, user],
@@ -125,7 +124,6 @@ export default function WishlistPage() {
         } else {
           addToCart(itemWrapper.product as any, 1);
         }
-        dispatch(removeWishlistItem(id));
         count++;
       }
     });
@@ -160,7 +158,6 @@ export default function WishlistPage() {
         count++;
       }
     });
-    dispatch(clearWishlist());
     triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart`);
     setSelectedIds([]);
   };
@@ -487,6 +484,26 @@ export default function WishlistPage() {
                         {name}
                       </h3>
                     </Link>
+
+                    {/* Options (Color/Size) */}
+                    <div className="flex flex-row items-center gap-1.5 sm:gap-2 mb-2 overflow-hidden w-full">
+                      <select
+                        className="flex-1 min-w-0 text-[9px] sm:text-[10px] font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded px-1 py-1 focus:outline-none focus:border-[#E8456A] transition-colors cursor-pointer truncate"
+                        defaultValue={(item as any).color || "Rose Gold"}
+                      >
+                        <option value={(item as any).color || "Rose Gold"}>{(item as any).color || "Rose Gold"}</option>
+                        <option value="Silver">Silver</option>
+                        <option value="Gold">Gold</option>
+                      </select>
+                      <select
+                        className="flex-1 min-w-0 text-[9px] sm:text-[10px] font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded px-1 py-1 focus:outline-none focus:border-[#E8456A] transition-colors cursor-pointer truncate"
+                        defaultValue={(item as any).size || "Standard"}
+                      >
+                        <option value={(item as any).size || "Standard"}>{(item as any).size || "Standard"}</option>
+                        <option value="Small">Small</option>
+                        <option value="Large">Large</option>
+                      </select>
+                    </div>
 
                     {/* Price */}
                     <div className="flex items-center gap-1 mt-auto mb-2">

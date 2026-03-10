@@ -10,6 +10,7 @@ import adminReducer from "./adminSlice";
 import contactReducer from "./contactslice";
 import wishlistReducer from "./wishlistslice";
 import cartReducer from "./cartslice";
+import storyReducer from "./storyslice";
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     contact: contactReducer,
     wishlist: wishlistReducer,
     cart: cartReducer,
+    story: storyReducer,
   },
 });
 

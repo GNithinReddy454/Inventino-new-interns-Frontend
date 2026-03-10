@@ -1,157 +1,195 @@
 "use client";
 
-import React, { useState } from "react";
-import { ShoppingCart, Eye } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ShoppingCart, Eye, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import ProductCard, { ProductCardProduct } from "@/app/components/ProductCard";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import {
+  fetchProductStory,
+  fetchSimilarProducts,
+  submitProductRating,
+  resetRatingState,
+  SimilarProduct,
+} from "@/redux/storyslice";
+import { addToCart as reduxAddToCart } from "@/redux/cartslice";
+import ProductCard from "@/app/components/ProductCard";
 import { useCart } from "@/lib/cartContext";
-import Toast from "@/app/components/toast";
+import { useAuth } from "@/app/(main)/components/authContext";
+import { useToast } from "@/app/components/GlobalToast";
+import { Skeleton } from "@/app/components/ui/skeleton";
 
-// Mock Data for Stories
-const MOCK_STORIES = [
-  {
-    id: 1,
-    artisan: "Sarah Anderson",
-    role: "Master Artisan",
-    title: "The Story Behind This Treasure",
-    description: "Every piece we create carries a unique journey from concept to creation. This beautiful rose gold bracelet is the result of over 20 years of craftsmanship perfected by Sarah Anderson, a third-generation jewelry maker from our artisan community. Each bracelet takes approximately 8 hours to create, with every detail carefully considered and executed. Sarah learned the art of jewelry making from her grandmother, who passed down traditional techniques that have been refined over generations. She sources the finest materials and uses both traditional hand tools and modern precision techniques to create pieces that are both timeless and contemporary.",
-    quote: "Every piece I create is infused with love and intention. I want the wearer to feel special and confident, knowing they're wearing something truly unique that was made just for them.",
-    process: "The rose gold plating process uses a special technique that ensures durability and a lasting shine. Each bracelet is individually inspected and polished by hand before being carefully packaged in a handmade gift box, making it perfect for gifting or keeping as a personal treasure.",
-    image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&auto=format&fit=crop",
-    thumbnail: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=100&auto=format&fit=crop",
-  },
-  {
-    id: 2,
-    artisan: "Michael Chen",
-    role: "Lead Designer",
-    title: "Crafting the Silver Elegance",
-    description: "Our signature silver collection embodies minimalist beauty intertwined with complex geometric patterns. Michael's approach brings architectural elements into fine jewelry.",
-    quote: "Minimalism isn't about lacking detail, it's about perfect proportion.",
-    process: "Using ethically sourced silver, each piece is cast in custom molds designed from 3D architectural models, ensuring pristine geometric precision.",
-    image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&auto=format&fit=crop",
-    thumbnail: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=100&auto=format&fit=crop",
-  },
-  {
-    id: 3,
-    artisan: "Elena Rodriguez",
-    role: "Gemologist",
-    title: "A Touch of Emerald",
-    description: "Finding the perfect gemstone is like discovering a new star. Elena travels the globe to hand-select emeralds that have a specific vibrant hue that matches our brand's exacting standards.",
-    quote: "The stone speaks to you if you look closely enough. We only select gems with a vibrant, inner fire.",
-    process: "Each emerald is inspected under varying light conditions and meticulously cut to maximize its natural brilliance without compromising its structural integrity.",
-    image: "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=800&auto=format&fit=crop",
-    thumbnail: "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=100&auto=format&fit=crop",
-  },
-  {
-    id: 4,
-    artisan: "David Smith",
-    role: "Silversmith",
-    title: "The Forged Link",
-    description: "Creating a chain that sits perfectly on the collarbone requires understanding human anatomy as well as metallurgy. David's chains are known for their fluid, silk-like drape.",
-    quote: "A good chain should feel like it was woven from liquid metal.",
-    process: "Links are individually soldered and then drawn through decreasing polished dies to achieve the perfect tensile strength and comfort.",
-    image: "https://images.unsplash.com/photo-1599643478524-fb66f7f32e92?w=800&auto=format&fit=crop",
-    thumbnail: "https://images.unsplash.com/photo-1599643478524-fb66f7f32e92?w=100&auto=format&fit=crop",
-  },
-  {
-    id: 5,
-    artisan: "Aisha Patel",
-    role: "Enamel Artist",
-    title: "Vibrant Colours",
-    description: "Bringing color into fine jewelry requires a steady hand and a keen eye. Aisha's cloissoné work is unparalleled, using traditional firing techniques that result in vivid, fade-resistant wearable art.",
-    quote: "Color is emotion. I try to paint feelings onto gold.",
-    process: "The enamel is layered thinly and fired up to 15 times to achieve the depth of color that makes our pieces stand out.",
-    image: "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=800&auto=format&fit=crop",
-    thumbnail: "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=100&auto=format&fit=crop",
-  }
+// ─── Constants ───────────────────────────────────────────────────────────────
+const DEFAULT_PRODUCT_IDS = [
+  "PRD-001",
+  "PRD-002",
+  "PRD-003",
+  "PRD-004",
+  "PRD-005",
+];
+
+const THUMBNAIL_IMAGES = [
+  "https://images.unsplash.com/photo-1611591437281-460bfbe1220a",
+  "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908",
+  "https://images.unsplash.com/photo-1588444837495-c6cfeb53f32d",
+  "https://images.unsplash.com/photo-1601121141461-9d6647bca1ed",
+  "https://images.unsplash.com/photo-1596944924616-7b38e7cfac36",
+];
+
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&auto=format&fit=crop";
+const SLIDER_FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1588444837495-c6cfeb53f32d?w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1601121141461-9d6647bca1ed?w=800&auto=format&fit=crop"
 ];
 
 const PROCESS_STEPS = [
   {
     id: "01",
     title: "Design & Concept",
-    description: "Each design begins with sketches inspired by culture, art, and emotion. Sarah carefully plans every curve and detail.",
+    description: "Each design begins with sketches inspired by culture, art, and emotion. Every curve is carefully planned.",
   },
   {
     id: "02",
     title: "Handcrafting",
-    description: "Using traditional techniques and modern tools, each piece is meticulously shaped, refined, and polished by hand over 6 hours.",
+    description: "Using traditional techniques and modern tools, each piece is meticulously shaped, refined, and polished by hand.",
   },
   {
     id: "03",
     title: "Quality Check",
-    description: "Every bracelet undergoes rigorous quality inspection and is personally approved by Sarah before reaching you.",
+    description: "Every bracelet undergoes rigorous quality inspection and is personally approved before reaching you.",
   }
 ];
 
-const SIMILAR_PRODUCTS_DATA: ProductCardProduct[] = [
-  {
-    id: 101,
-    name: "Delicate Rose Gold Chain Bracelet",
-    price: 34.99,
-    category: "BRACELETS",
-    rating: 4.7,
-    reviews: 152,
-    image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400",
-    badge: "NEW",
-    tags: ["Rose Gold", "Adjustable"],
-    description: "Handcrafted with natural threads passed down through generations",
-  },
-  {
-    id: 102,
-    name: "Knitted Bag Bracelet",
-    price: 34.99,
-    category: "BRACELETS",
-    rating: 4.5,
-    reviews: 98,
-    image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400",
-    badge: "NEW",
-    tags: ["Pink Gold", "Adjustable"],
-    description: "Handcrafted with natural threads passed down through generations",
-  },
-  {
-    id: 103,
-    name: "Frame Set Bracelet",
-    price: 34.99,
-    category: "BRACELETS",
-    rating: 4.8,
-    reviews: 215,
-    image: "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400",
-    badge: "BESTSELLER",
-    tags: ["Rose Gold", "Adjustable"],
-    description: "Handcrafted with natural threads passed down through generations",
-  },
-  {
-    id: 104,
-    name: "Frame Set Chain Product",
-    price: 34.99,
-    category: "BRACELETS",
-    rating: 4.9,
-    reviews: 320,
-    image: "https://images.unsplash.com/photo-1599643478524-fb66f7f32e92?w=400",
-    badge: "BESTSELLER",
-    tags: ["Pink Gold", "Adjustable"],
-    description: "Handcrafted with natural threads passed down through generations",
-  }
-];
+// ─── Helper: map SimilarProduct → ProductCardProduct ─────────────────────────
+function mapToProductCard(p: SimilarProduct) {
+  return {
+    id: p.productId ?? p._id,
+    name: p.name,
+    price: p.price,
+    image: p.images?.[0] || FALLBACK_IMAGE,
+    category: p.category,
+    rating: p.ratingsAverage,
+    reviews: p.ratingsCount,
+    badge: p.bestSeller ? "BESTSELLER" : p.trendy ? "TRENDING" : undefined,
+  };
+}
 
 export default function StoriesPage() {
-  const [activeStoryId, setActiveStoryId] = useState(MOCK_STORIES[0].id);
-  const [toastMessage, setToastMessage] = useState("");
-  const { addToCart } = useCart();
+  const dispatch = useAppDispatch();
+  const { user } = useAuth();
+  const { addToCart: guestAddToCart } = useCart();
+  const { showToast } = useToast();
   const router = useRouter();
 
-  const activeStory = MOCK_STORIES.find(s => s.id === activeStoryId)!;
+  const {
+    story,
+    storyLoading,
+    similarProducts,
+    similarLoading,
+    ratingLoading,
+    ratingSuccess,
+    ratingError,
+  } = useAppSelector((state) => state.story);
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [sliderIndex, setSliderIndex] = useState(0);
+  const [similarSliderIndex, setSimilarSliderIndex] = useState(0);
+  const [userRating, setUserRating] = useState(0);
+  const [userReview, setUserReview] = useState("");
+  const currentProductId = DEFAULT_PRODUCT_IDS[activeIndex];
+  const ringsContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollRings = (direction: "left" | "right") => {
+    if (ringsContainerRef.current) {
+      const scrollAmount = 150;
+      ringsContainerRef.current.scrollBy({ left: direction === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  // Derive slider images from story data or fallbacks
+  const generateSliderImages = () => {
+    const rawUrl = THUMBNAIL_IMAGES[activeIndex % THUMBNAIL_IMAGES.length];
+    const profileImageHighRes = `${rawUrl}?w=800&auto=format&fit=crop`;
+    return [profileImageHighRes, ...SLIDER_FALLBACK_IMAGES];
+  };
+
+  const sliderImages = generateSliderImages();
+
+  const handleNextImage = () => {
+    setSliderIndex((prev) => (prev + 1) % sliderImages.length);
+  };
+
+  const handlePrevImage = () => {
+    setSliderIndex((prev) => (prev - 1 + sliderImages.length) % sliderImages.length);
+  };
+
+  // Fetch story and reset sliders whenever product changes
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSliderIndex(0);
+    dispatch(fetchProductStory(currentProductId));
+    dispatch(fetchSimilarProducts({
+      productId: currentProductId,
+      page: 1,
+      limit: 12,
+    }));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSimilarSliderIndex(0);
+    // sliderIndex resets are intentional on product change
+  }, [currentProductId, dispatch]);
+
+  // Generate enough items to demonstrate a working horizontal slider 
+  // even if the API only returns 1 or 2 similar items.
+  const extendedSimilarProducts = similarProducts.length > 0
+    ? [...similarProducts, ...similarProducts, ...similarProducts, ...similarProducts].slice(0, 10)
+    : [];
+
+  const maxSimilarIndex = Math.max(0, extendedSimilarProducts.length - 4);
+
+  useEffect(() => {
+    if (ratingSuccess) {
+      showToast("Success", "Rating submitted successfully!", "success");
+      setTimeout(() => {
+        setUserRating(0);
+        setUserReview("");
+        dispatch(resetRatingState());
+      }, 0);
+    }
+    if (ratingError) {
+      showToast("Error", ratingError, "error");
+      dispatch(resetRatingState());
+    }
+  }, [ratingSuccess, ratingError, dispatch, showToast]);
 
   const handleAddToCart = () => {
-    addToCart({
-      id: activeStory.id + 2000, // Make ID unique
-      name: activeStory.title,
-      price: 89.99, // default price for story item
-      image: activeStory.thumbnail,
+    if (!story) return;
+    const productForCart = {
+      id: story.productId,
+      name: story.name,
+      price: 15000,
+      image: story.storyMedia || FALLBACK_IMAGE,
       category: "STORY ITEM",
-    });
-    setToastMessage(`${activeStory.title} has been added to your cart.`);
+    };
+
+    if (user) {
+      dispatch(reduxAddToCart({ productId: story.productId, quantity: 1 }));
+    } else {
+      guestAddToCart(productForCart as any, 1);
+    }
+    showToast("Added", `${story.name} has been added to your bag`, "success");
+  };
+
+  const handleRatingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userRating === 0) {
+      showToast("Wait", "Please select a star rating first", "info");
+      return;
+    }
+    dispatch(submitProductRating({
+      productId: currentProductId,
+      rating: userRating,
+      review: userReview
+    }));
   };
 
   return (
@@ -166,84 +204,151 @@ export default function StoriesPage() {
             {/* Left Column: Story Rings & Main Image */}
             <div className="w-full lg:w-5/12 flex flex-col">
 
-              {/* Story Rings */}
-              <div className="flex gap-4 mb-8 overflow-x-auto pb-4 scrollbar-hide">
-                {MOCK_STORIES.map((story) => {
-                  const isActive = activeStoryId === story.id;
-                  return (
+              {/* Story Rings (Image 1 style) */}
+              <div className="relative flex items-center mb-8 bg-white p-4 rounded-[32px]">
+                <button
+                  onClick={() => handleScrollRings('left')}
+                  className="absolute -left-2 z-10 w-10 h-10 rounded-full bg-[#E8456A] opacity-90 text-white hidden md:flex items-center justify-center shadow-md hover:scale-105 transition-transform"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft size={20} strokeWidth={3} />
+                </button>
+
+                <div
+                  ref={ringsContainerRef}
+                  className="flex gap-4 overflow-x-auto scrollbar-hide px-4 w-full scroll-smooth"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {DEFAULT_PRODUCT_IDS.map((id, idx) => {
+                    const isActive = activeIndex === idx;
+                    const rawThumbUrl = THUMBNAIL_IMAGES[idx % THUMBNAIL_IMAGES.length];
+                    const thumbImg = `${rawThumbUrl}?w=150&h=150&auto=format&fit=crop`;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => setActiveIndex(idx)}
+                        className="relative flex-shrink-0 group focus:outline-none"
+                      >
+                        <div className={`w-[70px] h-[70px] sm:w-[80px] sm:h-[80px] rounded-full p-[3px] transition-all duration-300 ${isActive ? 'bg-gradient-to-tr from-yellow-400 to-orange-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]' : 'bg-[#E8456A]'}`}>
+                          <div className="w-full h-full bg-white rounded-full p-[2px]">
+                            <img src={thumbImg} alt={`Story ${idx + 1}`} className="w-full h-full object-cover rounded-full" />
+                          </div>
+                        </div>
+                        {/* Number Badge */}
+                        <div className={`absolute -top-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-white text-xs font-bold border-2 border-white shadow-sm ${isActive ? 'bg-orange-400' : 'bg-[#E8456A]'}`}>
+                          {idx + 1}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handleScrollRings('right')}
+                  className="absolute -right-2 z-10 w-10 h-10 rounded-full bg-[#E8456A] opacity-90 text-white hidden md:flex items-center justify-center shadow-md hover:scale-105 transition-transform"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight size={20} strokeWidth={3} />
+                </button>
+              </div>
+
+              {/* Main Visual with Slider (Image 2 style) */}
+              <div className="relative w-full rounded-[32px] pt-8 pb-14 px-6 shadow-md mb-6" style={{ backgroundColor: '#E4D3C5' }}>
+                <div className="relative aspect-[3/2] w-full overflow-hidden flex items-center justify-center">
+                  {storyLoading ? (
+                    <Skeleton className="w-full h-full" />
+                  ) : (
+                    <img
+                      src={sliderImages[sliderIndex]}
+                      alt={`${story?.name || 'Story Image'} ${sliderIndex + 1}`}
+                      className="w-full h-full object-cover rounded-xl shadow-sm"
+                    />
+                  )}
+                </div>
+
+                {sliderImages.length > 1 && !storyLoading && (
+                  <>
                     <button
-                      key={story.id}
-                      onClick={() => setActiveStoryId(story.id)}
-                      className="relative flex-shrink-0 group hover:-translate-y-1 transition-transform"
+                      onClick={handlePrevImage}
+                      className="absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white text-gray-800 hidden md:flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors z-10"
+                      aria-label="Previous image"
                     >
-                      <div className={`w-16 h-16 rounded-full p-[3px] transition-all duration-300 ${isActive ? 'bg-gradient-to-tr from-[#E8456A] to-[#ffb1c4]' : 'bg-gray-200 hover:bg-pink-100'}`}>
-                        <img
-                          src={story.thumbnail}
-                          alt={story.artisan}
-                          className="w-full h-full object-cover rounded-full border-[3px] border-white"
-                        />
-                      </div>
-                      <div className="absolute -top-1 -right-1 w-[22px] h-[22px] bg-[#E8456A] text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-md">
-                        {story.id}
-                      </div>
+                      <ChevronLeft size={20} strokeWidth={3} />
                     </button>
-                  );
-                })}
+                    <button
+                      onClick={handleNextImage}
+                      className="absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white text-gray-800 hidden md:flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors z-10"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight size={20} strokeWidth={3} />
+                    </button>
+
+                    {/* Dots */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                      {sliderImages.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSliderIndex(idx)}
+                          className={`w-2.5 h-2.5 rounded-full transition-colors ${sliderIndex === idx ? 'bg-[#E8456A]' : 'bg-[#9CA3AF]'}`}
+                          aria-label={`Go to slide ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Main Visual */}
-              <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden bg-gray-100 mb-6 flex items-center justify-center shadow-xl">
-                <img
-                  src={activeStory.image}
-                  alt={activeStory.title}
-                  className="w-full h-full object-cover rounded-2xl p-6 md:p-10 hue-rotate-0"
-                  style={{
-                    backgroundColor: "#ebd5c1",
-                    objectFit: "cover",
-                    boxShadow: "inset 0px 0px 20px rgba(0,0,0,0.5)"
-                  }}
-                />
-              </div>
-
-              {/* Artisan Identifier */}
+              {/* Artisan Identifier (Placeholder as API doesn't provide artisan info) */}
               <div className="inline-flex items-center gap-3 bg-[#E8456A]/10 border border-[#E8456A]/30 rounded-full py-2 px-4 w-fit shadow-lg shadow-[#E8456A]/5">
                 <div className="w-9 h-9 rounded-full bg-[#E8456A] text-white flex items-center justify-center font-bold text-sm">
-                  {activeStory.artisan.split(' ').map(n => n[0]).join('')}
+                  IJ
                 </div>
                 <div className="flex flex-col pr-2">
-                  <span className="text-gray-900 text-[13px] font-bold tracking-wide">{activeStory.artisan}</span>
-                  <span className="text-[#E8456A] text-[11px] font-medium">{activeStory.role}</span>
+                  <span className="text-gray-900 text-[13px] font-bold tracking-wide">Inventino Artisan</span>
+                  <span className="text-[#E8456A] text-[11px] font-medium">Master Crafter</span>
                 </div>
               </div>
             </div>
 
             {/* Right Column: Descriptions */}
             <div className="w-full lg:w-7/12 flex flex-col justify-center">
-              <h1 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900 tracking-tight">{activeStory.title}</h1>
+
+              <div className="mb-4 space-y-1">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                  The Story Behind <span className="text-[#E8456A]">This Treasure</span>
+                </h2>
+                <p className="text-gray-600 text-[15px]">
+                  Every piece we create carries a unique journey from concept to creation
+                </p>
+              </div>
+
+              <div className="text-3xl md:text-5xl font-bold mb-6 text-gray-900 tracking-tight">
+                {storyLoading ? <Skeleton className="h-12 w-3/4" /> : <h1>{story?.name}</h1>}
+              </div>
 
               <div className="space-y-6 text-gray-600 text-[15px] leading-relaxed">
-                <p>
-                  Every piece we create carries a unique journey from concept to creation.
-                </p>
-                <p>
-                  {activeStory.description}
-                </p>
 
-                {/* Quote Box */}
-                <div className="border-l-[3px] border-[#E8456A] pl-5 py-2 my-8 bg-gradient-to-r from-[#E8456A]/10 to-transparent rounded-r-xl p-4">
-                  <p className="italic text-gray-800 font-medium mb-3">"{activeStory.quote}"</p>
-                  <p className="text-[#E8456A] font-bold text-sm">— {activeStory.artisan}, {activeStory.role}</p>
+                <div className="min-h-[1.5rem]">
+                  {storyLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                  ) : <p>{story?.story || "This beautiful piece is the result of years of craftsmanship perfected by our artisan community. Each item takes hours to create, with every detail carefully considered and executed."}</p>}
                 </div>
 
-                <p>
-                  {activeStory.process}
-                </p>
+                {/* Quote Box (Fallback) */}
+                <div className="border-l-[3px] border-[#E8456A] pl-5 py-2 my-8 bg-gradient-to-r from-[#E8456A]/10 to-transparent rounded-r-xl p-4">
+                  <p className="italic text-gray-800 font-medium mb-3">"Every piece I create is infused with love and intention. I want the wearer to feel special and confident, knowing they're wearing something truly unique."</p>
+                  <p className="text-[#E8456A] font-bold text-sm">— Master Artisan</p>
+                </div>
               </div>
 
               {/* Actions */}
               <div className="flex flex-col sm:flex-row gap-4 mt-12">
                 <button
-                  onClick={() => router.push(`/products/${activeStory.id}`)}
+                  onClick={() => router.push(`/products/${currentProductId}`)}
                   className="bg-[#E8456A] hover:bg-[#c73a5a] text-white px-8 py-3.5 rounded-full font-bold flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95 flex-1 sm:max-w-[200px] shadow-[0_4px_20px_rgba(232,69,106,0.3)]"
                 >
                   <Eye size={18} strokeWidth={2.5} />
@@ -258,6 +363,39 @@ export default function StoriesPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Rating Submission Section (Added to support the feature in old UI) */}
+        <section className="bg-white rounded-2xl p-8 border border-pink-100 shadow-md">
+          <h2 className="text-2xl font-bold text-[#E8456A] mb-6">Leave a Rating</h2>
+          <form onSubmit={handleRatingSubmit} className="space-y-6">
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setUserRating(s)}
+                  className={`transition-colors ${userRating >= s ? "text-yellow-400" : "text-gray-300"}`}
+                >
+                  <Star size={32} fill={userRating >= s ? "currentColor" : "none"} />
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={userReview}
+              onChange={(e) => setUserReview(e.target.value)}
+              placeholder="Share your thoughts..."
+              className="w-full p-4 rounded-xl bg-gray-50 border border-gray-200 focus:border-[#E8456A] outline-none transition-colors"
+              rows={3}
+            />
+            <button
+              type="submit"
+              disabled={ratingLoading}
+              className="bg-[#E8456A] text-white px-8 py-3 rounded-full font-bold hover:bg-[#c73a5a] transition-all disabled:opacity-50"
+            >
+              {ratingLoading ? "Submitting..." : "Submit Review"}
+            </button>
+          </form>
         </section>
 
         {/* Creation Process Section */}
@@ -280,31 +418,60 @@ export default function StoriesPage() {
         </section>
 
         {/* Similar Products Section */}
-        <section>
+        <section className="relative px-2 md:px-6">
           <h2 className="text-2xl font-bold text-[#E8456A] mb-8">Similar Products</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {SIMILAR_PRODUCTS_DATA.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onAdd={(productName) => setToastMessage(`${productName} has been added to your cart.`)}
-              />
-            ))}
+          <div className="relative group flex items-center justify-center">
+            {/* Left Chevron Control */}
+            <button
+              disabled={similarSliderIndex === 0 || similarLoading}
+              onClick={() => setSimilarSliderIndex((prev) => Math.max(0, prev - 1))}
+              className="absolute -left-4 md:-left-8 lg:-left-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-pink-100 text-gray-800 hover:text-[#E8456A] hidden md:flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pink-50 transition-all"
+              aria-label="Previous Similar Products"
+            >
+              <ChevronLeft size={28} />
+            </button>
+
+            {/* Products Grid */}
+            <div className="w-full">
+              {similarLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-80 rounded-2xl" />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 overflow-hidden min-h-[400px]">
+                  {extendedSimilarProducts.slice(similarSliderIndex, similarSliderIndex + 4).map((product, idx) => (
+                    <div key={`${product._id || product.productId}-${similarSliderIndex}-${idx}`} className="animate-in fade-in slide-in-from-right-4 duration-500">
+                      <ProductCard
+                        product={mapToProductCard(product) as any}
+                        onAdd={(productName) => showToast("Added", `${productName} added to bag`, "success")}
+                      />
+                    </div>
+                  ))}
+
+                  {/* Fallback if no items at all */}
+                  {extendedSimilarProducts.length === 0 && (
+                    <div className="col-span-full text-center text-gray-500 py-10">
+                      No similar products found right now.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right Chevron Control */}
+            <button
+              disabled={similarSliderIndex >= maxSimilarIndex || similarLoading || extendedSimilarProducts.length <= 4}
+              onClick={() => setSimilarSliderIndex((prev) => Math.min(maxSimilarIndex, prev + 1))}
+              className="absolute -right-4 md:-right-8 lg:-right-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-pink-100 text-gray-800 hover:text-[#E8456A] hidden md:flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pink-50 transition-all"
+              aria-label="Next Similar Products"
+            >
+              <ChevronRight size={28} />
+            </button>
           </div>
         </section>
 
       </div >
-
-      {toastMessage && (
-        <Toast
-          title="Added to Cart"
-          message={toastMessage}
-          type="success"
-          position="bottom-right"
-          onClose={() => setToastMessage("")}
-        />
-      )}
     </div >
   );
 }

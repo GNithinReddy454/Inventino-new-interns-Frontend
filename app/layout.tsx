@@ -30,6 +30,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
+    // overflow-x-clip instead of overflow-x-hidden:
+    // - Both hide horizontal overflow visually
+    // - BUT overflow-x-hidden creates a scroll container which BLOCKS touch scroll on iOS
+    // - overflow-x-clip does NOT create a scroll container → touch scroll works normally
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
