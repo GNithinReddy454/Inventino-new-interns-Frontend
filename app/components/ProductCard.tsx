@@ -65,6 +65,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   const { items: wishlistItems = [] } = useAppSelector((state: any) => state.wishlist);
   const { addToCart } = useCart();
   const { showToast } = useToast();
+  const [isHovered, setIsHovered] = useState(false);
 
   const isSaved = wishlistItems.some((wItem: any) =>
     wItem.product?._id === product.id || wItem.product?.id === product.id
@@ -91,6 +92,9 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     setCurrentSlide(0);
   }, []);
+
+  const activate = useCallback(() => { setIsHovered(true); startScroll(); }, [startScroll]);
+  const deactivate = useCallback(() => { setIsHovered(false); stopScroll(); }, [stopScroll]);
 
   const productName = product.name || product.title || "";
   const tags: string[] = product.tags ?? [product.category ?? "", "Adjustable"].filter(Boolean);

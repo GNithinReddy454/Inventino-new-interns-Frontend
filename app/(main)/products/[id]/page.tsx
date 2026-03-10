@@ -152,7 +152,7 @@ export default function ProductDetailsPage() {
           category: data.category,
           image: data.images?.[0]?.url || FALLBACK_IMAGE,
           images: data.images?.length
-            ? data.images.map((img: any) => img.url)
+            ? data.images.map((img: any) => img.url).filter(Boolean)
             : [FALLBACK_IMAGE],
           slug,
           prdId,
@@ -275,17 +275,17 @@ export default function ProductDetailsPage() {
 
   const displaySimilarProducts = !similarLoading && similarProducts.length > 0
     ? similarProducts.map((p) => ({
-        id: p._id,
-        name: p.name,
-        price: p.price,
-        originalPrice: p.price + 150,
-        category: p.category,
-        image: p.images?.[0]?.url || FALLBACK_IMAGE,
-        images: p.images?.length ? p.images.map((img) => img.url) : [FALLBACK_IMAGE],
-        rating: p.ratingsAverage || 4.5,
-        reviews: p.ratingsCount || 0,
-        description: p.description,
-      }))
+      id: p._id,
+      name: p.name,
+      price: p.price,
+      originalPrice: p.price + 150,
+      category: p.category,
+      image: p.images?.[0]?.url || FALLBACK_IMAGE,
+      images: p.images?.length ? p.images.map((img) => img.url) : [FALLBACK_IMAGE],
+      rating: p.ratingsAverage || 4.5,
+      reviews: p.ratingsCount || 0,
+      description: p.description,
+    }))
     : [];
 
   return (
@@ -297,7 +297,7 @@ export default function ProductDetailsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-2 gap-12 border-b border-gray-100">
-        
+
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-4">
             <div ref={containerRef} className="relative w-full rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border border-gray-100 group">
@@ -365,9 +365,9 @@ export default function ProductDetailsPage() {
               <span className="font-bold text-gray-900 w-10 text-center">{quantity}</span>
               <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#D94F7A] transition-all hover:scale-110"><Plus size={16} strokeWidth={3} /></button>
             </div>
-            <button 
-              onClick={handleAddToCart} 
-              disabled={isAdded} 
+            <button
+              onClick={handleAddToCart}
+              disabled={isAdded}
               className={`flex-1 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 h-14 transition-all ${isAdded ? "bg-emerald-600 text-white" : "bg-[#D94F7A] hover:bg-[#b83d63] text-white"}`}
             >
               {isAdded ? <><CheckCircle2 size={18} strokeWidth={3} /> Added</> : <><ShoppingBag size={18} /> Add to Bag</>}
@@ -443,9 +443,9 @@ export default function ProductDetailsPage() {
         <button onClick={() => scrollSimilar("right")} className="absolute right-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl opacity-0 group-hover/similar:opacity-100 transition-all translate-x-4 group-hover/similar:-translate-x-2"><ChevronRight size={24} /></button>
         <div className="overflow-hidden">
           <div ref={similarProductsRef} className="flex gap-6 overflow-x-auto pb-8 no-scrollbar snap-x scroll-smooth">
-            {!similarLoading && (displaySimilarProducts.length > 0 ? displaySimilarProducts : [1,2,3,4]).map((p, idx) => (
+            {!similarLoading && (displaySimilarProducts.length > 0 ? displaySimilarProducts : [1, 2, 3, 4]).map((p, idx) => (
               <div key={typeof p === 'number' ? p : p.id} className="snap-start shrink-0" style={{ width: "clamp(250px, 80%, calc(25% - 18px))" }}>
-                <ProductCard product={typeof p === 'number' ? {...product, id: p} : (p as any)} />
+                <ProductCard product={typeof p === 'number' ? { ...product, id: p } : (p as any)} />
               </div>
             ))}
           </div>

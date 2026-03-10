@@ -14,36 +14,35 @@ import {
   NormalizedProduct, ApiProduct, ProductListMeta,
 } from "@/types/products.type";
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORIES_LIST = [
-  "Bracelets", "Earrings", "Necklaces",
-  "Rings", "Accessories", "Women Watches",
+  "Bracelets",
+  "Necklaces",
+  "Rings",
+  "Hair Accessories",
+  "Bag Charms",
+  "Shoe Charms",
+  "Kids Jewelry",
+  "Women Watches",
 ];
 
-const SORT_OPTIONS = [
-  "Featured",
-  "Price: Low to High",
-  "Price: High to Low",
-  "Newest First",
-];
+const SORT_OPTIONS = ["Featured", "Price: Low to High", "Price: High to Low", "Newest First"];
 
 const SORT_MAP: Record<string, string> = {
-  "Featured":           "featured",
+  "Featured": "featured",
   "Price: Low to High": "priceAsc",
   "Price: High to Low": "priceDesc",
-  "Newest First":       "newest",
+  "Newest First": "newest",
 };
 
 const SORT_MAP_REVERSE: Record<string, string> = {
-  "featured":  "Featured",
-  "priceAsc":  "Price: Low to High",
+  "featured": "Featured",
+  "priceAsc": "Price: Low to High",
   "priceDesc": "Price: High to Low",
-  "newest":    "Newest First",
+  "newest": "Newest First",
 };
 
 const ITEMS_PER_PAGE = 9;
 
-// ─── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
     <div className="rounded-2xl overflow-hidden border border-gray-100 bg-white animate-pulse">
@@ -58,8 +57,7 @@ function SkeletonCard() {
   );
 }
 
-// ─── Price Inputs ──────────────────────────────────────────────────────────────
-function PriceInputs({
+function PriceRange({
   minPrice, maxPrice, minPriceFetched, maxPriceFetched, setMinPrice, setMaxPrice,
 }: {
   minPrice: number | undefined;
@@ -69,39 +67,62 @@ function PriceInputs({
   setMinPrice: (v: number | undefined) => void;
   setMaxPrice: (v: number | undefined) => void;
 }) {
+  const rangeMin = minPriceFetched ?? 0;
+  const rangeMax = maxPriceFetched ?? 10000;
+  const currentMin = minPrice ?? rangeMin;
+  const currentMax = maxPrice ?? rangeMax;
+
   return (
-    <div className="flex gap-2">
-      <input
-        type="number"
-        placeholder={minPriceFetched !== undefined ? `Min (${minPriceFetched})` : "Min"}
-        value={minPrice ?? ""}
-        min={0}
-        onChange={(e) => {
-          if (e.target.value === "") { setMinPrice(undefined); return; }
-          const val = Number(e.target.value);
-          if (val < 0) return;
-          setMinPrice(val);
-        }}
-        className="flex-1 min-w-0 px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#D94F7A]"
-      />
-      <input
-        type="number"
-        placeholder={maxPriceFetched !== undefined ? `Max (${maxPriceFetched})` : "Max"}
-        value={maxPrice ?? ""}
-        min={minPrice ?? 0}
-        onChange={(e) => {
-          if (e.target.value === "") { setMaxPrice(undefined); return; }
-          const val = Number(e.target.value);
-          if (val < 0) return;
-          setMaxPrice(val);
-        }}
-        className="flex-1 min-w-0 px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#D94F7A]"
-      />
+    <div className="w-full space-y-3">
+      <div className="flex gap-3">
+        <input
+          type="number"
+          value={currentMin}
+          min={rangeMin}
+          max={currentMax}
+          onChange={(e) => {
+            const val = Number(e.target.value);
+            if (val <= currentMax) setMinPrice(val === rangeMin ? undefined : val);
+          }}
+          className="flex-1 min-w-0 px-3 py-2.5 text-sm font-medium bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] text-gray-700 transition-colors"
+        />
+        <input
+          type="number"
+          value={currentMax}
+          min={currentMin}
+          max={rangeMax}
+          onChange={(e) => {
+            const val = Number(e.target.value);
+            if (val >= currentMin) setMaxPrice(val === rangeMax ? undefined : val);
+          }}
+          className="flex-1 min-w-0 px-3 py-2.5 text-sm font-medium bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] text-gray-700 transition-colors"
+        />
+      </div>
+
+      <div className="relative h-5 flex items-center">
+        <div className="absolute w-full h-1.5 bg-gray-200 rounded-full" />
+        <div
+          className="absolute h-1.5 bg-[#D94F7A] rounded-full left-0"
+          style={{
+            width: `${rangeMax === rangeMin ? 100 : ((currentMax - rangeMin) / (rangeMax - rangeMin)) * 100}%`
+          }}
+        />
+        <input
+          type="range"
+          min={rangeMin}
+          max={rangeMax}
+          value={currentMax}
+          onChange={(e) => {
+            const val = Number(e.target.value);
+            if (val >= currentMin) setMaxPrice(val === rangeMax ? undefined : val);
+          }}
+          className="range-thumb-pink absolute w-full h-1.5 appearance-none bg-transparent cursor-pointer"
+        />
+      </div>
     </div>
   );
 }
 
-// ─── Main Content ──────────────────────────────────────────────────────────────
 function ProductsContent() {
   const router = useRouter();
   const pathname = usePathname();
@@ -109,9 +130,7 @@ function ProductsContent() {
 
   const initialSort = SORT_MAP_REVERSE[searchParams.get("sort") ?? ""] ?? "Featured";
 
-  const [selectedCategory, setSelectedCategory] = useState(
-    searchParams.get("category") || "All Products"
-  );
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "All Products");
   const [sortBy, setSortBy] = useState(initialSort);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
@@ -141,7 +160,6 @@ function ProductsContent() {
 
   useEffect(() => { setIsClient(true); }, []);
 
-  // ── Sync URL ──
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedCategory !== "All Products") params.set("category", selectedCategory);
@@ -154,136 +172,86 @@ function ProductsContent() {
     router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
   }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice, currentPage, pathname, router]);
 
-  // ── Close sort dropdown ──
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(e.target as Node))
-        setSortOpen(false);
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ── Reset page on filter change ──
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice]);
+  useEffect(() => { setCurrentPage(1); }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice]);
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [currentPage]);
 
-  // ── Scroll top ──
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentPage]);
-
-  // ── Fetch Products ──
   useEffect(() => {
     let cancelled = false;
-
     const fetchProducts = async () => {
-      setLoading(true);
-      setError(null);
-
+      setLoading(true); setError(null);
       try {
         let items: ApiProduct[] = [];
-        let metaData: ProductListMeta = {
-          total: 0, page: currentPage, limit: ITEMS_PER_PAGE, totalPages: 1,
-        };
+        let metaData: ProductListMeta = { total: 0, page: currentPage, limit: ITEMS_PER_PAGE, totalPages: 1 };
 
-        // CASE 1: Search
-        if (debouncedSearch && debouncedSearch.trim() !== "") {
-          console.log("🔍 Searching:", debouncedSearch.trim());
-          const res = await productService.searchProducts(
-            debouncedSearch.trim(), currentPage, ITEMS_PER_PAGE
-          );
+        if (debouncedSearch?.trim()) {
+          const res = await productService.searchProducts(debouncedSearch.trim(), currentPage, ITEMS_PER_PAGE);
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
-
-        // CASE 2: No filters → get all products with backend pagination
-        } else if (
-          sortBy === "Featured" &&
-          selectedCategory === "All Products" &&
-          minPrice === undefined &&
-          maxPrice === undefined
-        ) {
-          console.log("📦 Fetching all products (default)");
+        } else if (sortBy === "Featured" && selectedCategory === "All Products" && minPrice === undefined && maxPrice === undefined) {
           const res = await productService.getAll({ page: currentPage, limit: ITEMS_PER_PAGE });
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
-
-        // CASE 3: Category / sort / price filters → backend handles everything
         } else {
-          const params: Record<string, any> = {
-            page: currentPage,
-            limit: ITEMS_PER_PAGE,
-          };
+          const params: Record<string, any> = { page: currentPage, limit: ITEMS_PER_PAGE };
           const apiSort = SORT_MAP[sortBy];
           if (apiSort && apiSort !== "featured") params.sort = apiSort;
-          if (selectedCategory !== "All Products") params.category = selectedCategory;
-          if (minPrice !== undefined) params.minPrice = Number(minPrice);
-          if (maxPrice !== undefined) params.maxPrice = Number(maxPrice);
-
-          console.log("📦 Fetching with params:", params);
+          if (selectedCategory !== "All Products") params.category = selectedCategory.toLowerCase();
+          if (minPrice !== undefined) params.minPrice = minPrice;
+          if (maxPrice !== undefined) params.maxPrice = maxPrice;
           const res = await productService.getAll(params);
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
         }
 
-        if (cancelled) return;
-
-        console.log("✅ Got", items.length, "products");
-        setProducts(items.map(normalize));
-        setMeta(metaData);
-
+        if (!cancelled) { setProducts(items.map(normalize)); setMeta(metaData); }
       } catch (err: any) {
-        if (!cancelled) {
-          const msg = err?.response?.data?.message || err?.message || "Failed to load products.";
-          setError(msg);
-          console.error("❌ Error:", err?.response?.data ?? err);
-        }
+        if (!cancelled) setError(err?.response?.data?.message || err?.message || "Failed to load products.");
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
-
     fetchProducts();
     return () => { cancelled = true; };
-
   }, [currentPage, sortBy, selectedCategory, debouncedSearch, minPrice, maxPrice]);
 
-  // ── Fetch category counts + global total + price range ──
   useEffect(() => {
     const fetchCounts = async () => {
       try {
         const res = await productService.getAll({ limit: 999 });
         const items: ApiProduct[] = res.data?.data?.items ?? [];
-
         setGlobalTotal(res.data?.data?.meta?.total ?? items.length);
-
         const counts: Record<string, number> = {};
-        let min = Infinity;
-        let max = -Infinity;
-
+        let min = Infinity, max = -Infinity;
         items.forEach((p) => {
-          counts[p.category] = (counts[p.category] || 0) + 1;
+          // normalize to Title Case key for counting
+          const key = p.category
+            .split(" ")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" ");
+          counts[key] = (counts[key] || 0) + 1;
           const price = p.discountPrice ?? p.price;
           if (price < min) min = price;
           if (price > max) max = price;
         });
-
         setCategoryCounts(counts);
         setMinPriceFetched(min === Infinity ? undefined : min);
         setMaxPriceFetched(max === -Infinity ? undefined : max);
-      } catch { /* fail silently */ }
+      } catch { }
     };
     fetchCounts();
   }, []);
 
   const clearFilters = useCallback(() => {
-    setSelectedCategory("All Products");
-    setSearchQuery("");
-    setSortBy("Featured");
-    setMinPrice(undefined);
-    setMaxPrice(undefined);
-    setCurrentPage(1);
+    setSelectedCategory("All Products"); setSearchQuery(""); setSortBy("Featured");
+    setMinPrice(undefined); setMaxPrice(undefined); setCurrentPage(1);
   }, []);
 
   const triggerToast = useCallback((name: string) => {
@@ -295,11 +263,8 @@ function ProductsContent() {
   const totalProducts = meta?.total ?? 0;
 
   const activeFilterCount = [
-    selectedCategory !== "All Products",
-    sortBy !== "Featured",
-    !!debouncedSearch,
-    minPrice !== undefined,
-    maxPrice !== undefined,
+    selectedCategory !== "All Products", sortBy !== "Featured",
+    !!debouncedSearch, minPrice !== undefined, maxPrice !== undefined,
   ].filter(Boolean).length;
 
   const getPaginationRange = (): (number | "...")[] => {
@@ -312,7 +277,8 @@ function ProductsContent() {
 
   if (!isClient) return <div className="min-h-screen bg-white" />;
 
-  // ── Category List ──
+  const priceProps = { minPrice, maxPrice, minPriceFetched, maxPriceFetched, setMinPrice, setMaxPrice };
+
   const CategoryList = ({ onSelect, vertical }: { onSelect?: () => void; vertical?: boolean }) => (
     <div
       ref={categoryScrollRef}
@@ -321,20 +287,16 @@ function ProductsContent() {
     >
       <button
         onClick={() => { setSelectedCategory("All Products"); onSelect?.(); }}
-        className={`flex-shrink-0 lg:flex lg:justify-between lg:w-full text-sm font-medium px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
-          selectedCategory === "All Products"
+        className={`flex-shrink-0 lg:flex lg:justify-between lg:w-full text-sm font-medium px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${selectedCategory === "All Products"
             ? "bg-[#D94F7A] text-white lg:text-[#D94F7A] lg:bg-transparent"
             : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
-        }`}
+          }`}
       >
         <span>All Products</span>
-        <span className={`${vertical ? "inline" : "hidden lg:inline"} bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs ${
-          selectedCategory === "All Products" && vertical ? "bg-white/30 text-white" : ""
-        }`}>
+        <span className={`${vertical ? "inline" : "hidden lg:inline"} bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs`}>
           {globalTotal || "—"}
         </span>
       </button>
-
       {CATEGORIES_LIST.map((cat) => {
         const count = categoryCounts[cat] ?? 0;
         const isActive = selectedCategory === cat;
@@ -342,19 +304,13 @@ function ProductsContent() {
           <button
             key={cat}
             onClick={() => { setSelectedCategory(cat); onSelect?.(); }}
-            className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
-              isActive
-                ? "bg-[#D94F7A] text-white font-bold lg:text-[#D94F7A] lg:bg-transparent"
-                : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
-            }`}
+            className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${isActive ? "bg-[#D94F7A] text-white font-bold lg:text-[#D94F7A] lg:bg-transparent" : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
+              }`}
           >
             <span>{cat}</span>
             {count > 0 && (
-              <span className={`${vertical ? "inline" : "hidden lg:inline"} px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${
-                isActive ? "bg-[#D94F7A] text-white" : "bg-gray-200 text-gray-400"
-              }`}>
-                {count}
-              </span>
+              <span className={`${vertical ? "inline" : "hidden lg:inline"} px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${isActive ? "bg-[#D94F7A] text-white" : "bg-gray-200 text-gray-400"
+                }`}>{count}</span>
             )}
           </button>
         );
@@ -366,9 +322,8 @@ function ProductsContent() {
     <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative">
 
       {/* Toast */}
-      <div className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${
-        toast.show ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0 pointer-events-none"
-      }`}>
+      <div className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${toast.show ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0 pointer-events-none"
+        }`}>
         <div className="bg-white rounded-full py-3 px-6 flex items-center gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-50 border-l-4 border-l-[#22C55E]">
           <div className="bg-[#22C55E] p-1.5 rounded-full text-white flex-shrink-0">
             <CheckCircle2 size={18} strokeWidth={3} />
@@ -377,9 +332,7 @@ function ProductsContent() {
             <span className="text-[11px] font-black text-[#D94F7A] uppercase tracking-widest leading-none mb-0.5">Success!</span>
             <span className="text-xs font-bold text-gray-800 truncate max-w-[150px] leading-tight">{toast.name} added</span>
           </div>
-          <button onClick={() => setToast({ name: "", show: false })} className="ml-2 text-gray-300 hover:text-gray-600 transition-colors">
-            <X size={14} />
-          </button>
+          <button onClick={() => setToast({ name: "", show: false })} className="ml-2 text-gray-300 hover:text-gray-600"><X size={14} /></button>
         </div>
       </div>
 
@@ -409,13 +362,12 @@ function ProductsContent() {
             <CategoryList onSelect={() => setSidebarOpen(false)} vertical={true} />
           </div>
           <div>
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Price</h4>
-            <PriceInputs minPrice={minPrice} maxPrice={maxPrice} minPriceFetched={minPriceFetched} maxPriceFetched={maxPriceFetched} setMinPrice={setMinPrice} setMaxPrice={setMaxPrice} />
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Price Range</h4>
+            <PriceRange {...priceProps} />
           </div>
         </div>
       </div>
 
-      {/* Layout */}
       <div className="flex flex-col lg:flex-row gap-8">
 
         {/* Desktop Sidebar */}
@@ -432,8 +384,8 @@ function ProductsContent() {
             </div>
             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h4>
             <CategoryList />
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price</h4>
-            <PriceInputs minPrice={minPrice} maxPrice={maxPrice} minPriceFetched={minPriceFetched} maxPriceFetched={maxPriceFetched} setMinPrice={setMinPrice} setMaxPrice={setMaxPrice} />
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price Range</h4>
+            <PriceRange {...priceProps} />
           </div>
         </aside>
 
@@ -442,13 +394,10 @@ function ProductsContent() {
           <div className="flex flex-col mb-4 gap-3">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{selectedCategory}</h1>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {loading ? "Loading…" : `${totalProducts} products found`}
-              </p>
+              <p className="text-xs text-gray-400 mt-0.5">{loading ? "Loading…" : `${totalProducts} products found`}</p>
             </div>
 
             <div className="flex items-center gap-2 w-full sm:justify-end">
-              {/* Hamburger */}
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="relative lg:hidden p-2 rounded-xl border border-gray-200 hover:border-[#D94F7A] transition-colors flex-shrink-0"
@@ -459,24 +408,18 @@ function ProductsContent() {
                 )}
               </button>
 
-              {/* Search desktop */}
               <div className="relative hidden sm:block sm:w-52">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
+                  type="text" placeholder="Search products..." value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">
-                    <X size={12} />
-                  </button>
+                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"><X size={12} /></button>
                 )}
               </div>
 
-              {/* Sort */}
               <div ref={sortRef} className="relative flex-shrink-0 sm:ml-0 ml-auto">
                 <button
                   onClick={() => setSortOpen((o) => !o)}
@@ -489,13 +432,8 @@ function ProductsContent() {
                 {sortOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 py-1.5 overflow-hidden">
                     {SORT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt}
-                        onClick={() => { setSortBy(opt); setSortOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                          sortBy === opt ? "text-[#D94F7A] font-bold bg-pink-50" : "text-gray-700 hover:bg-gray-50"
-                        }`}
-                      >
+                      <button key={opt} onClick={() => { setSortBy(opt); setSortOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${sortBy === opt ? "text-[#D94F7A] font-bold bg-pink-50" : "text-gray-700 hover:bg-gray-50"}`}>
                         {opt}
                       </button>
                     ))}
@@ -504,20 +442,15 @@ function ProductsContent() {
               </div>
             </div>
 
-            {/* Search mobile */}
             <div className="relative w-full sm:hidden">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
+                type="text" placeholder="Search products..." value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-8 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">
-                  <X size={12} />
-                </button>
+                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"><X size={12} /></button>
               )}
             </div>
           </div>
@@ -558,13 +491,13 @@ function ProductsContent() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-6 text-sm flex items-center gap-3">
               <span className="flex-1">{error}</span>
-              <button onClick={() => { setError(null); setCurrentPage(p => p); }} className="text-xs font-semibold underline shrink-0">Retry</button>
+              <button onClick={() => { setError(null); }} className="text-xs font-semibold underline shrink-0">Retry</button>
             </div>
           )}
 
           {/* Grid */}
           {loading ? (
-            <div className="grid grid-cols-sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8">
               {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : products.length === 0 && !error ? (
@@ -575,7 +508,7 @@ function ProductsContent() {
               <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product as any} onAdd={triggerToast} />
               ))}
@@ -586,34 +519,21 @@ function ProductsContent() {
           {totalPages > 1 && !loading && (
             <div className="mt-auto flex justify-center pt-6 border-t border-gray-50 select-none">
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
-                >
+                <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 :opacity-30 transition-colors border border-gray-100">
                   <ChevronLeft size={15} />
                 </button>
                 {getPaginationRange().map((item, index) => (
-                  <button
-                    key={index}
-                    onClick={() => typeof item === "number" && setCurrentPage(item)}
-                    disabled={item === "..."}
-                    className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${
-                      currentPage === item
-                        ? "bg-[#D94F7A] text-white border-[#D94F7A] shadow-md shadow-[#D94F7A]/30"
-                        : item === "..."
-                        ? "bg-transparent text-gray-300 border-transparent cursor-default"
-                        : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
-                    }`}
-                  >
+                  <button key={index} onClick={() => typeof item === "number" && setCurrentPage(item)} disabled={item === "..."}
+                    className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${currentPage === item ? "bg-[#D94F7A] text-white border-[#D94F7A] shadow-md shadow-[#D94F7A]/30"
+                        : item === "..." ? "bg-transparent text-gray-300 border-transparent cursor-default"
+                          : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
+                      }`}>
                     {item}
                   </button>
                 ))}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
-                >
+                <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100">
                   <ChevronRight size={15} />
                 </button>
               </div>
@@ -625,7 +545,6 @@ function ProductsContent() {
   );
 }
 
-// ─── Page Wrapper ──────────────────────────────────────────────────────────────
 export default function ProductsPage() {
   return (
     <Suspense fallback={
