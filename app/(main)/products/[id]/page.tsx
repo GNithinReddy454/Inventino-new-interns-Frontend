@@ -100,8 +100,8 @@ export default function ProductDetailsPage() {
           originalPrice: data.price + 150,
           description: data.description,
           category: data.category,
-          image: data.images[0].url,
-          images: data.images.map((img: any) => img.url),
+          image: data.images?.[0]?.url ?? "",
+images: (data.images ?? []).map((img: any) => img.url).filter(Boolean),
           rating: 4.8,
           reviews: 128,
         });

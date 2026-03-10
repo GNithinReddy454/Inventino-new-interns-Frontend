@@ -282,7 +282,7 @@ const Navbar = () => {
                             </span>
                           </div>
                           <span className="text-sm font-black text-[#E8456A] shrink-0">
-                            ${p.price.toFixed(2)}
+                           ₹{p.price.toFixed(2)}
                           </span>
                         </Link>
                       ))}

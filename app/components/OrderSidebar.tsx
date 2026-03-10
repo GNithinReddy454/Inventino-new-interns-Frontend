@@ -143,7 +143,7 @@ export function OrderSidebar({
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Subtotal</span>
           <span className="font-medium">
-            ${summary?.subtotal?.toFixed(2) || "0.00"}
+            ₹{summary?.subtotal?.toFixed(2) || "0.00"}
           </span>
         </div>
         <div className="flex justify-between text-sm">
@@ -151,7 +151,7 @@ export function OrderSidebar({
           <span className="font-semibold text-green-600">
             {summary?.shipping === 0
               ? "FREE"
-              : `$${summary?.shipping?.toFixed(2) || "0.00"}`}
+              : `₹${summary?.shipping?.toFixed(2) || "0.00"}`}
           </span>
         </div>
         {summary?.discount > 0 && (
@@ -165,7 +165,7 @@ export function OrderSidebar({
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Tax</span>
           <span className="font-medium">
-            ${summary?.tax?.toFixed(2) || "0.00"}
+            ₹{summary?.tax?.toFixed(2) || "0.00"}
           </span>
         </div>
       </div>
@@ -174,7 +174,7 @@ export function OrderSidebar({
       <div className="flex justify-between items-center pt-4 border-t-2 border-gray-200">
         <span className="text-lg font-semibold">Total</span>
         <span className="text-2xl font-bold text-pink-600">
-          ${summary?.total?.toFixed(2) || "0.00"}
+          ₹{summary?.total?.toFixed(2) || "0.00"}
         </span>
       </div>
 
