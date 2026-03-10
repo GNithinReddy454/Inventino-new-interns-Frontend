@@ -9,7 +9,6 @@ import {
   fetchSimilarProducts,
   submitProductRating,
   resetRatingState,
-  setSimilarCurrentPage,
   SimilarProduct,
 } from "@/redux/storyslice";
 import { addToCart as reduxAddToCart } from "@/redux/cartslice";
@@ -85,11 +84,8 @@ export default function StoriesPage() {
   const {
     story,
     storyLoading,
-    storyError,
     similarProducts,
     similarLoading,
-    similarTotalPages,
-    similarCurrentPage,
     ratingLoading,
     ratingSuccess,
     ratingError,
@@ -119,10 +115,6 @@ export default function StoriesPage() {
 
   const sliderImages = generateSliderImages();
 
-  useEffect(() => {
-    setSliderIndex(0);
-  }, [story]);
-
   const handleNextImage = () => {
     setSliderIndex((prev) => (prev + 1) % sliderImages.length);
   };
@@ -131,19 +123,19 @@ export default function StoriesPage() {
     setSliderIndex((prev) => (prev - 1 + sliderImages.length) % sliderImages.length);
   };
 
-  // Fetch story whenever product changes
+  // Fetch story and reset sliders whenever product changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSliderIndex(0);
     dispatch(fetchProductStory(currentProductId));
-  }, [currentProductId, dispatch]);
-
-  // Fetch similar products once with a higher limit for the UI horizontal slider
-  useEffect(() => {
     dispatch(fetchSimilarProducts({
       productId: currentProductId,
       page: 1,
-      limit: 12
+      limit: 12,
     }));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSimilarSliderIndex(0);
+    // sliderIndex resets are intentional on product change
   }, [currentProductId, dispatch]);
 
   // Generate enough items to demonstrate a working horizontal slider 

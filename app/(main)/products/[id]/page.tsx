@@ -16,15 +16,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useCart } from "@/lib/cartContext";
-<<<<<<< HEAD
-import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
-=======
 import { useStore } from "@/lib/storeContext";
-import { useAppDispatch } from "@/redux/store";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { addToCart as reduxAddToCart } from "@/redux/cartslice";
 import { useAuth } from "@/app/(main)/components/authContext";
->>>>>>> 8803a153c3283f6ab10d99887e3a2da63e429c06
+import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
 import ProductReviews from "@/app/components/ProductReviews";
 import ProductCard from "@/app/components/ProductCard";
 import { productService } from "@/services/product.service";
@@ -32,7 +28,7 @@ import { useToast } from "@/app/components/GlobalToast";
 
 // --- TYPES ---
 interface Product {
-  id: number;
+  id: string | number;
   category: string;
   slug?: string;
   mongoId?: string;
@@ -84,24 +80,23 @@ const FALLBACK_IMAGE =
 
 const COLORS = [
   { label: "Rose Gold", value: "#C9956C" },
-  { label: "Silver",    value: "#B0B0B0" },
-  { label: "Gold",      value: "#FFD700" },
-  { label: "Pink",      value: "#D94F7A" },
+  { label: "Silver", value: "#B0B0B0" },
+  { label: "Gold", value: "#FFD700" },
+  { label: "Pink", value: "#D94F7A" },
 ];
 
 const SIZES = ["Small", "Medium", "Large"];
 
 export default function ProductDetailsPage() {
   const params = useParams();
-  const productId = params?.id as string;
+  const rawId = params?.id;
+  const productId = Array.isArray(rawId) ? rawId[0] : (rawId || "");
   const { addToCart } = useCart();
   const dispatch = useAppDispatch();
-<<<<<<< HEAD
-  const { items: savedItems = [] } = useAppSelector((state: any) => state.wishlist);
-=======
   const { user } = useAuth();
-  const { handleSaved, savedItems = [] } = useStore();
->>>>>>> 8803a153c3283f6ab10d99887e3a2da63e429c06
+  const { handleSaved, savedItems: contextSavedItems = [] } = useStore();
+  const { items: wishlistItems = [] } = useAppSelector((state: any) => state.wishlist);
+  const savedItems = wishlistItems.length > 0 ? wishlistItems : contextSavedItems;
   const { showToast } = useToast();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -156,7 +151,7 @@ export default function ProductDetailsPage() {
     const run = async () => {
       if (productId.length < 20) {
         setProduct({
-          id: parseInt(productId) || 999,
+          id: productId,
           name: "Artisan Handcrafted Jewelry",
           price: 89.99,
           originalPrice: 129.99,
@@ -177,7 +172,7 @@ export default function ProductDetailsPage() {
         const slug: string = data?.slug ?? "";
         const mongoId: string = String(data?._id ?? productId);
         setProduct({
-          id: 0,
+          id: mongoId,
           mongoId,
           name: data.name,
           price: data.price,
@@ -185,17 +180,11 @@ export default function ProductDetailsPage() {
           description: data.description,
           category: data.category,
           image: data.images?.[0]?.url || FALLBACK_IMAGE,
-<<<<<<< HEAD
           images: data.images?.length
             ? data.images.map((img: any) => img.url).filter(Boolean)
             : [FALLBACK_IMAGE],
           slug,
           prdId,
-=======
-          images: data.images?.length ? data.images.map((img: ImageType) => img.url) : [FALLBACK_IMAGE],
-          slug,
-          prdId: prdId,
->>>>>>> 8803a153c3283f6ab10d99887e3a2da63e429c06
           rating: 4.8,
           reviews: 128,
         });
@@ -233,7 +222,7 @@ export default function ProductDetailsPage() {
   useEffect(() => {
     if (mainImageScrollRef.current && window.innerWidth >= 768) {
       mainImageScrollRef.current.scrollTo({
-        left: selectedImage * mainImageScrollRef.current.offsetWidth,
+        left: selectedImage * (mainImageScrollRef.current.offsetWidth || 0),
         behavior: "instant" as ScrollBehavior,
       });
     }
@@ -253,7 +242,9 @@ export default function ProductDetailsPage() {
     if (!c) return;
     const handle = () => {
       if (window.innerWidth >= 768) return;
-      setSelectedImage(Math.round(c.scrollLeft / c.offsetWidth));
+      if (c.offsetWidth > 0) {
+        setSelectedImage(Math.round(c.scrollLeft / c.offsetWidth));
+      }
     };
     c.addEventListener("scroll", handle, { passive: true });
     return () => c.removeEventListener("scroll", handle);
@@ -278,21 +269,17 @@ export default function ProductDetailsPage() {
     );
   }
 
-<<<<<<< HEAD
   // --- HANDLERS ---
-  const isSaved = savedItems.some((item: any) => String(item.product?._id) === String(product.id) || String(item.product?.id) === String(product.id));
-=======
-  const backendProductId: string = product.mongoId || product.prdId || productId;
+  const backendProductId: string = product.mongoId || product.prdId || String(productId);
 
-  const isSaved = (savedItems as SavedItem[]).some((item: SavedItem) =>
-    String(item.product?._id || item._id || item.id) === String(backendProductId)
+  const isSaved = savedItems.some((item: any) =>
+    String(item.product?._id || item.product?.id || item._id || item.id) === String(backendProductId)
   );
 
   const discountPct =
     product.originalPrice && product.originalPrice > product.price
       ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
       : null;
->>>>>>> 8803a153c3283f6ab10d99887e3a2da63e429c06
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isZoomMode) return;
@@ -312,7 +299,7 @@ export default function ProductDetailsPage() {
     badge: product.badge,
     rating: product.rating,
     reviews: product.reviews,
-    originalPrice: product.originalPrice,
+    originalPrice: product.originalPrice ?? undefined,
   });
 
   const handleAddToCart = async (e?: React.MouseEvent) => {
@@ -354,22 +341,13 @@ export default function ProductDetailsPage() {
   };
 
   const handleWishlist = () => {
-<<<<<<< HEAD
-    if (isSaved) {
-      dispatch(removeWishlistItem(String(product.id)));
-      showToast("Removed", "Removed from wishlist", "info");
-    } else {
-      dispatch(addWishlistItem(product));
-      showToast("Success!", "Added to wishlist", "success");
-=======
     if (!product) return;
-    const willBeSaved = !isSaved;
-    handleSaved({ ...product, id: backendProductId });
-    if (willBeSaved) {
-      showToast("Success!", "Added to wishlist", "success");
-    } else {
+    if (isSaved) {
+      dispatch(removeWishlistItem(backendProductId));
       showToast("Removed", "Removed from wishlist", "info");
->>>>>>> 8803a153c3283f6ab10d99887e3a2da63e429c06
+    } else {
+      dispatch(addWishlistItem({ ...product, id: backendProductId }));
+      showToast("Success!", "Added to wishlist", "success");
     }
   };
 
@@ -387,6 +365,7 @@ export default function ProductDetailsPage() {
     setIsZoomMode(false);
     setSelectedImage((selectedImage - 1 + product.images.length) % product.images.length);
   };
+
   const goToNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsZoomMode(false);
@@ -398,7 +377,6 @@ export default function ProductDetailsPage() {
     ? productStory.story
     : "Every piece I create is infused with love and intention. I want the wearer to feel special and confident.";
 
-<<<<<<< HEAD
   const displaySimilarProducts = !similarLoading && similarProducts.length > 0
     ? similarProducts.map((p) => ({
       id: p._id,
@@ -413,23 +391,6 @@ export default function ProductDetailsPage() {
       description: p.description,
     }))
     : [];
-=======
-  const displaySimilarProducts =
-    !similarLoading && similarProducts.length > 0
-      ? similarProducts.map((p) => ({
-          id: p._id,
-          name: p.name,
-          price: p.price,
-          originalPrice: p.price + 150,
-          category: p.category,
-          image: p.images?.[0]?.url || FALLBACK_IMAGE,
-          images: p.images?.length ? p.images.map((img) => img.url) : [FALLBACK_IMAGE],
-          rating: p.ratingsAverage || 4.5,
-          reviews: p.ratingsCount || 0,
-          description: p.description,
-        }))
-      : [];
->>>>>>> 8803a153c3283f6ab10d99887e3a2da63e429c06
 
   return (
     <div className="bg-white font-sans overflow-x-clip min-h-screen relative pb-4 md:pb-0">
@@ -443,16 +404,6 @@ export default function ProductDetailsPage() {
         </Link>
       </div>
 
-<<<<<<< HEAD
-      <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-2 gap-12 border-b border-gray-100">
-
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-4">
-            <div ref={containerRef} className="relative w-full rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border border-gray-100 group">
-              <div className="absolute top-6 left-6 flex flex-col gap-2 z-30 pointer-events-none">
-                <div className="bg-[#E05C7E] text-white text-[13px] font-bold px-5 py-2 rounded-full shadow-md">Bestseller</div>
-                <div className="bg-[#4CAF50] text-white text-[13px] font-bold px-5 py-2 rounded-full shadow-md">New</div>
-=======
       {/* Main content */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-8 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 border-b border-gray-100">
         {/* Image section */}
@@ -469,7 +420,6 @@ export default function ProductDetailsPage() {
                 <div className="bg-[#4CAF50] text-white text-[10px] md:text-[13px] font-bold px-3 py-1.5 md:px-5 md:py-2 rounded-full shadow-md">
                   New
                 </div>
->>>>>>> 8803a153c3283f6ab10d99887e3a2da63e429c06
               </div>
 
               <button
@@ -488,9 +438,8 @@ export default function ProductDetailsPage() {
               <div className="absolute top-3 right-3 md:top-4 md:right-4 flex flex-col gap-2 md:gap-3 z-20">
                 <button
                   onClick={handleWishlist}
-                  className={`p-2.5 md:p-3 rounded-full shadow-md transition-all active:scale-90 ${
-                    isSaved ? "bg-[#D94F7A] text-white" : "bg-white/90 text-gray-400 hover:text-[#D94F7A]"
-                  }`}
+                  className={`p-2.5 md:p-3 rounded-full shadow-md transition-all active:scale-90 ${isSaved ? "bg-[#D94F7A] text-white" : "bg-white/90 text-gray-400 hover:text-[#D94F7A]"
+                    }`}
                 >
                   <Heart size={18} className="md:w-5 md:h-5" fill={isSaved ? "currentColor" : "none"} />
                 </button>
@@ -519,10 +468,10 @@ export default function ProductDetailsPage() {
                         transition: isZoomMode ? "transform 0.15s ease-out" : "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                       }}
                     >
-                      <Image 
-                        src={img} 
-                        className="w-full h-full object-cover" 
-                        draggable={false} 
+                      <Image
+                        src={img}
+                        className="w-full h-full object-cover"
+                        draggable={false}
                         alt={`Product ${idx + 1}`}
                         width={800}
                         height={800}
@@ -548,15 +497,14 @@ export default function ProductDetailsPage() {
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
-                  className={`shrink-0 w-14 h-14 md:w-24 md:h-24 rounded-xl md:rounded-2xl overflow-hidden border-2 transition-all snap-center ${
-                    selectedImage === idx
-                      ? "border-[#D94F7A] ring-2 md:ring-4 ring-[#D94F7A]/10 scale-95"
-                      : "border-gray-100 hover:border-gray-300"
-                  }`}
+                  className={`shrink-0 w-14 h-14 md:w-24 md:h-24 rounded-xl md:rounded-2xl overflow-hidden border-2 transition-all snap-center ${selectedImage === idx
+                    ? "border-[#D94F7A] ring-2 md:ring-4 ring-[#D94F7A]/10 scale-95"
+                    : "border-gray-100 hover:border-gray-300"
+                    }`}
                 >
-                  <Image 
-                    src={img} 
-                    className="w-full h-full object-cover" 
+                  <Image
+                    src={img}
+                    className="w-full h-full object-cover"
                     alt={`Thumbnail ${idx + 1}`}
                     width={96}
                     height={96}
@@ -622,9 +570,8 @@ export default function ProductDetailsPage() {
                   key={idx}
                   onClick={() => setSelectedColor(idx)}
                   title={col.label}
-                  className={`w-9 h-9 md:w-11 md:h-11 rounded-full border-[3px] transition-all relative flex items-center justify-center ${
-                    selectedColor === idx ? "border-[#D94F7A] scale-105" : "border-transparent hover:border-gray-300"
-                  }`}
+                  className={`w-9 h-9 md:w-11 md:h-11 rounded-full border-[3px] transition-all relative flex items-center justify-center ${selectedColor === idx ? "border-[#D94F7A] scale-105" : "border-transparent hover:border-gray-300"
+                    }`}
                   style={{ backgroundColor: col.value }}
                 >
                   {selectedColor === idx && (
@@ -644,20 +591,13 @@ export default function ProductDetailsPage() {
                 <button
                   key={size}
                   onClick={() => setSelectedSize(size)}
-                  className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold border-2 transition-all ${
-                    selectedSize === size ? "bg-[#D94F7A] border-[#D94F7A] text-white" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                  }`}
+                  className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold border-2 transition-all ${selectedSize === size ? "bg-[#D94F7A] border-[#D94F7A] text-white" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                    }`}
                 >
                   {size}
                 </button>
               ))}
             </div>
-<<<<<<< HEAD
-            <button
-              onClick={handleAddToCart}
-              disabled={isAdded}
-              className={`flex-1 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 h-14 transition-all ${isAdded ? "bg-emerald-600 text-white" : "bg-[#D94F7A] hover:bg-[#b83d63] text-white"}`}
-=======
           </div>
 
           <div className="flex items-center">
@@ -682,10 +622,8 @@ export default function ProductDetailsPage() {
             <button
               onClick={(e) => handleAddToCart(e)}
               disabled={isAdded}
-              className={`flex-[3] font-semibold rounded-full flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${
-                isAdded ? "bg-emerald-500 text-white" : "bg-[#D94F7A] hover:bg-[#c2436d] text-white"
-              }`}
->>>>>>> 8803a153c3283f6ab10d99887e3a2da63e429c06
+              className={`flex-[3] font-semibold rounded-full flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${isAdded ? "bg-emerald-500 text-white" : "bg-[#D94F7A] hover:bg-[#c2436d] text-white"
+                }`}
             >
               {isAdded ? (
                 <><CheckCircle2 size={14} className="md:w-4 md:h-4" strokeWidth={2.5} /> Added</>
@@ -699,7 +637,7 @@ export default function ProductDetailsPage() {
             >
               Buy Now
             </button>
-          </div>
+          </div >
 
           <div className="border border-gray-200 rounded-xl md:rounded-2xl overflow-hidden">
             <div className="border-b border-gray-100">
@@ -710,7 +648,7 @@ export default function ProductDetailsPage() {
                 <div className="text-left pr-2 md:pr-4 flex flex-col items-start">
                   <div className="flex flex-wrap items-center gap-2 md:gap-3">
                     <span className="text-sm md:text-base font-bold text-gray-900">Customer Reviews</span>
-                    <span className="bg-[#D94F7A] text-white text-[8px] md:text-[10px] font-bold px-2 md:px-2.5 py-0.5 md:py-1 rounded-full uppercase">
+                    <span className="bg-[#D94F7A] text-white text-[8px] md:text-[10px] font-bold px-2 md:px-2.5 py-1 rounded-full uppercase">
                       {product.reviews} Reviews
                     </span>
                   </div>
@@ -731,7 +669,7 @@ export default function ProductDetailsPage() {
                       </div>
                     </div>
                     <div className="flex gap-1 mb-2 text-yellow-400">
-                      {[1,2,3,4,5].map((s) => <Star key={s} size={10} className="md:w-3 md:h-3" fill="currentColor" />)}
+                      {[1, 2, 3, 4, 5].map((s) => <Star key={s} size={10} className="md:w-3 md:h-3" fill="currentColor" />)}
                     </div>
                     <p className="text-[10px] md:text-xs text-gray-600 italic">&quot;Absolutely Beautiful! The craftsmanship is incredible.&quot;</p>
                   </div>
@@ -772,9 +710,9 @@ export default function ProductDetailsPage() {
         <div className="bg-[#050505] py-10 md:py-16 lg:py-32 px-4 relative">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-10">
             <div className="w-full md:flex-1 relative aspect-video rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl group/story">
-              <Image 
-                src={storyImageSrc} 
-                className="w-full h-full object-cover opacity-70 transition-transform duration-700 group-hover/story:scale-110" 
+              <Image
+                src={storyImageSrc}
+                className="w-full h-full object-cover opacity-70 transition-transform duration-700 group-hover/story:scale-110"
                 alt="Artisan Story"
                 width={1200}
                 height={675}
@@ -801,49 +739,22 @@ export default function ProductDetailsPage() {
         </div>
       )}
 
-<<<<<<< HEAD
-      {/* Similar Products - Fixed Mobile View Gap */}
-      <div className="max-w-7xl mx-auto px-6 pt-6 pb-2 md:pt-16 md:pb-8 relative group/similar">
-        <h3 className="text-2xl font-serif text-gray-900 mb-8">Similar Products</h3>
-        <button onClick={() => scrollSimilar("left")} className="absolute left-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl opacity-0 group-hover/similar:opacity-100 transition-all -translate-x-4 group-hover/similar:translate-x-2 hidden md:flex items-center justify-center"><ChevronLeft size={24} /></button>
-        <button onClick={() => scrollSimilar("right")} className="absolute right-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl opacity-0 group-hover/similar:opacity-100 transition-all translate-x-4 group-hover/similar:-translate-x-2 hidden md:flex items-center justify-center"><ChevronRight size={24} /></button>
-        <div className="overflow-hidden">
-          <div ref={similarProductsRef} className="flex gap-6 overflow-x-auto pb-8 no-scrollbar snap-x scroll-smooth">
-            {!similarLoading && (displaySimilarProducts.length > 0 ? displaySimilarProducts : [1, 2, 3, 4]).map((p, idx) => (
-              <div key={typeof p === 'number' ? p : p.id} className="snap-start shrink-0" style={{ width: "clamp(250px, 80%, calc(25% - 18px))" }}>
-                <ProductCard product={typeof p === 'number' ? { ...product, id: p } : (p as any)} />
-              </div>
-            ))}
-=======
-      {/* ── Similar Products ── */}
+      {/* Similar Products */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-2 md:pt-16 md:pb-8">
         <h3 className="text-xl md:text-2xl font-serif text-gray-900 mb-4 md:mb-8">Similar Products</h3>
-
-        {/* Wrapper: relative for button positioning, extra side padding on desktop for button gutters */}
         <div className="relative group/similar px-0 md:px-10">
-
-          {/* Prev button in left gutter */}
           <button
             onClick={() => scrollSimilar("left")}
             className="absolute left-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl border border-gray-100 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all opacity-0 group-hover/similar:opacity-100 hidden md:flex items-center justify-center"
           >
             <ChevronLeft size={22} />
           </button>
-
-          {/* Next button in right gutter */}
           <button
             onClick={() => scrollSimilar("right")}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl border border-gray-100 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all opacity-0 group-hover/similar:opacity-100 hidden md:flex items-center justify-center"
           >
             <ChevronRight size={22} />
           </button>
-
-          {/* 
-            Mobile:  horizontal scroll, each card = 75vw (swipeable)
-            Desktop: NO scroll — 4 cards fill the row exactly using flex + w-[calc]
-                     gap-6 = 24px × 3 gaps = 72px total gap
-                     each card = (100% - 72px) / 4
-          */}
           <div
             ref={similarProductsRef}
             className="flex gap-4 md:gap-6 overflow-x-auto md:overflow-x-visible pb-6 md:pb-8 no-scrollbar snap-x md:snap-none scroll-smooth"
@@ -856,12 +767,11 @@ export default function ProductDetailsPage() {
                 >
                   <div className="w-full h-full">
                     <ProductCard
-                      product={typeof p === "number" ? { ...product, id: p } : p}
+                      product={typeof p === "number" ? { ...product!, id: p } : (p as any)}
                     />
                   </div>
                 </div>
               ))}
->>>>>>> 8803a153c3283f6ab10d99887e3a2da63e429c06
           </div>
         </div>
       </div>
@@ -872,22 +782,18 @@ export default function ProductDetailsPage() {
           ref={reviewsSectionRef}
           className="max-w-7xl mx-auto pb-6 md:pb-10 px-4 md:px-6 pt-2 md:pt-6 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-1000"
         >
-          <ProductReviews productId={productId} isLoggedIn={false} hasPurchased={false} />
+          <ProductReviews productId={String(productId)} isLoggedIn={false} hasPurchased={false} />
         </div>
       )}
 
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Mobile: each card takes 75vw for swipe feel */
         .similar-card-wrapper {
           flex: 0 0 75vw;
           width: 75vw;
           min-width: 0;
         }
-
-        /* Desktop: 4 equal columns filling the full row */
         @media (min-width: 768px) {
           .similar-card-wrapper {
             flex: 1 1 0%;
