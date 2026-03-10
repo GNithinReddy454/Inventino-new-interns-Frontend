@@ -33,17 +33,36 @@ interface ProductParams {
   maxPrice?: number;
 }
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+interface ProductParams {
+  page: number;
+  limit: number;
+  sort?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
 const CATEGORIES_LIST = [
-  "Bracelets", "Earrings", "Necklaces",
-  "Rings", "Accessories", "Women Watches",
+  "Bracelets",
+  "Necklaces",
+  "Rings",
+  "Hair Accessories",
+  "Bag Charms",
+  "Shoe Charms",
+  "Kids Jewelry",
+  "Women Watches",
 ];
-const SORT_OPTIONS = [
-  "Featured",
-  "Price: Low to High",
-  "Price: High to Low",
-  "Newest First",
-];
+const SORT_OPTIONS = ["Featured", "Price: Low to High", "Price: High to Low", "Newest First"];
 const SORT_MAP: Record<string, string> = {
   "Featured": "featured",
   "Price: Low to High": "priceAsc",
@@ -58,7 +77,6 @@ const SORT_MAP_REVERSE: Record<string, string> = {
 };
 const ITEMS_PER_PAGE = 9;
 
-// ─── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
     <div className="rounded-2xl overflow-hidden border border-gray-100 bg-white animate-pulse">
@@ -73,8 +91,7 @@ function SkeletonCard() {
   );
 }
 
-// ─── Price Inputs ──────────────────────────────────────────────────────────────
-function PriceInputs({
+function PriceRange({
   minPrice, maxPrice, minPriceFetched, maxPriceFetched, setMinPrice, setMaxPrice,
 }: {
   minPrice: number | undefined;
@@ -84,47 +101,68 @@ function PriceInputs({
   setMinPrice: (v: number | undefined) => void;
   setMaxPrice: (v: number | undefined) => void;
 }) {
+  const rangeMin = minPriceFetched ?? 0;
+  const rangeMax = maxPriceFetched ?? 10000;
+  const currentMin = minPrice ?? rangeMin;
+  const currentMax = maxPrice ?? rangeMax;
+
   return (
-    <div className="flex gap-2">
-      <input
-        type="number"
-        placeholder={minPriceFetched !== undefined ? `Min (${minPriceFetched})` : "Min"}
-        value={minPrice ?? ""}
-        min={0}
-        onChange={(e) => {
-          if (e.target.value === "") { setMinPrice(undefined); return; }
-          const val = Number(e.target.value);
-          if (val < 0) return;
-          setMinPrice(val);
-        }}
-        className="flex-1 min-w-0 px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#D94F7A]"
-      />
-      <input
-        type="number"
-        placeholder={maxPriceFetched !== undefined ? `Max (${maxPriceFetched})` : "Max"}
-        value={maxPrice ?? ""}
-        min={minPrice ?? 0}
-        onChange={(e) => {
-          if (e.target.value === "") { setMaxPrice(undefined); return; }
-          const val = Number(e.target.value);
-          if (val < 0) return;
-          setMaxPrice(val);
-        }}
-        className="flex-1 min-w-0 px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#D94F7A]"
-      />
+    <div className="w-full space-y-3">
+      <div className="flex gap-3">
+        <input
+          type="number"
+          value={currentMin}
+          min={rangeMin}
+          max={currentMax}
+          onChange={(e) => {
+            const val = Number(e.target.value);
+            if (val <= currentMax) setMinPrice(val === rangeMin ? undefined : val);
+          }}
+          className="flex-1 min-w-0 px-3 py-2.5 text-sm font-medium bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] text-gray-700 transition-colors"
+        />
+        <input
+          type="number"
+          value={currentMax}
+          min={currentMin}
+          max={rangeMax}
+          onChange={(e) => {
+            const val = Number(e.target.value);
+            if (val >= currentMin) setMaxPrice(val === rangeMax ? undefined : val);
+          }}
+          className="flex-1 min-w-0 px-3 py-2.5 text-sm font-medium bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] text-gray-700 transition-colors"
+        />
+      </div>
+
+      <div className="relative h-5 flex items-center">
+        <div className="absolute w-full h-1.5 bg-gray-200 rounded-full" />
+        <div
+          className="absolute h-1.5 bg-[#D94F7A] rounded-full left-0"
+          style={{
+            width: `${rangeMax === rangeMin ? 100 : ((currentMax - rangeMin) / (rangeMax - rangeMin)) * 100}%`
+          }}
+        />
+        <input
+          type="range"
+          min={rangeMin}
+          max={rangeMax}
+          value={currentMax}
+          onChange={(e) => {
+            const val = Number(e.target.value);
+            if (val >= currentMin) setMaxPrice(val === rangeMax ? undefined : val);
+          }}
+          className="range-thumb-pink absolute w-full h-1.5 appearance-none bg-transparent cursor-pointer"
+        />
+      </div>
     </div>
   );
 }
 
-// ─── Main Content ──────────────────────────────────────────────────────────────
 function ProductsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const initialSort = SORT_MAP_REVERSE[searchParams.get("sort") ?? ""] ?? "Featured";
-  const [selectedCategory, setSelectedCategory] = useState(
-    searchParams.get("category") || "All Products"
-  );
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "All Products");
   const [sortBy, setSortBy] = useState(initialSort);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
@@ -152,7 +190,6 @@ function ProductsContent() {
 
   useEffect(() => { setIsClient(true); }, []);
 
-  // ── Sync URL ──
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedCategory !== "All Products") params.set("category", selectedCategory);
@@ -165,27 +202,17 @@ function ProductsContent() {
     router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
   }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice, currentPage, pathname, router]);
 
-  // ── Close sort dropdown ──
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(e.target as Node))
-        setSortOpen(false);
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ── Reset page on filter change ──
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice]);
+  useEffect(() => { setCurrentPage(1); }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice]);
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [currentPage]);
 
-  // ── Scroll top ──
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentPage]);
-
-  // ── Fetch Products ──
   useEffect(() => {
     let cancelled = false;
     const fetchProducts = async () => {
@@ -193,15 +220,9 @@ function ProductsContent() {
       setError(null);
       try {
         let items: ApiProduct[] = [];
-        let metaData: ProductListMeta = {
-          total: 0, page: currentPage, limit: ITEMS_PER_PAGE, totalPages: 1,
-        };
-        // CASE 1: Search
-        if (debouncedSearch && debouncedSearch.trim() !== "") {
-          console.log("🔍 Searching:", debouncedSearch.trim());
-          const res = await productService.searchProducts(
-            debouncedSearch.trim(), currentPage, ITEMS_PER_PAGE
-          );
+        let metaData: ProductListMeta = { total: 0, page: currentPage, limit: ITEMS_PER_PAGE, totalPages: 1 };
+        if (debouncedSearch?.trim()) {
+          const res = await productService.searchProducts(debouncedSearch.trim(), currentPage, ITEMS_PER_PAGE);
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
         // CASE 2: No filters → get all products with backend pagination
@@ -217,10 +238,7 @@ function ProductsContent() {
           metaData = res.data?.data?.meta ?? metaData;
         // CASE 3: Category / sort / price filters → backend handles everything
         } else {
-          const params: ProductParams = {
-            page: currentPage,
-            limit: ITEMS_PER_PAGE,
-          };
+          const params: ProductParams = { page: currentPage, limit: ITEMS_PER_PAGE };
           const apiSort = SORT_MAP[sortBy];
           if (apiSort && apiSort !== "featured") params.sort = apiSort;
           if (selectedCategory !== "All Products") params.category = selectedCategory;
@@ -250,7 +268,6 @@ function ProductsContent() {
     return () => { cancelled = true; };
   }, [currentPage, sortBy, selectedCategory, debouncedSearch, minPrice, maxPrice]);
 
-  // ── Fetch category counts + global total + price range ──
   useEffect(() => {
     const fetchCounts = async () => {
       try {
@@ -261,7 +278,12 @@ function ProductsContent() {
         let min = Infinity;
         let max = -Infinity;
         items.forEach((p) => {
-          counts[p.category] = (counts[p.category] || 0) + 1;
+          // normalize to Title Case key for counting
+          const key = p.category
+            .split(" ")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" ");
+          counts[key] = (counts[key] || 0) + 1;
           const price = p.discountPrice ?? p.price;
           if (price < min) min = price;
           if (price > max) max = price;
@@ -270,19 +292,15 @@ function ProductsContent() {
         setMinPriceFetched(min === Infinity ? undefined : min);
         setMaxPriceFetched(max === -Infinity ? undefined : max);
       } catch {
-        /* fail silently */
+       
       }
     };
     fetchCounts();
   }, []);
 
   const clearFilters = useCallback(() => {
-    setSelectedCategory("All Products");
-    setSearchQuery("");
-    setSortBy("Featured");
-    setMinPrice(undefined);
-    setMaxPrice(undefined);
-    setCurrentPage(1);
+    setSelectedCategory("All Products"); setSearchQuery(""); setSortBy("Featured");
+    setMinPrice(undefined); setMaxPrice(undefined); setCurrentPage(1);
   }, []);
 
   const triggerToast = useCallback((name: string) => {
@@ -293,11 +311,8 @@ function ProductsContent() {
   const totalPages = meta?.totalPages ?? 1;
   const totalProducts = meta?.total ?? 0;
   const activeFilterCount = [
-    selectedCategory !== "All Products",
-    sortBy !== "Featured",
-    !!debouncedSearch,
-    minPrice !== undefined,
-    maxPrice !== undefined,
+    selectedCategory !== "All Products", sortBy !== "Featured",
+    !!debouncedSearch, minPrice !== undefined, maxPrice !== undefined,
   ].filter(Boolean).length;
 
   const getPaginationRange = (): (number | "...")[] => {
@@ -310,7 +325,8 @@ function ProductsContent() {
 
   if (!isClient) return <div className="min-h-screen bg-white" />;
 
-  // ── Category List ──
+  const priceProps = { minPrice, maxPrice, minPriceFetched, maxPriceFetched, setMinPrice, setMaxPrice };
+
   const CategoryList = ({ onSelect, vertical }: { onSelect?: () => void; vertical?: boolean }) => (
     <div
       ref={categoryScrollRef}
@@ -326,9 +342,7 @@ function ProductsContent() {
         }`}
       >
         <span>All Products</span>
-        <span className={`${vertical ? "inline" : "hidden lg:inline"} bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs ${
-          selectedCategory === "All Products" && vertical ? "bg-white/30 text-white" : ""
-        }`}>
+        <span className={`${vertical ? "inline" : "hidden lg:inline"} bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs`}>
           {globalTotal || "—"}
         </span>
       </button>
@@ -340,18 +354,14 @@ function ProductsContent() {
             key={cat}
             onClick={() => { setSelectedCategory(cat); onSelect?.(); }}
             className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
-              isActive
-                ? "bg-[#D94F7A] text-white font-bold lg:text-[#D94F7A] lg:bg-transparent"
-                : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
+              isActive ? "bg-[#D94F7A] text-white font-bold lg:text-[#D94F7A] lg:bg-transparent" : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
             }`}
           >
             <span>{cat}</span>
             {count > 0 && (
               <span className={`${vertical ? "inline" : "hidden lg:inline"} px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${
                 isActive ? "bg-[#D94F7A] text-white" : "bg-gray-200 text-gray-400"
-              }`}>
-                {count}
-              </span>
+              }`}>{count}</span>
             )}
           </button>
         );
@@ -373,9 +383,7 @@ function ProductsContent() {
             <span className="text-[11px] font-black text-[#D94F7A] uppercase tracking-widest leading-none mb-0.5">Success!</span>
             <span className="text-xs font-bold text-gray-800 truncate max-w-[150px] leading-tight">{toast.name} added</span>
           </div>
-          <button onClick={() => setToast({ name: "", show: false })} className="ml-2 text-gray-300 hover:text-gray-600 transition-colors">
-            <X size={14} />
-          </button>
+          <button onClick={() => setToast({ name: "", show: false })} className="ml-2 text-gray-300 hover:text-gray-600"><X size={14} /></button>
         </div>
       </div>
       {/* Mobile Overlay */}
@@ -403,8 +411,8 @@ function ProductsContent() {
             <CategoryList onSelect={() => setSidebarOpen(false)} vertical={true} />
           </div>
           <div>
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Price</h4>
-            <PriceInputs minPrice={minPrice} maxPrice={maxPrice} minPriceFetched={minPriceFetched} maxPriceFetched={maxPriceFetched} setMinPrice={setMinPrice} setMaxPrice={setMaxPrice} />
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Price Range</h4>
+            <PriceRange {...priceProps} />
           </div>
         </div>
       </div>
@@ -431,8 +439,8 @@ function ProductsContent() {
                 </div>
                 
                 <div>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Price Range</h4>
-                  <PriceInputs minPrice={minPrice} maxPrice={maxPrice} minPriceFetched={minPriceFetched} maxPriceFetched={maxPriceFetched} setMinPrice={setMinPrice} setMaxPrice={setMaxPrice} />
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Price Range Range</h4>
+                  <PriceRange {...priceProps} />
                 </div>
               </div>
             </div>
@@ -621,7 +629,6 @@ function ProductsContent() {
   );
 }
 
-// ─── Page Wrapper ──────────────────────────────────────────────────────────────
 export default function ProductsPage() {
   return (
     <Suspense fallback={
