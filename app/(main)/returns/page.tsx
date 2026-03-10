@@ -10,8 +10,9 @@ import {
   ClipboardCheck,
   Heart,
 } from "lucide-react";
+import { ReturnStep } from "@/types/return";
 
-const returnSteps = [
+const returnSteps: ReturnStep[] = [
   {
     title: "14-Day Grace Period",
     desc: "We offer a 14-day return window for all unworn jewelry in its original Inventino signature packaging.",
