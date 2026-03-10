@@ -11,9 +11,9 @@ import {
   CheckCircle2,
   ChevronDown,
   Star,
-  ShoppingCart,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
@@ -61,6 +61,17 @@ interface ProductStory {
   storyMedia: string;
   productId: string;
   name: string;
+}
+
+interface ImageType {
+  url: string;
+  id?: string;
+}
+
+interface SavedItem {
+  product?: { _id?: string };
+  _id?: string;
+  id?: string | number;
 }
 
 const FALLBACK_IMAGE =
@@ -123,8 +134,8 @@ export default function ProductDetailsPage() {
       const payload = similarRes?.data ?? similarRes;
       const list: SimilarProduct[] = Array.isArray(payload) ? payload : [];
       setSimilarProducts(list);
-    } catch (err) {
-      console.error("[Similar] fetch failed", err);
+    } catch {
+      console.error("[Similar] fetch failed");
     } finally {
       setSimilarLoading(false);
     }
@@ -165,7 +176,7 @@ export default function ProductDetailsPage() {
           description: data.description,
           category: data.category,
           image: data.images?.[0]?.url || FALLBACK_IMAGE,
-          images: data.images?.length ? data.images.map((img: any) => img.url) : [FALLBACK_IMAGE],
+          images: data.images?.length ? data.images.map((img: ImageType) => img.url) : [FALLBACK_IMAGE],
           slug,
           prdId,
           rating: 4.8,
@@ -174,8 +185,8 @@ export default function ProductDetailsPage() {
         if (prdId) await fetchSimilarWith(prdId);
         else if (mongoId) await fetchSimilarWith(mongoId);
         else if (slug) await fetchSimilarWith(slug);
-      } catch (err) {
-        console.error("[getById] failed:", err);
+      } catch {
+        console.error("[getById] failed:");
       } finally {
         setLoading(false);
       }
@@ -193,8 +204,8 @@ export default function ProductDetailsPage() {
         const storyRes = await productService.getStory(productId + cacheBuster);
         const storyData = storyRes?.data ?? storyRes;
         if (storyData) setProductStory(storyData);
-      } catch (err) {
-        console.error("Failed to load product story", err);
+      } catch {
+        console.error("Failed to load product story");
       } finally {
         setStoryLoading(false);
       }
@@ -250,9 +261,9 @@ export default function ProductDetailsPage() {
     );
   }
 
-  const backendProductId: string = product!.mongoId || product!.prdId || productId;
+  const backendProductId: string = product.mongoId || product.prdId || productId;
 
-  const isSaved = (savedItems as any).some((item: any) =>
+  const isSaved = (savedItems as SavedItem[]).some((item: SavedItem) =>
     String(item.product?._id || item._id || item.id) === String(backendProductId)
   );
 
@@ -272,14 +283,14 @@ export default function ProductDetailsPage() {
 
   const buildCartItem = () => ({
     id: backendProductId,
-    name: product!.name,
-    image: product!.image,
-    price: product!.price,
-    category: product!.category,
-    badge: product!.badge,
-    rating: product!.rating,
-    reviews: product!.reviews,
-    originalPrice: product!.originalPrice,
+    name: product.name,
+    image: product.image,
+    price: product.price,
+    category: product.category,
+    badge: product.badge,
+    rating: product.rating,
+    reviews: product.reviews,
+    originalPrice: product.originalPrice,
   });
 
   const handleAddToCart = async (e?: React.MouseEvent) => {
@@ -293,11 +304,11 @@ export default function ProductDetailsPage() {
         setIsAdded(true);
         showToast("Success!", "Added to bag", "success");
         setTimeout(() => setIsAdded(false), 3500);
-      } catch (err: any) {
-        showToast("Error", err || "Failed to add to cart", "error");
+      } catch {
+        showToast("Error", "Failed to add to cart", "error");
       }
     } else {
-      addToCart(buildCartItem() as any, quantity);
+      addToCart(buildCartItem(), quantity);
       setIsAdded(true);
       showToast("Success!", "Added to bag", "success");
       setTimeout(() => setIsAdded(false), 3500);
@@ -311,11 +322,11 @@ export default function ProductDetailsPage() {
       if (user || token) {
         await dispatch(reduxAddToCart({ productId: backendProductId, quantity })).unwrap();
       } else {
-        addToCart(buildCartItem() as any, quantity);
+        addToCart(buildCartItem(), quantity);
       }
       showToast("Redirecting...", "Taking you to checkout", "info");
       window.location.href = "/checkout";
-    } catch (err) {
+    } catch {
       showToast("Error", "Could not process request", "error");
     }
   };
@@ -323,7 +334,7 @@ export default function ProductDetailsPage() {
   const handleWishlist = () => {
     if (!product) return;
     const willBeSaved = !isSaved;
-    handleSaved({ ...product, id: backendProductId } as any);
+    handleSaved({ ...product, id: backendProductId });
     if (willBeSaved) {
       showToast("Success!", "Added to wishlist", "success");
     } else {
@@ -449,7 +460,15 @@ export default function ProductDetailsPage() {
                         transition: isZoomMode ? "transform 0.15s ease-out" : "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                       }}
                     >
-                      <img src={img} className="w-full h-full object-cover" draggable={false} alt={`Product ${idx + 1}`} />
+                      <Image 
+                        src={img} 
+                        className="w-full h-full object-cover" 
+                        draggable={false} 
+                        alt={`Product ${idx + 1}`}
+                        width={800}
+                        height={800}
+                        priority={idx === 0}
+                      />
                     </div>
                   </div>
                 ))}
@@ -476,7 +495,13 @@ export default function ProductDetailsPage() {
                       : "border-gray-100 hover:border-gray-300"
                   }`}
                 >
-                  <img src={img} className="w-full h-full object-cover" alt={`Thumbnail ${idx + 1}`} />
+                  <Image 
+                    src={img} 
+                    className="w-full h-full object-cover" 
+                    alt={`Thumbnail ${idx + 1}`}
+                    width={96}
+                    height={96}
+                  />
                 </button>
               ))}
             </div>
@@ -642,7 +667,7 @@ export default function ProductDetailsPage() {
                     <div className="flex gap-1 mb-2 text-yellow-400">
                       {[1,2,3,4,5].map((s) => <Star key={s} size={10} className="md:w-3 md:h-3" fill="currentColor" />)}
                     </div>
-                    <p className="text-[10px] md:text-xs text-gray-600 italic">"Absolutely Beautiful! The craftsmanship is incredible."</p>
+                    <p className="text-[10px] md:text-xs text-gray-600 italic">&quot;Absolutely Beautiful! The craftsmanship is incredible.&quot;</p>
                   </div>
                   <button
                     onClick={() => { setShowBottomReviews(true); setTimeout(() => reviewsSectionRef.current?.scrollIntoView({ behavior: "smooth" }), 100); }}
@@ -681,7 +706,13 @@ export default function ProductDetailsPage() {
         <div className="bg-[#050505] py-10 md:py-16 lg:py-32 px-4 relative">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-10">
             <div className="w-full md:flex-1 relative aspect-video rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl group/story">
-              <img src={storyImageSrc} className="w-full h-full object-cover opacity-70 transition-transform duration-700 group-hover/story:scale-110" alt="Artisan Story" />
+              <Image 
+                src={storyImageSrc} 
+                className="w-full h-full object-cover opacity-70 transition-transform duration-700 group-hover/story:scale-110" 
+                alt="Artisan Story"
+                width={1200}
+                height={675}
+              />
               <div className="absolute bottom-4 left-4 md:bottom-6 md:left-6 bg-white/95 backdrop-blur-sm rounded-full py-2 px-3 md:py-2.5 md:px-5 flex items-center gap-2 md:gap-3 shadow-2xl z-20">
                 <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-[#D94F7A] flex items-center justify-center text-white font-bold text-[10px] md:text-xs">SA</div>
                 <div className="flex flex-col">
@@ -693,7 +724,7 @@ export default function ProductDetailsPage() {
             <div className="w-full md:flex-1 bg-[#0F0F0F] rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-14 relative border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-10">
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 md:w-1.5 h-[55%] md:h-[65%] bg-[#D94F7A] rounded-r-full" />
               <div className="pl-4 md:pl-6 lg:pl-10 space-y-4 md:space-y-6">
-                <p className="text-white text-base md:text-lg lg:text-2xl italic font-medium leading-relaxed">"{storyText}"</p>
+                <p className="text-white text-base md:text-lg lg:text-2xl italic font-medium leading-relaxed">&quot;{storyText}&quot;</p>
                 <div className="flex items-center gap-2 md:gap-3">
                   <span className="w-6 md:w-8 h-0.5 bg-[#D94F7A]" />
                   <p className="text-[#D94F7A] text-[10px] md:text-xs font-bold uppercase tracking-widest">Master Artisan</p>
@@ -738,14 +769,14 @@ export default function ProductDetailsPage() {
             className="flex gap-4 md:gap-6 overflow-x-auto md:overflow-x-visible pb-6 md:pb-8 no-scrollbar snap-x md:snap-none scroll-smooth"
           >
             {!similarLoading &&
-              (displaySimilarProducts.length > 0 ? displaySimilarProducts : [1, 2, 3, 4]).map((p, idx) => (
+              (displaySimilarProducts.length > 0 ? displaySimilarProducts : [1, 2, 3, 4]).map((p) => (
                 <div
                   key={typeof p === "number" ? p : p.id}
                   className="snap-start similar-card-wrapper"
                 >
                   <div className="w-full h-full">
                     <ProductCard
-                      product={typeof p === "number" ? { ...product, id: p } : (p as any)}
+                      product={typeof p === "number" ? { ...product, id: p } : p}
                     />
                   </div>
                 </div>

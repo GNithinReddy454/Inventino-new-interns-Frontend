@@ -13,6 +13,26 @@ import { normalize } from "@/utils/products.utils";
 import {
   NormalizedProduct, ApiProduct, ProductListMeta,
 } from "@/types/products.type";
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+interface ProductParams {
+  page: number;
+  limit: number;
+  sort?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORIES_LIST = [
   "Bracelets", "Earrings", "Necklaces",
@@ -37,6 +57,7 @@ const SORT_MAP_REVERSE: Record<string, string> = {
   "newest": "Newest First",
 };
 const ITEMS_PER_PAGE = 9;
+
 // ─── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
@@ -51,6 +72,7 @@ function SkeletonCard() {
     </div>
   );
 }
+
 // ─── Price Inputs ──────────────────────────────────────────────────────────────
 function PriceInputs({
   minPrice, maxPrice, minPriceFetched, maxPriceFetched, setMinPrice, setMaxPrice,
@@ -93,6 +115,7 @@ function PriceInputs({
     </div>
   );
 }
+
 // ─── Main Content ──────────────────────────────────────────────────────────────
 function ProductsContent() {
   const router = useRouter();
@@ -126,7 +149,9 @@ function ProductsContent() {
   const sortRef = useRef<HTMLDivElement>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebounce(searchQuery, 600);
+
   useEffect(() => { setIsClient(true); }, []);
+
   // ── Sync URL ──
   useEffect(() => {
     const params = new URLSearchParams();
@@ -139,6 +164,7 @@ function ProductsContent() {
     if (currentPage > 1) params.set("page", String(currentPage));
     router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
   }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice, currentPage, pathname, router]);
+
   // ── Close sort dropdown ──
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -148,14 +174,17 @@ function ProductsContent() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
   // ── Reset page on filter change ──
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategory, sortBy, debouncedSearch, minPrice, maxPrice]);
+
   // ── Scroll top ──
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
+
   // ── Fetch Products ──
   useEffect(() => {
     let cancelled = false;
@@ -188,7 +217,7 @@ function ProductsContent() {
           metaData = res.data?.data?.meta ?? metaData;
         // CASE 3: Category / sort / price filters → backend handles everything
         } else {
-          const params: Record<string, any> = {
+          const params: ProductParams = {
             page: currentPage,
             limit: ITEMS_PER_PAGE,
           };
@@ -206,11 +235,12 @@ function ProductsContent() {
         console.log("✅ Got", items.length, "products");
         setProducts(items.map(normalize));
         setMeta(metaData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelled) {
-          const msg = err?.response?.data?.message || err?.message || "Failed to load products.";
+          const apiError = err as ApiError;
+          const msg = apiError?.response?.data?.message || apiError?.message || "Failed to load products.";
           setError(msg);
-          console.error("❌ Error:", err?.response?.data ?? err);
+          console.error("❌ Error:", apiError?.response?.data ?? apiError);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -219,6 +249,7 @@ function ProductsContent() {
     fetchProducts();
     return () => { cancelled = true; };
   }, [currentPage, sortBy, selectedCategory, debouncedSearch, minPrice, maxPrice]);
+
   // ── Fetch category counts + global total + price range ──
   useEffect(() => {
     const fetchCounts = async () => {
@@ -238,10 +269,13 @@ function ProductsContent() {
         setCategoryCounts(counts);
         setMinPriceFetched(min === Infinity ? undefined : min);
         setMaxPriceFetched(max === -Infinity ? undefined : max);
-      } catch { /* fail silently */ }
+      } catch {
+        /* fail silently */
+      }
     };
     fetchCounts();
   }, []);
+
   const clearFilters = useCallback(() => {
     setSelectedCategory("All Products");
     setSearchQuery("");
@@ -250,10 +284,12 @@ function ProductsContent() {
     setMaxPrice(undefined);
     setCurrentPage(1);
   }, []);
+
   const triggerToast = useCallback((name: string) => {
     setToast({ name, show: true });
     setTimeout(() => setToast({ name: "", show: false }), 3500);
   }, []);
+
   const totalPages = meta?.totalPages ?? 1;
   const totalProducts = meta?.total ?? 0;
   const activeFilterCount = [
@@ -263,6 +299,7 @@ function ProductsContent() {
     minPrice !== undefined,
     maxPrice !== undefined,
   ].filter(Boolean).length;
+
   const getPaginationRange = (): (number | "...")[] => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
     if (currentPage <= 4) return [1, 2, 3, 4, 5, "...", totalPages];
@@ -270,7 +307,9 @@ function ProductsContent() {
       return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
     return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
   };
+
   if (!isClient) return <div className="min-h-screen bg-white" />;
+
   // ── Category List ──
   const CategoryList = ({ onSelect, vertical }: { onSelect?: () => void; vertical?: boolean }) => (
     <div
@@ -319,6 +358,7 @@ function ProductsContent() {
       })}
     </div>
   );
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative">
       {/* Toast */}
@@ -495,7 +535,7 @@ function ProductsContent() {
                 )}
                 {debouncedSearch && (
                   <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                    "{debouncedSearch}"<button onClick={() => setSearchQuery("")}><X size={11} /></button>
+                    &quot;{debouncedSearch}&quot;<button onClick={() => setSearchQuery("")}><X size={11} /></button>
                   </span>
                 )}
                 {minPrice !== undefined && (
@@ -533,7 +573,7 @@ function ProductsContent() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product as any} onAdd={triggerToast} />
+                  <ProductCard key={product.id} product={product} onAdd={triggerToast} />
                 ))}
               </div>
             )}
@@ -580,6 +620,7 @@ function ProductsContent() {
     </div>
   );
 }
+
 // ─── Page Wrapper ──────────────────────────────────────────────────────────────
 export default function ProductsPage() {
   return (
