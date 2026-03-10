@@ -16,7 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { addWishlistItem } from "@/redux/wishlistslice";
+import { addWishlistItem, fetchWishlist } from "@/redux/wishlistslice";
 import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { useAuth } from "@/app/(main)/components/authContext";
@@ -68,13 +68,13 @@ export default function BagPage() {
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
   const [toast, setToast] = useState<ToastState>({
-    title: "Moved to Wishlist!",
+    title: "Added to Wishlist!",
     message: "",
     show: false,
   });
 
   const triggerToast = useCallback(
-    (message: string, title: string = "Moved to Wishlist!") => {
+    (message: string, title: string = "Added to Wishlist!") => {
       setToast({ title, message, show: true });
       setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
     },
@@ -84,10 +84,13 @@ export default function BagPage() {
   const handleAction = (item: CartItem, type: "wishlist" | "remove") => {
     setAnimatingItem({ id: item.productId, type });
     setTimeout(() => {
-      const itemId = String((item as any)._id || item.productId);
+      let itemId = String((item as any).product?._id || (item as any).product?.id || (item as any)._id || (item as any).id || item.productId);
+      if (!itemId || itemId === "" || itemId === "undefined" || itemId === "null") {
+        itemId = String((item as any).id || (item as any)._id || item.productId);
+      }
       if (type === "wishlist") {
         if (!savedItems.some((si: any) => String(si.product?._id) === itemId || String(si.product?.id) === itemId || si.product?._id === itemId)) {
-          dispatch(addWishlistItem(itemId));
+          dispatch(addWishlistItem(item));
         }
       }
       if (user) {
@@ -113,25 +116,40 @@ export default function BagPage() {
     }
   };
 
-  const handleAddAllToWishlist = () => {
-    cart.forEach((item: any) => {
-      const itemId = String(item._id || item.productId);
+  const handleAddAllToWishlist = async () => {
+    let count = 0;
+
+    for (const item of cart) {
+      let itemId = String((item as any).product?._id || (item as any).product?.id || (item as any)._id || (item as any).id || item.productId);
+      if (!itemId || itemId === "" || itemId === "undefined" || itemId === "null") {
+        itemId = String((item as any).id || (item as any)._id || item.productId);
+      }
       if (!savedItems.some((si: any) =>
         String(si.product?._id) === itemId ||
         String(si.product?.id) === itemId ||
         si.product?._id === itemId
       )) {
-        dispatch(addWishlistItem(itemId));
+        try {
+          await dispatch(addWishlistItem(item)).unwrap();
+          count++;
+        } catch (error) {
+          console.error("Failed to add to wishlist:", error);
+        }
       }
-    });
-    if (cart.length > 0) {
+    }
+
+    if (count > 0) {
       triggerToast(
-        `${cart.length} item${cart.length > 1 ? "s" : ""} moved to your wishlist`,
+        `${count} item${count > 1 ? "s" : ""} added to your wishlist`,
       );
-      if (user) dispatch(clearCart());
-      else clearLocalCart();
+    } else if (cart.length > 0) {
+      triggerToast("Items are already in your wishlist", "Already Added");
     } else {
-      triggerToast("No items in cart to move", "Cart is empty");
+      triggerToast("No items in cart to add", "Cart is empty");
+    }
+
+    if (user && count > 0) {
+      dispatch(fetchWishlist());
     }
   };
 
@@ -242,7 +260,7 @@ export default function BagPage() {
                       size={14}
                       className="text-gray-400 group-hover:text-[#D94F7A] transition-colors"
                     />
-                    Move All to Wishlist
+                    Add All to Wishlist
                   </button>
                   <button
                     onClick={handleRemoveAllFromCart}
@@ -257,15 +275,15 @@ export default function BagPage() {
                 </div>
               </div>
 
-              <div className="divide-y divide-gray-200">
+              <div className="flex flex-col gap-4 p-4 bg-gray-50/30">
                 {cart.map((item: CartItem, idx: number) => {
                   const isAnimating = animatingItem?.id === item.productId;
                   const actionType = animatingItem?.type;
-                  const itemId = (item as any)._id || item.productId || `item`;
+                  const itemId = item.productId || (item as any).product?._id || (item as any)._id || `item`;
                   return (
                     <div
                       key={`${itemId}-${idx}`}
-                      className={`p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${isAnimating
+                      className={`relative bg-white border border-gray-200 shadow-sm rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all duration-400 ease-in-out ${isAnimating
                         ? actionType === "wishlist"
                           ? "opacity-0 -translate-y-16 scale-90"
                           : "opacity-0 -translate-x-full"
@@ -275,7 +293,7 @@ export default function BagPage() {
                       {/* Image */}
                       <Link
                         href={`/products/${item.productId}`}
-                        className="block group shrink-0"
+                        className="block group shrink-0 mx-auto md:mx-0"
                       >
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
                           {item.image ? (
@@ -297,46 +315,73 @@ export default function BagPage() {
 
                       {/* Details */}
                       <div className="flex-1 flex flex-col justify-between overflow-hidden">
-                        <div className="text-left">
-                          <div className="flex flex-row justify-between gap-2">
-                            <Link
-                              href={`/products/${item.productId}`}
-                              className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300"
-                            >
-                              <h3 className="font-bold text-sm md:text-lg leading-tight line-clamp-2">
-                                {item.name}
-                              </h3>
-                            </Link>
+                        <div className="text-center md:text-left w-full">
+                          <div className="flex flex-col xl:flex-row justify-between gap-3 xl:gap-4 items-center md:items-start text-center md:text-left w-full">
+                            <div className="flex flex-col gap-1 md:pr-4">
+                              <Link
+                                href={`/products/${item.productId}`}
+                                className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300"
+                              >
+                                <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-2">
+                                  {item.name}
+                                </h3>
+                              </Link>
+                              <div className="flex items-center justify-center md:justify-start gap-4 mt-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Color</span>
+                                  <select
+                                    className="text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:border-[#E8456A] transition-colors cursor-pointer"
+                                    defaultValue={(item as any).color || "Rose Gold"}
+                                  >
+                                    <option value={(item as any).color || "Rose Gold"}>{(item as any).color || "Rose Gold"}</option>
+                                    <option value="Silver">Silver</option>
+                                    <option value="Gold">Gold</option>
+                                  </select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Size</span>
+                                  <select
+                                    className="text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:border-[#E8456A] transition-colors cursor-pointer"
+                                    defaultValue={(item as any).size || "Standard"}
+                                  >
+                                    <option value={(item as any).size || "Standard"}>{(item as any).size || "Standard"}</option>
+                                    <option value="Small">Small</option>
+                                    <option value="Large">Large</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
 
                             {/* Actions */}
-                            <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300 shrink-0">
+                            <div className="flex w-full xl:w-auto justify-between xl:justify-end items-center gap-3 text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-500 shrink-0 mt-4 xl:mt-0">
                               <button
                                 onClick={() => handleAction(item, "wishlist")}
-                                className="hover:text-[#E8456A] flex items-center gap-1 transition-all"
+                                className="hover:text-[#E8456A] flex items-center gap-1.5 transition-all text-[#9E7EA8]"
                               >
                                 <Heart
-                                  size={12}
+                                  size={14}
                                   className={
                                     isAnimating && actionType === "wishlist"
                                       ? "fill-[#E8456A]"
                                       : ""
                                   }
                                 />
-                                <span className="hidden sm:inline">Save for Later</span>
+                                <span>Save for Later</span>
                               </button>
-                              <span className="h-3 w-px bg-gray-200" />
+                              <span className="hidden xl:block h-4 w-px bg-gray-300" />
                               <button
                                 onClick={() => handleAction(item, "remove")}
-                                className="shrink-0 text-gray-300 hover:text-red-400 transition-colors"
+                                className="shrink-0 flex items-center gap-1.5 text-gray-500 hover:text-red-500 transition-colors"
                                 aria-label="Remove item"
                               >
-                                <X size={16} />
+                                <X size={14} strokeWidth={2.5} />
+                                <span>Remove</span>
                               </button>
                             </div>
                           </div>
 
                           {/* Price */}
-                          <div className="flex items-baseline gap-2 mt-2 justify-center md:justify-start">
+                          <div className="flex items-baseline gap-2 mt-4 xl:mt-2 justify-center md:justify-start w-full">
                             <span className="text-[#E8456A] font-black text-xl">
                               ₹{item.price.toFixed(2)}
                             </span>

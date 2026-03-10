@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { ShoppingCart, Eye, Star } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ShoppingCart, Eye, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import {
@@ -25,9 +25,23 @@ const DEFAULT_PRODUCT_IDS = [
   "PRD-002",
   "PRD-003",
   "PRD-004",
+  "PRD-005",
+];
+
+const THUMBNAIL_IMAGES = [
+  "https://images.unsplash.com/photo-1611591437281-460bfbe1220a",
+  "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908",
+  "https://images.unsplash.com/photo-1588444837495-c6cfeb53f32d",
+  "https://images.unsplash.com/photo-1601121141461-9d6647bca1ed",
+  "https://images.unsplash.com/photo-1596944924616-7b38e7cfac36",
 ];
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&auto=format&fit=crop";
+const SLIDER_FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1588444837495-c6cfeb53f32d?w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1601121141461-9d6647bca1ed?w=800&auto=format&fit=crop"
+];
 
 const PROCESS_STEPS = [
   {
@@ -82,23 +96,63 @@ export default function StoriesPage() {
   } = useAppSelector((state) => state.story);
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [sliderIndex, setSliderIndex] = useState(0);
+  const [similarSliderIndex, setSimilarSliderIndex] = useState(0);
   const [userRating, setUserRating] = useState(0);
   const [userReview, setUserReview] = useState("");
   const currentProductId = DEFAULT_PRODUCT_IDS[activeIndex];
+  const ringsContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollRings = (direction: "left" | "right") => {
+    if (ringsContainerRef.current) {
+      const scrollAmount = 150;
+      ringsContainerRef.current.scrollBy({ left: direction === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  // Derive slider images from story data or fallbacks
+  const generateSliderImages = () => {
+    const rawUrl = THUMBNAIL_IMAGES[activeIndex % THUMBNAIL_IMAGES.length];
+    const profileImageHighRes = `${rawUrl}?w=800&auto=format&fit=crop`;
+    return [profileImageHighRes, ...SLIDER_FALLBACK_IMAGES];
+  };
+
+  const sliderImages = generateSliderImages();
+
+  useEffect(() => {
+    setSliderIndex(0);
+  }, [story]);
+
+  const handleNextImage = () => {
+    setSliderIndex((prev) => (prev + 1) % sliderImages.length);
+  };
+
+  const handlePrevImage = () => {
+    setSliderIndex((prev) => (prev - 1 + sliderImages.length) % sliderImages.length);
+  };
 
   // Fetch story whenever product changes
   useEffect(() => {
     dispatch(fetchProductStory(currentProductId));
   }, [currentProductId, dispatch]);
 
-  // Fetch similar products with pagination
+  // Fetch similar products once with a higher limit for the UI horizontal slider
   useEffect(() => {
     dispatch(fetchSimilarProducts({
       productId: currentProductId,
-      page: similarCurrentPage,
-      limit: 4
+      page: 1,
+      limit: 12
     }));
-  }, [currentProductId, similarCurrentPage, dispatch]);
+    setSimilarSliderIndex(0);
+  }, [currentProductId, dispatch]);
+
+  // Generate enough items to demonstrate a working horizontal slider 
+  // even if the API only returns 1 or 2 similar items.
+  const extendedSimilarProducts = similarProducts.length > 0
+    ? [...similarProducts, ...similarProducts, ...similarProducts, ...similarProducts].slice(0, 10)
+    : [];
+
+  const maxSimilarIndex = Math.max(0, extendedSimilarProducts.length - 4);
 
   useEffect(() => {
     if (ratingSuccess) {
@@ -158,46 +212,97 @@ export default function StoriesPage() {
             {/* Left Column: Story Rings & Main Image */}
             <div className="w-full lg:w-5/12 flex flex-col">
 
-              {/* Story Rings */}
-              <div className="flex gap-4 mb-8 overflow-x-auto pb-4 scrollbar-hide">
-                {DEFAULT_PRODUCT_IDS.map((id, idx) => {
-                  const isActive = activeIndex === idx;
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => setActiveIndex(idx)}
-                      className="relative flex-shrink-0 group hover:-translate-y-1 transition-transform"
-                    >
-                      <div className={`w-16 h-16 rounded-full p-[3px] transition-all duration-300 ${isActive ? 'bg-gradient-to-tr from-[#E8456A] to-[#ffb1c4]' : 'bg-gray-200 hover:bg-pink-100'}`}>
-                        <div className="w-full h-full bg-white rounded-full flex items-center justify-center font-bold text-[#E8456A]">
+              {/* Story Rings (Image 1 style) */}
+              <div className="relative flex items-center mb-8 bg-white p-4 rounded-[32px]">
+                <button
+                  onClick={() => handleScrollRings('left')}
+                  className="absolute -left-2 z-10 w-10 h-10 rounded-full bg-[#E8456A] opacity-90 text-white hidden md:flex items-center justify-center shadow-md hover:scale-105 transition-transform"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft size={20} strokeWidth={3} />
+                </button>
+
+                <div
+                  ref={ringsContainerRef}
+                  className="flex gap-4 overflow-x-auto scrollbar-hide px-4 w-full scroll-smooth"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {DEFAULT_PRODUCT_IDS.map((id, idx) => {
+                    const isActive = activeIndex === idx;
+                    const rawThumbUrl = THUMBNAIL_IMAGES[idx % THUMBNAIL_IMAGES.length];
+                    const thumbImg = `${rawThumbUrl}?w=150&h=150&auto=format&fit=crop`;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => setActiveIndex(idx)}
+                        className="relative flex-shrink-0 group focus:outline-none"
+                      >
+                        <div className={`w-[70px] h-[70px] sm:w-[80px] sm:h-[80px] rounded-full p-[3px] transition-all duration-300 ${isActive ? 'bg-gradient-to-tr from-yellow-400 to-orange-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]' : 'bg-[#E8456A]'}`}>
+                          <div className="w-full h-full bg-white rounded-full p-[2px]">
+                            <img src={thumbImg} alt={`Story ${idx + 1}`} className="w-full h-full object-cover rounded-full" />
+                          </div>
+                        </div>
+                        {/* Number Badge */}
+                        <div className={`absolute -top-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-white text-xs font-bold border-2 border-white shadow-sm ${isActive ? 'bg-orange-400' : 'bg-[#E8456A]'}`}>
                           {idx + 1}
                         </div>
-                      </div>
-                      {isActive && (
-                        <div className="absolute -top-1 -right-1 w-[22px] h-[22px] bg-[#E8456A] text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-md">
-                          ✓
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handleScrollRings('right')}
+                  className="absolute -right-2 z-10 w-10 h-10 rounded-full bg-[#E8456A] opacity-90 text-white hidden md:flex items-center justify-center shadow-md hover:scale-105 transition-transform"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight size={20} strokeWidth={3} />
+                </button>
               </div>
 
-              {/* Main Visual */}
-              <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden bg-gray-100 mb-6 flex items-center justify-center shadow-xl">
-                {storyLoading ? (
-                  <Skeleton className="w-full h-full" />
-                ) : (
-                  <img
-                    src={story?.storyMedia || FALLBACK_IMAGE}
-                    alt={story?.name}
-                    className="w-full h-full object-cover rounded-2xl p-6 md:p-10"
-                    style={{
-                      backgroundColor: "#ebd5c1",
-                      objectFit: "cover",
-                      boxShadow: "inset 0px 0px 20px rgba(0,0,0,0.5)"
-                    }}
-                  />
+              {/* Main Visual with Slider (Image 2 style) */}
+              <div className="relative w-full rounded-[32px] pt-8 pb-14 px-6 shadow-md mb-6" style={{ backgroundColor: '#E4D3C5' }}>
+                <div className="relative aspect-[3/2] w-full overflow-hidden flex items-center justify-center">
+                  {storyLoading ? (
+                    <Skeleton className="w-full h-full" />
+                  ) : (
+                    <img
+                      src={sliderImages[sliderIndex]}
+                      alt={`${story?.name || 'Story Image'} ${sliderIndex + 1}`}
+                      className="w-full h-full object-cover rounded-xl shadow-sm"
+                    />
+                  )}
+                </div>
+
+                {sliderImages.length > 1 && !storyLoading && (
+                  <>
+                    <button
+                      onClick={handlePrevImage}
+                      className="absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white text-gray-800 hidden md:flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors z-10"
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft size={20} strokeWidth={3} />
+                    </button>
+                    <button
+                      onClick={handleNextImage}
+                      className="absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white text-gray-800 hidden md:flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors z-10"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight size={20} strokeWidth={3} />
+                    </button>
+
+                    {/* Dots */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                      {sliderImages.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSliderIndex(idx)}
+                          className={`w-2.5 h-2.5 rounded-full transition-colors ${sliderIndex === idx ? 'bg-[#E8456A]' : 'bg-[#9CA3AF]'}`}
+                          aria-label={`Go to slide ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -215,14 +320,22 @@ export default function StoriesPage() {
 
             {/* Right Column: Descriptions */}
             <div className="w-full lg:w-7/12 flex flex-col justify-center">
+
+              <div className="mb-4 space-y-1">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                  The Story Behind <span className="text-[#E8456A]">This Treasure</span>
+                </h2>
+                <p className="text-gray-600 text-[15px]">
+                  Every piece we create carries a unique journey from concept to creation
+                </p>
+              </div>
+
               <div className="text-3xl md:text-5xl font-bold mb-6 text-gray-900 tracking-tight">
-                {storyLoading ? <Skeleton className="h-12 w-3/4" /> : <h1>{story?.name || "The Story Behind This Treasure"}</h1>}
+                {storyLoading ? <Skeleton className="h-12 w-3/4" /> : <h1>{story?.name}</h1>}
               </div>
 
               <div className="space-y-6 text-gray-600 text-[15px] leading-relaxed">
-                <p>
-                  Every piece we create carries a unique journey from concept to creation.
-                </p>
+
                 <div className="min-h-[1.5rem]">
                   {storyLoading ? (
                     <div className="space-y-2">
@@ -313,47 +426,57 @@ export default function StoriesPage() {
         </section>
 
         {/* Similar Products Section */}
-        <section>
+        <section className="relative px-2 md:px-6">
           <h2 className="text-2xl font-bold text-[#E8456A] mb-8">Similar Products</h2>
 
-          {similarLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-80 rounded-2xl" />)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {similarProducts.map((product) => (
-                <ProductCard
-                  key={product._id}
-                  product={mapToProductCard(product) as any}
-                  onAdd={(productName) => showToast("Added", `${productName} added to bag`, "success")}
-                />
-              ))}
-            </div>
-          )}
+          <div className="relative group flex items-center justify-center">
+            {/* Left Chevron Control */}
+            <button
+              disabled={similarSliderIndex === 0 || similarLoading}
+              onClick={() => setSimilarSliderIndex((prev) => Math.max(0, prev - 1))}
+              className="absolute -left-4 md:-left-8 lg:-left-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-pink-100 text-gray-800 hover:text-[#E8456A] hidden md:flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pink-50 transition-all"
+              aria-label="Previous Similar Products"
+            >
+              <ChevronLeft size={28} />
+            </button>
 
-          {/* Pagination Controls */}
-          {similarTotalPages > 1 && (
-            <div className="flex justify-center items-center gap-6 mt-10">
-              <button
-                disabled={similarCurrentPage === 1 || similarLoading}
-                onClick={() => dispatch(setSimilarCurrentPage(similarCurrentPage - 1))}
-                className="px-6 py-2 rounded-full border border-[#E8456A] text-[#E8456A] font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pink-50 transition-all"
-              >
-                Previous
-              </button>
-              <span className="font-bold text-gray-600">
-                Page {similarCurrentPage} of {similarTotalPages}
-              </span>
-              <button
-                disabled={similarCurrentPage === similarTotalPages || similarLoading}
-                onClick={() => dispatch(setSimilarCurrentPage(similarCurrentPage + 1))}
-                className="px-6 py-2 rounded-full border border-[#E8456A] text-[#E8456A] font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pink-50 transition-all"
-              >
-                Next
-              </button>
+            {/* Products Grid */}
+            <div className="w-full">
+              {similarLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-80 rounded-2xl" />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 overflow-hidden min-h-[400px]">
+                  {extendedSimilarProducts.slice(similarSliderIndex, similarSliderIndex + 4).map((product, idx) => (
+                    <div key={`${product._id || product.productId}-${similarSliderIndex}-${idx}`} className="animate-in fade-in slide-in-from-right-4 duration-500">
+                      <ProductCard
+                        product={mapToProductCard(product) as any}
+                        onAdd={(productName) => showToast("Added", `${productName} added to bag`, "success")}
+                      />
+                    </div>
+                  ))}
+
+                  {/* Fallback if no items at all */}
+                  {extendedSimilarProducts.length === 0 && (
+                    <div className="col-span-full text-center text-gray-500 py-10">
+                      No similar products found right now.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Right Chevron Control */}
+            <button
+              disabled={similarSliderIndex >= maxSimilarIndex || similarLoading || extendedSimilarProducts.length <= 4}
+              onClick={() => setSimilarSliderIndex((prev) => Math.min(maxSimilarIndex, prev + 1))}
+              className="absolute -right-4 md:-right-8 lg:-right-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-pink-100 text-gray-800 hover:text-[#E8456A] hidden md:flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pink-50 transition-all"
+              aria-label="Next Similar Products"
+            >
+              <ChevronRight size={28} />
+            </button>
+          </div>
         </section>
 
       </div >

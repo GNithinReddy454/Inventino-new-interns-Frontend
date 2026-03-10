@@ -15,7 +15,8 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCart } from "@/lib/cartContext";
-import { useStore } from "@/lib/storeContext";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
 import ProductReviews from "@/app/components/ProductReviews";
 import ProductCard from "@/app/components/ProductCard";
 import { productService } from "@/services/product.service";
@@ -65,7 +66,8 @@ export default function ProductDetailsPage() {
   const params = useParams();
   const productId = params?.id as string;
   const { addToCart } = useCart();
-  const { handleSaved, savedItems = [] } = useStore();
+  const dispatch = useAppDispatch();
+  const { items: savedItems = [] } = useAppSelector((state: any) => state.wishlist);
   const { showToast } = useToast();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -237,7 +239,7 @@ export default function ProductDetailsPage() {
   }
 
   // --- HANDLERS ---
-  const isSaved = (savedItems as any).some((item: any) => item.id === product.id);
+  const isSaved = savedItems.some((item: any) => String(item.product?._id) === String(product.id) || String(item.product?.id) === String(product.id));
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isZoomMode) return;
@@ -256,9 +258,13 @@ export default function ProductDetailsPage() {
   };
 
   const handleWishlist = () => {
-    handleSaved(product as any);
-    const willBeSaved = !(savedItems as any).some((item: any) => item.id === product.id);
-    showToast(willBeSaved ? "Success!" : "Removed", willBeSaved ? "Added to wishlist" : "Removed from wishlist", willBeSaved ? "success" : "info");
+    if (isSaved) {
+      dispatch(removeWishlistItem(String(product.id)));
+      showToast("Removed", "Removed from wishlist", "info");
+    } else {
+      dispatch(addWishlistItem(product));
+      showToast("Success!", "Added to wishlist", "success");
+    }
   };
 
   const scrollSimilar = (dir: "left" | "right") => {
@@ -439,8 +445,8 @@ export default function ProductDetailsPage() {
       {/* Similar Products - Fixed Mobile View Gap */}
       <div className="max-w-7xl mx-auto px-6 pt-6 pb-2 md:pt-16 md:pb-8 relative group/similar">
         <h3 className="text-2xl font-serif text-gray-900 mb-8">Similar Products</h3>
-        <button onClick={() => scrollSimilar("left")} className="absolute left-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl opacity-0 group-hover/similar:opacity-100 transition-all -translate-x-4 group-hover/similar:translate-x-2"><ChevronLeft size={24} /></button>
-        <button onClick={() => scrollSimilar("right")} className="absolute right-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl opacity-0 group-hover/similar:opacity-100 transition-all translate-x-4 group-hover/similar:-translate-x-2"><ChevronRight size={24} /></button>
+        <button onClick={() => scrollSimilar("left")} className="absolute left-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl opacity-0 group-hover/similar:opacity-100 transition-all -translate-x-4 group-hover/similar:translate-x-2 hidden md:flex items-center justify-center"><ChevronLeft size={24} /></button>
+        <button onClick={() => scrollSimilar("right")} className="absolute right-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl opacity-0 group-hover/similar:opacity-100 transition-all translate-x-4 group-hover/similar:-translate-x-2 hidden md:flex items-center justify-center"><ChevronRight size={24} /></button>
         <div className="overflow-hidden">
           <div ref={similarProductsRef} className="flex gap-6 overflow-x-auto pb-8 no-scrollbar snap-x scroll-smooth">
             {!similarLoading && (displaySimilarProducts.length > 0 ? displaySimilarProducts : [1, 2, 3, 4]).map((p, idx) => (

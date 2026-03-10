@@ -158,7 +158,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
               onClick={(e) => {
                 e.preventDefault(); e.stopPropagation();
                 if (!isSaved) {
-                  dispatch(addWishlistItem(String(product.id)));
+                  dispatch(addWishlistItem(product));
                   showToast("Success!", "Added to wishlist", "success");
                 } else {
                   dispatch(removeWishlistItem(String(product.id)));
