@@ -1,7 +1,5 @@
 import axios from "axios";
-import apiClient from "@/lib/api";
 import { apiMethods } from "@/lib/api";
-import { AuthResponse } from "@/lib/types";
 
 // ─── Response Types ───────────────────────────────────────────────────────────
 
@@ -117,21 +115,6 @@ async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
 }
 
 // ─── Admin Service Functions ──────────────────────────────────────────────────
-
-/**
- * POST /api/admin/loginadmin
- * Authenticate an admin user and receive a JWT token.
- */
-export const adminLogin = async (credentials: {
-    email: string;
-    password: string;
-}): Promise<AuthResponse> => {
-    const response = await apiClient.post("/admin/loginadmin", credentials);
-    if (response.data?.data?.token) {
-        localStorage.setItem("token", response.data.data.token);
-    }
-    return response.data;
-};
 
 /**
  * GET /api/admin/dashboard

@@ -1,6 +1,0 @@
-﻿  Sahil-Kumar-Tiwari  61a72ca Add About, Shop, Contact pages and update navbar routing
-  Sahil/Wishlist-api  9934e79 [origin/Sahil/Wishlist-api: ahead 23] Merge pull request #77 from ganesh-ggst/feature/allproductscategoryapi
-  Sahil/contactus-api c1b2fef fix: resolve merge conflicts, fix build errors and banner image 404
-  develop             8883734 [origin/develop: behind 102] Merge pull request #57 from ganesh-ggst/priya/auth-api
-  feature/navbar      63ada88 [origin/feature/navbar: ahead 8] Merge pull request #48 from ganesh-ggst/feature/Swaru
-  main                3772f06 [origin/main: behind 264] Initial setup
