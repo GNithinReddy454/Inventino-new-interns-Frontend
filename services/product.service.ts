@@ -84,20 +84,8 @@ export const productService = {
   },
 
   // GET /products/:productId/similar
-  async getSimilar(productId: string, page = 1, limit = 4) {
-    const response = await apiClient.get(`/products/${productId}/similar`, {
-      params: { page, limit },
-    });
-    return response.data;
-  },
-
-
-  // POST /api/products/:productId/rating
-  async submitRating(productId: string, rating: number, review?: string) {
-    const response = await apiClient.post(`/products/${productId}/rating`, {
-      rating,
-      review: review || "",
-    });
+  async getSimilar(productId: string) {
+    const response = await apiClient.get(`/products/${productId}/similar`);
     return response.data;
   },
 

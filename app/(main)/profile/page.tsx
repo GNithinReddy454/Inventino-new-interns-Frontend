@@ -201,6 +201,7 @@ function ProfilePage() {
               <div className="flex flex-col items-center mb-6">
                 <div className="relative">
                   {photoPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={photoPreview}
                       alt="Profile"

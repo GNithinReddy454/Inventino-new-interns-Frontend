@@ -1,2 +1,0 @@
-﻿app/(main)/profile/orders/page.tsx
-services/order.service.ts

@@ -128,23 +128,36 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     <div
       className="relative h-full"
       style={{ borderRadius: 16, overflow: "visible" }}
-      // Desktop mouse hover → image scroll
-      onMouseEnter={startScroll}
-      onMouseLeave={stopScroll}
-      // Real phone touch → image scroll (won't fire in DevTools emulator — browser limitation)
-      onTouchStart={startScroll}
-      onTouchEnd={stopScroll}
-      onTouchCancel={stopScroll}
+      // Desktop hover
+      onMouseEnter={activate}
+      onMouseLeave={deactivate}
+      // Mobile touch — same activate/deactivate
+      onTouchStart={activate}
+      onTouchEnd={deactivate}
+      onTouchCancel={deactivate}
     >
-      {/*
-        Pink bg + zoom handled by CSS .product-card-link:hover (desktop)
-        and .product-card-link:active (real phone touch + DevTools click-hold).
-        Add to your globals.css — already provided in globals.css output.
-      */}
-      <Link href={`/products/${product.id}`} className="product-card-link">
-
+      <Link
+        href={`/products/${product.id}`}
+        className="flex flex-col h-full w-full"
+        style={{
+          borderRadius: 16,
+          overflow: "hidden",
+          textDecoration: "none",
+          color: "inherit",
+          background: isHovered ? "#ffe0eb" : "#fff0f5",
+          boxShadow: isHovered
+            ? "0 8px 32px rgba(232,69,106,0.22)"
+            : "0 2px 16px rgba(0,0,0,0.10)",
+          transform: isHovered ? "scale(1.035)" : "scale(1)",
+          transition: "background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease",
+          willChange: "transform",
+        }}
+      >
         {/* IMAGE */}
-        <div className="relative w-full shrink-0 bg-gray-50" style={{ aspectRatio: "1/1", overflow: "hidden" }}>
+        <div
+          className="relative w-full shrink-0 bg-gray-50"
+          style={{ aspectRatio: "1/1", overflow: "hidden" }}
+        >
           {badgeText && (
             <div className="absolute top-2 left-2 z-10 pointer-events-none">
               <span className={`text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm shadow-sm ${badgeColor}`}>
@@ -158,7 +171,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
               onClick={(e) => {
                 e.preventDefault(); e.stopPropagation();
                 if (!isSaved) {
-                  dispatch(addWishlistItem(product));
+                  dispatch(addWishlistItem(String(product.id)));
                   showToast("Success!", "Added to wishlist", "success");
                 } else {
                   dispatch(removeWishlistItem(String(product.id)));

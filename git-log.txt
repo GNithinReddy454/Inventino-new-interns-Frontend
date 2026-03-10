@@ -1,5 +1,0 @@
-﻿4c597c0 Merge branch 'develop' of https://github.com/ganesh-ggst/Inventino-new-interns-Frontend into sahil/contactus-api
-24e6633 Merge pull request #93 from ganesh-ggst/testing-admin-api
-a2fb794 Merge branch 'develop' into testing-admin-api
-a300468 created the UI for the customer profile section, review section and orders section
-8312322 Merge pull request #92 from ganesh-ggst/priya/integration

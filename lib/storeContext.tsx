@@ -37,9 +37,8 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleSaved = (product: Product) => {
     const productId = product.mongoId || product._id || product.id;
-    if (!productId) return;
-
-    const exists = items.some((i: WishlistItem) =>
+    
+    const exists = items.some((i: WishlistItem) => 
       (i.product?._id === productId) || (i._id === productId)
     );
 

@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { authService } from "@/services/auth.service";
-import { adminLogin } from "@/services/admin.service";
 import { User, AuthResponse, ApiResponse } from "@/lib/types";
 
 interface SignupPayload {
@@ -42,17 +41,6 @@ export const loginUserAction = createAsyncThunk<AuthResponse, LoginPayload>(
       return await authService.loginUser(credentials);
     } catch (err: unknown) {
       return rejectWithValue(getErrorMessage(err) || "Login failed");
-    }
-  }
-);
-
-export const adminLoginAction = createAsyncThunk<AuthResponse, LoginPayload>(
-  "auth/adminLogin",
-  async (credentials, { rejectWithValue }) => {
-    try {
-      return await adminLogin(credentials);
-    } catch (err: unknown) {
-      return rejectWithValue(getErrorMessage(err) || "Admin login failed");
     }
   }
 );
@@ -158,18 +146,6 @@ const authSlice = createSlice({
       .addCase(loginUserAction.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || "Login failed";
-      })
-      .addCase(adminLoginAction.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(adminLoginAction.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload.data?.user;
-      })
-      .addCase(adminLoginAction.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || "Admin login failed";
       })
       .addCase(forgotPasswordAction.pending, (state) => {
         state.loading = true;
