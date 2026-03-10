@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import React from "react";
+import Link from "next/link";
 
 type Props = {
   title: string;
@@ -24,13 +25,15 @@ export default function AuthLayout({
         <div className="w-full max-w-md">
           {/* LOGO */}
           <div className="flex justify-center mb-4">
-            <Image
-              src="/logo.png"
-              alt="Inventino"
-              width={110}
-              height={32}
-              priority
-            />
+            <Link href="/">
+              <Image
+                src="/logo.png"
+                alt="Inventino"
+                width={110}
+                height={32}
+                priority
+              />
+            </Link>
           </div>
 
           {/* HEADING */}

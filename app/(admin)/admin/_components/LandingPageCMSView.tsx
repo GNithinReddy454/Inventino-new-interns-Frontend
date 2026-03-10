@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { ChevronDown, Plus, Trash2, Upload, Search, Eye } from "lucide-react";
+import { ChevronDown, Upload, Search, Eye } from "lucide-react";
 import { Skeleton } from "./Skeleton";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,13 +17,44 @@ const featureSchema = z.object({
 
 type FeatureFormData = z.infer<typeof featureSchema>;
 
+const DEFAULT_FEATURES = [
+    {
+        id: 1,
+        title: "Try Before You Buy",
+        description: "Experience products virtually with AR technology",
+        enabled: true,
+        icon: "🛍️",
+    },
+    {
+        id: 2,
+        title: "Free Shipping",
+        description: "Free shipping on all orders over $50",
+        enabled: true,
+        icon: "🚚",
+    },
+    {
+        id: 3,
+        title: "Secure Payments",
+        description: "Your information is always protected",
+        enabled: true,
+        icon: "🔒",
+    },
+    {
+        id: 4,
+        title: "Quality Guarantee",
+        description: "30-day money back guarantee on all items",
+        enabled: false,
+        icon: "💯",
+    },
+];
+
 export default function LandingPageCMSView() {
     const [offerText, setOfferText] = useState("");
     const [showOfferBar, setShowOfferBar] = useState(true);
     const [bannerHeading, setBannerHeading] = useState("");
     const [bannerText, setBannerText] = useState("");
     const [bannerImage, setBannerImage] = useState<string | null>(null);
-    const [features, setFeatures] = useState<Array<{ id: number; title: string; description: string; enabled: boolean }>>([]);
+    const [features, setFeatures] = useState<Array<{ id: number; title: string; description: string; enabled: boolean; icon: string }>>(DEFAULT_FEATURES);
     const [showAddModal, setShowAddModal] = useState(false);
     const { showToast } = useToast();
     const [savingOffer, setSavingOffer] = useState(false);
@@ -79,14 +110,19 @@ export default function LandingPageCMSView() {
                 title: data.title,
                 description: data.description,
                 enabled: data.status === "enabled",
+                icon: "✨",
             },
         ]);
         reset();
         setShowAddModal(false);
     };
 
-    const removeFeature = (id: number) => {
-        setFeatures(prev => prev.filter(f => f.id !== id));
+    const handleResetFeatures = () => {
+        setFeatures(DEFAULT_FEATURES);
+    };
+
+    const handleSaveFeatures = () => {
+        showToast("Success", "Feature section updated", "success");
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -418,7 +454,15 @@ export default function LandingPageCMSView() {
                                 { id: 5, name: "Gold Plated Earrings", price: "$94.99", stock: 12, color: "bg-[#FFDA00]", selected: false },
                             ].map((prod) => (
                                 <div key={prod.id} className={`flex items-center gap-4 p-3.5 rounded-xl border ${prod.selected ? 'border-[#DF4C77] bg-[#FDF2F5]' : 'border-border bg-white'} cursor-pointer hover:border-pink-200 transition-colors shadow-sm`}>
-                                    <div className={`w-14 h-14 rounded-lg shrink-0 ${prod.color}`}></div>
+                                    <div className={`w-14 h-14 rounded-lg shrink-0 overflow-hidden ${prod.color}`}>
+                                        {prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0] ? (
+                                            <img
+                                                src={prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0]}
+                                                alt={prod.name || "Product"}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : null}
+                                    </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[13px] font-bold text-foreground truncate">{prod.name}</p>
                                         <p className="text-[13px] text-[#DF4C77] font-bold mt-1">{prod.price}</p>
@@ -475,38 +519,38 @@ export default function LandingPageCMSView() {
                 </div>
             </div>
 
-            {/* 5. FEATURES MANAGEMENT */}
-            <div className="bg-card rounded-2xl border border-border shadow-sm p-6 mt-6">
-                <div className="flex justify-between items-center mb-1">
+            {/* 5. FEATURES SECTION */}
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-5 mt-6">
+                <div className="flex justify-between items-center mb-3">
                     <div>
                         <h3 className="font-bold text-foreground text-base">
-                            Features Management
+                            Features Section
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                            Manage the &apos;Why Buy Here&apos; section features
+                            Manage site features and benefits
                         </p>
                     </div>
                     <button
                         onClick={openAddModal}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-[#DF4C77] text-white text-xs font-bold rounded-lg hover:bg-[#C83B61] transition-all shadow-sm"
+                        className="px-5 py-2 bg-[#DF4C77] text-white text-[11px] font-bold rounded-xl hover:bg-[#C83B61] transition-all shadow-sm"
                     >
-                        <Plus size={14} /> Add New Feature
+                        + Add New Feature
                     </button>
                 </div>
 
-                <div className="mt-5 space-y-4">
+                <div className="mt-4 bg-[#FDF2F5] border border-pink-200 rounded-xl p-3">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-3 px-2">
+                        Features Preview
+                    </p>
                     {isLoading ? (
                         Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} className="flex items-start justify-between gap-4 p-4 border border-border rounded-xl mb-3">
+                            <div key={i} className="flex items-start justify-between gap-4 p-4 border border-border rounded-xl bg-white mb-3">
                                 <div className="flex-1 space-y-2">
                                     <Skeleton className="h-4 w-32" />
                                     <Skeleton className="h-3 w-full" />
                                     <Skeleton className="h-3 w-4/5" />
                                 </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <Skeleton className="w-4 h-4 rounded-full" />
-                                    <Skeleton className="w-10 h-5 rounded-full" />
-                                </div>
+                                <Skeleton className="w-10 h-5 rounded-full shrink-0" />
                             </div>
                         ))
                     ) : (
@@ -514,24 +558,20 @@ export default function LandingPageCMSView() {
                             {features.map((feature) => (
                                 <div
                                     key={feature.id}
-                                    className="flex items-start justify-between gap-4 p-4 border border-pink-200 bg-[#FDF2F5] rounded-xl hover:border-[#E91E63] transition-colors"
+                                    className="flex items-start justify-between gap-4 p-4 border border-border bg-white rounded-xl"
                                 >
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[13px] font-bold text-gray-900 mb-1">
-                                            {feature.title}
-                                        </p>
-                                        <p className="text-[11px] text-gray-500 leading-relaxed max-w-2xl">
-                                            {feature.description}
-                                        </p>
+                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                        <span className="text-sm mt-0.5">{feature.icon}</span>
+                                        <div>
+                                            <p className="text-[13px] font-bold text-gray-900 leading-tight">
+                                                {feature.title}
+                                            </p>
+                                            <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                                                {feature.description}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-3 shrink-0">
-                                        <button
-                                            onClick={() => removeFeature(feature.id)}
-                                            className="text-gray-400 hover:text-red-500 transition-colors"
-                                            title="Remove feature"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                    <div className="shrink-0 mt-1">
                                         <Toggle
                                             enabled={feature.enabled}
                                             onToggle={() => triggerToggleFeature(feature.id)}
@@ -541,6 +581,21 @@ export default function LandingPageCMSView() {
                             ))}
                         </div>
                     )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
+                    <button
+                        onClick={handleResetFeatures}
+                        className="py-2.5 border border-border bg-white rounded-xl text-sm font-bold text-foreground hover:bg-muted transition-all"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSaveFeatures}
+                        className="py-2.5 bg-[#DF4C77] text-white rounded-xl text-sm font-bold hover:bg-[#C83B61] transition-all"
+                    >
+                        Save Changes
+                    </button>
                 </div>
             </div>
 

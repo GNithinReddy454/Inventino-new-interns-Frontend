@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAppDispatch } from "@/redux/store";
 import { addProduct } from "@/redux/adminSlice";
+import { productService } from "@/services/product.service";
 
 export default function AddProduct() {
   // Refs
@@ -142,48 +143,71 @@ export default function AddProduct() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("description", description);
-    formData.append("price", price);
-    formData.append("category", category);
-    if (subCategory) formData.append("subCategory", subCategory);
-    formData.append("material", material);
-    formData.append("stock", stock);
-    if (discount) formData.append("discount", discount);
-    formData.append("tags", JSON.stringify(tags));
-    formData.append("colors", JSON.stringify(selectedColors));
-    formData.append("isFeatured", String(isFeatured));
-    formData.append("reviewsEnabled", String(reviewsEnabled));
-    formData.append("freeShipping", String(freeShipping));
-    formData.append("storyTitle", storyTitle);
-    formData.append("storyContent", storyContent);
-    formData.append("quoteText", quoteText);
-    formData.append("quoteAuthor", quoteAuthor);
-    if (storyImage) formData.append("storyImage", storyImage);
-
-    selectedFiles.forEach((file) => formData.append("images", file));
+    const createPayload = new FormData();
+    createPayload.append("name", name);
+    createPayload.append("description", description);
+    createPayload.append("price", String(Number(price)));
+    createPayload.append("category", category);
+    if (subCategory) createPayload.append("subCategory", subCategory);
+    createPayload.append("material", material);
+    createPayload.append("stock", String(Number(stock)));
+    if (discount) createPayload.append("discountPrice", String(Number(discount)));
+    tags.forEach((tag) => createPayload.append("hashtags", tag));
+    if (selectedColors.length > 0) createPayload.append("color", selectedColors.join(","));
+    createPayload.append("trendy", String(isFeatured));
+    createPayload.append("bestSeller", String(reviewsEnabled));
+    if (storyContent) createPayload.append("story", storyContent);
+    if (storyImage) createPayload.append("storyMedia", storyImage);
+    selectedFiles.forEach((file) => createPayload.append("images", file));
 
     try {
       setIsLoading(true);
 
+      const created = await productService.create(createPayload);
+
+      const createdData = created?.data ?? created;
       const newProduct = {
-        id: `#PRD-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-        name,
-        price,
-        stock,
-        category,
-        subCategory,
-        material,
-        discount,
-        tags,
-        colors: selectedColors,
+        _id:
+          createdData?._id ||
+          createdData?.id ||
+          `local-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id:
+          createdData?.productId ||
+          `#PRD-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`,
+        name: createdData?.name || name,
+        price: Number(createdData?.price ?? price) || 0,
+        stock: Number(createdData?.stock ?? stock) || 0,
+        category: createdData?.category || category,
+        subCategory: createdData?.subCategory || subCategory,
+        material: createdData?.material || material,
+        discount: createdData?.discount ?? discount,
+        sku:
+          createdData?.sku ||
+          createdData?.productId ||
+          `SKU-${Date.now().toString().slice(-6)}`,
+        tags: createdData?.hashtags || tags,
+        colors: createdData?.colors || selectedColors,
         isFeatured,
         reviewsEnabled,
         freeShipping,
-        status: "Active",
-        imageUrl: selectedFiles.length > 0 ? URL.createObjectURL(selectedFiles[0]) : null,
+        status: createdData?.isActive === false ? "Draft" : "Active",
+        totalSales: Number(createdData?.totalSales) || 0,
+        totalRevenue: Number(createdData?.totalRevenue) || 0,
+        imageUrl:
+          createdData?.images?.[0]?.url ||
+          (selectedFiles.length > 0
+            ? URL.createObjectURL(selectedFiles[0])
+            : null),
       };
+
+      const createdProductId =
+        createdData?.productId || createdData?._id || createdData?.id;
+
+      if (createdProductId && !createdData?.images?.length && selectedFiles.length > 0) {
+        const imageFormData = new FormData();
+        selectedFiles.forEach((file) => imageFormData.append("images", file));
+        await productService.addImages(createdProductId, imageFormData);
+      }
 
       dispatch(addProduct(newProduct));
 
@@ -194,7 +218,14 @@ export default function AddProduct() {
       }, 700);
 
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err) || "An error occurred";
+      const apiMessage =
+        typeof err === "object" && err !== null && "response" in err
+          ? (err as any).response?.data?.message
+          : undefined;
+      const msg =
+        apiMessage ||
+        (err instanceof Error ? err.message : String(err)) ||
+        "An error occurred";
       setError(msg);
       triggerToast(msg, "error");
     } finally {

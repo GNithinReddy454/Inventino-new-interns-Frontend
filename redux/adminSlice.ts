@@ -7,6 +7,7 @@ import {
 
 export interface AdminState {
     products: any[];
+    localAddedProducts: any[];
     orders: any[];
     customers: any[];
     reviews: any[];
@@ -32,6 +33,7 @@ export interface AdminState {
 
 const initialState: AdminState = {
     products: ADMIN_PRODUCTS,
+    localAddedProducts: [],
     orders: RECENT_ORDERS,
     customers: CUSTOMERS_DATA,
     reviews: [
@@ -100,7 +102,7 @@ const adminSlice = createSlice({
     reducers: {
         // Products
         addProduct: (state, action: PayloadAction<any>) => {
-            state.products.unshift(action.payload);
+            state.localAddedProducts.unshift(action.payload);
         },
         updateProduct: (state, action: PayloadAction<{ id: string; updates: any }>) => {
             const index = state.products.findIndex((p) => p.id === action.payload.id);
