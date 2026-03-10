@@ -10,18 +10,9 @@ import {
   MapPin,
   Home,
 } from "lucide-react";
+import { TrackingDataRecord } from "@/types/trackingid";
 
-const TRACKING_DATA: Record<
-  string,
-  {
-    orderId: string;
-    product: string;
-    estimatedDelivery: string;
-    carrier: string;
-    trackingNumber: string;
-    steps: { label: string; date: string; done: boolean; active: boolean }[];
-  }
-> = {
+const TRACKING_DATA: TrackingDataRecord = {
   "ORD-2024-001": {
     orderId: "#ORD-2024-001",
     product: "Rose Gold Bracelet",
