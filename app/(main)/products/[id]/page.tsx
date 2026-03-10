@@ -175,10 +175,10 @@ export default function ProductDetailsPage() {
           originalPrice: data.price + 150,
           description: data.description,
           category: data.category,
-          image: data.images?.?.[0]??.url || FALLBACK_IMAGE ?? "",
-images: data.images?.length ? (data.images ?? []).map((img: ImageType) => img.url) : [FALLBACK_IMAGE],
+          image: data.images?.[0]?.url || FALLBACK_IMAGE,
+          images: data.images?.length ? data.images.map((img: ImageType) => img.url) : [FALLBACK_IMAGE],
           slug,
-          prdId.filter(Boolean),
+          prdId: prdId,
           rating: 4.8,
           reviews: 128,
         });
