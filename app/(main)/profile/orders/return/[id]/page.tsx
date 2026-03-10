@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowLeft,
   RefreshCcw,
@@ -401,7 +402,7 @@ export default function ReturnExchangePage({
                         style={{ position: "absolute", top: 4, right: 4, zIndex: 10, background: "rgba(0,0,0,0.5)", color: "#fff", border: "none", borderRadius: "50%", padding: 4, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <X size={12} />
                       </button>
-                      <img src={URL.createObjectURL(file)} alt={`upload-${idx}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <Image width={100} height={100} src={URL.createObjectURL(file)} alt={`upload-${idx}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     </div>
                   ))}
                 </div>

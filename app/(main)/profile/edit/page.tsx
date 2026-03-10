@@ -10,6 +10,7 @@ import {
   Settings,
   Camera,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { userService } from "@/services/user.service";
@@ -141,7 +142,7 @@ export default function EditProfilePage() {
   /* Avatar shown in both sidebar + form center */
   const AvatarCircle = ({ size }: { size: number }) =>
     photoPreview ? (
-      <img
+      <Image
         src={photoPreview}
         alt="Profile"
         style={{

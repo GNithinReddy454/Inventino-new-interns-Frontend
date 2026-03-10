@@ -14,22 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { addressService } from "@/services/address.service";
-
-interface SavedAddress {
-  _id: string;
-  addressType: string;
-  fullName: string;
-  phone: string;
-  email: string;
-  street: string;
-  city: string;
-  state?: string;
-  pincode: string;
-  country?: string;
-  isDefault: boolean;
-}
-
-type AddressType = "Home" | "Office" | "Other";
+import type { SavedAddress, AddressType, AddressFormData } from "@/types/address";
 
 /* ── Chevron icon for selects ──────────────────────────────────────────────── */
 const Chevron = () => (
@@ -114,7 +99,7 @@ export default function AddressesPage() {
   const [editingAddress, setEditingAddress] = useState<SavedAddress | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const empty = {
+  const empty: AddressFormData = {
     fullName: "",
     phone: "",
     email: "",
@@ -126,8 +111,8 @@ export default function AddressesPage() {
     country: "India",
     landmark: "",
   };
-  const [form, setForm] = useState(empty);
-  const set = (id: string, v: string) => setForm((p) => ({ ...p, [id]: v }));
+  const [form, setForm] = useState<AddressFormData>(empty);
+  const set = (id: keyof AddressFormData, v: string) => setForm((p) => ({ ...p, [id]: v }));
 
   /* ── Fetch addresses on mount ─────────────────────────────────────────── */
   useEffect(() => {

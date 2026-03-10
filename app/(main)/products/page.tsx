@@ -14,6 +14,44 @@ import {
   NormalizedProduct, ApiProduct, ProductListMeta,
 } from "@/types/products.type";
 
+// ─── Types ─────────────────────────────────────────────────────────────────
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+interface ProductParams {
+  page: number;
+  limit: number;
+  sort?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+interface ProductParams {
+  page: number;
+  limit: number;
+  sort?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
 const CATEGORIES_LIST = [
   "Bracelets",
   "Necklaces",
@@ -24,23 +62,19 @@ const CATEGORIES_LIST = [
   "Kids Jewelry",
   "Women Watches",
 ];
-
 const SORT_OPTIONS = ["Featured", "Price: Low to High", "Price: High to Low", "Newest First"];
-
 const SORT_MAP: Record<string, string> = {
   "Featured": "featured",
   "Price: Low to High": "priceAsc",
   "Price: High to Low": "priceDesc",
   "Newest First": "newest",
 };
-
 const SORT_MAP_REVERSE: Record<string, string> = {
   "featured": "Featured",
   "priceAsc": "Price: Low to High",
   "priceDesc": "Price: High to Low",
   "newest": "Newest First",
 };
-
 const ITEMS_PER_PAGE = 9;
 
 function SkeletonCard() {
@@ -127,9 +161,7 @@ function ProductsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
   const initialSort = SORT_MAP_REVERSE[searchParams.get("sort") ?? ""] ?? "Featured";
-
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "All Products");
   const [sortBy, setSortBy] = useState(initialSort);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
@@ -140,7 +172,6 @@ function ProductsContent() {
   const [maxPrice, setMaxPrice] = useState<number | undefined>(
     searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined
   );
-
   const [sortOpen, setSortOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -153,7 +184,6 @@ function ProductsContent() {
   const [minPriceFetched, setMinPriceFetched] = useState<number | undefined>(undefined);
   const [maxPriceFetched, setMaxPriceFetched] = useState<number | undefined>(undefined);
   const [globalTotal, setGlobalTotal] = useState<number>(0);
-
   const sortRef = useRef<HTMLDivElement>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebounce(searchQuery, 600);
@@ -186,34 +216,50 @@ function ProductsContent() {
   useEffect(() => {
     let cancelled = false;
     const fetchProducts = async () => {
-      setLoading(true); setError(null);
+      setLoading(true);
+      setError(null);
       try {
         let items: ApiProduct[] = [];
         let metaData: ProductListMeta = { total: 0, page: currentPage, limit: ITEMS_PER_PAGE, totalPages: 1 };
-
         if (debouncedSearch?.trim()) {
           const res = await productService.searchProducts(debouncedSearch.trim(), currentPage, ITEMS_PER_PAGE);
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
-        } else if (sortBy === "Featured" && selectedCategory === "All Products" && minPrice === undefined && maxPrice === undefined) {
+        // CASE 2: No filters → get all products with backend pagination
+        } else if (
+          sortBy === "Featured" &&
+          selectedCategory === "All Products" &&
+          minPrice === undefined &&
+          maxPrice === undefined
+        ) {
+          console.log("📦 Fetching all products (default)");
           const res = await productService.getAll({ page: currentPage, limit: ITEMS_PER_PAGE });
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
+        // CASE 3: Category / sort / price filters → backend handles everything
         } else {
-          const params: Record<string, any> = { page: currentPage, limit: ITEMS_PER_PAGE };
+          const params: ProductParams = { page: currentPage, limit: ITEMS_PER_PAGE };
           const apiSort = SORT_MAP[sortBy];
           if (apiSort && apiSort !== "featured") params.sort = apiSort;
-          if (selectedCategory !== "All Products") params.category = selectedCategory.toLowerCase();
-          if (minPrice !== undefined) params.minPrice = minPrice;
-          if (maxPrice !== undefined) params.maxPrice = maxPrice;
+          if (selectedCategory !== "All Products") params.category = selectedCategory;
+          if (minPrice !== undefined) params.minPrice = Number(minPrice);
+          if (maxPrice !== undefined) params.maxPrice = Number(maxPrice);
+          console.log("📦 Fetching with params:", params);
           const res = await productService.getAll(params);
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
         }
-
-        if (!cancelled) { setProducts(items.map(normalize)); setMeta(metaData); }
-      } catch (err: any) {
-        if (!cancelled) setError(err?.response?.data?.message || err?.message || "Failed to load products.");
+        if (cancelled) return;
+        console.log("✅ Got", items.length, "products");
+        setProducts(items.map(normalize));
+        setMeta(metaData);
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const apiError = err as ApiError;
+          const msg = apiError?.response?.data?.message || apiError?.message || "Failed to load products.";
+          setError(msg);
+          console.error("❌ Error:", apiError?.response?.data ?? apiError);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -229,7 +275,8 @@ function ProductsContent() {
         const items: ApiProduct[] = res.data?.data?.items ?? [];
         setGlobalTotal(res.data?.data?.meta?.total ?? items.length);
         const counts: Record<string, number> = {};
-        let min = Infinity, max = -Infinity;
+        let min = Infinity;
+        let max = -Infinity;
         items.forEach((p) => {
           // normalize to Title Case key for counting
           const key = p.category
@@ -244,7 +291,9 @@ function ProductsContent() {
         setCategoryCounts(counts);
         setMinPriceFetched(min === Infinity ? undefined : min);
         setMaxPriceFetched(max === -Infinity ? undefined : max);
-      } catch { }
+      } catch {
+       
+      }
     };
     fetchCounts();
   }, []);
@@ -261,7 +310,6 @@ function ProductsContent() {
 
   const totalPages = meta?.totalPages ?? 1;
   const totalProducts = meta?.total ?? 0;
-
   const activeFilterCount = [
     selectedCategory !== "All Products", sortBy !== "Featured",
     !!debouncedSearch, minPrice !== undefined, maxPrice !== undefined,
@@ -287,10 +335,11 @@ function ProductsContent() {
     >
       <button
         onClick={() => { setSelectedCategory("All Products"); onSelect?.(); }}
-        className={`flex-shrink-0 lg:flex lg:justify-between lg:w-full text-sm font-medium px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${selectedCategory === "All Products"
+        className={`flex-shrink-0 lg:flex lg:justify-between lg:w-full text-sm font-medium px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
+          selectedCategory === "All Products"
             ? "bg-[#D94F7A] text-white lg:text-[#D94F7A] lg:bg-transparent"
             : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
-          }`}
+        }`}
       >
         <span>All Products</span>
         <span className={`${vertical ? "inline" : "hidden lg:inline"} bg-pink-100 text-[#D94F7A] px-2 rounded-full text-xs`}>
@@ -304,13 +353,15 @@ function ProductsContent() {
           <button
             key={cat}
             onClick={() => { setSelectedCategory(cat); onSelect?.(); }}
-            className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${isActive ? "bg-[#D94F7A] text-white font-bold lg:text-[#D94F7A] lg:bg-transparent" : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
-              }`}
+            className={`flex-shrink-0 lg:flex lg:justify-between lg:items-center lg:w-full text-sm px-3 py-1.5 rounded-full lg:rounded-none lg:px-0 lg:py-0 lg:bg-transparent transition-colors ${
+              isActive ? "bg-[#D94F7A] text-white font-bold lg:text-[#D94F7A] lg:bg-transparent" : "bg-gray-100 text-gray-600 hover:text-[#D94F7A]"
+            }`}
           >
             <span>{cat}</span>
             {count > 0 && (
-              <span className={`${vertical ? "inline" : "hidden lg:inline"} px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${isActive ? "bg-[#D94F7A] text-white" : "bg-gray-200 text-gray-400"
-                }`}>{count}</span>
+              <span className={`${vertical ? "inline" : "hidden lg:inline"} px-2 py-0.5 rounded-full text-[10px] font-bold ml-auto ${
+                isActive ? "bg-[#D94F7A] text-white" : "bg-gray-200 text-gray-400"
+              }`}>{count}</span>
             )}
           </button>
         );
@@ -320,10 +371,10 @@ function ProductsContent() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 font-sans bg-gray-50/50 min-h-screen relative">
-
       {/* Toast */}
-      <div className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${toast.show ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0 pointer-events-none"
-        }`}>
+      <div className={`fixed bottom-8 right-8 z-[100] transition-all duration-500 transform ${
+        toast.show ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0 pointer-events-none"
+      }`}>
         <div className="bg-white rounded-full py-3 px-6 flex items-center gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-50 border-l-4 border-l-[#22C55E]">
           <div className="bg-[#22C55E] p-1.5 rounded-full text-white flex-shrink-0">
             <CheckCircle2 size={18} strokeWidth={3} />
@@ -335,13 +386,11 @@ function ProductsContent() {
           <button onClick={() => setToast({ name: "", show: false })} className="ml-2 text-gray-300 hover:text-gray-600"><X size={14} /></button>
         </div>
       </div>
-
       {/* Mobile Overlay */}
       <div
         className={`fixed inset-0 bg-black/30 z-40 md:hidden transition-opacity duration-300 ${sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         onClick={() => setSidebarOpen(false)}
       />
-
       {/* Mobile Sidebar */}
       <div className={`fixed left-0 top-0 h-full w-72 z-50 bg-white transform transition-transform duration-300 ease-in-out lg:hidden flex flex-col ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-100">
@@ -367,178 +416,213 @@ function ProductsContent() {
           </div>
         </div>
       </div>
-
+      {/* Layout - Single Scroll */}
       <div className="flex flex-col lg:flex-row gap-8">
-
-        {/* Desktop Sidebar */}
-        <aside className="hidden lg:block w-72 flex-shrink-0 sticky top-24 self-start">
-          <div className="bg-white p-6 pb-8 rounded-2xl shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="font-bold text-gray-900">Filters</h3>
-              <div className="flex items-center gap-2">
-                {activeFilterCount > 0 && (
-                  <span className="bg-[#D94F7A] text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
-                )}
-                <button onClick={clearFilters} className="text-xs text-[#D94F7A] font-medium hover:underline">Clear all</button>
+        {/* Desktop Sidebar - Sticky with larger size */}
+        <aside className="hidden lg:block lg:w-80 lg:flex-shrink-0">
+          <div className="sticky top-24 self-start">
+            <div className="bg-white p-8 pb-10 rounded-2xl shadow-md border border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-gray-900 text-lg">Filters</h3>
+                <div className="flex items-center gap-2">
+                  {activeFilterCount > 0 && (
+                    <span className="bg-[#D94F7A] text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+                  )}
+                  <button onClick={clearFilters} className="text-xs text-[#D94F7A] font-medium hover:underline">Clear all</button>
+                </div>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Categories</h4>
+                  <CategoryList />
+                </div>
+                
+                <div>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Price Range Range</h4>
+                  <PriceRange {...priceProps} />
+                </div>
               </div>
             </div>
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h4>
-            <CategoryList />
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-3">Price Range</h4>
-            <PriceRange {...priceProps} />
           </div>
         </aside>
-
-        {/* Main */}
-        <main className="flex-1 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col min-w-0">
-          <div className="flex flex-col mb-4 gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{selectedCategory}</h1>
-              <p className="text-xs text-gray-400 mt-0.5">{loading ? "Loading…" : `${totalProducts} products found`}</p>
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:justify-end">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="relative lg:hidden p-2 rounded-xl border border-gray-200 hover:border-[#D94F7A] transition-colors flex-shrink-0"
-              >
-                <Menu size={18} className="text-gray-600" />
-                {activeFilterCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-[#D94F7A] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeFilterCount}</span>
-                )}
-              </button>
-
-              <div className="relative hidden sm:block sm:w-52">
+        
+        {/* Main - Regular flow with single scroll */}
+        <main className="flex-1 min-w-0">
+          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
+            <div className="flex flex-col mb-4 gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{selectedCategory}</h1>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {loading ? "Loading…" : `${totalProducts} products found`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:justify-end">
+                {/* Hamburger */}
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="relative lg:hidden p-2 rounded-xl border border-gray-200 hover:border-[#D94F7A] transition-colors flex-shrink-0"
+                >
+                  <Menu size={18} className="text-gray-600" />
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-[#D94F7A] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+                  )}
+                </button>
+                {/* Search desktop */}
+                <div className="relative hidden sm:block sm:w-52">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                {/* Sort */}
+                <div ref={sortRef} className="relative flex-shrink-0 sm:ml-0 ml-auto">
+                  <button
+                    onClick={() => setSortOpen((o) => !o)}
+                    className="flex items-center gap-2 text-sm bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm font-medium text-gray-700 hover:border-[#D94F7A] transition-colors whitespace-nowrap"
+                  >
+                    <span className="hidden sm:inline text-gray-400 text-xs">Sort:</span>
+                    <span className="font-bold text-gray-900 text-xs">{sortBy}</span>
+                    <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {sortOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 py-1.5 overflow-hidden">
+                      {SORT_OPTIONS.map((opt) => (
+                        <button
+                          key={opt}
+                          onClick={() => { setSortBy(opt); setSortOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                            sortBy === opt ? "text-[#D94F7A] font-bold bg-pink-50" : "text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Search mobile */}
+              <div className="relative w-full sm:hidden">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
-                  type="text" placeholder="Search products..." value={searchQuery}
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors"
+                  className="w-full pl-8 pr-8 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"><X size={12} /></button>
-                )}
-              </div>
-
-              <div ref={sortRef} className="relative flex-shrink-0 sm:ml-0 ml-auto">
-                <button
-                  onClick={() => setSortOpen((o) => !o)}
-                  className="flex items-center gap-2 text-sm bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm font-medium text-gray-700 hover:border-[#D94F7A] transition-colors whitespace-nowrap"
-                >
-                  <span className="hidden sm:inline text-gray-400 text-xs">Sort:</span>
-                  <span className="font-bold text-gray-900 text-xs">{sortBy}</span>
-                  <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`} />
-                </button>
-                {sortOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 py-1.5 overflow-hidden">
-                    {SORT_OPTIONS.map((opt) => (
-                      <button key={opt} onClick={() => { setSortBy(opt); setSortOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${sortBy === opt ? "text-[#D94F7A] font-bold bg-pink-50" : "text-gray-700 hover:bg-gray-50"}`}>
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="relative w-full sm:hidden">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text" placeholder="Search products..." value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-8 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#D94F7A] transition-colors"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"><X size={12} /></button>
-              )}
-            </div>
-          </div>
-
-          {/* Active Filter Chips */}
-          {activeFilterCount > 0 && (
-            <div className="flex flex-wrap gap-2 mb-5">
-              {selectedCategory !== "All Products" && (
-                <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                  {selectedCategory}<button onClick={() => setSelectedCategory("All Products")}><X size={11} /></button>
-                </span>
-              )}
-              {sortBy !== "Featured" && (
-                <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                  {sortBy}<button onClick={() => setSortBy("Featured")}><X size={11} /></button>
-                </span>
-              )}
-              {debouncedSearch && (
-                <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                  "{debouncedSearch}"<button onClick={() => setSearchQuery("")}><X size={11} /></button>
-                </span>
-              )}
-              {minPrice !== undefined && (
-                <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                  Min: ₹{minPrice}<button onClick={() => setMinPrice(undefined)}><X size={11} /></button>
-                </span>
-              )}
-              {maxPrice !== undefined && (
-                <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
-                  Max: ₹{maxPrice}<button onClick={() => setMaxPrice(undefined)}><X size={11} /></button>
-                </span>
-              )}
-              <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline">Clear all</button>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-6 text-sm flex items-center gap-3">
-              <span className="flex-1">{error}</span>
-              <button onClick={() => { setError(null); }} className="text-xs font-semibold underline shrink-0">Retry</button>
-            </div>
-          )}
-
-          {/* Grid */}
-          {loading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8">
-              {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : products.length === 0 && !error ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
-              <div className="text-5xl mb-4">🔍</div>
-              <h3 className="font-bold text-gray-900 text-lg mb-1">No products found</h3>
-              <p className="text-gray-400 text-sm mb-6">Try adjusting your filters or search term</p>
-              <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product as any} onAdd={triggerToast} />
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && !loading && (
-            <div className="mt-auto flex justify-center pt-6 border-t border-gray-50 select-none">
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 :opacity-30 transition-colors border border-gray-100">
-                  <ChevronLeft size={15} />
-                </button>
-                {getPaginationRange().map((item, index) => (
-                  <button key={index} onClick={() => typeof item === "number" && setCurrentPage(item)} disabled={item === "..."}
-                    className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${currentPage === item ? "bg-[#D94F7A] text-white border-[#D94F7A] shadow-md shadow-[#D94F7A]/30"
-                        : item === "..." ? "bg-transparent text-gray-300 border-transparent cursor-default"
-                          : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
-                      }`}>
-                    {item}
+                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">
+                    <X size={12} />
                   </button>
-                ))}
-                <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100">
-                  <ChevronRight size={15} />
-                </button>
+                )}
               </div>
             </div>
-          )}
+            {/* Active Filter Chips */}
+            {activeFilterCount > 0 && (
+              <div className="flex flex-wrap gap-2 mb-5">
+                {selectedCategory !== "All Products" && (
+                  <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
+                    {selectedCategory}<button onClick={() => setSelectedCategory("All Products")}><X size={11} /></button>
+                  </span>
+                )}
+                {sortBy !== "Featured" && (
+                  <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
+                    {sortBy}<button onClick={() => setSortBy("Featured")}><X size={11} /></button>
+                  </span>
+                )}
+                {debouncedSearch && (
+                  <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
+                    &quot;{debouncedSearch}&quot;<button onClick={() => setSearchQuery("")}><X size={11} /></button>
+                  </span>
+                )}
+                {minPrice !== undefined && (
+                  <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
+                    Min: ₹{minPrice}<button onClick={() => setMinPrice(undefined)}><X size={11} /></button>
+                  </span>
+                )}
+                {maxPrice !== undefined && (
+                  <span className="flex items-center gap-1.5 bg-pink-50 text-[#D94F7A] text-xs font-semibold px-3 py-1 rounded-full border border-pink-100">
+                    Max: ₹{maxPrice}<button onClick={() => setMaxPrice(undefined)}><X size={11} /></button>
+                  </span>
+                )}
+                <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline">Clear all</button>
+              </div>
+            )}
+            {/* Error */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-6 text-sm flex items-center gap-3">
+                <span className="flex-1">{error}</span>
+                <button onClick={() => { setError(null); setCurrentPage(p => p); }} className="text-xs font-semibold underline shrink-0">Retry</button>
+              </div>
+            )}
+            {/* Grid */}
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : products.length === 0 && !error ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
+                <div className="text-5xl mb-4">🔍</div>
+                <h3 className="font-bold text-gray-900 text-lg mb-1">No products found</h3>
+                <p className="text-gray-400 text-sm mb-6">Try adjusting your filters or search term</p>
+                <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {products.map((product) => (
+                  <ProductCard key={product.id} product={product} onAdd={triggerToast} />
+                ))}
+              </div>
+            )}
+            {/* Pagination */}
+            {totalPages > 1 && !loading && (
+              <div className="mt-auto flex justify-center pt-6 border-t border-gray-50 select-none">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
+                  >
+                    <ChevronLeft size={15} />
+                  </button>
+                  {getPaginationRange().map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() => typeof item === "number" && setCurrentPage(item)}
+                      disabled={item === "..."}
+                      className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${
+                        currentPage === item
+                          ? "bg-[#D94F7A] text-white border-[#D94F7A] shadow-md shadow-[#D94F7A]/30"
+                          : item === "..."
+                          ? "bg-transparent text-gray-300 border-transparent cursor-default"
+                          : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
+                  >
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </main>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useRef, MouseEvent, ChangeEvent, FormEvent } from "react";
 import { reviewService } from "@/services/review"; // Ensure this service exists
+import { useRouter } from "next/navigation";
 
 interface StarProps {
   filled: boolean;
@@ -54,8 +55,9 @@ interface WriteReviewPageProps {
 
 export default function WriteReviewPage({
   productName = "Rose Gold Bracelet",
-  productId = "PRD-002", // Updated to match your API doc example
+  productId = "PRD-002",
 }: WriteReviewPageProps) {
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
@@ -80,7 +82,6 @@ export default function WriteReviewPage({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Fallback: Prevent submission if productId is somehow missing
     if (!productId) {
       alert("Product information is missing. Please try again from the orders page.");
       return;
@@ -91,14 +92,12 @@ export default function WriteReviewPage({
     setSubmitting(true);
 
     try {
-      // API Integration matching the order.ts service pattern
       const response = await reviewService.submitReview(productId, {
         rating,
         comment: review,
         ...(photos.length > 0 && { images: photos }),
       });
 
-      // Handling response based on your API Documentation (statusCode 201)
       if (response.statusCode === 201 || response.status === "success") {
         alert("Review submitted!");
         setRating(0);
@@ -108,7 +107,6 @@ export default function WriteReviewPage({
         alert(response.message || "Something went wrong. Please try again.");
       }
     } catch (error: any) {
-      // Robust error logging and fallback messaging
       console.error("Submit Error:", error.response?.data || error.message || error);
       
       const errorMessage = 
@@ -124,6 +122,23 @@ export default function WriteReviewPage({
   return (
     <div className="bg-[#fdf8f9] min-h-screen pb-20">
       <div className="max-w-3xl mx-auto px-3 sm:px-5 lg:px-6 py-6 sm:py-8 lg:py-10">
+        {/* Back button */}
+        <button
+          onClick={() => router.push("/profile/orders")}
+          className="flex items-center gap-1 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="w-5 h-5"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          <span className="text-sm">My Orders</span>
+        </button>
+
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
           Write a Review
         </h1>
