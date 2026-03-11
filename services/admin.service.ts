@@ -87,6 +87,24 @@ export interface Banner {
     updatedAt?: string;
 }
 
+export interface Category {
+    categoryId: string;
+    name: string;
+    slug: string;
+    description?: string;
+    image?: { id?: string; url?: string };
+    isActive: boolean;
+    displayOrder: number;
+    createdAt?: string;
+    updatedAt?: string;
+    productCount?: number;
+}
+
+export interface CategoryListResponse {
+    items: Category[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
 // ─── API Response Wrapper ─────────────────────────────────────────────────────
 
 interface ApiResponse<T> {
@@ -290,6 +308,58 @@ export const updateBanner = (id: string, formData: FormData): Promise<Banner | n
 export const deleteBanner = (id: string): Promise<null> =>
     gracefulFetch(async () => {
         await apiMethods.delete(`/banners/${id}`);
+        return null;
+    });
+
+// ─── Category Service Functions ───────────────────────────────────────────────
+
+/**
+ * GET /api/categories
+ * Fetch all active categories (public).
+ */
+export const getCategories = (): Promise<CategoryListResponse | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<CategoryListResponse>>("/categories?limit=100");
+        return res.data;
+    });
+
+/**
+ * GET /api/categories/admin/all
+ * Fetch all categories including inactive (admin).
+ */
+export const getAdminCategories = (): Promise<CategoryListResponse | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<CategoryListResponse>>("/categories/admin/all?limit=100");
+        return res.data;
+    });
+
+/**
+ * POST /api/categories
+ * Create a category (admin).
+ */
+export const createCategory = (data: { name: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.post<ApiResponse<Category>>("/categories", data);
+        return res.data;
+    });
+
+/**
+ * PATCH /api/categories/:id
+ * Update a category (admin).
+ */
+export const updateCategory = (id: string, data: { name?: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.patch<ApiResponse<Category>>(`/categories/${id}`, data);
+        return res.data;
+    });
+
+/**
+ * DELETE /api/categories/:id
+ * Soft-delete a category (admin).
+ */
+export const deleteCategory = (id: string): Promise<null> =>
+    gracefulFetch(async () => {
+        await apiMethods.delete(`/categories/${id}`);
         return null;
     });
 
