@@ -52,7 +52,6 @@ function CategoryProgress({ label, percent }: { label: string, percent: number }
     );
 }
 
-// Maps UI label → API period param
 const PERIOD_MAP: Record<string, string> = {
     "7 Days": "7d",
     "30 Days": "30d",
@@ -65,13 +64,10 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [chartRange, setChartRange] = useState("30 Days");
 
-    // API state
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
-    const [recentOrders, setRecentOrders] = useState<any[]>([]);
     const [apiError, setApiError] = useState(false);
 
-    // Fetch dashboard KPI data
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
@@ -93,11 +89,8 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
         fetchData();
     }, [chartRange]);
 
-    // Build chart data from analytics — fallback to static demo if API has no chart series
     const buildChartData = () => {
         if (!analyticsData) return [];
-        // The analytics endpoint returns aggregated totals, not per-day series.
-        // We represent it as a single data point labeled by period.
         return [
             { day: chartRange, revenue: analyticsData.revenue.current },
         ];
@@ -105,7 +98,6 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
 
     const activeChartData = buildChartData();
 
-    // Format numbers
     const formattedRevenue = dashboardData
         ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(dashboardData.totalRevenue)
         : "—";
@@ -152,7 +144,6 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                                 ))}
                             </div>
                         </div>
-                        {/* Interactive Recharts AreaChart */}
                         <div className="flex-1 w-full" style={{ minHeight: 280 }}>
                             {isLoading ? (
                                 <Skeleton className="w-full h-[280px]" />
@@ -168,9 +159,10 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                                         <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: 600 }} axisLine={false} tickLine={false} />
                                         <YAxis tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                                        {/* ✅ Fixed: removed type annotation — let TypeScript infer ValueType, use Number() to safely cast */}
                                         <Tooltip
                                             contentStyle={{ borderRadius: 12, border: "1px solid #f3f4f6", boxShadow: "0 4px 20px rgba(0,0,0,0.08)", fontSize: 12 }}
-                                            formatter={(v: number | undefined) => [`₹${(v ?? 0).toLocaleString()}`, "Revenue"]}
+                                            formatter={(v) => [`₹${Number(v).toLocaleString()}`, "Revenue"]}
                                         />
                                         <Area type="monotone" dataKey="revenue" stroke="#E91E63" strokeWidth={2.5} fill="url(#revenueGrad)" dot={{ r: 4, fill: "#E91E63", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#E91E63" }} />
                                     </AreaChart>
@@ -295,7 +287,7 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Bottom Row: Top Products */}
+                {/* Top Products */}
                 <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8">
                     <div className="flex justify-between items-center mb-8">
                         <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Top Products</h3>
