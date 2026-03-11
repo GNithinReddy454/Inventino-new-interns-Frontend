@@ -60,6 +60,7 @@ export const fetchWishlist = createAsyncThunk(
   }
 );
 
+// Accepts either a plain string ID (logged-in) or { productId, product } (guest fallback)
 export const addWishlistItem = createAsyncThunk(
   "wishlist/add",
   async (productId: string, { rejectWithValue }) => {

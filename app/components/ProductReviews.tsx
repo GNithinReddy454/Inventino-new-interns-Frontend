@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -52,10 +53,12 @@ const MOCK_REVIEWS = [
 
 export default function ProductReviews({
   productId,
+  mongoProductId,
   isLoggedIn = false,
   hasPurchased = false,
 }: {
-  productId: string; // Made mandatory to avoid hardcoded IDs
+  productId: string;
+  mongoProductId?: string; // MongoDB _id (ObjectId) — pass this from your product data
   isLoggedIn?: boolean;
   hasPurchased?: boolean;
 }) {
@@ -66,44 +69,49 @@ export default function ProductReviews({
 
   // --- API INTEGRATION ---
   useEffect(() => {
-    // Only fetch if productId is provided
-    if (!productId) return;
+    // Use mongoProductId (ObjectId) if provided, otherwise fall back to productId
+    const idToFetch = mongoProductId || productId;
+    if (!idToFetch) return;
 
     const fetchReviews = async () => {
       try {
-        // Pattern matched to orderService (no hardcoded ID strings here)
-        const json = await reviewService.getReviews(productId);
+        const json = await reviewService.getReviews(idToFetch);
 
-        if (json.statusCode === 200 && json.data?.reviews) {
-          const apiReviews = json.data.reviews.map((rev: any) => ({
-            id: rev._id,
-            author: rev.user?.name || "Verified Buyer",
-            date: new Date(rev.createdAt).toLocaleDateString("en-US", {
+        // Support multiple response shapes
+        const rawReviews: any[] =
+          (Array.isArray(json?.data?.reviews) ? json.data.reviews : null) ||
+          (Array.isArray(json?.data) ? json.data : null) ||
+          (Array.isArray(json?.reviews) ? json.reviews : null) ||
+          (Array.isArray(json) ? json : null) ||
+          [];
+
+        if (rawReviews.length > 0) {
+          const apiReviews = rawReviews.map((rev: any) => ({
+            id: rev._id || rev.id,
+            author: rev.user?.name || rev.userName || rev.author || "Verified Buyer",
+            date: new Date(rev.createdAt || rev.date || Date.now()).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
             }),
             rating: rev.rating,
-            title: "Customer Review",
-            content: rev.comment,
-            verified: rev.isActive,
-            helpful: 0,
+            title: rev.title || "Customer Review",
+            content: rev.comment || rev.content || rev.body || "",
+            verified: rev.isActive ?? rev.verified ?? true,
+            helpful: rev.helpful || 0,
             images: rev.images || [],
           }));
 
-          // Combining Mock and Real Data
           setReviews([...MOCK_REVIEWS, ...apiReviews]);
-        } else {
-          console.error("API Error Details:", json);
         }
+        // No API reviews — mock reviews remain as default state
       } catch (error: any) {
-        // Error handling matched to order.ts style
         console.error("Fetch Connection Error:", error.response?.data || error.message);
       }
     };
 
     fetchReviews();
-  }, [productId]);
+  }, [productId, mongoProductId]);
 
   return (
     <div className="bg-white py-16 border-t border-gray-100 relative">

@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import { ShoppingCart, Eye } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { ShoppingCart, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ProductCard, { ProductCardProduct } from "@/app/components/ProductCard";
 import { useCart } from "@/lib/cartContext";
 import Toast from "@/app/components/toast";
 
-// Mock Data for Stories
 const MOCK_STORIES = [
   {
     id: 1,
@@ -135,19 +134,44 @@ const SIMILAR_PRODUCTS_DATA: ProductCardProduct[] = [
   }
 ];
 
+function ProcessStepCard({ step }: { step: typeof PROCESS_STEPS[0] }) {
+  return (
+    <div className="bg-white rounded-2xl p-8 border border-pink-100 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-pink-100/60 hover:border-pink-200 hover:-translate-y-1">
+      <div className="w-12 h-12 rounded-full bg-[#E8456A] text-white flex items-center justify-center text-lg font-black mb-6 shadow-[0_0_20px_rgba(232,69,106,0.5)]">
+        {step.id}
+      </div>
+      <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
+      <p className="text-gray-600 text-[14px] leading-relaxed">{step.description}</p>
+    </div>
+  );
+}
+
 export default function StoriesPage() {
   const [activeStoryId, setActiveStoryId] = useState(MOCK_STORIES[0].id);
   const [toastMessage, setToastMessage] = useState("");
   const { addToCart } = useCart();
   const router = useRouter();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const similarScrollRef = useRef<HTMLDivElement>(null);
 
   const activeStory = MOCK_STORIES.find(s => s.id === activeStoryId)!;
+  const activeIndex = MOCK_STORIES.findIndex(s => s.id === activeStoryId);
+
+  const handlePrev = () => {
+    const prevIndex = (activeIndex - 1 + MOCK_STORIES.length) % MOCK_STORIES.length;
+    setActiveStoryId(MOCK_STORIES[prevIndex].id);
+  };
+
+  const handleNext = () => {
+    const nextIndex = (activeIndex + 1) % MOCK_STORIES.length;
+    setActiveStoryId(MOCK_STORIES[nextIndex].id);
+  };
 
   const handleAddToCart = () => {
     addToCart({
-      id: activeStory.id + 2000, // Make ID unique
+      id: activeStory.id + 2000,
       name: activeStory.title,
-      price: 89.99, // default price for story item
+      price: 89.99,
       image: activeStory.thumbnail,
       category: "STORY ITEM",
     });
@@ -155,7 +179,7 @@ export default function StoriesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 px-6 pb-6 pt-2 md:px-12 md:pb-12 md:pt-4 lg:px-20 lg:pb-20 lg:pt-6 font-sans">
+    <div className="min-h-screen bg-gray-50 text-gray-900 px-6 pb-6 pt-2 md:px-12 md:pb-12 md:pt-4 lg:px-20 lg:pb-20 lg:pt-6 font-sans overflow-x-hidden">
       <div className="max-w-7xl mx-auto space-y-16">
 
         {/* Top Stories Section */}
@@ -163,45 +187,77 @@ export default function StoriesPage() {
           <h2 className="text-3xl font-bold text-[#E8456A] mb-8">Top Stories</h2>
 
           <div className="bg-white rounded-2xl p-6 md:p-10 flex flex-col lg:flex-row gap-8 lg:gap-14 border border-pink-100 shadow-xl shadow-pink-100/30">
-            {/* Left Column: Story Rings & Main Image */}
+
+            {/* Left Column */}
             <div className="w-full lg:w-5/12 flex flex-col">
 
-              {/* Story Rings */}
-              <div className="flex gap-4 mb-8 overflow-x-auto pb-4 scrollbar-hide">
-                {MOCK_STORIES.map((story) => {
-                  const isActive = activeStoryId === story.id;
-                  return (
-                    <button
-                      key={story.id}
-                      onClick={() => setActiveStoryId(story.id)}
-                      className="relative flex-shrink-0 group hover:-translate-y-1 transition-transform"
-                    >
-                      <div className={`w-16 h-16 rounded-full p-[3px] transition-all duration-300 ${isActive ? 'bg-gradient-to-tr from-[#E8456A] to-[#ffb1c4]' : 'bg-gray-200 hover:bg-pink-100'}`}>
-                        <img
-                          src={story.thumbnail}
-                          alt={story.artisan}
-                          className="w-full h-full object-cover rounded-full border-[3px] border-white"
-                        />
-                      </div>
-                      <div className="absolute -top-1 -right-1 w-[22px] h-[22px] bg-[#E8456A] text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-md">
-                        {story.id}
-                      </div>
-                    </button>
-                  );
-                })}
+              {/* Story Circles with Prev/Next Arrows */}
+              <div className="flex items-center gap-2 mb-8">
+                <button
+                  onClick={handlePrev}
+                  className="flex-shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95"
+                >
+                  <ChevronLeft size={16} strokeWidth={3} />
+                </button>
+
+                <div
+                  ref={scrollRef}
+                  className="flex gap-3 overflow-x-auto scrollbar-hide flex-1 py-2 px-1"
+                >
+                  {MOCK_STORIES.map((story) => {
+                    const isActive = activeStoryId === story.id;
+                    return (
+                      <button
+                        key={story.id}
+                        onClick={() => setActiveStoryId(story.id)}
+                        className="relative flex-shrink-0 hover:-translate-y-1 transition-transform"
+                      >
+                        <div
+                          className="w-[72px] h-[72px] rounded-full flex items-center justify-center transition-all duration-300"
+                          style={{
+                            padding: "3px",
+                            background: isActive
+                              ? "linear-gradient(135deg, #FFD700, #FFEC00, #FFC200, #FFD700)"
+                              : "linear-gradient(135deg, #f9a8c0, #E8456A, #f472b6)",
+                            boxShadow: isActive
+                              ? "0 0 12px 3px rgba(255, 215, 0, 0.75)"
+                              : "none",
+                          }}
+                        >
+                          <div className="w-full h-full rounded-full bg-white p-[2px]">
+                            <img
+                              src={story.thumbnail}
+                              alt={story.artisan}
+                              className="w-full h-full object-cover rounded-full"
+                            />
+                          </div>
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-[20px] h-[20px] bg-[#E8456A] text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-md">
+                          {story.id}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={handleNext}
+                  className="flex-shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95"
+                >
+                  <ChevronRight size={16} strokeWidth={3} />
+                </button>
               </div>
 
-              {/* Main Visual */}
-              <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden bg-gray-100 mb-6 flex items-center justify-center shadow-xl">
+              {/* Main Image */}
+              <div
+                className="relative w-full rounded-3xl overflow-hidden mb-6 shadow-lg"
+                style={{ backgroundColor: "#f0d9c8", aspectRatio: "4/3" }}
+              >
                 <img
                   src={activeStory.image}
                   alt={activeStory.title}
-                  className="w-full h-full object-cover rounded-2xl p-6 md:p-10 hue-rotate-0"
-                  style={{
-                    backgroundColor: "#ebd5c1",
-                    objectFit: "cover",
-                    boxShadow: "inset 0px 0px 20px rgba(0,0,0,0.5)"
-                  }}
+                  className="w-full h-full object-cover"
+                  style={{ mixBlendMode: "multiply" }}
                 />
               </div>
 
@@ -217,43 +273,43 @@ export default function StoriesPage() {
               </div>
             </div>
 
-            {/* Right Column: Descriptions */}
+            {/* Right Column */}
             <div className="w-full lg:w-7/12 flex flex-col justify-center">
               <h1 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900 tracking-tight">{activeStory.title}</h1>
 
               <div className="space-y-6 text-gray-600 text-[15px] leading-relaxed">
-                <p>
-                  Every piece we create carries a unique journey from concept to creation.
-                </p>
-                <p>
-                  {activeStory.description}
-                </p>
+                <p>Every piece we create carries a unique journey from concept to creation.</p>
+                <p>{activeStory.description}</p>
 
-                {/* Quote Box */}
                 <div className="border-l-[3px] border-[#E8456A] pl-5 py-2 my-8 bg-gradient-to-r from-[#E8456A]/10 to-transparent rounded-r-xl p-4">
                   <p className="italic text-gray-800 font-medium mb-3">"{activeStory.quote}"</p>
                   <p className="text-[#E8456A] font-bold text-sm">— {activeStory.artisan}, {activeStory.role}</p>
                 </div>
 
-                <p>
-                  {activeStory.process}
-                </p>
+                <p>{activeStory.process}</p>
               </div>
 
-              {/* Actions */}
+              {/* Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 mt-12">
                 <button
                   onClick={() => router.push(`/products/${activeStory.id}`)}
-                  className="bg-[#E8456A] hover:bg-[#c73a5a] text-white px-8 py-3.5 rounded-full font-bold flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95 flex-1 sm:max-w-[200px] shadow-[0_4px_20px_rgba(232,69,106,0.3)]"
+                  className="flex-1 sm:max-w-[200px] flex items-center justify-center gap-2 px-8 py-3.5 rounded-full font-bold text-white transition-all hover:scale-105 active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg, #f472a0 0%, #E8456A 50%, #e05580 100%)",
+                    boxShadow: "0 4px 20px rgba(232,69,106,0.4)",
+                  }}
                 >
-                  <Eye size={18} strokeWidth={2.5} />
-                  View Details
+                  <ShoppingBag size={18} strokeWidth={2.5} />
+                  Buy Now
                 </button>
+
                 <button
                   onClick={handleAddToCart}
-                  className="bg-transparent border-2 border-gray-300 hover:border-[#E8456A] text-gray-800 hover:text-[#E8456A] px-8 py-3.5 rounded-full font-bold flex items-center justify-center gap-2 transition-all hover:bg-pink-50 active:scale-95 flex-1 sm:max-w-[200px]"
+                  className="flex-1 sm:max-w-[200px] flex items-center justify-center gap-2 px-8 py-3.5 rounded-full font-bold text-[#E8456A] bg-transparent transition-all hover:bg-pink-50 active:scale-95"
+                  style={{ border: "2px solid #E8456A" }}
                 >
-                  <ShoppingCart size={18} strokeWidth={2.5} /> Add to Cart
+                  <ShoppingCart size={18} strokeWidth={2.5} />
+                  Add to Cart
                 </button>
               </div>
             </div>
@@ -263,38 +319,60 @@ export default function StoriesPage() {
         {/* Creation Process Section */}
         <section>
           <h2 className="text-2xl font-bold text-[#E8456A] mb-8">Our Creation Process</h2>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {PROCESS_STEPS.map((step) => (
-              <div key={step.id} className="bg-white rounded-2xl p-8 hover:bg-gray-50 transition-colors border border-pink-100 shadow-sm hover:shadow-md">
-                <div className="w-12 h-12 rounded-full bg-[#E8456A] text-white flex items-center justify-center text-lg font-black mb-6 shadow-[0_0_20px_rgba(232,69,106,0.5)]">
-                  {step.id}
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
-                <p className="text-gray-600 text-[14px] leading-relaxed">
-                  {step.description}
-                </p>
-              </div>
+              <ProcessStepCard key={step.id} step={step} />
             ))}
           </div>
         </section>
 
         {/* Similar Products Section */}
-        <section>
+        <section className="group/similar">
           <h2 className="text-2xl font-bold text-[#E8456A] mb-8">Similar Products</h2>
+          
+          <div className="relative flex items-center">
+            {/* Navigation Button Left */}
+            <button
+              onClick={() => similarScrollRef.current?.scrollBy({ left: -similarScrollRef.current.offsetWidth, behavior: "smooth" })}
+              className="absolute left-0 md:-left-8 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-xl rounded-full border border-gray-100 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover/similar:opacity-100"
+              style={{ boxShadow: "0 4px 15px rgba(0,0,0,0.1)" }}
+            >
+              <ChevronLeft size={24} className="md:w-6 md:h-6" />
+            </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {SIMILAR_PRODUCTS_DATA.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onAdd={(productName) => setToastMessage(`${productName} has been added to your cart.`)}
-              />
-            ))}
+            {/* Scrollable Row */}
+            <div
+              ref={similarScrollRef}
+              className="flex gap-6 overflow-x-auto scrollbar-hide py-2 no-scrollbar scroll-smooth w-full"
+              style={{ scrollSnapType: "x mandatory" }}
+            >
+              {SIMILAR_PRODUCTS_DATA.map((product) => (
+                <div
+                  key={product.id}
+                  className="flex-shrink-0 w-full md:w-[calc(25%-1.25rem)] snap-start flex justify-center"
+                >
+                  <div className="w-full">
+                    <ProductCard
+                      product={product}
+                      onAdd={(productName) => setToastMessage(`${productName} has been added to your cart.`)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Navigation Button Right */}
+            <button
+              onClick={() => similarScrollRef.current?.scrollBy({ left: similarScrollRef.current.offsetWidth, behavior: "smooth" })}
+              className="absolute right-0 md:-right-8 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-xl rounded-full border border-gray-100 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover/similar:opacity-100"
+              style={{ boxShadow: "0 4px 15px rgba(0,0,0,0.1)" }}
+            >
+              <ChevronRight size={24} className="md:w-6 md:h-6" />
+            </button>
           </div>
         </section>
 
-      </div >
+      </div>
 
       {toastMessage && (
         <Toast
@@ -305,6 +383,18 @@ export default function StoriesPage() {
           onClose={() => setToastMessage("")}
         />
       )}
-    </div >
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @media (max-width: 768px) {
+           .fixed.bottom-6.right-6 {
+             bottom: 5.5rem !important;
+             z-index: 50;
+           }
+        }
+      `}</style>
+    </div>
   );
 }

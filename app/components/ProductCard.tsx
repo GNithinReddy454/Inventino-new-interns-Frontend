@@ -27,18 +27,11 @@ function StarRating({ rating }: { rating: number }) {
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((star) => {
         const filled = rating >= star;
-        const partial = !filled && rating > star - 1;
         return (
           <svg key={star} width="11" height="11" viewBox="0 0 24 24" className="flex-shrink-0">
-            <defs>
-              <linearGradient id={`star-grad-${star}-${rating}`}>
-                <stop offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`} stopColor="#E8456A" />
-                <stop offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`} stopColor="#e5e7eb" />
-              </linearGradient>
-            </defs>
             <polygon
               points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-              fill={filled ? "#E8456A" : partial ? `url(#star-grad-${star}-${rating})` : "#e5e7eb"}
+              fill={filled ? "#FFD700" : "#e5e7eb"}
             />
           </svg>
         );
@@ -140,9 +133,9 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     >
       <Link
         href={`/products/${product.id}`}
-        className="flex flex-col h-full w-full"
+        className="flex flex-col h-full w-full bg-white"
         style={{
-          borderRadius: 16,
+          borderRadius: 12,
           overflow: "hidden",
           textDecoration: "none",
           color: "inherit",
@@ -171,17 +164,10 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           {/* WISHLIST & SHARE BUTTONS — commented out */}
           {/* <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
             <button
-              onClick={(e) => {
-                e.preventDefault(); e.stopPropagation();
-                if (!isSaved) {
-                  dispatch(addWishlistItem(String(product.id)));
-                  showToast("Success!", "Added to wishlist", "success");
-                } else {
-                  dispatch(removeWishlistItem(String(product.id)));
-                  showToast("Removed", "Removed from wishlist", "info");
-                }
-              }}
-              className={`w-7 h-7 flex items-center justify-center rounded-full shadow-md transition-all duration-200 ${isSaved ? "bg-[#E8456A] text-white" : "bg-white text-gray-400"}`}
+              onClick={handleWishlistToggle}
+              className={`w-7 h-7 flex items-center justify-center rounded-full shadow-md transition-all duration-200 bg-white ${
+                isSaved ? "text-[#E8456A]" : "text-gray-400"
+              }`}
             >
               <Heart size={13} fill={isSaved ? "currentColor" : "none"} strokeWidth={2} />
             </button>
@@ -211,39 +197,34 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           )}
         </div>
 
-        {/* BODY */}
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "10px 12px 12px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, gap: 4 }}>
-            <span style={{ fontSize: 9, color: "#E8456A", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-              {product.category}
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
-              <StarRating rating={rating} />
-              <span style={{ fontSize: 9, color: "#6b7280", whiteSpace: "nowrap" }}>{rating.toFixed(1)}</span>
-            </div>
+        {/* BODY - Clean design matching second image */}
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "12px" }}>
+          <div style={{ fontSize: 11, color: "#E8456A", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+            {product.category || "EXCLUSIVE"}
           </div>
 
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", lineHeight: 1.4, marginBottom: 4 }}>
             {productName}
           </div>
 
           {tags.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 8 }}>
-              {tags.slice(0, 2).map((tag, i) => (
-                <span key={i} style={{ fontSize: 9, color: "#6b7280", background: "#f3f4f6", padding: "2px 6px", borderRadius: 3, fontWeight: 500 }}>
-                  {typeof tag === "string" ? tag : ((tag as any)?.text ?? "")}
-                </span>
-              ))}
+            <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
+              {tags.slice(0, 2).join(" • ")}
             </div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: "auto" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 13, fontWeight: 900, color: "#E8456A", lineHeight: 1, whiteSpace: "nowrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 10 }}>
+            <StarRating rating={rating} />
+            <span style={{ fontSize: 11, color: "#6b7280", marginLeft: 2 }}>{rating.toFixed(1)}</span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>
                 ₹{product.price.toFixed(0)}
               </span>
               {hasDiscount && (
-                <span style={{ fontSize: 10, color: "#9ca3af", textDecoration: "line-through", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 12, color: "#9ca3af", textDecoration: "line-through" }}>
                   ₹{product.originalPrice!.toFixed(0)}
                 </span>
               )}
