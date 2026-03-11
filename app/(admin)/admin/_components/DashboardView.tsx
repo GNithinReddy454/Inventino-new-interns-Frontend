@@ -307,7 +307,7 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                             { name: "Pearl Necklace", category: "Jewelry", sales: "198", color: "bg-[#BCC1C4]" },
                             { name: "Boho Beaded Set", category: "Accessories", sales: "156", color: "bg-[#678F7A]" },
                             { name: "Crochet Pouch", category: "Accessories", sales: "142", color: "bg-[#F0DA79]" },
-                        ].map((prod, i) => (
+                        ].map((prod: any, i: number) => (
                             <div key={i} className="flex items-center gap-4">
                                 <div className={`w-[52px] h-[52px] rounded-xl flex shrink-0 overflow-hidden items-center justify-center ${prod.color}`}>
                                     {prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0] ? (

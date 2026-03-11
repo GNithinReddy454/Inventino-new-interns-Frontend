@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight, Heart, ShieldCheck, Leaf } from "lucide-react";
 
 interface StatProps {
@@ -94,7 +95,9 @@ const AboutPage: React.FC = () => {
 
           <div className="flex-1 relative">
             <div className="rounded-[2rem] overflow-hidden shadow-2xl border-8 border-card">
-              <img
+              <Image
+              width={800}
+              height={500}
                 src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&q=80&w=800"
                 alt="Handcrafting jewelry"
                 className="w-full h-[500px] object-cover"

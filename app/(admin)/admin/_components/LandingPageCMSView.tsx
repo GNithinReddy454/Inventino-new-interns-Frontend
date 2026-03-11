@@ -446,18 +446,37 @@ export default function LandingPageCMSView() {
                         </div>
 
                         <div className="space-y-3 flex-1 overflow-y-auto pr-1" style={{ maxHeight: "380px" }}>
-                            {[
-                                { id: 1, name: "Handmade Rose Gold Bracelet", price: "$34.99", stock: 45, color: "bg-[#D9A16C]", selected: false },
-                                { id: 2, name: "Pearl Necklace Set", price: "$129.99", stock: 8, color: "bg-[#BCC4C9]", selected: true },
-                                { id: 3, name: "Boho Beaded Bracelet", price: "$44.99", stock: 32, color: "bg-[#45AF4A]", selected: false },
-                                { id: 4, name: "Leather Tote Bag", price: "$159.99", stock: 15, color: "bg-[#FF67A1]", selected: false },
-                                { id: 5, name: "Gold Plated Earrings", price: "$94.99", stock: 12, color: "bg-[#FFDA00]", selected: false },
-                            ].map((prod) => (
+                            {(
+                                [
+                                    { id: 1, name: "Handmade Rose Gold Bracelet", price: "$34.99", stock: 45, color: "bg-[#D9A16C]", selected: false },
+                                    { id: 2, name: "Pearl Necklace Set", price: "$129.99", stock: 8, color: "bg-[#BCC4C9]", selected: true },
+                                    { id: 3, name: "Boho Beaded Bracelet", price: "$44.99", stock: 32, color: "bg-[#45AF4A]", selected: false },
+                                    { id: 4, name: "Leather Tote Bag", price: "$159.99", stock: 15, color: "bg-[#FF67A1]", selected: false },
+                                    { id: 5, name: "Gold Plated Earrings", price: "$94.99", stock: 12, color: "bg-[#FFDA00]", selected: false },
+                                ] as Array<{
+                                    id: number;
+                                    name: string;
+                                    price: string;
+                                    stock: number;
+                                    color: string;
+                                    selected: boolean;
+                                    imageUrl?: string;
+                                    image?: string;
+                                    images?: Array<{ url?: string } | string>;
+                                }>
+                            ).map((prod) => {
+                                const firstImage = prod.images?.[0];
+                                const src =
+                                    prod.imageUrl ||
+                                    prod.image ||
+                                    (typeof firstImage === "string" ? firstImage : firstImage?.url);
+
+                                return (
                                 <div key={prod.id} className={`flex items-center gap-4 p-3.5 rounded-xl border ${prod.selected ? 'border-[#DF4C77] bg-[#FDF2F5]' : 'border-border bg-white'} cursor-pointer hover:border-pink-200 transition-colors shadow-sm`}>
                                     <div className={`w-14 h-14 rounded-lg shrink-0 overflow-hidden ${prod.color}`}>
-                                        {prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0] ? (
+                                        {src ? (
                                             <img
-                                                src={prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0]}
+                                                src={src}
                                                 alt={prod.name || "Product"}
                                                 className="w-full h-full object-cover"
                                             />
@@ -469,7 +488,8 @@ export default function LandingPageCMSView() {
                                         <p className="text-[11px] text-muted-foreground mt-0.5">{prod.stock} in stock</p>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         <div className="flex gap-4 mt-5 pt-5">
