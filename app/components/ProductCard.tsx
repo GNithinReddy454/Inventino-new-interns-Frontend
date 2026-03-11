@@ -13,7 +13,7 @@ export interface ProductCardProduct extends Product {
   images?: string[];
   description?: string;
   tags?: string[];
-  originalPrice?: number;
+  originalPrice?: number | null;
 }
 
 interface ProductCardProps {
@@ -27,18 +27,11 @@ function StarRating({ rating }: { rating: number }) {
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((star) => {
         const filled = rating >= star;
-        const partial = !filled && rating > star - 1;
         return (
           <svg key={star} width="11" height="11" viewBox="0 0 24 24" className="flex-shrink-0">
-            <defs>
-              <linearGradient id={`star-grad-${star}-${rating}`}>
-                <stop offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`} stopColor="#E8456A" />
-                <stop offset={`${partial ? Math.round((rating - (star - 1)) * 100) : 0}%`} stopColor="#e5e7eb" />
-              </linearGradient>
-            </defs>
             <polygon
               points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-              fill={filled ? "#E8456A" : partial ? `url(#star-grad-${star}-${rating})` : "#e5e7eb"}
+              fill={filled ? "#FFD700" : "#e5e7eb"}
             />
           </svg>
         );
@@ -66,9 +59,13 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const [isHovered, setIsHovered] = useState(false);
+  const [added, setAdded] = useState(false);
 
   const isSaved = wishlistItems.some((wItem: any) =>
-    wItem.product?._id === product.id || wItem.product?.id === product.id
+    wItem.product?._id === String(product.id) ||
+    wItem.product?.id === String(product.id) ||
+    wItem.product?._id === product.id ||
+    wItem.product?.id === product.id
   );
 
   const images: string[] =
@@ -109,8 +106,40 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     e.preventDefault(); e.stopPropagation();
     addToCart(cartProduct, 1);
     dispatch(reduxAddToCart({ productId: String(product.id), quantity: 1 }));
-    onAdd?.(productName);
     showToast("Success!", "Added to bag", "success");
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (isSaved) {
+      dispatch(removeWishlistItem(String(product.id)));
+      showToast("Removed", "Removed from wishlist", "info");
+    } else {
+      dispatch(
+        addWishlistItem({
+          productId: String(product.id),
+          product: {
+            _id: String(product.id),
+            id: product.id,
+            name: productName,
+            image: images[0] ?? "",
+            images: images,
+            price: product.price,
+            category: product.category,
+            badge: product.badge,
+            rating: product.rating,
+            reviews: product.reviews,
+            originalPrice: product.originalPrice ?? null,
+            tags: product.tags ?? [],
+          },
+        })
+      );
+      showToast("Success!", "Added to wishlist", "success");
+    }
   };
 
   const rating = typeof product.rating === "number" ? product.rating : 4.7;
@@ -127,29 +156,24 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   return (
     <div
       className="relative h-full"
-      style={{ borderRadius: 16, overflow: "visible" }}
-      // Desktop hover
+      style={{ borderRadius: 12, overflow: "visible" }}
       onMouseEnter={activate}
       onMouseLeave={deactivate}
-      // Mobile touch — same activate/deactivate
       onTouchStart={activate}
       onTouchEnd={deactivate}
       onTouchCancel={deactivate}
     >
       <Link
         href={`/products/${product.id}`}
-        className="flex flex-col h-full w-full"
+        className="flex flex-col h-full w-full bg-white"
         style={{
-          borderRadius: 16,
+          borderRadius: 12,
           overflow: "hidden",
           textDecoration: "none",
           color: "inherit",
-          background: isHovered ? "#ffe0eb" : "#fff0f5",
-          boxShadow: isHovered
-            ? "0 8px 32px rgba(232,69,106,0.22)"
-            : "0 2px 16px rgba(0,0,0,0.10)",
-          transform: isHovered ? "scale(1.035)" : "scale(1)",
-          transition: "background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+          transition: "box-shadow 0.2s ease, transform 0.2s ease",
+          transform: isHovered ? "scale(1.02)" : "scale(1)",
           willChange: "transform",
         }}
       >
@@ -168,17 +192,10 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
 
           <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
             <button
-              onClick={(e) => {
-                e.preventDefault(); e.stopPropagation();
-                if (!isSaved) {
-                  dispatch(addWishlistItem(String(product.id)));
-                  showToast("Success!", "Added to wishlist", "success");
-                } else {
-                  dispatch(removeWishlistItem(String(product.id)));
-                  showToast("Removed", "Removed from wishlist", "info");
-                }
-              }}
-              className={`w-7 h-7 flex items-center justify-center rounded-full shadow-md transition-all duration-200 ${isSaved ? "bg-[#E8456A] text-white" : "bg-white text-gray-400"}`}
+              onClick={handleWishlistToggle}
+              className={`w-7 h-7 flex items-center justify-center rounded-full shadow-md transition-all duration-200 bg-white ${
+                isSaved ? "text-[#E8456A]" : "text-gray-400"
+              }`}
             >
               <Heart size={13} fill={isSaved ? "currentColor" : "none"} strokeWidth={2} />
             </button>
@@ -208,39 +225,34 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           )}
         </div>
 
-        {/* BODY */}
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "10px 12px 12px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, gap: 4 }}>
-            <span style={{ fontSize: 9, color: "#E8456A", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-              {product.category}
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
-              <StarRating rating={rating} />
-              <span style={{ fontSize: 9, color: "#6b7280", whiteSpace: "nowrap" }}>{rating.toFixed(1)}</span>
-            </div>
+        {/* BODY - Clean design matching second image */}
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "12px" }}>
+          <div style={{ fontSize: 11, color: "#E8456A", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+            {product.category || "EXCLUSIVE"}
           </div>
 
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", lineHeight: 1.4, marginBottom: 4 }}>
             {productName}
           </div>
 
           {tags.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 8 }}>
-              {tags.slice(0, 2).map((tag, i) => (
-                <span key={i} style={{ fontSize: 9, color: "#6b7280", background: "#f3f4f6", padding: "2px 6px", borderRadius: 3, fontWeight: 500 }}>
-                  {typeof tag === "string" ? tag : ((tag as any)?.text ?? "")}
-                </span>
-              ))}
+            <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
+              {tags.slice(0, 2).join(" • ")}
             </div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: "auto" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 13, fontWeight: 900, color: "#E8456A", lineHeight: 1, whiteSpace: "nowrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 10 }}>
+            <StarRating rating={rating} />
+            <span style={{ fontSize: 11, color: "#6b7280", marginLeft: 2 }}>{rating.toFixed(1)}</span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>
                 ₹{product.price.toFixed(0)}
               </span>
               {hasDiscount && (
-                <span style={{ fontSize: 10, color: "#9ca3af", textDecoration: "line-through", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 12, color: "#9ca3af", textDecoration: "line-through" }}>
                   ₹{product.originalPrice!.toFixed(0)}
                 </span>
               )}
@@ -248,14 +260,19 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
             <button
               onClick={handleAdd}
               style={{
-                backgroundColor: buttonBg, color: "#fff",
-                fontSize: 9, fontWeight: 800, padding: "7px 10px",
-                borderRadius: 999, border: "none", cursor: "pointer",
-                textTransform: "uppercase", letterSpacing: "0.06em",
-                whiteSpace: "nowrap", flexShrink: 0,
+                backgroundColor: added ? "#16a34a" : buttonBg,
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "6px 12px",
+                borderRadius: 20,
+                border: "none",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "background-color 0.2s ease",
               }}
             >
-              Add to Bag
+              {added ? "ADDED" : "ADD TO BAG"}
             </button>
           </div>
         </div>

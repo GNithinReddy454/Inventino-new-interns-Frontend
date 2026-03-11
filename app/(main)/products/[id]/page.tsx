@@ -17,8 +17,9 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
-import { useAppDispatch } from "@/redux/store";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { addToCart as reduxAddToCart } from "@/redux/cartslice";
+import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
 import { useAuth } from "@/app/(main)/components/authContext";
 import ProductReviews from "@/app/components/ProductReviews";
 import ProductCard from "@/app/components/ProductCard";
@@ -74,14 +75,33 @@ interface SavedItem {
   id?: string | number;
 }
 
+interface ReviewData {
+  reviews: Array<{
+    user: {
+      name: string;
+      email: string;
+    };
+    rating: number;
+    comment: string;
+    images?: Array<{ url: string }>;
+    createdAt?: string;
+  }>;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalReviews: number;
+    limit: number;
+  };
+}
+
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800";
 
 const COLORS = [
   { label: "Rose Gold", value: "#C9956C" },
-  { label: "Silver",    value: "#B0B0B0" },
-  { label: "Gold",      value: "#FFD700" },
-  { label: "Pink",      value: "#D94F7A" },
+  { label: "Silver",     value: "#B0B0B0" },
+  { label: "Gold",       value: "#FFD700" },
+  { label: "Pink",       value: "#D94F7A" },
 ];
 
 const SIZES = ["Small", "Medium", "Large"];
@@ -92,8 +112,15 @@ export default function ProductDetailsPage() {
   const { addToCart } = useCart();
   const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const { handleSaved, savedItems = [] } = useStore();
+  const { savedItems = [] } = useStore();
   const { showToast } = useToast();
+
+  // Debugging: Get wishlist directly from Redux
+  const wishlistFromRedux = useAppSelector((state: any) => state.wishlist?.items || []);
+  console.log("=== DEBUG INFO ===");
+  console.log("Wishlist items from Redux:", wishlistFromRedux);
+  console.log("Saved items from store context:", savedItems);
+  console.log("Current user:", user);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,6 +141,9 @@ export default function ProductDetailsPage() {
   const [similarProducts, setSimilarProducts] = useState<SimilarProduct[]>([]);
   const [similarLoading, setSimilarLoading] = useState(false);
 
+  const [reviewsData, setReviewsData] = useState<ReviewData | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const mainImageScrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -123,6 +153,7 @@ export default function ProductDetailsPage() {
   const hasFetchedStory = useRef(false);
   const hasFetchedSimilar = useRef(false);
   const hasFetchedProduct = useRef(false);
+  const hasFetchedReviews = useRef(false);
 
   const fetchSimilarWith = async (id: string) => {
     if (!id || hasFetchedSimilar.current) return;
@@ -138,6 +169,22 @@ export default function ProductDetailsPage() {
       console.error("[Similar] fetch failed");
     } finally {
       setSimilarLoading(false);
+    }
+  };
+
+  const fetchProductReviews = async (id: string) => {
+    if (!id || hasFetchedReviews.current) return;
+    hasFetchedReviews.current = true;
+    setReviewsLoading(true);
+    try {
+      const response = await productService.getReviews(id);
+      if (response?.data) {
+        setReviewsData(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch reviews:", error);
+    } finally {
+      setReviewsLoading(false);
     }
   };
 
@@ -164,9 +211,31 @@ export default function ProductDetailsPage() {
       try {
         const res = await productService.getById(productId);
         const data = res?.data ?? res;
+        
+        let liveRating = 4.8;
+        let liveReviewCount = 0;
+        try {
+          const reviewRes = await productService.getReviews(productId);
+          if (reviewRes?.data) {
+            const reviewData = reviewRes.data;
+            setReviewsData(reviewData);
+            liveReviewCount = reviewData.pagination.totalReviews;
+            
+            if (reviewData.reviews && reviewData.reviews.length > 0) {
+              const totalRating = reviewData.reviews.reduce((sum, review) => sum + review.rating, 0);
+              liveRating = Number((totalRating / reviewData.reviews.length).toFixed(1));
+            } else {
+              liveRating = data.ratingsAverage || 4.8;
+            }
+          }
+        } catch (e) { 
+          console.error("Review fetch error", e); 
+        }
+
         const prdId: string = data?.productId ?? "";
         const slug: string = data?.slug ?? "";
         const mongoId: string = String(data?._id ?? productId);
+        
         setProduct({
           id: 0,
           mongoId,
@@ -179,12 +248,20 @@ export default function ProductDetailsPage() {
           images: data.images?.length ? data.images.map((img: ImageType) => img.url) : [FALLBACK_IMAGE],
           slug,
           prdId: prdId,
-          rating: 4.8,
-          reviews: 128,
+          rating: liveRating,
+          reviews: liveReviewCount,
         });
-        if (prdId) await fetchSimilarWith(prdId);
-        else if (mongoId) await fetchSimilarWith(mongoId);
-        else if (slug) await fetchSimilarWith(slug);
+
+        if (prdId) {
+          await fetchSimilarWith(prdId);
+          await fetchProductReviews(prdId);
+        } else if (mongoId) {
+          await fetchSimilarWith(mongoId);
+          await fetchProductReviews(mongoId);
+        } else if (slug) {
+          await fetchSimilarWith(slug);
+          await fetchProductReviews(slug);
+        }
       } catch {
         console.error("[getById] failed:");
       } finally {
@@ -262,10 +339,25 @@ export default function ProductDetailsPage() {
   }
 
   const backendProductId: string = product.mongoId || product.prdId || productId;
+  console.log("Current product backend ID:", backendProductId);
 
-  const isSaved = (savedItems as SavedItem[]).some((item: SavedItem) =>
-    String(item.product?._id || item._id || item.id) === String(backendProductId)
-  );
+  // Updated isSaved check to match both store context and Redux structure
+  const isSaved = savedItems.some((item: any) => {
+    const itemId = item.product?._id || item._id || item.id;
+    const matches = String(itemId) === String(backendProductId);
+    if (matches) {
+      console.log("Found matching item in savedItems:", item);
+    }
+    return matches;
+  });
+
+  // Also check Redux directly
+  const isSavedInRedux = wishlistFromRedux.some((item: any) => {
+    const itemId = item.product?._id || item._id || item.id;
+    return String(itemId) === String(backendProductId);
+  });
+  console.log("isSaved (from context):", isSaved);
+  console.log("isSavedInRedux (direct):", isSavedInRedux);
 
   const discountPct =
     product.originalPrice && product.originalPrice > product.price
@@ -331,22 +423,75 @@ export default function ProductDetailsPage() {
     }
   };
 
+  // Updated handleWishlist with detailed logging
   const handleWishlist = () => {
     if (!product) return;
+    
+    const productIdStr = String(backendProductId);
+    console.log("=== WISHLIST TOGGLE ===");
+    console.log("Toggling wishlist for product ID:", productIdStr);
+    console.log("Current isSaved state:", isSaved);
+    console.log("Current isSavedInRedux:", isSavedInRedux);
+    console.log("User logged in:", !!user);
+    
     const willBeSaved = !isSaved;
-    handleSaved({ ...product, id: backendProductId });
+    console.log("Will be saved:", willBeSaved);
+    
     if (willBeSaved) {
+      console.log("Dispatching addWishlistItem with:", {
+        productId: productIdStr,
+        product: {
+          _id: productIdStr,
+          id: productIdStr,
+          name: product.name,
+          image: product.image,
+          images: product.images,
+          price: product.price,
+          category: product.category,
+          badge: product.badge,
+          rating: product.rating,
+          reviews: product.reviews,
+          originalPrice: product.originalPrice || null,
+        }
+      });
+      
+      dispatch(
+        addWishlistItem({
+          productId: productIdStr,
+          product: {
+            _id: productIdStr,
+            id: productIdStr,
+            name: product.name,
+            image: product.image,
+            images: product.images,
+            price: product.price,
+            category: product.category,
+            badge: product.badge,
+            rating: product.rating,
+            reviews: product.reviews,
+            originalPrice: product.originalPrice || null,
+          },
+        })
+      );
       showToast("Success!", "Added to wishlist", "success");
     } else {
+      console.log("Dispatching removeWishlistItem for ID:", productIdStr);
+      dispatch(removeWishlistItem(productIdStr));
       showToast("Removed", "Removed from wishlist", "info");
     }
+    
+    // Log after 1 second to see if state changed
+    setTimeout(() => {
+      console.log("After toggle - Redux wishlist:", wishlistFromRedux);
+      console.log("After toggle - savedItems:", savedItems);
+    }, 1000);
   };
 
   const scrollSimilar = (dir: "left" | "right") => {
     if (!similarProductsRef.current) return;
     const { scrollLeft, clientWidth } = similarProductsRef.current;
     similarProductsRef.current.scrollTo({
-      left: dir === "left" ? scrollLeft - clientWidth * 0.8 : scrollLeft + clientWidth * 0.8,
+      left: dir === "left" ? scrollLeft - clientWidth : scrollLeft + clientWidth,
       behavior: "smooth",
     });
   };
@@ -371,6 +516,7 @@ export default function ProductDetailsPage() {
     !similarLoading && similarProducts.length > 0
       ? similarProducts.map((p) => ({
           id: p._id,
+          _id: p._id,
           name: p.name,
           price: p.price,
           originalPrice: p.price + 150,
@@ -380,12 +526,12 @@ export default function ProductDetailsPage() {
           rating: p.ratingsAverage || 4.5,
           reviews: p.ratingsCount || 0,
           description: p.description,
+          slug: p.slug
         }))
       : [];
 
   return (
     <div className="bg-white font-sans overflow-x-clip min-h-screen relative pb-4 md:pb-0">
-      {/* Back button */}
       <div className="max-w-7xl mx-auto px-4 pt-4 md:pt-6">
         <Link
           href="/products"
@@ -395,9 +541,7 @@ export default function ProductDetailsPage() {
         </Link>
       </div>
 
-      {/* Main content */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-8 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 border-b border-gray-100">
-        {/* Image section */}
         <div className="flex flex-col gap-3 md:gap-6">
           <div className="flex flex-col gap-3 md:gap-4">
             <div
@@ -405,10 +549,10 @@ export default function ProductDetailsPage() {
               className="relative w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden border border-gray-100 group"
             >
               <div className="absolute top-3 left-3 md:top-6 md:left-6 flex flex-col gap-1.5 md:gap-2 z-30 pointer-events-none">
-                <div className="bg-[#E05C7E] text-white text-[10px] md:text-[13px] font-bold px-3 py-1.5 md:px-5 md:py-2 rounded-full shadow-md">
+                <div className="w-fit bg-[#E05C7E] text-white text-[9px] md:text-[13px] font-bold px-2.5 py-1 md:px-5 md:py-2 rounded-full shadow-md">
                   Bestseller
                 </div>
-                <div className="bg-[#4CAF50] text-white text-[10px] md:text-[13px] font-bold px-3 py-1.5 md:px-5 md:py-2 rounded-full shadow-md">
+                <div className="w-fit bg-[#4CAF50] text-white text-[9px] md:text-[13px] font-bold px-2.5 py-1 md:px-5 md:py-2 rounded-full shadow-md">
                   New
                 </div>
               </div>
@@ -476,7 +620,6 @@ export default function ProductDetailsPage() {
             </div>
           </div>
 
-          {/* Thumbnail strip */}
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={goToPrevImage}
@@ -514,7 +657,6 @@ export default function ProductDetailsPage() {
           </div>
         </div>
 
-        {/* Product info */}
         <div className="flex flex-col gap-4 md:gap-5">
           <span className="text-[#D94F7A] text-xs font-bold uppercase tracking-widest">
             {product.category}
@@ -656,25 +798,42 @@ export default function ProductDetailsPage() {
               </button>
               {activeAccordion === "reviews" && (
                 <div className="px-4 md:px-5 pb-4 md:pb-5 animate-in fade-in slide-in-from-top-2 flex flex-col gap-4 md:gap-5">
-                  <div className="border-b border-gray-50 pb-3 md:pb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-pink-100 flex items-center justify-center text-[#D94F7A] font-bold text-[10px] md:text-xs">S</div>
-                      <div>
-                        <p className="text-xs md:text-sm font-bold text-gray-900">Sarah Miller</p>
-                        <p className="text-[8px] md:text-[10px] text-gray-400">January 15, 2026 • Verified Purchase</p>
+                  <div className="py-2">
+                    {reviewsLoading ? (
+                      <div className="flex justify-center py-4">
+                        <div className="w-6 h-6 border-2 border-gray-200 border-t-[#D94F7A] rounded-full animate-spin" />
                       </div>
-                    </div>
-                    <div className="flex gap-1 mb-2 text-yellow-400">
-                      {[1,2,3,4,5].map((s) => <Star key={s} size={10} className="md:w-3 md:h-3" fill="currentColor" />)}
-                    </div>
-                    <p className="text-[10px] md:text-xs text-gray-600 italic">&quot;Absolutely Beautiful! The craftsmanship is incredible.&quot;</p>
+                    ) : reviewsData && reviewsData.reviews.length > 0 ? (
+                      <>
+                        <p className="text-[10px] md:text-xs text-gray-500 mb-3">
+                          Live rating: {product.rating.toFixed(1)} stars from {product.reviews} reviews
+                        </p>
+                        <div className="space-y-3 max-h-48 overflow-y-auto">
+                          {reviewsData.reviews.slice(0, 3).map((review, idx) => (
+                            <div key={idx} className="border-b border-gray-100 pb-2 last:border-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-semibold text-gray-900">{review.user.name}</span>
+                                <div className="flex gap-0.5">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star key={s} size={10} fill={s <= review.rating ? "#D94F7A" : "none"} stroke="#D94F7A" strokeWidth={1} />
+                                  ))}
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-600 line-clamp-2">{review.comment}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-500">No reviews yet. Be the first to review this product!</p>
+                    )}
+                    <button
+                      onClick={() => { setShowBottomReviews(true); setTimeout(() => reviewsSectionRef.current?.scrollIntoView({ behavior: "smooth" }), 100); }}
+                      className="mt-3 text-[#D94F7A] text-[10px] md:text-xs font-bold uppercase tracking-wider hover:underline"
+                    >
+                      View All {product.reviews} Reviews
+                    </button>
                   </div>
-                  <button
-                    onClick={() => { setShowBottomReviews(true); setTimeout(() => reviewsSectionRef.current?.scrollIntoView({ behavior: "smooth" }), 100); }}
-                    className="text-[#D94F7A] text-[10px] md:text-xs font-bold uppercase tracking-wider hover:underline text-center"
-                  >
-                    View All {product.reviews} Reviews
-                  </button>
                 </div>
               )}
             </div>
@@ -685,7 +844,7 @@ export default function ProductDetailsPage() {
               >
                 <div className="flex flex-col items-start text-left">
                   <span className="text-sm md:text-base font-bold text-gray-900">Product Detail</span>
-                  <span className="text-[10px] md:text-xs text-gray-400 mt-0.5">Share your experience with this product</span>
+                  <span className="text-[10px] md:text-xs text-gray-400 mt-0.5">Technical specifications and care</span>
                 </div>
                 <div className={`p-1.5 md:p-2 bg-gray-100 rounded-full transition-transform duration-300 shrink-0 ${activeAccordion === "detail" ? "rotate-180" : ""}`}>
                   <ChevronDown size={16} className="md:w-[18px] md:h-[18px] text-gray-600" />
@@ -701,7 +860,6 @@ export default function ProductDetailsPage() {
         </div>
       </div>
 
-      {/* Story section */}
       {!storyLoading && (
         <div className="bg-[#050505] py-10 md:py-16 lg:py-32 px-4 relative">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-10">
@@ -735,46 +893,28 @@ export default function ProductDetailsPage() {
         </div>
       )}
 
-      {/* ── Similar Products ── */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-2 md:pt-16 md:pb-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-12 md:pt-16 md:pb-8 group/similar">
         <h3 className="text-xl md:text-2xl font-serif text-gray-900 mb-4 md:mb-8">Similar Products</h3>
-
-        {/* Wrapper: relative for button positioning, extra side padding on desktop for button gutters */}
-        <div className="relative group/similar px-0 md:px-10">
-
-          {/* Prev button in left gutter */}
+        <div className="relative flex items-center">
           <button
             onClick={() => scrollSimilar("left")}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl border border-gray-100 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all opacity-0 group-hover/similar:opacity-100 hidden md:flex items-center justify-center"
+            className="absolute left-0 md:-left-8 top-1/2 -translate-y-[100%] md:-translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-lg rounded-full border border-gray-200 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all flex items-center justify-center lg:opacity-0 lg:group-hover/similar:opacity-100"
+            style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
           >
-            <ChevronLeft size={22} />
+            <ChevronLeft size={24} className="md:w-6 md:h-6" />
           </button>
 
-          {/* Next button in right gutter */}
-          <button
-            onClick={() => scrollSimilar("right")}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl border border-gray-100 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all opacity-0 group-hover/similar:opacity-100 hidden md:flex items-center justify-center"
-          >
-            <ChevronRight size={22} />
-          </button>
-
-          {/* 
-            Mobile:  horizontal scroll, each card = 75vw (swipeable)
-            Desktop: NO scroll — 4 cards fill the row exactly using flex + w-[calc]
-                     gap-6 = 24px × 3 gaps = 72px total gap
-                     each card = (100% - 72px) / 4
-          */}
           <div
             ref={similarProductsRef}
-            className="flex gap-4 md:gap-6 overflow-x-auto md:overflow-x-visible pb-6 md:pb-8 no-scrollbar snap-x md:snap-none scroll-smooth"
+            className="flex overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory scroll-smooth gap-4 md:gap-6 w-full"
           >
             {!similarLoading &&
-              (displaySimilarProducts.length > 0 ? displaySimilarProducts : [1, 2, 3, 4]).map((p) => (
+              (displaySimilarProducts.length > 0 ? displaySimilarProducts : [1, 2, 3, 4]).map((p, index) => (
                 <div
-                  key={typeof p === "number" ? p : p.id}
-                  className="snap-start similar-card-wrapper"
+                  key={typeof p === "number" ? `skeleton-${index}` : p.id}
+                  className="flex-none w-full md:w-[calc(25%-1.25rem)] snap-start flex justify-center"
                 >
-                  <div className="w-full h-full">
+                  <div className="w-full">
                     <ProductCard
                       product={typeof p === "number" ? { ...product, id: p } : p}
                     />
@@ -782,37 +922,39 @@ export default function ProductDetailsPage() {
                 </div>
               ))}
           </div>
+
+          <button
+            onClick={() => scrollSimilar("right")}
+            className="absolute right-0 md:-right-8 top-1/2 -translate-y-[100%] md:-translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-lg rounded-full border border-gray-200 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all flex items-center justify-center lg:opacity-0 lg:group-hover/similar:opacity-100"
+            style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
+          >
+            <ChevronRight size={24} className="md:w-6 md:h-6" />
+          </button>
         </div>
       </div>
 
-      {/* Reviews section */}
       {showBottomReviews && (
         <div
           ref={reviewsSectionRef}
           className="max-w-7xl mx-auto pb-6 md:pb-10 px-4 md:px-6 pt-2 md:pt-6 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-1000"
         >
-          <ProductReviews productId={productId} isLoggedIn={false} hasPurchased={false} />
+          <ProductReviews 
+            productId={backendProductId} 
+            mongoProductId={backendProductId} 
+            isLoggedIn={!!user} 
+            hasPurchased={false} 
+          />
         </div>
       )}
 
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Mobile: each card takes 75vw for swipe feel */
-        .similar-card-wrapper {
-          flex: 0 0 75vw;
-          width: 75vw;
-          min-width: 0;
-        }
-
-        /* Desktop: 4 equal columns filling the full row */
-        @media (min-width: 768px) {
-          .similar-card-wrapper {
-            flex: 1 1 0%;
-            width: auto;
-            min-width: 0;
-          }
+        @media (max-width: 768px) {
+           .fixed.bottom-6.right-6 {
+             bottom: 5.5rem !important; 
+             z-index: 50;
+           }
         }
       `}</style>
     </div>

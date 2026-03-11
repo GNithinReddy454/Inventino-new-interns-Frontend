@@ -1,3 +1,4 @@
+
 import apiClient from "@/lib/api";
 
 /**
@@ -22,7 +23,6 @@ export const reviewService = {
       return response.data;
     } catch (error: any) {
       console.error("Review submission failed:", error.response?.data);
-      // Returns a structured error object similar to placeOrder fallback
       return {
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || "Failed to submit review",
@@ -39,12 +39,35 @@ export const reviewService = {
   async getReviews(productId: string) {
     try {
       const response = await apiClient.get(`/reviews/product/${productId}`);
-      return response.data;
+
+      // Backend may return HTTP 200 but with statusCode:404 in the body
+      const body = response.data;
+      const bodyStatus = body?.statusCode ?? body?.status;
+      if (bodyStatus === 404 || body?.message?.toLowerCase().includes("not found")) {
+        return { statusCode: 404, message: "No reviews found", data: { reviews: [] }, error: null };
+      }
+
+      return body;
     } catch (error: any) {
-      console.error("Fetching reviews failed:", error.response?.data);
+      const status = error.response?.status;
+
+      // 404 via HTTP status — product has no reviews yet, not a real error
+      if (status === 404) {
+        return { statusCode: 404, message: "No reviews found", data: { reviews: [] }, error: null };
+      }
+
+      const isNetworkError = !error.response;
+      const errorDetail = isNetworkError
+        ? `Network error — ${String(error.message)}`
+        : `HTTP ${status}: ${JSON.stringify(error.response.data)}`;
+
+      console.error("Fetching reviews failed:", errorDetail);
+
       return {
-        statusCode: error.response?.status || 500,
-        message: error.response?.data?.message || "Failed to fetch reviews",
+        statusCode: isNetworkError ? 503 : (status || 500),
+        message: isNetworkError
+          ? "Unable to reach server. Please check your connection."
+          : (error.response?.data?.message || "Failed to fetch reviews"),
         data: { reviews: [] },
         error: error.message
       };
