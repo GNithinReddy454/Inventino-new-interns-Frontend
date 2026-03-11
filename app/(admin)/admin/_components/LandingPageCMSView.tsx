@@ -7,7 +7,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Toggle from "./Toggle";
 import { useToast } from "@/app/components/GlobalToast";
-import { getCMSData, updateCMSData } from "@/services/admin.service";
+import { getCMSData, updateCMSData, getActiveBanners, createBanner, updateBanner, deleteBanner } from "@/services/admin.service";
+import type { Banner } from "@/services/admin.service";
 
 const featureSchema = z.object({
     title: z.string().min(3, "Feature title must be at least 3 characters"),
@@ -51,9 +52,13 @@ const DEFAULT_FEATURES = [
 export default function LandingPageCMSView() {
     const [offerText, setOfferText] = useState("");
     const [showOfferBar, setShowOfferBar] = useState(true);
+    const [banners, setBanners] = useState<Banner[]>([]);
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [bannerHeading, setBannerHeading] = useState("");
     const [bannerText, setBannerText] = useState("");
     const [bannerImage, setBannerImage] = useState<string | null>(null);
+    const [bannerImageFile, setBannerImageFile] = useState<File | null>(null);
+    const [activeBannerId, setActiveBannerId] = useState<string | null>(null);
     const [features, setFeatures] = useState<Array<{ id: number; title: string; description: string; enabled: boolean; icon: string }>>(DEFAULT_FEATURES);
     const [showAddModal, setShowAddModal] = useState(false);
     const { showToast } = useToast();
@@ -66,13 +71,13 @@ export default function LandingPageCMSView() {
         const fetchCMS = async () => {
             setIsLoading(true);
             try {
-                const data = await getCMSData();
-                if (data) {
-                    setOfferText(data.offerBar.text);
-                    setShowOfferBar(data.offerBar.isActive);
-                    setBannerHeading(data.heroBanner.heading);
-                    setBannerText(data.heroBanner.text);
-                    setBannerImage(data.heroBanner.image || null);
+                const [cms, fetchedBanners] = await Promise.all([getCMSData(), getActiveBanners()]);
+                if (cms) {
+                    setOfferText(cms.offerBar.text);
+                    setShowOfferBar(cms.offerBar.isActive);
+                }
+                if (fetchedBanners && fetchedBanners.length > 0) {
+                    setBanners(fetchedBanners);
                 }
             } catch (err) {
                 console.error("Failed to fetch CMS data:", err);
@@ -128,6 +133,7 @@ export default function LandingPageCMSView() {
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setBannerImageFile(file);
             const reader = new FileReader();
             reader.onload = (ev) => setBannerImage(ev.target?.result as string);
             reader.readAsDataURL(file);
@@ -154,14 +160,83 @@ export default function LandingPageCMSView() {
         }
     };
 
+    const resolveImageUrl = (imagePath: string | null | undefined): string | null => {
+        if (!imagePath) return null;
+        if (imagePath.startsWith("http") || imagePath.startsWith("data:")) return imagePath;
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
+        const serverOrigin = apiBase.replace(/\/api$/, "");
+        return `${serverOrigin}${imagePath}`;
+    };
+
+    const startEditBanner = (index: number) => {
+        const b = banners[index];
+        setEditingIndex(index);
+        setActiveBannerId(b._id);
+        setBannerHeading(b.title ?? "");
+        setBannerText(b.link ?? "");
+        setBannerImage(resolveImageUrl(b.image) || null);
+        setBannerImageFile(null);
+    };
+
+    const startNewBanner = () => {
+        setEditingIndex(null);
+        setActiveBannerId(null);
+        setBannerHeading("");
+        setBannerText("");
+        setBannerImage(null);
+        setBannerImageFile(null);
+    };
+
+    const handleDeleteBanner = async (id: string) => {
+        try {
+            await deleteBanner(id);
+            setBanners(prev => prev.filter(b => b._id !== id));
+            if (activeBannerId === id) startNewBanner();
+            showToast("Success", "Banner deleted successfully!", "success");
+        } catch (err) {
+            console.error("Failed to delete banner:", err);
+            showToast("Error", "Failed to delete banner.", "error");
+        }
+    };
+
+    const refetchBanners = async () => {
+        const fresh = await getActiveBanners();
+        if (fresh) setBanners(fresh);
+    };
+
     const handleSaveBanner = async () => {
+        if (!bannerHeading.trim()) {
+            showToast("Error", "Banner heading is required.", "error");
+            return;
+        }
         setSavingBanner(true);
         try {
-            await updateCMSData({ heroBanner: { heading: bannerHeading, text: bannerText, image: bannerImage || "" } });
-            showToast("Success", "Hero banner updated successfully!", "success");
+            const formData = new FormData();
+            formData.append("title", bannerHeading);
+            formData.append("link", bannerText);
+            formData.append("isActive", "true");
+            if (bannerImageFile) formData.append("image", bannerImageFile);
+
+            if (activeBannerId) {
+                const updated = await updateBanner(activeBannerId, formData);
+                if (!updated) {
+                    showToast("Error", "Failed to update banner.", "error");
+                    return;
+                }
+                showToast("Success", "Banner updated successfully!", "success");
+            } else {
+                const created = await createBanner(formData);
+                if (!created?._id) {
+                    showToast("Error", "Failed to create banner.", "error");
+                    return;
+                }
+                setActiveBannerId(created._id);
+                showToast("Success", "New banner created! It will now appear on the homepage.", "success");
+            }
+            await refetchBanners();
         } catch (err) {
             console.error("Failed to save banner:", err);
-            showToast("Error", "Failed to update banner.", "error");
+            showToast("Error", "Failed to save banner.", "error");
         } finally {
             setSavingBanner(false);
         }
@@ -246,12 +321,73 @@ export default function LandingPageCMSView() {
 
             {/* 2. HERO BANNER */}
             <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-                <h3 className="font-bold text-foreground text-base">
-                    Hero Banner Management
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5 mb-5">
-                    Update your main landing page banner image and text
-                </p>
+                <div className="flex justify-between items-start mb-5">
+                    <div>
+                        <h3 className="font-bold text-foreground text-base">
+                            Hero Banner Management
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Manage your landing page banner carousel
+                        </p>
+                    </div>
+                    {!isLoading && (
+                        <button
+                            onClick={startNewBanner}
+                            className="px-5 py-2.5 bg-[#DF4C77] text-white text-[13px] font-bold rounded-xl hover:bg-[#C83B61] transition-all shadow-sm shrink-0"
+                        >
+                            + Add New Banner
+                        </button>
+                    )}
+                </div>
+
+                {/* Existing Banners List */}
+                {!isLoading && banners.length > 0 && (
+                    <div className="mb-5">
+                        <p className="text-xs font-bold text-foreground mb-2">Existing Banners ({banners.length})</p>
+                        <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                            {banners.map((b, idx) => (
+                                <div
+                                    key={b._id}
+                                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                                        activeBannerId === b._id
+                                            ? "border-[#DF4C77] bg-[#FDF2F5]"
+                                            : "border-border bg-white hover:border-pink-200"
+                                    }`}
+                                    onClick={() => startEditBanner(idx)}
+                                    onKeyDown={(e) => handleDivKeyDown(e, () => startEditBanner(idx))}
+                                    role="button"
+                                    tabIndex={0}
+                                >
+                                    {b.image && (
+                                        <div className="w-16 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                                            <img
+                                                src={resolveImageUrl(b.image) || ""}
+                                                alt={b.title || "Banner"}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[13px] font-bold text-foreground truncate">{b.title || "Untitled Banner"}</p>
+                                        <p className="text-[11px] text-muted-foreground truncate">{b.link || "No description"}</p>
+                                    </div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteBanner(b._id); }}
+                                        className="text-xs text-red-400 hover:text-red-600 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-all shrink-0"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="border-t border-border pt-5">
+                    <p className="text-xs font-bold text-foreground mb-3">
+                        {activeBannerId ? "Edit Banner" : "New Banner"}
+                    </p>
+                </div>
 
                 {isLoading ? (
                     <div className="space-y-5">
@@ -290,6 +426,7 @@ export default function LandingPageCMSView() {
                                             fill
                                             className="object-contain"
                                             sizes="(max-width: 768px) 100vw, 500px"
+                                            unoptimized
                                         />
                                     </div>
                                 ) : (
@@ -347,13 +484,7 @@ export default function LandingPageCMSView() {
 
                         <div className="flex gap-3">
                             <button
-                                onClick={() => {
-                                    setBannerHeading("Created with love");
-                                    setBannerText(
-                                        "Made for you with passion and dedication. Each piece tells a unique story.",
-                                    );
-                                    setBannerImage(null);
-                                }}
+                                onClick={startNewBanner}
                                 className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
                             >
                                 Reset
@@ -363,7 +494,7 @@ export default function LandingPageCMSView() {
                                 disabled={savingBanner}
                                 className="flex-1 py-2.5 bg-[#DF4C77] text-white rounded-xl text-sm font-bold hover:bg-[#C83B61] transition-all shadow-sm disabled:opacity-70"
                             >
-                                {savingBanner ? "Saving..." : "Save Changes"}
+                                {savingBanner ? "Saving..." : activeBannerId ? "Update Banner" : "Create Banner"}
                             </button>
                         </div>
                     </>

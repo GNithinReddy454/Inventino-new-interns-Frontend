@@ -74,6 +74,19 @@ export interface SettingsData {
     security: { twoFactorEnabled: boolean };
 }
 
+export interface Banner {
+    _id: string;
+    title: string;
+    image: string;
+    link: string;
+    position: number;
+    isActive: boolean;
+    startAt: string | null;
+    endAt: string | null;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 // ─── API Response Wrapper ─────────────────────────────────────────────────────
 
 interface ApiResponse<T> {
@@ -234,5 +247,49 @@ export const updateAdminSettings = (data: Partial<SettingsData>): Promise<{ mess
             data
         );
         return res;
+    });
+
+/**
+ * GET /api/banners
+ * Fetch active banners (public).
+ */
+export const getActiveBanners = (): Promise<Banner[] | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<Banner[]>>("/banners");
+        return res.data;
+    });
+
+/**
+ * POST /api/banners
+ * Create a banner (admin).
+ */
+export const createBanner = (formData: FormData): Promise<Banner | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.post<ApiResponse<Banner>>("/banners", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
+        return res.data;
+    });
+
+/**
+ * PATCH /api/banners/:id
+ * Update a banner (admin).
+ */
+export const updateBanner = (id: string, formData: FormData): Promise<Banner | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.patch<ApiResponse<Banner>>(`/banners/${id}`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
+        return res.data;
+    });
+
+/**
+ * DELETE /api/banners/:id
+ * Delete a banner (admin).
+ */
+export const deleteBanner = (id: string): Promise<null> =>
+    gracefulFetch(async () => {
+        await apiMethods.delete(`/banners/${id}`);
+        return null;
     });
 
