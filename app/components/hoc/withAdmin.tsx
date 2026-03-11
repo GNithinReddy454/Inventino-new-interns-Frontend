@@ -6,12 +6,12 @@ import { useAuth } from "@/app/(main)/components/authContext";
 
 export const withAdmin = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
   return function ProtectedAdminRoute(props: P) {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const router = useRouter();
     const [isAuthorized, setIsAuthorized] = useState(false);
 
     useEffect(() => {
-      if (user === undefined) return;
+      if (loading) return;
       if (!user) {
         router.replace("/login");
       } else if (user.role !== "admin") {
@@ -19,7 +19,7 @@ export const withAdmin = <P extends object>(WrappedComponent: React.ComponentTyp
       } else {
         setIsAuthorized(true);
       }
-    }, [user, router]);
+    }, [user, loading, router]);
 
     if (!isAuthorized) {
       return (

@@ -18,6 +18,7 @@ type User = BaseUser & {
 
 type AuthContextType = {
   user: User | null;
+  loading: boolean;
   login: (user: User) => void;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
@@ -27,25 +28,43 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
     const init = async () => {
       const storedUser = localStorage.getItem("inventino_user");
+      let parsedUser: User | null = null;
       if (storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
         } catch { /* silently fail parsing */ }
       }
 
       const token = localStorage.getItem("token");
       if (token) {
         try {
-          const resp = await apiClient.get("/users/me");
-          const serverUser = resp.data?.data;
-          if (serverUser) {
-            setUser(serverUser);
-            localStorage.setItem("inventino_user", JSON.stringify(serverUser));
+          // Admin tokens cause /users/me to return 401 because requireAuth
+          // middleware looks in the User collection, not the Admin collection.
+          // Detect admin users by the permissions field (only admins have it)
+          // and validate via an admin-protected endpoint instead.
+          const isAdmin = parsedUser && Array.isArray((parsedUser as any).permissions);
+
+          if (isAdmin) {
+            const resp = await apiClient.get("/admin/dashboard");
+            const adminData = resp.data?.data?.admin;
+            if (adminData) {
+              setUser(adminData);
+              localStorage.setItem("inventino_user", JSON.stringify(adminData));
+            }
+          } else {
+            const resp = await apiClient.get("/users/me");
+            const serverUser = resp.data?.data;
+            if (serverUser) {
+              setUser(serverUser);
+              localStorage.setItem("inventino_user", JSON.stringify(serverUser));
+            }
           }
         } catch {
           localStorage.removeItem("token");
@@ -57,6 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem("inventino_user");
         setUser(null);
       }
+      setLoading(false);
     };
     init();
   }, []);
@@ -67,8 +87,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    await authService.logoutUser();
+    // Admin tokens require /admin/logoutadmin (requireAdmin middleware).
+    // Regular user tokens use /auth/logout (requireAuth middleware).
+    // Using the wrong endpoint means the token is never blacklisted.
+    const isAdmin = user && Array.isArray((user as any).permissions);
+    if (isAdmin) {
+      await authService.logoutAdmin();
+    } else {
+      await authService.logoutUser();
+    }
     setUser(null);
+    localStorage.removeItem("token");
     localStorage.removeItem("inventino_user");
     dispatch(logoutAction());
   };
@@ -81,7 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
