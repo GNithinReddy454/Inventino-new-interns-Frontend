@@ -2,73 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image  from "next/image";
 import { ArrowLeft, Truck, RotateCcw, Loader2, AlertCircle, MapPin, CreditCard, Calendar } from "lucide-react";
 import { orderService } from "@/services/order.service";
-
-// Updated type to match the actual backend response
-type OrderItem = {
-  product: {
-    _id: string;
-    name: string;
-    price: number;
-    discountPrice: number;
-    images: Array<{ url: string }>;
-  };
-  productId: string;
-  name: string;
-  imageUrl: string;
-  price: number;
-  quantity: number;
-};
-
-type ShippingAddress = {
-  fullName: string;
-  phone: string;
-  street: string;
-  city: string;
-  state: string;
-  pincode: string;
-  country: string;
-};
-
-type Payment = {
-  method: string;
-  status: string;
-  transactionId: string | null;
-  paidAt: string | null;
-};
-
-type Pricing = {
-  subtotal: number;
-  tax: number;
-  shipping: number;
-  discount: number;
-  total: number;
-};
-
-type OrderData = {
-  _id: string;
-  orderNumber: string;
-  status: string;
-  items: OrderItem[];
-  shippingAddress: ShippingAddress;
-  payment: Payment;
-  pricing: Pricing;
-  createdAt: string;
-  deliveredAt: string | null;
-  cancelledAt: string | null;
-};
-
-const statusColors: Record<
-  string,
-  { color: string; background: string; dot: string; label: string }
-> = {
-  delivered:  { color: "#059669", background: "#ecfdf5", dot: "#10b981", label: "Delivered" },
-  shipped:    { color: "#1d4ed8", background: "#eff6ff", dot: "#3b82f6", label: "Shipped" },
-  processing: { color: "#c2410c", background: "#fff7ed", dot: "#f97316", label: "Processing" },
-  created:    { color: "#c2410c", background: "#fff7ed", dot: "#f97316", label: "Processing" },
-  cancelled:  { color: "#6b7280", background: "#f3f4f6", dot: "#9ca3af", label: "Cancelled" },
-};
+import { OrderData, statusColors } from "@/types/orderid";
 
 function getStatusStyle(status: string) {
   const key = status?.toLowerCase();
@@ -306,12 +243,12 @@ export default function OrderDetailsPage({
                     borderBottom: i !== order.items.length - 1 ? "1px solid #fef3f7" : "none",
                   }}
                 >
-                  <img
+                  <Image
+                  width={70}
+                  height={70}
                     src={item.imageUrl || item.product?.images[0]?.url}
                     alt={item.name}
                     style={{
-                      width: 70,
-                      height: 70,
                       borderRadius: 10,
                       background: "#fdf2f7",
                       border: "1px solid #fce7f3",

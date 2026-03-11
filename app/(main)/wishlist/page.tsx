@@ -234,7 +234,7 @@ export default function WishlistPage() {
         {/* ── Compact Bulk Action Bar ── */}
         {savedItems.length > 0 && (
           <div className="flex items-center gap-3 mb-4 sm:mb-5 flex-wrap">
-            {/* Select All — compact inline style, not full width */}
+            {/* Select All */}
             <label className="inline-flex items-center gap-2 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-[#E8456A] transition-colors">
               <input
                 type="checkbox"
@@ -305,25 +305,8 @@ export default function WishlistPage() {
           </div>
         )}
 
-        {/* ── Error / Unauthenticated state ── */}
-        {!isLoading && error ? (
-          <div className="text-center py-16 sm:py-24 bg-white rounded-[28px] border-2 border-dashed border-red-200 px-6">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-              Authentication Required
-            </h3>
-            <p className="text-gray-400 text-sm mb-7 max-w-md mx-auto">
-              {error === "Unauthorized" || error.toLowerCase().includes("unauth") || error.includes("invalid token")
-                ? "Please log in to your account to view and manage your wishlist."
-                : error}
-            </p>
-            <Link
-              href="/login?redirect=/wishlist"
-              className="inline-flex items-center gap-2 bg-[#E8456A] text-white px-8 py-2.5 rounded-2xl font-bold hover:bg-[#c73358] transition-all shadow-md shadow-pink-100 uppercase tracking-widest text-xs"
-            >
-              Log In Now
-            </Link>
-          </div>
-        ) : !isLoading && savedItems.length === 0 ? (
+        {/* ── States ── */}
+        {!isLoading && savedItems.length === 0 ? (
           <div className="text-center py-16 sm:py-24 bg-white rounded-[28px] border-2 border-dashed border-[#F3D6EE] px-6">
             <h3 className="text-lg sm:text-xl font-bold text-gray-900">
               Your wishlist is empty
@@ -385,9 +368,8 @@ export default function WishlistPage() {
                       )}
                     </Link>
 
-                    {/* ── TOP ROW: badge (left) + share (right) — never collide ── */}
+                    {/* ── TOP ROW: badge (left) + actions (right) ── */}
                     <div className="absolute top-2 left-2 right-2 flex items-start justify-between z-10 pointer-events-none">
-                      {/* Badge — left side */}
                       <div className="pointer-events-none">
                         {badge ? (
                           <span
@@ -396,12 +378,10 @@ export default function WishlistPage() {
                             {badge.text}
                           </span>
                         ) : (
-                          /* Empty spacer so share stays right-aligned even without badge */
                           <span />
                         )}
                       </div>
 
-                      {/* Actions — right side */}
                       <div className="flex flex-col gap-2 pointer-events-auto">
                         <button
                           onClick={(e) => {
@@ -415,11 +395,7 @@ export default function WishlistPage() {
                           }}
                           className="w-7 h-7 flex items-center justify-center rounded-full bg-[#E8456A] shadow-md text-white transition-all backdrop-blur-sm hover:bg-[#c73358] active:scale-95"
                         >
-                          <Heart
-                            size={11}
-                            strokeWidth={2}
-                            fill="currentColor"
-                          />
+                          <Heart size={11} strokeWidth={2} fill="currentColor" />
                         </button>
                         <button
                           onClick={(e) => {
@@ -433,7 +409,7 @@ export default function WishlistPage() {
                       </div>
                     </div>
 
-                    {/* ── BOTTOM-LEFT: checkbox — away from badge ── */}
+                    {/* ── BOTTOM-LEFT: checkbox ── */}
                     <div className="absolute bottom-2 left-2 z-20">
                       <label className="cursor-pointer block">
                         <input

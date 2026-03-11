@@ -34,6 +34,22 @@ export const signupUserAction = createAsyncThunk<AuthResponse, SignupPayload>(
   }
 );
 
+export const loginAdminAction = createAsyncThunk<AuthResponse, any>(
+  "auth/loginAdmin",
+  async (credentials: any, { rejectWithValue }) => {
+    try {
+      if (!credentials.email || !credentials.password) {
+        return rejectWithValue("Email and password are required");
+      }
+      return await authService.loginAdmin(credentials);
+    } catch (err: any) {
+      const errorMsg =
+        err.response?.data?.message || err.message || "Admin Login failed";
+      return rejectWithValue(errorMsg);
+    }
+  },
+);
+
 export const loginUserAction = createAsyncThunk<AuthResponse, LoginPayload>(
   "auth/login",
   async (credentials, { rejectWithValue }) => {
@@ -129,11 +145,23 @@ const authSlice = createSlice({
       })
       .addCase(signupUserAction.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.data?.user;
+        state.user = action.payload.data?.user || null;
       })
       .addCase(signupUserAction.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || "Signup failed";
+      })
+      .addCase(loginAdminAction.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loginAdminAction.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.data?.admin || action.payload.data?.user || null;
+      })
+      .addCase(loginAdminAction.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || "Admin Login failed";
       })
       .addCase(loginUserAction.pending, (state) => {
         state.loading = true;
@@ -141,7 +169,7 @@ const authSlice = createSlice({
       })
       .addCase(loginUserAction.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.data?.user;
+        state.user = action.payload.data?.user || null;
       })
       .addCase(loginUserAction.rejected, (state, action) => {
         state.loading = false;
@@ -164,7 +192,7 @@ const authSlice = createSlice({
       })
       .addCase(verifyOtpAction.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.data?.user;
+        state.user = action.payload.data?.user || null;
       })
       .addCase(verifyOtpAction.rejected, (state, action) => {
         state.loading = false;

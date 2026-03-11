@@ -23,13 +23,13 @@ export default function AuthLayout({
       <div className="h-full overflow-hidden flex items-center justify-center px-6 lg:px-16">
         <div className="w-full max-w-md" style={{ zoom: "0.90" }}>
           {/* LOGO */}
-          <div className="flex justify-center mb-2">
+          <div className="flex justify-center mb-4">
             <Link href="/">
               <Image
                 src="/logo.png"
                 alt="Inventino"
-                width={90}
-                height={28}
+                width={110}
+                height={32}
                 priority
               />
             </Link>

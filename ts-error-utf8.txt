@@ -1,0 +1,25 @@
+﻿app/(admin)/admin/_components/LandingPageCMSView.tsx(458,47): error TS2339: Property 'imageUrl' does not exist on type '{ id: number; name: string; price: string; stock: number; color: string; selected: boolean; }'.
+app/(admin)/admin/_components/LandingPageCMSView.tsx(458,64): error TS2339: Property 'image' does not exist on type '{ id: number; name: string; price: string; stock: number; color: string; selected: boolean; }'.
+app/(admin)/admin/_components/LandingPageCMSView.tsx(458,78): error TS2339: Property 'images' does not exist on type '{ id: number; name: string; price: string; stock: number; color: string; selected: boolean; }'.
+app/(admin)/admin/_components/LandingPageCMSView.tsx(458,103): error TS2339: Property 'images' does not exist on type '{ id: number; name: string; price: string; stock: number; color: string; selected: boolean; }'.
+app/(admin)/admin/_components/LandingPageCMSView.tsx(460,59): error TS2339: Property 'imageUrl' does not exist on type '{ id: number; name: string; price: string; stock: number; color: string; selected: boolean; }'.
+app/(admin)/admin/_components/LandingPageCMSView.tsx(460,76): error TS2339: Property 'image' does not exist on type '{ id: number; name: string; price: string; stock: number; color: string; selected: boolean; }'.
+app/(admin)/admin/_components/LandingPageCMSView.tsx(460,90): error TS2339: Property 'images' does not exist on type '{ id: number; name: string; price: string; stock: number; color: string; selected: boolean; }'.
+app/(admin)/admin/_components/LandingPageCMSView.tsx(460,115): error TS2339: Property 'images' does not exist on type '{ id: number; name: string; price: string; stock: number; color: string; selected: boolean; }'.
+app/(main)/products/[id]/page.tsx(779,23): error TS2322: Type '{ id: string; name: string; price: number; originalPrice: number; category: string; image: string; images: string[]; rating: number; reviews: number; description: string; } | { id: number; category: string; ... 11 more ...; badge?: string | undefined; }' is not assignable to type 'ProductCardProduct'.
+  Type '{ id: number; category: string; slug?: string; mongoId?: string; prdId?: string; price: number; originalPrice: number | null; image: string; images: string[]; rating: number; reviews: number; name: string; description?: string; badge?: string; }' is not assignable to type 'ProductCardProduct'.
+    Types of property 'originalPrice' are incompatible.
+      Type 'number | null' is not assignable to type 'number | undefined'.
+        Type 'null' is not assignable to type 'number | undefined'.
+app/(main)/products/page.tsx(248,51): error TS2345: Argument of type 'ProductParams' is not assignable to parameter of type 'GetAllProductsParams'.
+  Types of property 'sort' are incompatible.
+    Type 'string | undefined' is not assignable to type '"featured" | "price_asc" | "price_desc" | "newest" | undefined'.
+      Type 'string' is not assignable to type '"featured" | "price_asc" | "price_desc" | "newest" | undefined'.
+app/(main)/products/page.tsx(584,49): error TS2322: Type 'NormalizedProduct' is not assignable to type 'ProductCardProduct'.
+  Types of property 'badge' are incompatible.
+    Type '{ text: string; color: string; } | undefined' is not assignable to type 'string | undefined'.
+      Type '{ text: string; color: string; }' is not assignable to type 'string'.
+lib/storeContext.tsx(46,35): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+lib/storeContext.tsx(48,32): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.

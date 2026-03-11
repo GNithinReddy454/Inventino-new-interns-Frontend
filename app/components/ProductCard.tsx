@@ -3,8 +3,8 @@ import { useState, useRef, useCallback } from "react";
 import { Heart, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
-import { addToCart as reduxAddToCart } from "@/redux/cartslice";
+// import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
+// import { addToCart as reduxAddToCart } from "@/redux/cartslice";
 import { useCart, Product } from "@/lib/cartContext";
 import { useToast } from "@/app/components/GlobalToast";
 
@@ -55,18 +55,16 @@ const MOCK_IMAGES = [
 
 export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: ProductCardProps) {
   const dispatch = useAppDispatch();
-  const { items: wishlistItems = [] } = useAppSelector((state: any) => state.wishlist);
+  // const { items: wishlistItems = [] } = useAppSelector((state: any) => state.wishlist);
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const [isHovered, setIsHovered] = useState(false);
   const [added, setAdded] = useState(false);
 
-  const isSaved = wishlistItems.some((wItem: any) =>
-    wItem.product?._id === String(product.id) ||
-    wItem.product?.id === String(product.id) ||
-    wItem.product?._id === product.id ||
-    wItem.product?.id === product.id
-  );
+  // const isSaved = wishlistItems.some((wItem: any) =>
+  //   wItem.product?._id === product.id || wItem.product?.id === product.id
+  // );
+  const isSaved = false; // Wishlist disabled
 
   const images: string[] =
     product.images?.length && product.images.length > 1
@@ -104,42 +102,12 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
 
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    addToCart(cartProduct, 1);
-    dispatch(reduxAddToCart({ productId: String(product.id), quantity: 1 }));
-    showToast("Success!", "Added to bag", "success");
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
-  };
-
-  const handleWishlistToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (isSaved) {
-      dispatch(removeWishlistItem(String(product.id)));
-      showToast("Removed", "Removed from wishlist", "info");
-    } else {
-      dispatch(
-        addWishlistItem({
-          productId: String(product.id),
-          product: {
-            _id: String(product.id),
-            id: product.id,
-            name: productName,
-            image: images[0] ?? "",
-            images: images,
-            price: product.price,
-            category: product.category,
-            badge: product.badge,
-            rating: product.rating,
-            reviews: product.reviews,
-            originalPrice: product.originalPrice ?? null,
-            tags: product.tags ?? [],
-          },
-        })
-      );
-      showToast("Success!", "Added to wishlist", "success");
-    }
+    if (added) return;
+    // addToCart(cartProduct, 1);
+    // dispatch(reduxAddToCart({ productId: String(product.id), quantity: 1 }));
+    // onAdd?.(productName);
+    // showToast("Success!", "Added to bag", "success");
+    // setAdded(true);
   };
 
   const rating = typeof product.rating === "number" ? product.rating : 4.7;
@@ -156,7 +124,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   return (
     <div
       className="relative h-full"
-      style={{ borderRadius: 12, overflow: "visible" }}
+      style={{ borderRadius: 16, overflow: "visible" }}
       onMouseEnter={activate}
       onMouseLeave={deactivate}
       onTouchStart={activate}
@@ -171,9 +139,12 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           overflow: "hidden",
           textDecoration: "none",
           color: "inherit",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-          transition: "box-shadow 0.2s ease, transform 0.2s ease",
-          transform: isHovered ? "scale(1.02)" : "scale(1)",
+          background: "#fff",
+          boxShadow: isHovered
+            ? "0 0 0 0.5px #ec4899, 0 8px 28px rgba(236,72,153,0.28), 0 2px 8px rgba(236,72,153,0.15)"
+            : "0 2px 16px rgba(0,0,0,0.10)",
+          transform: isHovered ? "scale(1.035)" : "scale(1)",
+          transition: "outline 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease",
           willChange: "transform",
         }}
       >
@@ -190,7 +161,8 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
             </div>
           )}
 
-          <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
+          {/* WISHLIST & SHARE BUTTONS — commented out */}
+          {/* <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
             <button
               onClick={handleWishlistToggle}
               className={`w-7 h-7 flex items-center justify-center rounded-full shadow-md transition-all duration-200 bg-white ${
@@ -205,7 +177,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
             >
               <Share2 size={13} />
             </button>
-          </div>
+          </div> */}
 
           <div className="absolute inset-0 pointer-events-none">
             {images.map((img, idx) => (
@@ -257,23 +229,27 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
                 </span>
               )}
             </div>
-            <button
+
+            {/* ADD TO BAG BUTTON — commented out */}
+            {/* <button
               onClick={handleAdd}
               style={{
-                backgroundColor: added ? "#16a34a" : buttonBg,
+                backgroundColor: buttonBg,
                 color: "#fff",
-                fontSize: 11,
-                fontWeight: 600,
-                padding: "6px 12px",
-                borderRadius: 20,
+                fontSize: 9,
+                fontWeight: 800,
+                padding: "7px 10px",
+                borderRadius: 999,
                 border: "none",
-                cursor: "pointer",
+                cursor: added ? "default" : "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
                 whiteSpace: "nowrap",
-                transition: "background-color 0.2s ease",
+                flexShrink: 0,
               }}
             >
-              {added ? "ADDED" : "ADD TO BAG"}
-            </button>
+              {added ? "✓ Added to Bag" : "Add to Bag"}
+            </button> */}
           </div>
         </div>
       </Link>

@@ -153,7 +153,7 @@ export default function ReportsAnalyticsView() {
                                     <Tooltip
                                         cursor={{ fill: "#f9fafb", radius: 4 }}
                                         contentStyle={{ borderRadius: 10, border: "1px solid #f3f4f6", fontSize: 12 }}
-                                        formatter={(v: number | undefined) => [`$${(v ?? 0).toLocaleString()}`, "Sales"]}
+                                         formatter={(v) => [`₹${Number(v).toLocaleString()}`, "Revenue"]}
                                     />
                                     <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
                                 </BarChart>
@@ -200,9 +200,17 @@ export default function ReportsAnalyticsView() {
                                 ].map((prod: any, i: number) => (
                                     <div key={i} className="flex items-center gap-3">
                                         <div
-                                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-foreground shrink-0 shadow-sm ${prod.color}`}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-foreground shrink-0 shadow-sm overflow-hidden ${prod.color}`}
                                         >
-                                            #{i + 1}
+                                            {prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0] ? (
+                                                <img
+                                                    src={prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0]}
+                                                    alt={prod.name || "Product"}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <>#{i + 1}</>
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-sm text-foreground truncate">

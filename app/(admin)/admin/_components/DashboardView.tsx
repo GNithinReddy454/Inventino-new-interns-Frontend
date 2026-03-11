@@ -52,7 +52,6 @@ function CategoryProgress({ label, percent }: { label: string, percent: number }
     );
 }
 
-// Maps UI label → API period param
 const PERIOD_MAP: Record<string, string> = {
     "7 Days": "7d",
     "30 Days": "30d",
@@ -65,13 +64,10 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [chartRange, setChartRange] = useState("30 Days");
 
-    // API state
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
-    const [recentOrders, setRecentOrders] = useState<any[]>([]);
     const [apiError, setApiError] = useState(false);
 
-    // Fetch dashboard KPI data
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
@@ -93,11 +89,8 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
         fetchData();
     }, [chartRange]);
 
-    // Build chart data from analytics — fallback to static demo if API has no chart series
     const buildChartData = () => {
         if (!analyticsData) return [];
-        // The analytics endpoint returns aggregated totals, not per-day series.
-        // We represent it as a single data point labeled by period.
         return [
             { day: chartRange, revenue: analyticsData.revenue.current },
         ];
@@ -105,7 +98,6 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
 
     const activeChartData = buildChartData();
 
-    // Format numbers
     const formattedRevenue = dashboardData
         ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(dashboardData.totalRevenue)
         : "—";
@@ -152,7 +144,6 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                                 ))}
                             </div>
                         </div>
-                        {/* Interactive Recharts AreaChart */}
                         <div className="flex-1 w-full" style={{ minHeight: 280 }}>
                             {isLoading ? (
                                 <Skeleton className="w-full h-[280px]" />
@@ -168,9 +159,10 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                                         <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: 600 }} axisLine={false} tickLine={false} />
                                         <YAxis tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                                        {/* ✅ Fixed: removed type annotation — let TypeScript infer ValueType, use Number() to safely cast */}
                                         <Tooltip
                                             contentStyle={{ borderRadius: 12, border: "1px solid #f3f4f6", boxShadow: "0 4px 20px rgba(0,0,0,0.08)", fontSize: 12 }}
-                                            formatter={(v: number | undefined) => [`₹${(v ?? 0).toLocaleString()}`, "Revenue"]}
+                                            formatter={(v) => [`₹${Number(v).toLocaleString()}`, "Revenue"]}
                                         />
                                         <Area type="monotone" dataKey="revenue" stroke="#E91E63" strokeWidth={2.5} fill="url(#revenueGrad)" dot={{ r: 4, fill: "#E91E63", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#E91E63" }} />
                                     </AreaChart>
@@ -253,24 +245,22 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                                     <td className="px-4 py-4 text-gray-600 font-medium">{order.product}</td>
                                     <td className="px-4 py-4 font-bold text-[13px] text-gray-900">{order.amount}</td>
                                     <td className="px-4 py-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                                            order.status === "Completed" ? "bg-[#F0FDF4] text-[#16A34A]" :
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${order.status === "Completed" ? "bg-[#F0FDF4] text-[#16A34A]" :
                                             order.status === "Processing" ? "bg-[#EFF6FF] text-[#2563EB]" :
-                                            order.status === "Pending" ? "bg-[#FFF7ED] text-[#EA580C]" :
-                                            "bg-[#FEF2F2] text-[#DC2626]"
-                                        }`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${
-                                                order.status === "Completed" ? "bg-[#22C55E]" :
+                                                order.status === "Pending" ? "bg-[#FFF7ED] text-[#EA580C]" :
+                                                    "bg-[#FEF2F2] text-[#DC2626]"
+                                            }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${order.status === "Completed" ? "bg-[#22C55E]" :
                                                 order.status === "Processing" ? "bg-[#3B82F6]" :
-                                                order.status === "Pending" ? "bg-[#F97316]" :
-                                                "bg-[#EF4444]"
-                                            }`}></span>
+                                                    order.status === "Pending" ? "bg-[#F97316]" :
+                                                        "bg-[#EF4444]"
+                                                }`}></span>
                                             {order.status}
                                         </span>
                                     </td>
                                     <td className="px-4 py-4 text-gray-600 font-medium">{order.date}</td>
                                     <td className="px-4 py-4 md:text-right relative">
-                                        <button 
+                                        <button
                                             onClick={() => setOpenDropdownId(openDropdownId === order.id ? null : order.id)}
                                             className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                                         >
@@ -297,7 +287,7 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Bottom Row: Top Products */}
+                {/* Top Products */}
                 <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8">
                     <div className="flex justify-between items-center mb-8">
                         <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Top Products</h3>
@@ -309,9 +299,17 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                             { name: "Pearl Necklace", category: "Jewelry", sales: "198", color: "bg-[#BCC1C4]" },
                             { name: "Boho Beaded Set", category: "Accessories", sales: "156", color: "bg-[#678F7A]" },
                             { name: "Crochet Pouch", category: "Accessories", sales: "142", color: "bg-[#F0DA79]" },
-                        ].map((prod, i) => (
+                        ].map((prod: any, i: number) => (
                             <div key={i} className="flex items-center gap-4">
-                                <div className={`w-[52px] h-[52px] rounded-xl flex shrink-0 ${prod.color}`}></div>
+                                <div className={`w-[52px] h-[52px] rounded-xl flex shrink-0 overflow-hidden items-center justify-center ${prod.color}`}>
+                                    {prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0] ? (
+                                        <img
+                                            src={prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0]}
+                                            alt={prod.name || "Product"}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : null}
+                                </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-bold text-[13px] text-gray-900 truncate mb-0.5">{prod.name}</p>
                                     <p className="text-[10px] font-medium text-gray-400 tracking-wide uppercase">{prod.category}</p>

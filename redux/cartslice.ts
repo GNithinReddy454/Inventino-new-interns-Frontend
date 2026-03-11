@@ -31,19 +31,35 @@ const initialState: CartState = {
     originalTotal: 0,
 };
 
-// Async thunks
-export const fetchCart = createAsyncThunk("cart/fetchCart", async (_, { rejectWithValue }) => {
+// ── Auth check helper ─────────────────────────────────────────────────────────
+function isLoggedIn(): boolean {
     try {
-        return await cartService.getCart();
-    } catch (error: any) {
-        return rejectWithValue(error.response?.data?.message || "Failed to fetch cart");
+        return !!localStorage.getItem("token");
+    } catch {
+        return false;
     }
-});
+}
+
+// ── Async thunks ──────────────────────────────────────────────────────────────
+
+export const fetchCart = createAsyncThunk(
+    "cart/fetchCart",
+    async (_, { rejectWithValue }) => {
+        try {
+            // ✅ Skip API call for guests — cart lives in localStorage via cartContext
+            if (!isLoggedIn()) return { data: { items: [], totalAmount: 0 } };
+            return await cartService.getCart();
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to fetch cart");
+        }
+    }
+);
 
 export const addToCart = createAsyncThunk(
     "cart/addToCart",
     async ({ productId, quantity }: { productId: string; quantity: number }, { rejectWithValue }) => {
         try {
+            if (!isLoggedIn()) return { data: { items: [], totalAmount: 0 } };
             return await cartService.addToCart(productId, quantity);
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.message || "Failed to add to cart");
@@ -55,6 +71,7 @@ export const updateCartQuantity = createAsyncThunk(
     "cart/updateCartQuantity",
     async ({ productId, quantity }: { productId: string; quantity: number }, { rejectWithValue }) => {
         try {
+            if (!isLoggedIn()) return { data: { items: [], totalAmount: 0 } };
             return await cartService.updateCartQuantity(productId, quantity);
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.message || "Failed to update quantity");
@@ -66,6 +83,7 @@ export const removeFromCart = createAsyncThunk(
     "cart/removeFromCart",
     async (productId: string, { rejectWithValue }) => {
         try {
+            if (!isLoggedIn()) return { data: { items: [], totalAmount: 0 } };
             return await cartService.removeFromCart(productId);
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.message || "Failed to remove from cart");
@@ -73,21 +91,31 @@ export const removeFromCart = createAsyncThunk(
     }
 );
 
-export const clearCart = createAsyncThunk("cart/clearCart", async (_, { rejectWithValue }) => {
-    try {
-        return await cartService.clearCart();
-    } catch (error: any) {
-        return rejectWithValue(error.response?.data?.message || "Failed to clear cart");
+export const clearCart = createAsyncThunk(
+    "cart/clearCart",
+    async (_, { rejectWithValue }) => {
+        try {
+            if (!isLoggedIn()) return {};
+            return await cartService.clearCart();
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to clear cart");
+        }
     }
-});
+);
 
-export const applyPromoCode = createAsyncThunk("cart/applyPromo", async (code: string, { rejectWithValue }) => {
-    try {
-        return await cartService.applyPromoCode(code);
-    } catch (error: any) {
-        return rejectWithValue(error.response?.data?.message || "Failed to apply promo code");
+export const applyPromoCode = createAsyncThunk(
+    "cart/applyPromo",
+    async (code: string, { rejectWithValue }) => {
+        try {
+            if (!isLoggedIn()) return rejectWithValue("Login required to apply promo codes");
+            return await cartService.applyPromoCode(code);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to apply promo code");
+        }
     }
-});
+);
+
+// ── Slice ─────────────────────────────────────────────────────────────────────
 
 const cartSlice = createSlice({
     name: "cart",
@@ -101,6 +129,7 @@ const cartSlice = createSlice({
         });
         builder.addCase(fetchCart.fulfilled, (state, action: any) => {
             state.isLoading = false;
+            state.error = null;
             state.items = action.payload?.data?.items || action.payload?.cart?.items || action.payload?.data?.cart?.items || [];
             state.totalAmount = action.payload?.data?.totalAmount || action.payload?.cart?.totalAmount || action.payload?.data?.cart?.totalAmount || 0;
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
