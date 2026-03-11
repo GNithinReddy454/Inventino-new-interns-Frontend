@@ -72,7 +72,19 @@ export const clearWishlist = createAsyncThunk(
 const wishlistSlice = createSlice({
     name: "wishlist",
     initialState,
-    reducers: {},
+    reducers: {
+        addLocalWishlistItem: (state, action) => {
+            const pId = String(action.payload?.product?._id || action.payload?._id);
+            const exists = state.items.some((i: any) => String(i.product?._id) === pId || String(i._id) === pId);
+            if (!exists) {
+                state.items.push({ ...action.payload, isLocal: true });
+            }
+        },
+        removeLocalWishlistItem: (state, action) => {
+            const id = String(action.payload);
+            state.items = state.items.filter(i => String(i.product?._id || i._id) !== id);
+        }
+    },
     extraReducers: (builder) => {
         // Fetch Wishlist
         builder.addCase(fetchWishlist.pending, (state) => {
@@ -81,7 +93,16 @@ const wishlistSlice = createSlice({
         });
         builder.addCase(fetchWishlist.fulfilled, (state, action) => {
             state.isLoading = false;
-            state.items = action.payload;
+            const localOnes = state.items.filter(i => i.isLocal);
+            const backendOnes = action.payload || [];
+            const merged = [...backendOnes];
+            localOnes.forEach(loc => {
+                const id = String(loc.product?._id || loc._id);
+                if (!merged.some(m => String(m.product?._id || m._id) === id)) {
+                    merged.push(loc);
+                }
+            });
+            state.items = merged;
         });
         builder.addCase(fetchWishlist.rejected, (state, action) => {
             state.isLoading = false;
@@ -90,19 +111,39 @@ const wishlistSlice = createSlice({
 
         // Add Item
         builder.addCase(addWishlistItem.fulfilled, (state, action) => {
-            state.items = action.payload;
+            const localOnes = state.items.filter(i => i.isLocal);
+            const backendOnes = action.payload || [];
+            const merged = [...backendOnes];
+            localOnes.forEach(loc => {
+                const id = String(loc.product?._id || loc._id);
+                if (!merged.some(m => String(m.product?._id || m._id) === id)) {
+                    merged.push(loc);
+                }
+            });
+            state.items = merged;
         });
 
         // Remove Item
         builder.addCase(removeWishlistItem.fulfilled, (state, action) => {
-            state.items = action.payload;
+            const removedId = String(action.meta.arg);
+            const localOnes = state.items.filter(i => i.isLocal && String(i.product?._id || i._id) !== removedId);
+            const backendOnes = action.payload || [];
+            const merged = [...backendOnes];
+            localOnes.forEach(loc => {
+                const id = String(loc.product?._id || loc._id);
+                if (!merged.some(m => String(m.product?._id || m._id) === id)) {
+                    merged.push(loc);
+                }
+            });
+            state.items = merged;
         });
 
         // Clear Wishlist
         builder.addCase(clearWishlist.fulfilled, (state, action) => {
-            state.items = action.payload;
+            state.items = action.payload || [];
         });
     },
 });
 
+export const { addLocalWishlistItem, removeLocalWishlistItem } = wishlistSlice.actions;
 export default wishlistSlice.reducer;

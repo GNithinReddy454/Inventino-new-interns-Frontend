@@ -16,7 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { addWishlistItem } from "@/redux/wishlistslice";
+import { addWishlistItem, addLocalWishlistItem } from "@/redux/wishlistslice";
 import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { useAuth } from "@/app/(main)/components/authContext";
@@ -49,15 +49,29 @@ export default function BagPage() {
   const { user } = useAuth();
   const { cart: localCart, cartTotal: localCartTotal, updateQuantity: updateLocalQuantity, removeFromCart: removeLocalCart, clearCart: clearLocalCart } = useCart();
 
-  const cart = user ? reduxCart : localCart.map((item: any) => ({
+  const mappedRedux = reduxCart.map((item: any) => ({
+    productId: String(item.productId || item.product?._id || item._id),
+    name: item.name || item.product?.name || item.product?.title || "Untitled Product",
+    price: item.price !== undefined ? item.price : item.product?.price || 0,
+    image: item.image || item.product?.images?.[0] || item.product?.image || "",
+    quantity: item.quantity || 1,
+    originalPrice: item.originalPrice !== undefined ? item.originalPrice : item.product?.originalPrice,
+  }));
+
+  const mappedLocal = localCart.map((item: any) => ({
     productId: String(item.id),
-    name: item.name,
-    price: item.price,
-    image: item.image,
+    name: item.name || item.title || "Untitled Product",
+    price: item.price || 0,
+    image: item.image || "",
     quantity: item.quantity || 1,
     originalPrice: item.originalPrice,
   }));
-  const cartTotal = user ? reduxCartTotal : localCartTotal;
+
+  const cart = user 
+    ? [...mappedRedux, ...mappedLocal.filter(l => !mappedRedux.some((r: any) => r.productId === l.productId))]
+    : mappedLocal;
+
+  const cartTotal = cart.reduce((sum: number, item: any) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
 
   useEffect(() => {
     dispatch(fetchCart());
@@ -82,20 +96,52 @@ export default function BagPage() {
   );
 
   const handleAction = (item: CartItem, type: "wishlist" | "remove") => {
+    if (type === "wishlist" && !user) {
+      triggerToast("Please login to save items", "Login required");
+      router.push("/login?redirect=/bag");
+      return;
+    }
+
     setAnimatingItem({ id: item.productId, type });
-    setTimeout(() => {
-      const itemId = String((item as any)._id || item.productId);
-      if (type === "wishlist") {
-        if (!savedItems.some((si: any) => String(si.product?._id) === itemId || String(si.product?.id) === itemId || si.product?._id === itemId)) {
-          dispatch(addWishlistItem(itemId));
+    setTimeout(async () => {
+      try {
+        const itemId = String((item as any)._id || item.productId);
+        if (type === "wishlist") {
+          const exists = savedItems.some((si: any) => String(si.product?._id) === itemId || String(si.product?.id) === itemId || si.product?._id === itemId || String(si._id) === itemId);
+          if (!exists) {
+            if (user) {
+              await dispatch(addWishlistItem(itemId)).unwrap();
+            } else {
+              dispatch(addWishlistItem(itemId));
+            }
+          }
+          triggerToast(`${item.name} moved to wishlist`, "Saved!");
+        } else {
+          triggerToast(`${item.name} removed from cart`, "Removed!");
         }
+        
+        if (user) {
+          await dispatch(removeFromCart(item.productId)).unwrap();
+        } else {
+          removeLocalCart(item.productId as unknown as number);
+        }
+        setAnimatingItem(null);
+      } catch (err: any) {
+        // Silently skip tracking console.error to avoid React overlays.
+        const itemId = String((item as any)._id || item.productId);
+        if (type === "wishlist" && itemId !== "undefined") {
+          dispatch(addLocalWishlistItem({ _id: itemId, product: item, quantity: 1 }));
+          triggerToast(`${item.name} moved to wishlist`, "Saved!");
+          if (user) {
+             try { await dispatch(removeFromCart(item.productId)).unwrap(); } catch(e){}
+          } else {
+             removeLocalCart(item.productId as unknown as number);
+          }
+        } else {
+          triggerToast(`Failed to ${type === "wishlist" ? "move to wishlist" : "remove item"}`, "Error");
+        }
+        setAnimatingItem(null);
       }
-      if (user) {
-        dispatch(removeFromCart(item.productId));
-      } else {
-        removeLocalCart(item.productId as unknown as number);
-      }
-      setAnimatingItem(null);
     }, 400);
   };
 
@@ -113,31 +159,72 @@ export default function BagPage() {
     }
   };
 
-  const handleAddAllToWishlist = () => {
-    cart.forEach((item: any) => {
-      const itemId = String(item._id || item.productId);
-      if (!savedItems.some((si: any) =>
-        String(si.product?._id) === itemId ||
-        String(si.product?.id) === itemId ||
-        si.product?._id === itemId
-      )) {
-        dispatch(addWishlistItem(itemId));
-      }
-    });
-    if (cart.length > 0) {
-      triggerToast(
-        `${cart.length} item${cart.length > 1 ? "s" : ""} moved to your wishlist`,
-      );
-      if (user) dispatch(clearCart());
-      else clearLocalCart();
-    } else {
+  const handleAddAllToWishlist = async () => {
+    if (cart.length === 0) {
       triggerToast("No items in cart to move", "Cart is empty");
+      return;
+    }
+
+    if (!user) {
+      triggerToast("Please login to move items to your wishlist", "Login required");
+      router.push("/login?redirect=/bag");
+      return;
+    }
+
+    let successCount = 0;
+    // Process all wishlist additions ensuring they complete before clearing the cart
+    for (const item of cart) {
+      try {
+        const itemId = String((item as any)._id || item.productId);
+        if (itemId === "undefined") continue;
+
+        const exists = savedItems.some((si: any) =>
+          String(si.product?._id) === itemId ||
+          String(si.product?.id) === itemId ||
+          si.product?._id === itemId ||
+          String(si._id) === itemId
+        );
+        if (!exists) {
+          try {
+             await dispatch(addWishlistItem(itemId)).unwrap();
+          } catch (e) {
+             dispatch(addLocalWishlistItem({ _id: itemId, product: item, quantity: 1 }));
+          }
+        }
+        successCount++;
+        
+        // Make sure it clears out of local cart visually when successfully moved!
+        if (user) {
+           try { await dispatch(removeFromCart(itemId)).unwrap(); } catch(e){}
+        } else {
+           removeLocalCart(itemId as unknown as number);
+        }
+      } catch (err) {
+        // Silently skip tracking console.error to avoid React overlays.
+      }
+    }
+
+    if (successCount > 0) {
+      triggerToast(
+        `${successCount} item${successCount > 1 ? "s" : ""} moved to your wishlist`,
+      );
+      
+      // Do not use clearCart because we already manually removed each successful item
+      // clearCart may accidentally destroy items that did NOT succeed moving.
+      
+      // Automatically redirect to wishlist page
+      router.push("/wishlist");
+    } else {
+      triggerToast("No items could be moved to wishlist", "Error");
     }
   };
 
-  const handleRemoveAllFromCart = () => {
-    if (user) dispatch(clearCart());
-    else clearLocalCart();
+  const handleRemoveAllFromCart = async () => {
+    if (user) {
+      try { await dispatch(clearCart()).unwrap(); } catch (e) {}
+    }
+    clearLocalCart();
+    triggerToast("Cart cleared", "Removed!");
   };
 
   const discount = promoApplied ? storeDiscount : 0;
@@ -298,39 +385,40 @@ export default function BagPage() {
                       {/* Details */}
                       <div className="flex-1 flex flex-col justify-between overflow-hidden">
                         <div className="text-left">
-                          <div className="flex flex-row justify-between gap-2">
+                          <div className="flex flex-col sm:flex-row justify-between items-start gap-2 w-full">
                             <Link
                               href={`/products/${item.productId}`}
-                              className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300"
+                              className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300 sm:max-w-[60%]"
                             >
                               <h3 className="font-bold text-sm md:text-lg leading-tight line-clamp-2">
-                                {item.name}
+                                {item.name || "Untitled Product"}
                               </h3>
                             </Link>
 
                             {/* Actions */}
-                            <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300 shrink-0">
+                            <div className="flex flex-row items-center justify-between sm:justify-end w-full sm:w-auto gap-4 sm:gap-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 shrink-0 mt-1 sm:mt-0">
                               <button
                                 onClick={() => handleAction(item, "wishlist")}
-                                className="hover:text-[#E8456A] flex items-center gap-1 transition-all"
+                                className="hover:text-[#E8456A] flex items-center gap-1.5 transition-all text-left group"
                               >
                                 <Heart
-                                  size={12}
+                                  size={14}
                                   className={
                                     isAnimating && actionType === "wishlist"
-                                      ? "fill-[#E8456A]"
-                                      : ""
+                                      ? "fill-[#E8456A] text-[#E8456A]"
+                                      : "group-hover:text-[#E8456A]"
                                   }
                                 />
-                                <span className="hidden sm:inline">Save for Later</span>
+                                <span>Save for Later</span>
                               </button>
-                              <span className="h-3 w-px bg-gray-200" />
+                              <span className="hidden sm:block h-3 w-px bg-gray-200" />
                               <button
                                 onClick={() => handleAction(item, "remove")}
-                                className="shrink-0 text-gray-300 hover:text-red-400 transition-colors"
+                                className="flex items-center gap-1.5 shrink-0 hover:text-red-500 transition-colors text-left group"
                                 aria-label="Remove item"
                               >
-                                <X size={16} />
+                                <X size={14} className="group-hover:text-red-500" />
+                                <span>Remove</span>
                               </button>
                             </div>
                           </div>
