@@ -153,7 +153,7 @@ export default function ReportsAnalyticsView() {
                                     <Tooltip
                                         cursor={{ fill: "#f9fafb", radius: 4 }}
                                         contentStyle={{ borderRadius: 10, border: "1px solid #f3f4f6", fontSize: 12 }}
-                                        formatter={(v: number | undefined) => [`$${(v ?? 0).toLocaleString()}`, "Sales"]}
+                                         formatter={(v) => [`₹${Number(v).toLocaleString()}`, "Revenue"]}
                                     />
                                     <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
                                 </BarChart>
