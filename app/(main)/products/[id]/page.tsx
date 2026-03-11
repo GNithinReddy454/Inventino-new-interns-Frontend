@@ -19,7 +19,7 @@ import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { addToCart as reduxAddToCart } from "@/redux/cartslice";
-import { addWishlistItem, removeWishlistItem } from "@/redux/wishlistslice";
+import { addWishlistItem, removeWishlistItem, addLocalWishlistItem } from "@/redux/wishlistslice";
 import { useAuth } from "@/app/(main)/components/authContext";
 import ProductReviews from "@/app/components/ProductReviews";
 import ProductCard from "@/app/components/ProductCard";
@@ -222,7 +222,7 @@ export default function ProductDetailsPage() {
             liveReviewCount = reviewData.pagination.totalReviews;
             
             if (reviewData.reviews && reviewData.reviews.length > 0) {
-              const totalRating = reviewData.reviews.reduce((sum, review) => sum + review.rating, 0);
+              const totalRating = reviewData.reviews.reduce((sum: number, review: any) => sum + review.rating, 0);
               liveRating = Number((totalRating / reviewData.reviews.length).toFixed(1));
             } else {
               liveRating = data.ratingsAverage || 4.8;
@@ -455,24 +455,25 @@ export default function ProductDetailsPage() {
         }
       });
       
-      dispatch(
-        addWishlistItem({
-          productId: productIdStr,
-          product: {
-            _id: productIdStr,
-            id: productIdStr,
-            name: product.name,
-            image: product.image,
-            images: product.images,
-            price: product.price,
-            category: product.category,
-            badge: product.badge,
-            rating: product.rating,
-            reviews: product.reviews,
-            originalPrice: product.originalPrice || null,
-          },
-        })
-      );
+      const itemData = {
+        _id: productIdStr,
+        id: productIdStr,
+        name: product.name,
+        image: product.image,
+        images: product.images,
+        price: product.price,
+        category: product.category,
+        badge: product.badge,
+        rating: product.rating,
+        reviews: product.reviews,
+        originalPrice: product.originalPrice || null,
+      };
+
+      if (user) {
+        dispatch(addWishlistItem(productIdStr));
+      } else {
+        dispatch(addLocalWishlistItem({ product: itemData, _id: productIdStr, isLocal: true }));
+      }
       showToast("Success!", "Added to wishlist", "success");
     } else {
       console.log("Dispatching removeWishlistItem for ID:", productIdStr);
