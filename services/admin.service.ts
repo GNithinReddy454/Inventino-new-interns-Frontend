@@ -337,29 +337,25 @@ export const getAdminCategories = (): Promise<CategoryListResponse | null> =>
  * POST /api/categories
  * Create a category (admin).
  */
-export const createCategory = (data: { name: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category | null> =>
-    gracefulFetch(async () => {
-        const res = await apiMethods.post<ApiResponse<Category>>("/categories", data);
-        return res.data;
-    });
+export const createCategory = async (data: { name: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category> => {
+    const res = await apiMethods.post<ApiResponse<Category>>("/categories", data);
+    return res.data;
+};
 
 /**
  * PATCH /api/categories/:id
  * Update a category (admin).
  */
-export const updateCategory = (id: string, data: { name?: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category | null> =>
-    gracefulFetch(async () => {
-        const res = await apiMethods.patch<ApiResponse<Category>>(`/categories/${id}`, data);
-        return res.data;
-    });
+export const updateCategory = async (id: string, data: { name?: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category> => {
+    const res = await apiMethods.patch<ApiResponse<Category>>(`/categories/${id}`, data);
+    return res.data;
+};
 
 /**
  * DELETE /api/categories/:id
  * Soft-delete a category (admin).
  */
-export const deleteCategory = (id: string): Promise<null> =>
-    gracefulFetch(async () => {
-        await apiMethods.delete(`/categories/${id}`);
-        return null;
-    });
+export const deleteCategory = async (id: string): Promise<void> => {
+    await apiMethods.delete(`/categories/${id}`);
+};
 
