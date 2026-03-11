@@ -13,7 +13,7 @@ export interface ProductCardProduct extends Product {
   images?: string[];
   description?: string;
   tags?: string[];
-  originalPrice?: number;
+  originalPrice?: number | null;
 }
 
 interface ProductCardProps {

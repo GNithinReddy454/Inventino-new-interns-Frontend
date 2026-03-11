@@ -245,7 +245,7 @@ function ProductsContent() {
           if (minPrice !== undefined) params.minPrice = Number(minPrice);
           if (maxPrice !== undefined) params.maxPrice = Number(maxPrice);
           console.log("📦 Fetching with params:", params);
-          const res = await productService.getAll(params);
+          const res = await productService.getAll(params as any);
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
         }

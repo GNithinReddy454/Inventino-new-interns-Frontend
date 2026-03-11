@@ -147,7 +147,7 @@ export default function OrdersView() {
 
     const filtered = ORDERS_DATA.filter((o: any) => {
         const matchSearch =
-            o._id.toLowerCase().includes(search.toLowerCase()) ||
+            (o._id || "").toLowerCase().includes(search.toLowerCase()) ||
             (o.trackingNumber || "").toLowerCase().includes(search.toLowerCase());
         const matchStatus =
             statusFilter === "All Status" || o.status === statusFilter;
@@ -339,14 +339,14 @@ export default function OrdersView() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    paginated.map((order: any) => (
+                                    paginated.map((order: any, index: number) => (
                                         <tr
-                                            key={order._id}
+                                            key={order._id ? `${order._id}-${index}` : `order-${index}`}
                                             className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors"
                                         >
                                             <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground font-mono text-xs flex justify-between md:table-cell">
                                                 <span className="md:hidden text-muted-foreground uppercase tracking-wider">Order ID</span>
-                                                {order._id.slice(-8).toUpperCase()}
+                                                {(order._id || "").slice(-8).toUpperCase()}
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex items-center gap-3">

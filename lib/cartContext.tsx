@@ -12,7 +12,7 @@ export type Product = {
   id: number | string;   // ✅ supports both static (number) and API (string _id)
   name: string;
   image: string;
-  badge?: string;
+  badge?: string | { text: string; color?: string };
   rating?: number;
   reviews?: number;
   price: number;
@@ -37,7 +37,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTimeout(() => {
       const savedCart = localStorage.getItem("cart");
       if (savedCart) {

@@ -54,7 +54,10 @@ export const productService = {
   },
 
   async create(data: any) {
-    const response = await apiClient.post("/products", data);
+    const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+    const response = await apiClient.post("/products", data, {
+      headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+    });
     return response.data;
   },
 
@@ -64,7 +67,10 @@ export const productService = {
   },
 
   async addImages(id: string | number, data: any) {
-    const response = await apiClient.post(`/products/${id}/images`, data);
+    const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+    const response = await apiClient.post(`/products/${id}/images`, data, {
+      headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+    });
     return response.data;
   },
 

@@ -11,7 +11,8 @@ export interface AuthResponse {
   statusCode: number;
   message: string;
   data: {
-    user: User;
+    user?: User;
+    admin?: User;
     token: string;
   };
   error?: string | null;

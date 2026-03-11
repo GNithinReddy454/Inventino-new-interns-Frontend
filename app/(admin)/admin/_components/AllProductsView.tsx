@@ -3,6 +3,7 @@ import { ChevronDown, MoreVertical, Search, Package, Edit, Trash2 } from "lucide
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
 import Pagination from "./Pagination";
 import { getAdminProducts, AdminProduct } from "@/services/admin.service";
+import { useAppSelector } from "@/redux/store";
 
 export default function AllProductsView({ onAddProduct }: { onAddProduct: () => void }) {
     const [search, setSearch] = useState("");
@@ -14,6 +15,10 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [ADMIN_PRODUCTS, setAdminProducts] = useState<AdminProduct[]>([]);
+    const localAddedProducts = useAppSelector((state) => state.admin.localAddedProducts);
+
+    const resolveThumbnail = (p: any) =>
+        p.imageUrl || p.image || p.images?.[0]?.url || p.images?.[0] || "";
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -30,11 +35,37 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
         fetchProducts();
     }, []);
 
+    const mergedProducts = (() => {
+        const existingIds = new Set(ADMIN_PRODUCTS.map((p: any) => p._id));
+        const normalizedLocal = (localAddedProducts || [])
+            .map((p: any) => ({
+                _id: p._id || p.id,
+                productId: p.productId || p.id,
+                name: p.name || "",
+                price: Number(p.price) || 0,
+                category: p.category || "",
+                stock: Number(p.stock) || 0,
+                totalSales: Number(p.totalSales) || 0,
+                totalRevenue: Number(p.totalRevenue) || 0,
+                status: p.status || "Active",
+                sku: p.sku || "",
+                imageUrl: resolveThumbnail(p),
+            }))
+            .filter((p: any) => p._id && !existingIds.has(p._id));
+
+        const normalizedApi = (ADMIN_PRODUCTS || []).map((p: any) => ({
+            ...p,
+            imageUrl: resolveThumbnail(p),
+        }));
+
+        return [...normalizedLocal, ...normalizedApi];
+    })();
+
     const categories = ["All Categories", "Jewelry", "Bags", "Home Decor", "Textiles", "Accessories"];
     const statuses = ["All Status", "Active", "Draft", "Low Stock", "Out of Stock"];
 
-    const filtered = ADMIN_PRODUCTS.filter((p: any) => {
-        const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const filtered = mergedProducts.filter((p: any) => {
+        const matchSearch = (p.name || "").toLowerCase().includes(search.toLowerCase());
         const matchCat = categoryFilter === "All Categories" || p.category === categoryFilter;
         return matchSearch && matchCat;
     }).sort((a: any, b: any) => {
@@ -79,10 +110,10 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                     Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
                 ) : (
                     [
-                        { label: "Total Products", value: ADMIN_PRODUCTS.length, color: "text-foreground" },
-                        { label: "Low Stock", value: ADMIN_PRODUCTS.filter((p: any) => p.stock < 5).length, color: "text-orange-500" },
-                        { label: "Out of Stock", value: ADMIN_PRODUCTS.filter((p: any) => p.stock === 0).length, color: "text-red-500" },
-                        { label: "Total Revenue", value: `₹${ADMIN_PRODUCTS.reduce((s, p: any) => s + (p.totalRevenue || 0), 0).toLocaleString()}`, color: "text-primary" },
+                        { label: "Total Products", value: mergedProducts.length, color: "text-foreground" },
+                        { label: "Low Stock", value: mergedProducts.filter((p: any) => p.stock < 5).length, color: "text-orange-500" },
+                        { label: "Out of Stock", value: mergedProducts.filter((p: any) => p.stock === 0).length, color: "text-red-500" },
+                        { label: "Total Revenue", value: `₹${mergedProducts.reduce((s, p: any) => s + (p.totalRevenue || 0), 0).toLocaleString()}`, color: "text-primary" },
                     ].map((stat, i) => (
                         <div key={i} className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-center">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{stat.label}</span>
@@ -168,9 +199,16 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                                         <tr key={prod._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors group">
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center hidden md:flex" style={{ backgroundColor: prod.color ? prod.color.replace('bg-', '') : '#f3f4f6' }}>
-                                                        {/* Placeholder for image */}
-                                                        <Package size={20} className="text-muted-foreground/50" />
+                                                    <div className="w-12 h-12 rounded-lg flex-shrink-0 hidden md:flex overflow-hidden bg-[#f3f4f6] items-center justify-center">
+                                                        {prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0] ? (
+                                                            <img
+                                                                src={prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0]}
+                                                                alt={prod.name || "Product"}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <Package size={20} className="text-muted-foreground/50" />
+                                                        )}
                                                     </div>
                                                     <div className="flex justify-between md:block w-full md:w-auto items-center">
                                                         <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Product</span>

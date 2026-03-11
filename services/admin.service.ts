@@ -235,3 +235,4 @@ export const updateAdminSettings = (data: Partial<SettingsData>): Promise<{ mess
         );
         return res;
     });
+
