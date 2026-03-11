@@ -103,4 +103,12 @@ export const productService = {
     });
     return response.data;
   },
+
+  // GET /reviews/product/:productId
+  async getReviews(productId: string, page = 1, limit = 10) {
+    const response = await apiClient.get(`/reviews/product/${productId}`, {
+      params: { page, limit }
+    });
+    return response.data;
+  },
 };

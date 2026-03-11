@@ -38,17 +38,12 @@ interface Product {
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
 
-/** Convert a raw image URL (relative or absolute) to a full URL */
 function resolveUrl(url: string): string {
   if (!url || url.includes("undefined")) return "";
   return url.startsWith("http") ? url : `${BASE_URL}${url}`;
 }
 
-/** Map API product → shape that ProductCard expects */
 function normalizeProduct(p: Product) {
-  // ProductCard expects:
-  //   image: string          (single primary image)
-  //   images?: string[]      (array of strings for slideshow)
   const resolvedImages = p.images
     .map((img) => resolveUrl(img.url))
     .filter(Boolean);
@@ -59,21 +54,17 @@ function normalizeProduct(p: Product) {
     slug: p.slug,
     description: p.description,
     price: p.price,
-    originalPrice: p.discountPrice ? p.price : undefined, // show strikethrough if discounted
+    originalPrice: p.discountPrice ? p.price : undefined,
     category: p.category,
     material: p.material,
     size: p.size,
     color: p.color,
     stock: p.stock,
-    image: resolvedImages[0] ?? "",       // ✅ single string — required by ProductCard
-    images: resolvedImages,               // ✅ string[] — for the slideshow
+    image: resolvedImages[0] ?? "",
+    images: resolvedImages,
     rating: p.ratingsAverage ?? 0,
     reviews: p.ratingsCount ?? 0,
-    badge: p.bestSeller
-      ? "BEST SELLER"
-      : p.trendy
-        ? "TRENDY"
-        : undefined,
+    badge: p.bestSeller ? "BEST SELLER" : p.trendy ? "TRENDY" : undefined,
     tags: p.hashtags ?? [p.category, "Adjustable"].filter(Boolean),
   };
 }
@@ -94,10 +85,7 @@ export default function BestSellers() {
         if (!res.ok) throw new Error("Failed to fetch best sellers");
         const data = await res.json();
         const allProducts: Product[] = data?.data?.items ?? [];
-        const bestSellers = allProducts
-          .filter((p) => p.bestSeller === true)
-          .slice(0, 8);
-        // Fallback: if none flagged as bestSeller, show first 8
+        const bestSellers = allProducts.filter((p) => p.bestSeller === true).slice(0, 8);
         setProducts(bestSellers.length > 0 ? bestSellers : allProducts.slice(0, 8));
       } catch (err: any) {
         setError(err.message || "Something went wrong");
@@ -105,18 +93,15 @@ export default function BestSellers() {
         setLoading(false);
       }
     };
-
     fetchBestSellers();
   }, []);
 
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current || !scrollRef.current.children.length) return;
-
     const container = scrollRef.current;
     const firstChild = container.children[0] as HTMLElement;
-    const amount =
-      firstChild.clientWidth +
-      parseInt(window.getComputedStyle(container).gap || "0");
+    const gap = parseInt(window.getComputedStyle(container).gap || "0");
+    const amount = firstChild.clientWidth + gap;
 
     container.style.scrollBehavior = "auto";
     container.style.scrollSnapType = "none";
@@ -133,9 +118,7 @@ export default function BestSellers() {
         progress < 0.5
           ? 4 * Math.pow(progress, 3)
           : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-
       container.scrollLeft = startPos + (targetPos - startPos) * easeProgress;
-
       if (elapsed < duration) {
         requestAnimationFrame(animateScroll);
       } else {
@@ -143,14 +126,12 @@ export default function BestSellers() {
         container.style.scrollSnapType = "";
       }
     };
-
     requestAnimationFrame(animateScroll);
   };
 
   return (
     <section className="w-full bg-pink-100 px-4 sm:px-8 md:px-12 lg:px-16 py-10 md:py-16">
       <div className="max-w-[1400px] w-full mx-auto">
-        {/* Heading */}
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
             Best Sellers
@@ -160,54 +141,54 @@ export default function BestSellers() {
           </p>
         </div>
 
-        {/* Loading State */}
         {loading && (
-          <div className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-12 overflow-hidden px-2 sm:px-4">
+          <div className="flex gap-4 overflow-hidden">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="flex-shrink-0 w-full sm:w-[calc(50%-1.5rem)] md:w-[calc(33.3333%-2rem)] lg:w-[calc(25%-2.25rem)] h-80 bg-pink-200 rounded-2xl animate-pulse"
+                className="flex-shrink-0 w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)] h-80 bg-pink-200 rounded-2xl animate-pulse"
               />
             ))}
           </div>
         )}
 
-        {/* Error State */}
         {error && !loading && (
           <p className="text-center text-red-500 text-sm py-8">{error}</p>
         )}
 
-        {/* Scrollable row + arrows */}
         {!loading && !error && products.length > 0 && (
-          <div className="relative group px-12 sm:px-0">
+          <div className="relative">
+            {/* Left arrow */}
             <button
               onClick={() => scroll("left")}
-              className="absolute left-0 sm:-left-3 md:-left-6 lg:-left-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
+              className="absolute -left-4 sm:-left-6 md:-left-8 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none"
               aria-label="Scroll left"
             >
               ❮
             </button>
 
-            <div
-              ref={scrollRef}
-              className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-12 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory items-stretch px-2 sm:px-4"
-              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-            >
-              {products.map((product) => (
-                <div
-                  key={product._id}
-                  className="snap-center flex-shrink-0 w-full sm:w-[calc(50%-1.5rem)] md:w-[calc(33.3333%-2rem)] lg:w-[calc(25%-2.25rem)]"
-                >
-                  <div className="h-full">
+            {/* Outer wrapper clips scroll but inner padding lets outline show */}
+            <div className="overflow-hidden">
+              <div
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto pb-4 py-2 px-1"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                {products.map((product) => (
+                  <div
+                    key={product._id}
+                    className="flex-shrink-0 w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
+                  >
                     <ProductCard product={normalizeProduct(product)} />
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
+            {/* Right arrow */}
             <button
               onClick={() => scroll("right")}
-              className="absolute right-0 sm:-right-3 md:-right-6 lg:-right-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
+              className="absolute -right-4 sm:-right-6 md:-right-8 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none"
               aria-label="Scroll right"
             >
               ❯
@@ -215,14 +196,12 @@ export default function BestSellers() {
           </div>
         )}
 
-        {/* Empty State */}
         {!loading && !error && products.length === 0 && (
           <p className="text-center text-gray-400 text-sm py-8">
             No best sellers found.
           </p>
         )}
 
-        {/* View All Button */}
         <div className="text-center mt-10">
           <ClientOnly>
             <Link

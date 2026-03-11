@@ -33,25 +33,6 @@ interface ProductParams {
   maxPrice?: number;
 }
 
-// ─── Types ─────────────────────────────────────────────────────────────────
-interface ApiError {
-  response?: {
-    data?: {
-      message?: string;
-    };
-  };
-  message?: string;
-}
-
-interface ProductParams {
-  page: number;
-  limit: number;
-  sort?: string;
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-}
-
 const CATEGORIES_LIST = [
   "Bracelets",
   "Necklaces",
@@ -225,18 +206,15 @@ function ProductsContent() {
           const res = await productService.searchProducts(debouncedSearch.trim(), currentPage, ITEMS_PER_PAGE);
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
-        // CASE 2: No filters → get all products with backend pagination
         } else if (
           sortBy === "Featured" &&
           selectedCategory === "All Products" &&
           minPrice === undefined &&
           maxPrice === undefined
         ) {
-          console.log("📦 Fetching all products (default)");
           const res = await productService.getAll({ page: currentPage, limit: ITEMS_PER_PAGE });
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
-        // CASE 3: Category / sort / price filters → backend handles everything
         } else {
           const params: ProductParams = { page: currentPage, limit: ITEMS_PER_PAGE };
           const apiSort = SORT_MAP[sortBy];
@@ -244,13 +222,11 @@ function ProductsContent() {
           if (selectedCategory !== "All Products") params.category = selectedCategory;
           if (minPrice !== undefined) params.minPrice = Number(minPrice);
           if (maxPrice !== undefined) params.maxPrice = Number(maxPrice);
-          console.log("📦 Fetching with params:", params);
           const res = await productService.getAll(params as any);
           items = res.data?.data?.items ?? [];
           metaData = res.data?.data?.meta ?? metaData;
         }
         if (cancelled) return;
-        console.log("✅ Got", items.length, "products");
         setProducts(items.map(normalize));
         setMeta(metaData);
       } catch (err: unknown) {
@@ -258,7 +234,6 @@ function ProductsContent() {
           const apiError = err as ApiError;
           const msg = apiError?.response?.data?.message || apiError?.message || "Failed to load products.";
           setError(msg);
-          console.error("❌ Error:", apiError?.response?.data ?? apiError);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -278,7 +253,6 @@ function ProductsContent() {
         let min = Infinity;
         let max = -Infinity;
         items.forEach((p) => {
-          // normalize to Title Case key for counting
           const key = p.category
             .split(" ")
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -292,7 +266,7 @@ function ProductsContent() {
         setMinPriceFetched(min === Infinity ? undefined : min);
         setMaxPriceFetched(max === -Infinity ? undefined : max);
       } catch {
-       
+        // silent
       }
     };
     fetchCounts();
@@ -386,11 +360,13 @@ function ProductsContent() {
           <button onClick={() => setToast({ name: "", show: false })} className="ml-2 text-gray-300 hover:text-gray-600"><X size={14} /></button>
         </div>
       </div>
+
       {/* Mobile Overlay */}
       <div
         className={`fixed inset-0 bg-black/30 z-40 md:hidden transition-opacity duration-300 ${sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         onClick={() => setSidebarOpen(false)}
       />
+
       {/* Mobile Sidebar */}
       <div className={`fixed left-0 top-0 h-full w-72 z-50 bg-white transform transition-transform duration-300 ease-in-out lg:hidden flex flex-col ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-100">
@@ -411,14 +387,16 @@ function ProductsContent() {
             <CategoryList onSelect={() => setSidebarOpen(false)} vertical={true} />
           </div>
           <div>
+            {/* ✅ Fixed typo: "Price Range Range" → "Price Range" */}
             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Price Range</h4>
             <PriceRange {...priceProps} />
           </div>
         </div>
       </div>
-      {/* Layout - Single Scroll */}
+
+      {/* Layout */}
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Desktop Sidebar - Sticky with larger size */}
+        {/* Desktop Sidebar */}
         <aside className="hidden lg:block lg:w-80 lg:flex-shrink-0">
           <div className="sticky top-24 self-start">
             <div className="bg-white p-8 pb-10 rounded-2xl shadow-md border border-gray-100">
@@ -431,23 +409,23 @@ function ProductsContent() {
                   <button onClick={clearFilters} className="text-xs text-[#D94F7A] font-medium hover:underline">Clear all</button>
                 </div>
               </div>
-              
+
               <div className="space-y-6">
                 <div>
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Categories</h4>
                   <CategoryList />
                 </div>
-                
                 <div>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Price Range Range</h4>
+                  {/* ✅ Fixed typo: "Price Range Range" → "Price Range" */}
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Price Range</h4>
                   <PriceRange {...priceProps} />
                 </div>
               </div>
             </div>
           </div>
         </aside>
-        
-        {/* Main - Regular flow with single scroll */}
+
+        {/* Main */}
         <main className="flex-1 min-w-0">
           <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
             <div className="flex flex-col mb-4 gap-3">
@@ -528,6 +506,7 @@ function ProductsContent() {
                 )}
               </div>
             </div>
+
             {/* Active Filter Chips */}
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap gap-2 mb-5">
@@ -559,6 +538,7 @@ function ProductsContent() {
                 <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 underline">Clear all</button>
               </div>
             )}
+
             {/* Error */}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-6 text-sm flex items-center gap-3">
@@ -566,6 +546,7 @@ function ProductsContent() {
                 <button onClick={() => { setError(null); setCurrentPage(p => p); }} className="text-xs font-semibold underline shrink-0">Retry</button>
               </div>
             )}
+
             {/* Grid */}
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -585,37 +566,42 @@ function ProductsContent() {
                 ))}
               </div>
             )}
+
             {/* Pagination */}
             {totalPages > 1 && !loading && (
               <div className="mt-auto flex justify-center pt-6 border-t border-gray-50 select-none">
                 <div className="flex items-center gap-1.5">
+                  {/* Prev arrow — only disabled on page 1 */}
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
+                    disabled={currentPage <= 1}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold bg-white text-gray-700 border border-gray-200 hover:border-[#D94F7A] hover:text-[#D94F7A] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronLeft size={15} />
                   </button>
+
                   {getPaginationRange().map((item, index) => (
                     <button
                       key={index}
                       onClick={() => typeof item === "number" && setCurrentPage(item)}
-                      disabled={item === "..."}
+                      disabled={item === "..." || item === currentPage}
                       className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${
                         currentPage === item
                           ? "bg-[#D94F7A] text-white border-[#D94F7A] shadow-md shadow-[#D94F7A]/30"
                           : item === "..."
                           ? "bg-transparent text-gray-300 border-transparent cursor-default"
-                          : "bg-white text-gray-600 border-gray-100 hover:border-[#D94F7A] hover:text-[#D94F7A]"
+                          : "bg-white text-gray-600 border-gray-200 hover:border-[#D94F7A] hover:text-[#D94F7A]"
                       }`}
                     >
                       {item}
                     </button>
                   ))}
+
+                  {/* Next arrow — only disabled on last page */}
                   <button
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors border border-gray-100"
+                    disabled={currentPage >= totalPages}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold bg-white text-gray-700 border border-gray-200 hover:border-[#D94F7A] hover:text-[#D94F7A] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronRight size={15} />
                   </button>
