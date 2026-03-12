@@ -6,18 +6,18 @@ import { useAuth } from "@/app/(main)/components/authContext";
 
 export const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
   return function ProtectedRoute(props: P) {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const router = useRouter();
     const [isAuthorized, setIsAuthorized] = useState(false);
 
     useEffect(() => {
-      if (user === undefined) return;
+      if (loading) return;
       if (!user) {
         router.replace("/login");
       } else {
         setIsAuthorized(true);
       }
-    }, [user, router]);
+    }, [user, loading, router]);
 
     if (!isAuthorized) {
       return (

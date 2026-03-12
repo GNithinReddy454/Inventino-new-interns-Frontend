@@ -37,9 +37,24 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("inventino_user");
-      // Ideally trigger a global event or page refresh, but clearing is a start
+      // Don't wipe admin sessions when the 401 is from a user-only endpoint
+      // (e.g., /users/me returns 401 for admin tokens because requireAuth
+      // checks the User collection, not the Admin collection).
+      const requestUrl = error.config?.url || "";
+      let isAdmin = false;
+      try {
+        const stored = localStorage.getItem("inventino_user");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          isAdmin = Array.isArray(parsed.permissions);
+        }
+      } catch { /* ignore parse errors */ }
+
+      const isUserOnlyEndpoint = requestUrl.includes("/users/me") || requestUrl.includes("/auth/logout");
+      if (!(isAdmin && isUserOnlyEndpoint)) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("inventino_user");
+      }
     }
     return Promise.reject(error);
   },

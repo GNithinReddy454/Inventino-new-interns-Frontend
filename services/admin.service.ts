@@ -74,6 +74,37 @@ export interface SettingsData {
     security: { twoFactorEnabled: boolean };
 }
 
+export interface Banner {
+    _id: string;
+    title: string;
+    image: string;
+    link: string;
+    position: number;
+    isActive: boolean;
+    startAt: string | null;
+    endAt: string | null;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface Category {
+    categoryId: string;
+    name: string;
+    slug: string;
+    description?: string;
+    image?: { id?: string; url?: string };
+    isActive: boolean;
+    displayOrder: number;
+    createdAt?: string;
+    updatedAt?: string;
+    productCount?: number;
+}
+
+export interface CategoryListResponse {
+    items: Category[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
 // ─── API Response Wrapper ─────────────────────────────────────────────────────
 
 interface ApiResponse<T> {
@@ -235,4 +266,96 @@ export const updateAdminSettings = (data: Partial<SettingsData>): Promise<{ mess
         );
         return res;
     });
+
+/**
+ * GET /api/banners
+ * Fetch active banners (public).
+ */
+export const getActiveBanners = (): Promise<Banner[] | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<Banner[]>>("/banners");
+        return res.data;
+    });
+
+/**
+ * POST /api/banners
+ * Create a banner (admin).
+ */
+export const createBanner = (formData: FormData): Promise<Banner | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.post<ApiResponse<Banner>>("/banners", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
+        return res.data;
+    });
+
+/**
+ * PATCH /api/banners/:id
+ * Update a banner (admin).
+ */
+export const updateBanner = (id: string, formData: FormData): Promise<Banner | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.patch<ApiResponse<Banner>>(`/banners/${id}`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
+        return res.data;
+    });
+
+/**
+ * DELETE /api/banners/:id
+ * Delete a banner (admin).
+ */
+export const deleteBanner = (id: string): Promise<null> =>
+    gracefulFetch(async () => {
+        await apiMethods.delete(`/banners/${id}`);
+        return null;
+    });
+
+// ─── Category Service Functions ───────────────────────────────────────────────
+
+/**
+ * GET /api/categories
+ * Fetch all active categories (public).
+ */
+export const getCategories = (): Promise<CategoryListResponse | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<CategoryListResponse>>("/categories?limit=100");
+        return res.data;
+    });
+
+/**
+ * GET /api/categories/admin/all
+ * Fetch all categories including inactive (admin).
+ */
+export const getAdminCategories = (): Promise<CategoryListResponse | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<CategoryListResponse>>("/categories/admin/all?limit=100");
+        return res.data;
+    });
+
+/**
+ * POST /api/categories
+ * Create a category (admin).
+ */
+export const createCategory = async (data: { name: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category> => {
+    const res = await apiMethods.post<ApiResponse<Category>>("/categories", data);
+    return res.data;
+};
+
+/**
+ * PATCH /api/categories/:id
+ * Update a category (admin).
+ */
+export const updateCategory = async (id: string, data: { name?: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category> => {
+    const res = await apiMethods.patch<ApiResponse<Category>>(`/categories/${id}`, data);
+    return res.data;
+};
+
+/**
+ * DELETE /api/categories/:id
+ * Soft-delete a category (admin).
+ */
+export const deleteCategory = async (id: string): Promise<void> => {
+    await apiMethods.delete(`/categories/${id}`);
+};
 

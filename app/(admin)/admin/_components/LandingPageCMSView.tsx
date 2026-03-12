@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { ChevronDown, Upload, Search, Eye } from "lucide-react";
+import { ChevronDown, Upload, Search, Eye, Pencil, Trash2, X } from "lucide-react";
 import { Skeleton } from "./Skeleton";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Toggle from "./Toggle";
 import { useToast } from "@/app/components/GlobalToast";
-import { getCMSData, updateCMSData } from "@/services/admin.service";
+import { getCMSData, updateCMSData, getActiveBanners, createBanner, updateBanner, deleteBanner, getAdminCategories, createCategory, updateCategory, deleteCategory } from "@/services/admin.service";
+import type { Banner, Category } from "@/services/admin.service";
+import axios from "axios";
 
 const featureSchema = z.object({
     title: z.string().min(3, "Feature title must be at least 3 characters"),
@@ -51,9 +53,13 @@ const DEFAULT_FEATURES = [
 export default function LandingPageCMSView() {
     const [offerText, setOfferText] = useState("");
     const [showOfferBar, setShowOfferBar] = useState(true);
+    const [banners, setBanners] = useState<Banner[]>([]);
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [bannerHeading, setBannerHeading] = useState("");
     const [bannerText, setBannerText] = useState("");
     const [bannerImage, setBannerImage] = useState<string | null>(null);
+    const [bannerImageFile, setBannerImageFile] = useState<File | null>(null);
+    const [activeBannerId, setActiveBannerId] = useState<string | null>(null);
     const [features, setFeatures] = useState<Array<{ id: number; title: string; description: string; enabled: boolean; icon: string }>>(DEFAULT_FEATURES);
     const [showAddModal, setShowAddModal] = useState(false);
     const { showToast } = useToast();
@@ -61,18 +67,32 @@ export default function LandingPageCMSView() {
     const [savingBanner, setSavingBanner] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Category state
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [categoryName, setCategoryName] = useState("");
+    const [categoryDescription, setCategoryDescription] = useState("");
+    const [categoryActive, setCategoryActive] = useState(true);
+    const [savingCategory, setSavingCategory] = useState(false);
+
     // Fetch CMS data on mount
     useEffect(() => {
         const fetchCMS = async () => {
             setIsLoading(true);
             try {
-                const data = await getCMSData();
-                if (data) {
-                    setOfferText(data.offerBar.text);
-                    setShowOfferBar(data.offerBar.isActive);
-                    setBannerHeading(data.heroBanner.heading);
-                    setBannerText(data.heroBanner.text);
-                    setBannerImage(data.heroBanner.image || null);
+                const [cms, fetchedBanners] = await Promise.all([getCMSData(), getActiveBanners()]);
+                if (cms) {
+                    setOfferText(cms.offerBar.text);
+                    setShowOfferBar(cms.offerBar.isActive);
+                }
+                if (fetchedBanners && fetchedBanners.length > 0) {
+                    setBanners(fetchedBanners);
+                }
+                // Fetch categories
+                const catResult = await getAdminCategories();
+                if (catResult?.items) {
+                    setCategories(catResult.items);
                 }
             } catch (err) {
                 console.error("Failed to fetch CMS data:", err);
@@ -128,6 +148,7 @@ export default function LandingPageCMSView() {
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setBannerImageFile(file);
             const reader = new FileReader();
             reader.onload = (ev) => setBannerImage(ev.target?.result as string);
             reader.readAsDataURL(file);
@@ -154,16 +175,174 @@ export default function LandingPageCMSView() {
         }
     };
 
+    const resolveImageUrl = (imagePath: string | null | undefined): string | null => {
+        if (!imagePath) return null;
+        if (imagePath.startsWith("http") || imagePath.startsWith("data:")) return imagePath;
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
+        const serverOrigin = apiBase.replace(/\/api$/, "");
+        return `${serverOrigin}${imagePath}`;
+    };
+
+    const startEditBanner = (index: number) => {
+        const b = banners[index];
+        setEditingIndex(index);
+        setActiveBannerId(b._id);
+        setBannerHeading(b.title ?? "");
+        setBannerText(b.link ?? "");
+        setBannerImage(resolveImageUrl(b.image) || null);
+        setBannerImageFile(null);
+    };
+
+    const startNewBanner = () => {
+        setEditingIndex(null);
+        setActiveBannerId(null);
+        setBannerHeading("");
+        setBannerText("");
+        setBannerImage(null);
+        setBannerImageFile(null);
+    };
+
+    const handleDeleteBanner = async (id: string) => {
+        try {
+            await deleteBanner(id);
+            setBanners(prev => prev.filter(b => b._id !== id));
+            if (activeBannerId === id) startNewBanner();
+            showToast("Success", "Banner deleted successfully!", "success");
+        } catch (err) {
+            console.error("Failed to delete banner:", err);
+            showToast("Error", "Failed to delete banner.", "error");
+        }
+    };
+
+    const refetchBanners = async () => {
+        const fresh = await getActiveBanners();
+        if (fresh) setBanners(fresh);
+    };
+
     const handleSaveBanner = async () => {
+        if (!bannerHeading.trim()) {
+            showToast("Error", "Banner heading is required.", "error");
+            return;
+        }
         setSavingBanner(true);
         try {
-            await updateCMSData({ heroBanner: { heading: bannerHeading, text: bannerText, image: bannerImage || "" } });
-            showToast("Success", "Hero banner updated successfully!", "success");
+            const formData = new FormData();
+            formData.append("title", bannerHeading);
+            formData.append("link", bannerText);
+            formData.append("isActive", "true");
+            if (bannerImageFile) formData.append("image", bannerImageFile);
+
+            if (activeBannerId) {
+                const updated = await updateBanner(activeBannerId, formData);
+                if (!updated) {
+                    showToast("Error", "Failed to update banner.", "error");
+                    return;
+                }
+                showToast("Success", "Banner updated successfully!", "success");
+            } else {
+                const created = await createBanner(formData);
+                if (!created?._id) {
+                    showToast("Error", "Failed to create banner.", "error");
+                    return;
+                }
+                setActiveBannerId(created._id);
+                showToast("Success", "New banner created! It will now appear on the homepage.", "success");
+            }
+            await refetchBanners();
         } catch (err) {
             console.error("Failed to save banner:", err);
-            showToast("Error", "Failed to update banner.", "error");
+            showToast("Error", "Failed to save banner.", "error");
         } finally {
             setSavingBanner(false);
+        }
+    };
+
+    // ── Category Handlers ─────────────────────────────────────────────────────
+
+    const openAddCategoryModal = () => {
+        setEditingCategory(null);
+        setCategoryName("");
+        setCategoryDescription("");
+        setCategoryActive(true);
+        setShowCategoryModal(true);
+    };
+
+    const openEditCategoryModal = (cat: Category) => {
+        setEditingCategory(cat);
+        setCategoryName(cat.name);
+        setCategoryDescription(cat.description ?? "");
+        setCategoryActive(cat.isActive);
+        setShowCategoryModal(true);
+    };
+
+    const closeCategoryModal = () => {
+        setShowCategoryModal(false);
+        setEditingCategory(null);
+    };
+
+    const refetchCategories = async () => {
+        const catResult = await getAdminCategories();
+        if (catResult?.items) setCategories(catResult.items);
+    };
+
+    const getErrorMessage = (err: unknown, fallback: string): string => {
+        if (axios.isAxiosError(err)) {
+            return err.response?.data?.message || fallback;
+        }
+        return fallback;
+    };
+
+    const handleSaveCategory = async () => {
+        if (!categoryName.trim()) {
+            showToast("Error", "Category name is required.", "error");
+            return;
+        }
+        setSavingCategory(true);
+        try {
+            if (editingCategory) {
+                await updateCategory(editingCategory.categoryId, {
+                    name: categoryName,
+                    description: categoryDescription,
+                    isActive: categoryActive,
+                });
+                showToast("Success", "Category updated successfully!", "success");
+            } else {
+                await createCategory({
+                    name: categoryName,
+                    description: categoryDescription,
+                    isActive: categoryActive,
+                });
+                showToast("Success", "Category created successfully!", "success");
+            }
+            await refetchCategories();
+            closeCategoryModal();
+        } catch (err) {
+            console.error("Failed to save category:", err);
+            const msg = getErrorMessage(err, editingCategory ? "Failed to update category." : "Failed to create category.");
+            showToast("Error", msg, "error");
+        } finally {
+            setSavingCategory(false);
+        }
+    };
+
+    const handleDeleteCategory = async (categoryId: string) => {
+        try {
+            await deleteCategory(categoryId);
+            setCategories(prev => prev.filter(c => c.categoryId !== categoryId));
+            showToast("Success", "Category deleted successfully!", "success");
+        } catch (err) {
+            console.error("Failed to delete category:", err);
+            showToast("Error", getErrorMessage(err, "Failed to delete category."), "error");
+        }
+    };
+
+    const handleToggleCategoryActive = async (cat: Category) => {
+        try {
+            await updateCategory(cat.categoryId, { isActive: !cat.isActive });
+            await refetchCategories();
+        } catch (err) {
+            console.error("Failed to toggle category:", err);
+            showToast("Error", getErrorMessage(err, "Failed to toggle category."), "error");
         }
     };
 
@@ -246,12 +425,73 @@ export default function LandingPageCMSView() {
 
             {/* 2. HERO BANNER */}
             <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-                <h3 className="font-bold text-foreground text-base">
-                    Hero Banner Management
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5 mb-5">
-                    Update your main landing page banner image and text
-                </p>
+                <div className="flex justify-between items-start mb-5">
+                    <div>
+                        <h3 className="font-bold text-foreground text-base">
+                            Hero Banner Management
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Manage your landing page banner carousel
+                        </p>
+                    </div>
+                    {!isLoading && (
+                        <button
+                            onClick={startNewBanner}
+                            className="px-5 py-2.5 bg-[#DF4C77] text-white text-[13px] font-bold rounded-xl hover:bg-[#C83B61] transition-all shadow-sm shrink-0"
+                        >
+                            + Add New Banner
+                        </button>
+                    )}
+                </div>
+
+                {/* Existing Banners List */}
+                {!isLoading && banners.length > 0 && (
+                    <div className="mb-5">
+                        <p className="text-xs font-bold text-foreground mb-2">Existing Banners ({banners.length})</p>
+                        <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                            {banners.map((b, idx) => (
+                                <div
+                                    key={b._id}
+                                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                                        activeBannerId === b._id
+                                            ? "border-[#DF4C77] bg-[#FDF2F5]"
+                                            : "border-border bg-white hover:border-pink-200"
+                                    }`}
+                                    onClick={() => startEditBanner(idx)}
+                                    onKeyDown={(e) => handleDivKeyDown(e, () => startEditBanner(idx))}
+                                    role="button"
+                                    tabIndex={0}
+                                >
+                                    {b.image && (
+                                        <div className="w-16 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                                            <img
+                                                src={resolveImageUrl(b.image) || ""}
+                                                alt={b.title || "Banner"}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[13px] font-bold text-foreground truncate">{b.title || "Untitled Banner"}</p>
+                                        <p className="text-[11px] text-muted-foreground truncate">{b.link || "No description"}</p>
+                                    </div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteBanner(b._id); }}
+                                        className="text-xs text-red-400 hover:text-red-600 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-all shrink-0"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="border-t border-border pt-5">
+                    <p className="text-xs font-bold text-foreground mb-3">
+                        {activeBannerId ? "Edit Banner" : "New Banner"}
+                    </p>
+                </div>
 
                 {isLoading ? (
                     <div className="space-y-5">
@@ -290,6 +530,7 @@ export default function LandingPageCMSView() {
                                             fill
                                             className="object-contain"
                                             sizes="(max-width: 768px) 100vw, 500px"
+                                            unoptimized
                                         />
                                     </div>
                                 ) : (
@@ -347,13 +588,7 @@ export default function LandingPageCMSView() {
 
                         <div className="flex gap-3">
                             <button
-                                onClick={() => {
-                                    setBannerHeading("Created with love");
-                                    setBannerText(
-                                        "Made for you with passion and dedication. Each piece tells a unique story.",
-                                    );
-                                    setBannerImage(null);
-                                }}
+                                onClick={startNewBanner}
                                 className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
                             >
                                 Reset
@@ -363,7 +598,7 @@ export default function LandingPageCMSView() {
                                 disabled={savingBanner}
                                 className="flex-1 py-2.5 bg-[#DF4C77] text-white rounded-xl text-sm font-bold hover:bg-[#C83B61] transition-all shadow-sm disabled:opacity-70"
                             >
-                                {savingBanner ? "Saving..." : "Save Changes"}
+                                {savingBanner ? "Saving..." : activeBannerId ? "Update Banner" : "Create Banner"}
                             </button>
                         </div>
                     </>
@@ -378,35 +613,89 @@ export default function LandingPageCMSView() {
                             Categories Section
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                            Preview of category display
+                            Manage categories displayed on your landing page
                         </p>
                     </div>
-                    <button className="px-5 py-2.5 bg-[#DF4C77] text-white text-[13px] font-bold rounded-xl hover:bg-[#C83B61] transition-all shadow-sm shrink-0">
-                        + Add New Categories
+                    <button
+                        onClick={openAddCategoryModal}
+                        className="px-5 py-2.5 bg-[#DF4C77] text-white text-[13px] font-bold rounded-xl hover:bg-[#C83B61] transition-all shadow-sm shrink-0"
+                    >
+                        + Add New Category
                     </button>
                 </div>
 
-                <div className="bg-[#FDF2F5] border border-pink-200 rounded-2xl p-6 relative">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-6">
-                        <Eye size={12} className="text-muted-foreground" /> CATEGORY PREVIEW
+                {isLoading ? (
+                    <div className="bg-[#FDF2F5] border border-pink-200 rounded-2xl p-6">
+                        <Skeleton className="h-3 w-32 mb-6" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                            ))}
+                        </div>
                     </div>
+                ) : (
+                    <div className="bg-[#FDF2F5] border border-pink-200 rounded-2xl p-6 relative">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-6">
+                            <Eye size={12} className="text-muted-foreground" /> CATEGORY PREVIEW
+                        </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {[
-                            { name: "Jewelry", icon: "💍" },
-                            { name: "Bags", icon: "👜" },
-                            { name: "Textiles", icon: "🧶" },
-                            { name: "Home Decor", icon: "🏠" },
-                            { name: "Art & Crafts", icon: "🎨" },
-                            { name: "Clothing", icon: "👗" }
-                        ].map((cat, i) => (
-                            <div key={i} className="bg-white rounded-xl py-6 flex flex-col items-center justify-center shadow-sm border border-transparent hover:border-pink-200 transition-all cursor-pointer">
-                                <span className="text-2xl mb-2.5">{cat.icon}</span>
-                                <span className="text-[13px] font-bold text-foreground text-center">{cat.name}</span>
+                        {categories.length === 0 ? (
+                            <div className="text-center py-10 text-sm text-muted-foreground">
+                                No categories found. Click &quot;+ Add New Category&quot; to create one.
                             </div>
-                        ))}
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {categories.map((cat) => (
+                                    <div
+                                        key={cat.categoryId}
+                                        className={`bg-white rounded-xl py-5 px-4 flex flex-col items-center justify-center shadow-sm border transition-all relative group ${
+                                            cat.isActive ? "border-transparent hover:border-pink-200" : "border-dashed border-gray-300 opacity-60"
+                                        }`}
+                                    >
+                                        {/* Action buttons */}
+                                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => openEditCategoryModal(cat)}
+                                                className="p-1 rounded-md hover:bg-pink-50 text-muted-foreground hover:text-[#DF4C77] transition-colors"
+                                                title="Edit category"
+                                            >
+                                                <Pencil size={13} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteCategory(cat.categoryId)}
+                                                className="p-1 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
+                                                title="Delete category"
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                        </div>
+
+                                        {/* Active/Inactive indicator */}
+                                        <div className="absolute top-2 left-2">
+                                            <button
+                                                onClick={() => handleToggleCategoryActive(cat)}
+                                                className={`w-2 h-2 rounded-full ${cat.isActive ? "bg-green-400" : "bg-gray-300"}`}
+                                                title={cat.isActive ? "Active — click to deactivate" : "Inactive — click to activate"}
+                                            />
+                                        </div>
+
+                                        {cat.image?.url ? (
+                                            <div className="w-10 h-10 rounded-lg overflow-hidden mb-2.5">
+                                                <img src={cat.image.url} alt={cat.name} className="w-full h-full object-cover" />
+                                            </div>
+                                        ) : (
+                                            <span className="text-2xl mb-2.5">📦</span>
+                                        )}
+                                        <span className="text-[13px] font-bold text-foreground text-center">{cat.name}</span>
+                                        {cat.productCount !== undefined && (
+                                            <span className="text-[10px] text-muted-foreground mt-1">{cat.productCount} products</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </div>
+                )}
             </div>
 
             {/* 4. PRODUCT LISTING SECTION */}
@@ -618,6 +907,86 @@ export default function LandingPageCMSView() {
                     </button>
                 </div>
             </div>
+
+            {/* --- CATEGORY MODAL --- */}
+            {showCategoryModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div
+                        role="button"
+                        tabIndex={0}
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        onClick={closeCategoryModal}
+                        onKeyDown={(e) => handleDivKeyDown(e, closeCategoryModal)}
+                        aria-label="Close modal"
+                    />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8 z-10">
+                        <button
+                            onClick={closeCategoryModal}
+                            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <X size={18} />
+                        </button>
+                        <h2 className="text-xl font-bold text-foreground text-center mb-6">
+                            {editingCategory ? "Edit Category" : "Add New Category"}
+                        </h2>
+
+                        <div className="mb-4">
+                            <label htmlFor="categoryName" className="block text-xs font-bold text-foreground mb-1.5">
+                                Category Name <span className="text-primary">*</span>
+                            </label>
+                            <input
+                                id="categoryName"
+                                type="text"
+                                value={categoryName}
+                                onChange={(e) => setCategoryName(e.target.value)}
+                                placeholder="e.g. Jewelry, Bags, Textiles"
+                                className="w-full px-4 py-3 bg-[#FDF2F5] border border-pink-200 rounded-xl text-sm text-foreground placeholder:text-pink-300 focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all"
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <label htmlFor="categoryDesc" className="block text-xs font-bold text-foreground mb-1.5">
+                                Description
+                            </label>
+                            <textarea
+                                id="categoryDesc"
+                                rows={3}
+                                value={categoryDescription}
+                                onChange={(e) => setCategoryDescription(e.target.value)}
+                                placeholder="Brief description of this category"
+                                className="w-full px-4 py-3 bg-[#FDF2F5] border border-pink-200 rounded-xl text-sm text-foreground placeholder:text-pink-300 focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all resize-none"
+                            />
+                        </div>
+
+                        <div className="mb-6 flex items-center justify-between">
+                            <label htmlFor="categoryActiveToggle" className="text-xs font-bold text-foreground">
+                                Active on Landing Page
+                            </label>
+                            <Toggle
+                                enabled={categoryActive}
+                                onToggle={() => setCategoryActive(!categoryActive)}
+                            />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={closeCategoryModal}
+                                className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveCategory}
+                                disabled={savingCategory}
+                                className="flex-1 py-2.5 bg-[#DF4C77] text-white rounded-xl text-sm font-bold hover:bg-[#C83B61] transition-all shadow-sm disabled:opacity-70"
+                            >
+                                {savingCategory ? "Saving..." : editingCategory ? "Update Category" : "Add Category"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* --- ADD FEATURE MODAL --- */}
             {showAddModal && (

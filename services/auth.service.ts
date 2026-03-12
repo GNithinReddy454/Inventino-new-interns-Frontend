@@ -42,6 +42,14 @@ export const authService = {
     }
   },
 
+  async logoutAdmin(): Promise<void> {
+    try {
+      await apiClient.post("/admin/logoutadmin");
+    } catch {
+      // Logic continues even if backend logout fails
+    }
+  },
+
   async verifyEmail(email: string, otp: string): Promise<AuthResponse> {
     const response = await apiClient.post("/auth/verify-email", { email, otp });
     if (response.data?.data?.token) {
