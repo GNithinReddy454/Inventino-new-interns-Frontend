@@ -14,6 +14,7 @@ export interface ProductCardProduct extends Product {
   description?: string;
   tags?: string[];
   originalPrice?: number | null;
+  stock?: number;
 }
 
 interface ProductCardProps {
@@ -66,11 +67,18 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   // );
   const isSaved = false; // Wishlist disabled
 
+  const getImageUrl = (imgData: any) => {
+    if (!imgData) return "";
+    if (typeof imgData === "string") return imgData;
+    if (typeof imgData === "object" && imgData.url) return imgData.url;
+    return "";
+  };
+
   const images: string[] =
-    product.images?.length && product.images.length > 1
-      ? product.images
+    product.images?.length && product.images.length > 0
+      ? product.images.map(img => getImageUrl(img)).filter(Boolean)
       : product.image
-        ? [product.image, ...MOCK_IMAGES.slice(1)]
+        ? [getImageUrl(product.image), ...MOCK_IMAGES.slice(1)]
         : MOCK_IMAGES;
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -120,6 +128,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     else if (upper === "SALE") { displayText = "HOT DEALS"; badgeColor = "bg-red-500"; }
   }
   const hasDiscount = !!product.originalPrice && product.originalPrice > product.price;
+  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
 
   return (
     <div
@@ -153,13 +162,24 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           className="relative w-full shrink-0 bg-gray-50"
           style={{ aspectRatio: "1/1", overflow: "hidden" }}
         >
-          {badgeText && (
+          {badgeText && !isOutOfStock && (
             <div className="absolute top-2 left-2 z-10 pointer-events-none">
               <span className={`text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm shadow-sm ${badgeColor}`}>
                 {displayText}
               </span>
             </div>
           )}
+
+          {/* OUT OF STOCK BADGE */}
+          {isOutOfStock && (
+            <div className="absolute top-2 left-2 z-10 pointer-events-none">
+              <span className="text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm shadow-sm" style={{ backgroundColor: "#DC2626" }}>
+                Out of Stock
+              </span>
+            </div>
+          )}
+
+         
 
           {/* WISHLIST & SHARE BUTTONS — commented out */}
           {/* <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
@@ -197,7 +217,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           )}
         </div>
 
-        {/* BODY - Clean design matching second image */}
+        {/* BODY */}
         <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "12px" }}>
           <div style={{ fontSize: 11, color: "#E8456A", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
             {product.category || "EXCLUSIVE"}
@@ -230,26 +250,26 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
               )}
             </div>
 
-            {/* ADD TO BAG BUTTON — commented out */}
-            {/* <button
-              onClick={handleAdd}
+            {/* VIEW DETAILS BUTTON */}
+            <span
               style={{
-                backgroundColor: buttonBg,
-                color: "#fff",
+                backgroundColor: isHovered ? buttonBg : "transparent",
+                color: isHovered ? "#fff" : buttonBg,
                 fontSize: 9,
                 fontWeight: 800,
                 padding: "7px 10px",
                 borderRadius: 999,
-                border: "none",
-                cursor: added ? "default" : "pointer",
-                textTransform: "uppercase",
+                border: `1.5px solid ${buttonBg}`,
+                cursor: "pointer",
+                textTransform: "uppercase" as const,
                 letterSpacing: "0.06em",
-                whiteSpace: "nowrap",
+                whiteSpace: "nowrap" as const,
                 flexShrink: 0,
+                transition: "background-color 0.2s ease, color 0.2s ease",
               }}
             >
-              {added ? "✓ Added to Bag" : "Add to Bag"}
-            </button> */}
+              View Details
+            </span>
           </div>
         </div>
       </Link>

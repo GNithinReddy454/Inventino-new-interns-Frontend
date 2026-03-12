@@ -3,10 +3,17 @@
 import { useState } from "react";
 import { ShippingForm } from "./ShippingForm";
 import { PaymentForm } from "./PaymentForm";
+import { OrderReview } from "./OrderReview";
 import { SuccessScreen } from "./SuccessScreen";
 import { FailedScreen } from "./FailedScreen";
 import { TrackingScreen } from "./TrackingScreen";
 import { OrderSidebar } from "./OrderSidebar";
+import { cartService } from "@/services/cart.service";
+import { orderService } from "@/services/order.service";
+import { addressService } from "@/services/address.service";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { fetchCart } from "@/redux/cartslice";
+import { placeOrderAction, resetOrderState } from "@/redux/orderslice";
 import {
   CheckoutStep,
   ShippingAddress,
@@ -16,69 +23,145 @@ import {
 import { useEffect } from "react";
 
 export default function CheckoutFlow() {
+  const dispatch = useAppDispatch();
+  const { totalAmount } = useAppSelector((state) => state.cart);
+  const { isLoading: isOrderProcessing, error: orderError } = useAppSelector((state) => state.order);
+
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("shipping");
   const [shippingAddress, setShippingAddress] =
     useState<ShippingAddress | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [cardDetails, setCardDetails] = useState<any>(null);
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(
     null,
   );
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [localIsProcessing, setLocalIsProcessing] = useState(false);
 
-  //Load razorpay script
+  // Combine processing states
+  const isProcessing = localIsProcessing || isOrderProcessing;
+
+  // 1. Load razorpay script
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
     document.body.appendChild(script);
-  }, []);
+
+    // Initial cart fetch if needed
+    dispatch(fetchCart());
+    
+    return () => {
+      dispatch(resetOrderState());
+    };
+  }, [dispatch]);
 
   const handleShippingSubmit = (address: ShippingAddress) => {
     setShippingAddress(address);
     setCurrentStep("payment");
   };
 
-  const handlePaymentSubmit = async (
-    paymentMethod: PaymentMethod,
-    cardDetails?: any,
+  const handlePaymentSubmit = (
+    method: PaymentMethod,
+    details?: any,
   ) => {
+    setPaymentMethod(method);
+    if (details) setCardDetails(details);
+    setCurrentStep("review");
+  };
+
+  const handlePlaceOrder = async () => {
     if (!shippingAddress) return;
 
-    setIsProcessing(true);
+    setLocalIsProcessing(true);
     try {
+      // 1. Ensure address is saved and we have an addressId
+      let addressId = shippingAddress._id;
+      if (!addressId) {
+        const addrResponse = await addressService.addAddress(shippingAddress);
+        addressId = addrResponse.data?._id;
+        if (addressId) {
+          setShippingAddress({ ...shippingAddress, _id: addressId });
+        }
+      }
+
+      // 2. COD flow
+      if (paymentMethod === "cod") {
+        const resultAction = await dispatch(placeOrderAction({
+          addressId: addressId!,
+          paymentMethod: "COD"
+        }));
+        
+        if (placeOrderAction.fulfilled.match(resultAction)) {
+            const orderRes = resultAction.payload;
+            setOrderResponse({
+              status: "success",
+              orderId: orderRes.data._id || orderRes.data.orderNumber,
+              orderNumber: orderRes.data.orderNumber,
+              orderDate: orderRes.data.createdAt || new Date().toISOString(),
+              totalAmount: orderRes.data.total || totalAmount,
+              paymentMethod: "cod",
+              shippingAddress: shippingAddress,
+              trackingNumber: "TRK-" + Math.floor(Math.random() * 1000000),
+              estimatedDelivery: "5-7 Days",
+            });
+            setCurrentStep("success");
+        } else {
+            throw new Error(resultAction.payload as string || "Failed to place order");
+        }
+        setLocalIsProcessing(false);
+        return;
+      }
+
+      // 3. Online Payment (Razorpay)
       if (!(window as any).Razorpay) {
         throw new Error("Razorpay SDK not loaded");
       }
 
+      const amountInPaise = Math.round(totalAmount * 100);
+
       const options = {
-        //Razorpaay test key
-        key: process.env.NEXT_PUBLIC_SSK_RAZORPAY_KEY,
-        amount: 50000, // Replace with dynamic total later
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: amountInPaise,
         currency: "INR",
         name: "Inventino Jewels",
         description: "Order Payment",
+        handler: async function (response: any) {
+          try {
+            const resultAction = await dispatch(placeOrderAction({
+              addressId: addressId!,
+              paymentMethod: paymentMethod.toUpperCase()
+            }));
 
-        handler: function (response: any) {
-          setOrderResponse({
-            orderId: response.razorpay_payment_id,
-            orderNumber: "INV-" + Date.now(),
-            orderDate: new Date().toISOString(),
-            transactionId: response.razorpay_payment_id,
-            paymentMethod: paymentMethod,
-            totalAmount: 500,
-            status: "success",
-            shippingAddress: shippingAddress,
-          });
-
-          setCurrentStep("success");
+            if (placeOrderAction.fulfilled.match(resultAction)) {
+              const orderRes = resultAction.payload;
+              setOrderResponse({
+                status: "success",
+                orderId: orderRes.data._id || response.razorpay_payment_id,
+                orderNumber: orderRes.data.orderNumber,
+                orderDate: orderRes.data.createdAt || new Date().toISOString(),
+                transactionId: response.razorpay_payment_id,
+                paymentMethod: paymentMethod,
+                totalAmount: orderRes.data.total || totalAmount,
+                shippingAddress: shippingAddress,
+                trackingNumber: "TRK-" + Math.floor(Math.random() * 1000000),
+                estimatedDelivery: "3-5 Days",
+              });
+              setCurrentStep("success");
+            } else {
+              throw new Error("Payment succeeded but order creation failed");
+            }
+          } catch (err) {
+            console.error("Post-payment order creation failed:", err);
+            setCurrentStep("failed");
+          } finally {
+            setLocalIsProcessing(false);
+          }
         },
-
         modal: {
           ondismiss: function () {
-            setCurrentStep("failed");
+            setLocalIsProcessing(false);
           },
         },
-
         theme: {
           color: "#ec4899",
         },
@@ -86,10 +169,9 @@ export default function CheckoutFlow() {
 
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
-    } catch (error) {
-      setCurrentStep("failed");
-    } finally {
-      setIsProcessing(false);
+    } catch (error: any) {
+      console.error("Payment failed:", error);
+      setLocalIsProcessing(false);
     }
   };
 
@@ -123,6 +205,16 @@ export default function CheckoutFlow() {
                 isProcessing={isProcessing}
               />
             )}
+            {currentStep === "review" && (
+              <OrderReview
+                address={shippingAddress}
+                paymentMethod={paymentMethod}
+                cardDetails={cardDetails}
+                onPlaceOrder={handlePlaceOrder}
+                onBack={() => setCurrentStep("payment")}
+                isProcessing={isProcessing}
+              />
+            )}
             {currentStep === "success" && orderResponse && (
               <SuccessScreen
                 order={orderResponse}
@@ -146,7 +238,7 @@ export default function CheckoutFlow() {
             <OrderSidebar
               currentStep={currentStep}
               paymentMethod={paymentMethod}
-              onPlaceOrder={handlePaymentSubmit}
+              onPlaceOrder={currentStep === "review" ? handlePlaceOrder : (currentStep === "payment" && paymentMethod === "cod" ? handlePlaceOrder : () => {})}
               isProcessing={isProcessing}
             />
           </div>

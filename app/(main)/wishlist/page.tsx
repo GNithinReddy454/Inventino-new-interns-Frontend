@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { fetchWishlist, removeWishlistItem, clearWishlist, addWishlistItem } from "@/redux/wishlistslice";
 import { addToCart as reduxAddToCart, addLocalCartItem } from "@/redux/cartslice";
@@ -100,40 +100,47 @@ export default function WishlistPage() {
     [],
   );
 
-  const handleAddToCart = useCallback(
-    async (item: any) => {
-      try {
-        const pId = String(item._id || item.id);
-        if (user) {
-          await dispatch(reduxAddToCart({ productId: pId, quantity: 1 })).unwrap();
-        } else {
-          addToCart(item, 1);
-        }
-        await dispatch(removeWishlistItem(pId));
-        triggerToast(`${item.name || item.title || "Item"} added to cart`);
-      } catch (error: any) {
-        // Fallback for Product Name 7 (stock/formatting issues)
-        const pId = String(item._id || item.id);
-        const errorMessage = typeof error === 'string' ? error : error.message || "";
-        
-        if (errorMessage.includes("stock") || errorMessage.includes("format") || pId === "7") {
-          const cartPayload = {
-            productId: pId,
-            name: item.name || item.title || "Untitled Product",
-            price: item.price || 0,
-            image: item.images?.[0] || item.image || "",
-            quantity: 1
-          };
-          dispatch(addLocalCartItem(cartPayload));
+    const getImageUrl = (imgData: any) => {
+      if (!imgData) return "";
+      if (typeof imgData === "string") return imgData;
+      if (typeof imgData === "object" && imgData.url) return imgData.url;
+      return "";
+    };
+
+    const handleAddToCart = useCallback(
+      async (item: any) => {
+        try {
+          const pId = String(item._id || item.id);
+          if (user) {
+            await dispatch(reduxAddToCart({ productId: pId, quantity: 1 })).unwrap();
+          } else {
+            addToCart(item, 1);
+          }
           await dispatch(removeWishlistItem(pId));
-          triggerToast(`${item.name || "Item"} added to cart`);
-        } else {
-          triggerToast(`Failed to add: ${errorMessage}`, "Error");
+          triggerToast(`${item.name || item.title || "Item"} added to cart`);
+        } catch (error: any) {
+          // Fallback for Product Name 7 (stock/formatting issues)
+          const pId = String(item._id || item.id);
+          const errorMessage = typeof error === 'string' ? error : error.message || "";
+          
+          if (errorMessage.includes("stock") || errorMessage.includes("format") || pId === "7") {
+            const cartPayload = {
+              productId: pId,
+              name: item.name || item.title || "Untitled Product",
+              price: item.price || 0,
+              image: getImageUrl(item.images?.[0] || item.image),
+              quantity: 1
+            };
+            dispatch(addLocalCartItem(cartPayload));
+            await dispatch(removeWishlistItem(pId));
+            triggerToast(`${item.name || "Item"} added to cart`);
+          } else {
+            triggerToast(`Failed to add: ${errorMessage}`, "Error");
+          }
         }
-      }
-    },
-    [addToCart, dispatch, triggerToast, user],
-  );
+      },
+      [addToCart, dispatch, triggerToast, user],
+    );
 
   const handleAddAllToCart = async () => {
     if (!selectedIds.length) return;
@@ -160,7 +167,7 @@ export default function WishlistPage() {
                 productId: pId,
                 name: item.name || item.title || "Untitled Product",
                 price: item.price || 0,
-                image: item.images?.[0] || item.image || "",
+                image: getImageUrl(item.images?.[0] || item.image),
                 quantity: 1
               };
               dispatch(addLocalCartItem(cartPayload));
@@ -181,17 +188,29 @@ export default function WishlistPage() {
     setSelectedIds([]);
   };
 
-  const handleRemoveSelected = () => {
+  const handleRemoveSelected = async () => {
     if (!selectedIds.length) return;
-    selectedIds.forEach((id) => {
-      dispatch(removeWishlistItem(id));
-    });
+    const idsToRemove = [...selectedIds];
     setSelectedIds([]);
+    
+    // Process removals sequentially to avoid race conditions in Redux/Backend
+    for (const id of idsToRemove) {
+      try {
+        await dispatch(removeWishlistItem(id)).unwrap();
+      } catch (err) {
+        console.error(`Failed to remove item ${id}:`, err);
+      }
+    }
+    triggerToast(
+      `${idsToRemove.length} item${idsToRemove.length > 1 ? "s" : ""} removed from your wishlist`,
+      "Removed Selected Items"
+    );
   };
 
   const handleRemoveAll = () => {
     dispatch(clearWishlist());
     setSelectedIds([]);
+    triggerToast("Your wishlist has been cleared successfully", "All Items Removed from Wishlist");
   };
 
   const handleAddEntireWishlistToCart = async () => {
@@ -218,7 +237,7 @@ export default function WishlistPage() {
                 productId: pId,
                 name: item.name || item.title || "Untitled Product",
                 price: item.price || 0,
-                image: item.images?.[0] || item.image || "",
+                image: getImageUrl(item.images?.[0] || item.image),
                 quantity: 1
               };
               dispatch(addLocalCartItem(cartPayload));
@@ -239,16 +258,16 @@ export default function WishlistPage() {
     setSelectedIds([]);
   };
 
+  const selectableIds = useMemo(() => {
+    return savedItems.map((apiItem: any, idx: number) => {
+      const item = apiItem.product || apiItem || {};
+      return String(item._id || item.productId || item.id || apiItem._id || `fallback-${idx}`);
+    }).filter(id => id && id !== "undefined" && !id.startsWith("fallback-"));
+  }, [savedItems]);
+
   const toggleSelectAll = () => {
-    if (selectedIds.length === savedItems.length) {
-      setSelectedIds([]);
-    } else {
-      const allIds = savedItems.map((apiItem: any, idx: number) => {
-        const item = apiItem.product || apiItem || {};
-        return String(item._id || item.productId || item.id || apiItem._id || `fallback-${idx}`);
-      }).filter(id => id && id !== "undefined" && !id.startsWith("fallback-"));
-      setSelectedIds(allIds);
-    }
+    // Always select all when clicking "Select All"
+    setSelectedIds(selectableIds);
   };
 
   const toggleSelect = (id: string) =>
@@ -257,7 +276,7 @@ export default function WishlistPage() {
     );
 
   const allSelected =
-    savedItems.length > 0 && selectedIds.length === savedItems.length;
+    selectableIds.length > 0 && selectedIds.length >= selectableIds.length;
 
   return (
     <div className="w-full bg-[#FFF9FD] font-sans min-h-screen">
@@ -414,7 +433,7 @@ export default function WishlistPage() {
 
               const isSelected = selectedIds.includes(id);
               const name = item.name || item.title || "Untitled Product";
-              const image = item.images?.[0] || item.image || "";
+              const image = getImageUrl(item.images?.[0] || item.image);
               const rating =
                 typeof item.rating === "number" ? item.rating : 4.7;
               const badge = getBadgeInfo(item.badge);
@@ -435,14 +454,14 @@ export default function WishlistPage() {
                       href={`/products/${id}`}
                       className="absolute inset-0"
                     >
-                      {image ? (
+                      {image && typeof image === "string" && image.trim() !== "" ? (
                         <img
                           src={image}
                           alt={name}
                           className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center p-2">
                           No Image
                         </div>
                       )}

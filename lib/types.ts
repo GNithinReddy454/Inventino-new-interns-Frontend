@@ -113,5 +113,5 @@ export interface OrderResponse {
 }
 
 // --- CHECKOUT ENUMS ---
-export type CheckoutStep = "shipping" | "payment" | "success" | "failed" | "tracking";
+export type CheckoutStep = "shipping" | "payment" | "review" | "success" | "failed" | "tracking";
 export type PaymentMethod = "card" | "cod" | "paypal" | "gpay";
