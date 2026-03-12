@@ -32,6 +32,15 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
   const { items } = useAppSelector((state) => state.wishlist);
 
   useEffect(() => {
+    // Admin users don't have wishlists — skip the fetch to avoid
+    // hitting the user-only /wishlist endpoint with an admin token.
+    try {
+      const stored = localStorage.getItem("inventino_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.permissions)) return;
+      }
+    } catch { /* ignore parse errors */ }
     dispatch(fetchWishlist());
   }, [dispatch]);
 
