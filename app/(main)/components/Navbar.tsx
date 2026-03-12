@@ -203,7 +203,7 @@ const Navbar = () => {
                 alt="Inventino"
                 width={120}
                 height={40}
-                className="object-contain w-20 sm:w-24 md:w-[120px] h-auto"
+                className="object-contain w-20 sm:w-24 md:w-30 h-auto"
               />
             </Link>
           </div>
@@ -398,7 +398,7 @@ const Navbar = () => {
 
       {/* MOBILE MENU DRAWER */}
       <div
-        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        className={`fixed inset-0 z-60 lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
       >
         <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={() => setIsMenuOpen(false)}></div>
 
