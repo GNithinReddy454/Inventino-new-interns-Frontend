@@ -85,7 +85,10 @@ export default function BestSellers() {
         if (!res.ok) throw new Error("Failed to fetch best sellers");
         const data = await res.json();
         const allProducts: Product[] = data?.data?.items ?? [];
-        const bestSellers = allProducts.filter((p) => p.bestSeller === true).slice(0, 8);
+        const bestSellers = allProducts.filter((p) => p.bestSeller === true);
+        console.log("Fetched products:", allProducts);
+        console.log("Best sellers log:", bestSellers);
+      
         setProducts(bestSellers.length > 0 ? bestSellers : allProducts.slice(0, 8));
       } catch (err: any) {
         setError(err.message || "Something went wrong");
@@ -95,7 +98,7 @@ export default function BestSellers() {
     };
     fetchBestSellers();
   }, []);
-
+console.log("Best sellers:", products);
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current || !scrollRef.current.children.length) return;
     const container = scrollRef.current;
