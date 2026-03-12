@@ -64,7 +64,7 @@ export default function ReturnExchangePage({
     async function fetchOrder() {
       try {
         setLoadingOrder(true);
-        const res  = await orderService.getOrderDetails(orderId);
+        const res  = await orderService.getOrderById(orderId);
         const data = res?.data ?? res;
 
         setOrderNumber(data?.orderNumber ?? data?.orderId ?? orderId);
@@ -162,10 +162,10 @@ export default function ReturnExchangePage({
     setSubmitError(null);
 
     try {
+      // both return and exchange use the same API endpoint in the service
       if (requestType === "return") {
-        await orderService.requestReturn(orderId, {
+        await orderService.requestReturnExchange(orderId, {
           reason,
-          // ✅ FIX: Use actual quantity per item instead of hardcoded 1
           items: selectedIds.map((pid) => {
             const item = orderItems.find((i) => i.productObjectId === pid);
             return { productId: pid, quantity: item?.quantity ?? 1 };
@@ -173,9 +173,7 @@ export default function ReturnExchangePage({
           resolution: "refund",
         });
       } else {
-        await orderService.requestExchange(orderId, {
-          productId,
-          quantity: selectedQuantity, // ✅ FIX: was hardcoded 1, now uses real quantity (e.g. 2)
+        await orderService.requestReturnExchange(orderId, {
           reasonForExchange: reason,
           condition: "Unworn/Original Packaging",
           exchangeDetails: {
@@ -183,6 +181,9 @@ export default function ReturnExchangePage({
             newColor: newColor ?? null,
           },
           comments: comments || undefined,
+          // backend expects productId/quantity fields same as above
+          productId,
+          quantity: selectedQuantity,
         });
       }
 

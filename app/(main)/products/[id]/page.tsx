@@ -19,7 +19,7 @@ import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { addToCart as reduxAddToCart } from "@/redux/cartslice";
-import { addWishlistItem, removeWishlistItem, fetchWishlist } from "@/redux/wishlistslice";
+import { fetchWishlist } from "@/redux/wishlistslice";
 import { useAuth } from "@/app/(main)/components/authContext";
 import ProductReviews from "@/app/components/ProductReviews";
 import ProductCard from "@/app/components/ProductCard";
@@ -158,7 +158,7 @@ export default function ProductDetailsPage() {
   const { addToCart } = useCart();
   const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const { savedItems = [], addSavedItem, removeSavedItem } = useStore();
+  const { savedItems = [], handleSaved } = useStore();
   const { showToast } = useToast();
 
   const wishlistFromRedux = useAppSelector((state: any) => state.wishlist?.items || []);
@@ -306,7 +306,7 @@ export default function ProductDetailsPage() {
           mongoId,
           name: data.name,
           price: data.price,
-          originalPrice: data.originalPrice || data.price + 150,
+          originalPrice: (data as any).originalPrice || data.price + 150,
           description: data.description,
           category: data.category,
           image: data.images?.[0]?.url || FALLBACK_IMAGE,
@@ -320,13 +320,13 @@ export default function ProductDetailsPage() {
           color: data.color ?? "",
           material: data.material ?? "",
           stock: data.stock ?? 0,
-          colors: Array.isArray(data.colors) && data.colors.length > 0
-            ? data.colors
+          colors: Array.isArray((data as any).colors) && (data as any).colors.length > 0
+            ? (data as any).colors
             : (data.color
                 ? data.color.split(",").map((c: string) => c.trim()).filter(Boolean)
                 : []),
-          sizes: Array.isArray(data.sizes) && data.sizes.length > 0
-            ? data.sizes
+          sizes: Array.isArray((data as any).sizes) && (data as any).sizes.length > 0
+            ? (data as any).sizes
             : [],
         });
 
@@ -528,36 +528,14 @@ export default function ProductDetailsPage() {
   const handleWishlist = () => {
     if (!product) return;
     
-    const productIdStr = String(product.mongoId || product.prdId || productId);
     const willBeSaved = !isSaved;
-    
-    if (user) {
-      // Logged-in user - use Redux
-      if (willBeSaved) {
-        dispatch(addWishlistItem(productIdStr));
-        showToast("Success!", "Added to wishlist", "success");
-      } else {
-        dispatch(removeWishlistItem(productIdStr));
-        showToast("Removed", "Removed from wishlist", "info");
-      }
+    // use the shared context helper which already handles guest vs logged-in logic
+    handleSaved(product);
+
+    if (willBeSaved) {
+      showToast("Success!", "Added to wishlist", "success");
     } else {
-      // Guest user - use local store
-      if (willBeSaved) {
-        // Create a product object for local storage
-        const wishlistItem = {
-          id: productIdStr,
-          _id: productIdStr,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          category: product.category,
-        };
-        addSavedItem(wishlistItem);
-        showToast("Success!", "Added to wishlist", "success");
-      } else {
-        removeSavedItem(productIdStr);
-        showToast("Removed", "Removed from wishlist", "info");
-      }
+      showToast("Removed", "Removed from wishlist", "info");
     }
   };
 
@@ -879,7 +857,7 @@ export default function ProductDetailsPage() {
               )}
             </button>
             
-            {product.stock > 0 ? (
+            {(product.stock ?? 0) > 0 ? (
               <button
                 onClick={handleBuyNow}
                 className="flex-[2] font-semibold rounded-full border-2 border-gray-200 bg-white text-gray-800 hover:border-gray-300 flex items-center justify-center py-3 md:py-3.5 text-xs md:text-sm transition-all"
@@ -1083,7 +1061,6 @@ export default function ProductDetailsPage() {
                         rating: product.rating,
                         reviews: product.reviews,
                         description: product.description,
-                        slug: product.slug,
                       }}
                     />
                   </div>

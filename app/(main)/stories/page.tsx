@@ -120,7 +120,6 @@ const FALLBACK_SIMILAR_PRODUCTS: ProductCardProduct[] = [
     badge: "NEW",
     tags: ["Rose Gold", "Adjustable"],
     description: "Handcrafted with natural threads passed down through generations",
-    slug: "delicate-rose-gold-chain-bracelet",
   },
   {
     id: "fallback-2",
@@ -133,7 +132,6 @@ const FALLBACK_SIMILAR_PRODUCTS: ProductCardProduct[] = [
     badge: "NEW",
     tags: ["Pink Gold", "Adjustable"],
     description: "Handcrafted with natural threads passed down through generations",
-    slug: "knitted-bag-bracelet",
   },
   {
     id: "fallback-3",
@@ -146,7 +144,6 @@ const FALLBACK_SIMILAR_PRODUCTS: ProductCardProduct[] = [
     badge: "BESTSELLER",
     tags: ["Rose Gold", "Adjustable"],
     description: "Handcrafted with natural threads passed down through generations",
-    slug: "frame-set-bracelet",
   },
   {
     id: "fallback-4",
@@ -159,7 +156,6 @@ const FALLBACK_SIMILAR_PRODUCTS: ProductCardProduct[] = [
     badge: "BESTSELLER",
     tags: ["Pink Gold", "Adjustable"],
     description: "Handcrafted with natural threads passed down through generations",
-    slug: "frame-set-chain-product",
   }
 ];
 
@@ -203,7 +199,7 @@ export default function StoriesPage() {
   const [storyData, setStoryData] = useState<ProductStory | null>(null);
   const [storyLoading, setStoryLoading] = useState(false);
   
-  const { addToCart: localAddToCart, items } = useCart();
+  const { addToCart: localAddToCart, cart } = useCart();
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const router = useRouter();

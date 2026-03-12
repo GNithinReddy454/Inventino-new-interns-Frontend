@@ -28,9 +28,8 @@ import SettingsView from "./_components/SettingsView";
 import LandingPageCMSView from "./_components/LandingPageCMSView";
 import ReviewsView from "./_components/ReviewsView";
 import CustomerProfileView from "./_components/CustomerProfileView";
-import OrderDetailsView from "./_components/OrderDetailsView";
 import AddProduct from "./AddProduct";
-
+import OrderDetailsView from "./_components/OrderDetailView";
 interface NavItemProps {
   icon: React.ElementType;
   label: string;
@@ -50,7 +49,7 @@ function NavItem({ icon: Icon, label, active, onClick, collapsed }: NavItemProps
       }`}
       title={collapsed ? label : undefined}
     >
-      {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] bg-[#E91E63] rounded-r-md -ml-2" />}
+      {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-0.75 bg-[#E91E63] rounded-r-md -ml-2" />}
       <Icon size={18} className={active ? "text-[#E91E63]" : "group-hover:text-gray-900 transition-colors"} />
       {!collapsed && <span>{label}</span>}
     </button>
@@ -79,7 +78,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#FEF8F9] font-sans text-gray-900">
-      <aside className={`${isSidebarCollapsed ? "w-[80px]" : "w-[260px]"} bg-[#FEF8F9] flex flex-col h-screen sticky top-0 transition-all duration-300 z-50 shrink-0 border-r border-[#F3E8EC]`}>
+      <aside className={`${isSidebarCollapsed ? "w-20" : "w-65"} bg-[#FEF8F9] flex flex-col h-screen sticky top-0 transition-all duration-300 z-50 shrink-0 border-r border-[#F3E8EC]`}>
         <div className="h-28 flex items-center justify-center px-6 shrink-0 relative">
           {!isSidebarCollapsed && <Image src="/logo.png" alt="Inventino" width={160} height={60} className="object-contain" priority />}
           {isSidebarCollapsed && <span className="text-2xl font-black italic tracking-tight uppercase text-[#E91E63]">I<span className="text-gray-300">.</span></span>}
@@ -127,9 +126,9 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4 ml-auto">
             <div className="relative hidden lg:block w-72 h-10"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={15} /><input type="text" placeholder="Search orders, products..." className="w-full h-full pl-10 pr-4 bg-white border border-transparent shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] rounded-full text-[12px] text-gray-600 focus:outline-none focus:border-gray-200 transition-all placeholder:text-gray-400 font-medium" /></div>
-            <button className="relative w-10 h-10 flex items-center justify-center bg-white text-gray-500 hover:text-gray-900 rounded-full shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] transition-colors shrink-0"><Bell size={18} /><span className="absolute top-0 right-0 w-[14px] h-[14px] bg-[#E91E63] text-white text-[8px] font-bold rounded-full flex items-center justify-center border-2 border-white">5</span></button>
+            <button className="relative w-10 h-10 flex items-center justify-center bg-white text-gray-500 hover:text-gray-900 rounded-full shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] transition-colors shrink-0"><Bell size={18} /><span className="absolute top-0 right-0 w-3.5 h-[14px] bg-[#E91E63] text-white text-[8px] font-bold rounded-full flex items-center justify-center border-2 border-white">5</span></button>
             <div className="flex items-center gap-3 bg-white rounded-full p-1 pr-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-gray-50 transition-colors">
-              <div className="w-[32px] h-[32px] rounded-full bg-[#E91E63] text-white font-bold flex items-center justify-center shrink-0 text-xs shadow-sm">A</div>
+              <div className="w-8 h-8 rounded-full bg-[#E91E63] text-white font-bold flex items-center justify-center shrink-0 text-xs shadow-sm">A</div>
               <div className="hidden sm:flex flex-col justify-center"><p className="text-[12px] font-bold text-gray-900 leading-none mb-1">Admin User</p><p className="text-[10px] text-gray-400 leading-none font-medium">Administrator</p></div>
             </div>
           </div>
@@ -147,9 +146,6 @@ export default function AdminDashboard() {
             {activeTab === "Customers" && <CustomersView onViewProfile={(id) => { setSelectedCustomerId(id); setActiveTab("Customer Profile"); }} />}
             {activeTab === "Customer Profile" && selectedCustomerId && (
               <CustomerProfileView customerId={selectedCustomerId} onBack={() => { setActiveTab("Customers"); setSelectedCustomerId(null); }} onViewOrder={(orderId) => { setSelectedOrderId(orderId); setActiveTab("Order Details"); }} />
-            )}
-            {activeTab === "Order Details" && selectedOrderId && (
-              <OrderDetailsView orderId={selectedOrderId} onBack={() => { setActiveTab("Orders"); setSelectedOrderId(null); }} />
             )}
             {activeTab === "Settings" && <SettingsView />}
           </div>

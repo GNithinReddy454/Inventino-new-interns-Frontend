@@ -35,7 +35,7 @@ export default function OrderDetailsPage({
       try {
         setLoading(true);
         setError(null);
-        const response = await orderService.getOrderDetails(id);
+        const response = await orderService.getOrderById(id);
         setOrder(response.data);
       } catch (err: any) {
         setError(

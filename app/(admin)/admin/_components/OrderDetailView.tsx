@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, Download } from "lucide-react";
 import { SkeletonTable } from "./Skeleton";
 
-// --- Mock orders by ID ---
 const MOCK_ORDERS_BY_ID: Record<string, any> = {
     "order-1": {
         _id: "order-1",
@@ -65,18 +64,22 @@ interface OrderDetailsViewProps {
     onBack: () => void;
 }
 
-export default function OrderDetailsView({ orderId, onBack }: OrderDetailsViewProps) {
+export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewProps) {
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Simulate API call; replace with real fetch when backend is ready
         const timer = setTimeout(() => {
             const foundOrder = MOCK_ORDERS_BY_ID[orderId] || {
-                ...MOCK_ORDERS_BY_ID["order-1"],
                 _id: orderId,
                 customer: "Unknown Customer",
                 email: "unknown@example.com",
+                products: [],
+                totalAmount: 0,
+                status: "Unknown",
+                trackingNumber: "",
+                trackingUpdates: [],
+                createdAt: new Date().toISOString(),
             };
             setOrder(foundOrder);
             setLoading(false);
@@ -112,23 +115,31 @@ export default function OrderDetailsView({ orderId, onBack }: OrderDetailsViewPr
                     <table className="w-full text-sm">
                         <thead className="bg-muted/50 text-muted-foreground text-xs uppercase"><tr><th className="px-4 py-3 text-left">Product</th><th className="px-4 py-3 text-left">Quantity</th><th className="px-4 py-3 text-left">Price</th><th className="px-4 py-3 text-left">Total</th></tr></thead>
                         <tbody className="divide-y divide-border">
-                            {order.products.map((product: any, idx: number) => (
-                                <tr key={idx}><td className="px-4 py-3 font-medium">{product.name}</td><td className="px-4 py-3">{product.quantity}</td><td className="px-4 py-3">₹{product.price.toLocaleString()}</td><td className="px-4 py-3 font-semibold">₹{(product.quantity * product.price).toLocaleString()}</td></tr>
-                            ))}
+                            {order.products && order.products.length > 0 ? (
+                                order.products.map((product: any, idx: number) => (
+                                    <tr key={idx}><td className="px-4 py-3 font-medium">{product.name}</td><td className="px-4 py-3">{product.quantity}</td><td className="px-4 py-3">₹{product.price.toLocaleString()}</td><td className="px-4 py-3 font-semibold">₹{(product.quantity * product.price).toLocaleString()}</td></tr>
+                                ))
+                            ) : (
+                                <tr><td colSpan={4} className="text-center py-4 text-muted-foreground">No products listed</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
-                <div className="p-4 border-t text-right font-bold text-lg">Total: ₹{order.totalAmount.toLocaleString()}</div>
+                <div className="p-4 border-t text-right font-bold text-lg">Total: ₹{order.totalAmount?.toLocaleString() ?? 0}</div>
             </div>
             <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
                 <h2 className="text-lg font-semibold mb-4">Tracking Updates</h2>
                 <div className="space-y-4">
-                    {order.trackingUpdates.map((update: any, idx: number) => (
-                        <div key={idx} className="flex gap-4">
-                            <div className="relative"><div className="w-4 h-4 rounded-full bg-primary mt-1"></div>{idx !== order.trackingUpdates.length - 1 && <div className="absolute top-5 left-2 w-0.5 h-12 bg-gray-200 -translate-x-1/2"></div>}</div>
-                            <div className="flex-1 pb-4"><p className="font-semibold">{update.status}</p><p className="text-sm text-muted-foreground">{new Date(update.date).toLocaleString()} • {update.location}</p></div>
-                        </div>
-                    ))}
+                    {order.trackingUpdates && order.trackingUpdates.length > 0 ? (
+                        order.trackingUpdates.map((update: any, idx: number) => (
+                            <div key={idx} className="flex gap-4">
+                                <div className="relative"><div className="w-4 h-4 rounded-full bg-primary mt-1"></div>{idx !== order.trackingUpdates.length - 1 && <div className="absolute top-5 left-2 w-0.5 h-12 bg-gray-200 -translate-x-1/2"></div>}</div>
+                                <div className="flex-1 pb-4"><p className="font-semibold">{update.status}</p><p className="text-sm text-muted-foreground">{new Date(update.date).toLocaleString()} • {update.location}</p></div>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No tracking updates available.</p>
+                    )}
                 </div>
             </div>
         </div>

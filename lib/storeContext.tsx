@@ -4,12 +4,14 @@ import React, { createContext, useContext, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { addWishlistItem, removeWishlistItem, fetchWishlist } from "@/redux/wishlistslice";
 
-interface Product {
-  mongoId?: string;
-  _id?: string;
-  id?: string;
+// shape of whatever the calling code passes when toggling a wishlist item
+// allow both strings and numbers since some pages use numeric ids
+interface WishlistProduct {
+  mongoId?: string | number;
+  _id?: string | number;
+  id?: string | number;
   product?: {
-    _id?: string;
+    _id?: string | number;
   };
 }
 
@@ -22,7 +24,7 @@ interface WishlistItem {
 
 interface StoreContextType {
   savedItems: WishlistItem[];
-  handleSaved: (product: Product) => void;
+  handleSaved: (product: WishlistProduct) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -35,10 +37,11 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
     dispatch(fetchWishlist());
   }, [dispatch]);
 
-  const handleSaved = (product: Product) => {
-    const productId = product.mongoId || product._id || product.id;
-    if (!productId) return;
-    
+  const handleSaved = (product: WishlistProduct) => {
+    const productIdRaw = product.mongoId || product._id || product.id;
+    if (!productIdRaw) return;
+    const productId = String(productIdRaw);
+
     const exists = items.some((i: WishlistItem) => 
       (i.product?._id === productId) || (i._id === productId)
     );
