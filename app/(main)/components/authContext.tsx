@@ -7,6 +7,7 @@ import { logout as logoutAction } from "@/redux/authslice";
 import { User as BaseUser } from "@/lib/types";
 import { authService } from "@/services/auth.service";
 import { fetchCart, addToCart as reduxAddToCart } from "@/redux/cartslice";
+import { useToast } from "@/app/components/GlobalToast";
 
 type User = BaseUser & {
   dobDay?: string;
@@ -28,9 +29,10 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const dispatch = useAppDispatch();
+   const [user, setUser] = useState<User | null>(null);
+   const [loading, setLoading] = useState(true);
+   const dispatch = useAppDispatch();
+   const { showToast } = useToast();
 
   useEffect(() => {
     const init = async () => {
@@ -125,6 +127,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("cart");
     setUser(null);
     dispatch(logoutAction());
+    showToast("Logged out", "Logged out Successfully", "success");
 
     // Tell server to blacklist the token (best-effort)
     // Admin tokens require /admin/logoutadmin; regular tokens use /auth/logout.

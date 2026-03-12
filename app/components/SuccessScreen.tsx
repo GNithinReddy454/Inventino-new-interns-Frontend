@@ -158,7 +158,7 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
             {isCOD ? "Amount (Pay on Delivery)" : "Amount Paid"}
           </span>
           <span className="text-xl font-bold text-pink-600">
-            ${order.totalAmount.toFixed(2)}
+            ₹{order.totalAmount.toFixed(2)}
           </span>
         </div>
       </div>
@@ -175,7 +175,7 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
               </h3>
               <ul className="text-sm text-amber-800 space-y-1">
                 <li>
-                  • Please keep exact cash ready: $
+                  • Please keep exact cash ready: ₹
                   {order.totalAmount.toFixed(2)}
                 </li>
                 <li>• Payment accepted in cash only at the time of delivery</li>
@@ -279,12 +279,12 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
         </h3>
         <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
           <p className="font-medium text-gray-900">
-            {order.shippingAddress.firstName} {order.shippingAddress.lastName}
+            {order.shippingAddress.fullName || `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`}
           </p>
-          <p className="text-gray-600">{order.shippingAddress.streetAddress}</p>
+          <p className="text-gray-600">{order.shippingAddress.street || order.shippingAddress.streetAddress}</p>
           <p className="text-gray-600">
             {order.shippingAddress.city}, {order.shippingAddress.state}{" "}
-            {order.shippingAddress.zipCode}
+            {order.shippingAddress.pincode || order.shippingAddress.zipCode}
           </p>
           <p className="text-gray-600">{order.shippingAddress.country}</p>
           <p className="text-gray-600">Phone: {order.shippingAddress.phone}</p>
