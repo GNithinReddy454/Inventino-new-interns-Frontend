@@ -6,6 +6,7 @@ import { useAppDispatch } from "@/redux/store";
 import { logout as logoutAction } from "@/redux/authslice";
 import { User as BaseUser } from "@/lib/types";
 import { authService } from "@/services/auth.service";
+import { fetchCart, addToCart as reduxAddToCart } from "@/redux/cartslice";
 
 type User = BaseUser & {
   dobDay?: string;
@@ -64,9 +65,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (serverUser) {
               setUser(serverUser);
               localStorage.setItem("inventino_user", JSON.stringify(serverUser));
+
+              // ── Returning logged-in user: load their server cart ────────────
+              await dispatch(fetchCart());
+              // ────────────────────────────────────────────────────────────────
             }
           }
         } catch {
+          // Token is invalid/blacklisted — clear everything silently
           localStorage.removeItem("token");
           localStorage.removeItem("inventino_user");
           setUser(null);
@@ -81,25 +87,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     init();
   }, []);
 
-  const login = (u: User) => {
+  const login = async (u: User) => {
     setUser(u);
     localStorage.setItem("inventino_user", JSON.stringify(u));
+
+    // ── Merge guest localStorage cart into server cart ──────────────────────
+    try {
+      // 1. Read guest cart BEFORE fetching server cart
+      const raw = localStorage.getItem("cart");
+      const guestItems: any[] = raw ? JSON.parse(raw) : [];
+
+      // 2. Fetch the user's server cart
+      await dispatch(fetchCart());
+
+      // 3. Push each guest item into the server cart
+      if (guestItems.length > 0) {
+        for (const item of guestItems) {
+          const productId = String(item._id || item.id);
+          const quantity = item.quantity || 1;
+          await dispatch(reduxAddToCart({ productId, quantity }));
+        }
+
+        // 4. Clear guest cart from localStorage after merging
+        localStorage.removeItem("cart");
+      }
+    } catch (err) {
+      console.error("Cart merge failed:", err);
+    }
+    // ────────────────────────────────────────────────────────────────────────
   };
 
   const logout = async () => {
-    // Admin tokens require /admin/logoutadmin (requireAdmin middleware).
-    // Regular user tokens use /auth/logout (requireAuth middleware).
-    // Using the wrong endpoint means the token is never blacklisted.
+    // Clear token FIRST so next page load never tries a blacklisted token
     const isAdmin = user && Array.isArray((user as any).permissions);
-    if (isAdmin) {
-      await authService.logoutAdmin();
-    } else {
-      await authService.logoutUser();
-    }
-    setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("inventino_user");
+    localStorage.removeItem("cart");
+    setUser(null);
     dispatch(logoutAction());
+
+    // Tell server to blacklist the token (best-effort)
+    // Admin tokens require /admin/logoutadmin; regular tokens use /auth/logout.
+    try {
+      if (isAdmin) {
+        await authService.logoutAdmin();
+      } else {
+        await authService.logoutUser();
+      }
+    } catch {
+      // Already cleared locally — safe to ignore
+    }
   };
 
   const updateUser = (updates: Partial<User>) => {

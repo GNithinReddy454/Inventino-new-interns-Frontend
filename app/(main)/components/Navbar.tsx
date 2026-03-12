@@ -21,9 +21,8 @@ import { useEffect, useState, useRef } from "react";
 import { useAppSelector, useAppDispatch } from "@/redux/store";
 import { fetchCart } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
-import { productService } from "@/services/product.service"; // ✅ API service
+import { productService } from "@/services/product.service";
 
-// Types for search results (based on API response)
 interface SearchProduct {
   id: string;
   name: string;
@@ -57,20 +56,17 @@ const Navbar = () => {
     dispatch(fetchCart());
   }, [dispatch, user]);
 
-  // ── Search state ──────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Debounced API call
   useEffect(() => {
     const handler = setTimeout(() => {
       if (searchQuery.trim().length > 1) {
         productService
           .searchProducts(searchQuery)
           .then((response) => {
-            // Assuming response.data = { statusCode, message, data: { items } }
             const items = response.data.data.items || [];
             const mapped = items.map((p: any) => ({
               id: p._id,
@@ -88,12 +84,11 @@ const Navbar = () => {
       } else {
         setSearchResults([]);
       }
-    }, 300); // 300ms debounce
+    }, 300);
 
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // ── Existing effects (unchanged) ──────────────────────────────────────
   useEffect(() => {
     const measureHeights = () => {
       if (announcementRef.current) {
@@ -125,10 +120,7 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
       }
     };
@@ -138,29 +130,24 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutsideSearch = (event: MouseEvent) => {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(event.target as Node)
-      ) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutsideSearch);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutsideSearch);
+    return () => document.removeEventListener("mousedown", handleClickOutsideSearch);
   }, []);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      setShowSearchResults(false);
-      router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      router.push("/products");
-    }
+  // ✅ Single navigation function used by both form submit and "View all" button
+  const navigateToSearch = () => {
+    setShowSearchResults(false);
+    router.push(
+      searchQuery.trim()
+        ? `/products?q=${encodeURIComponent(searchQuery.trim())}`
+        : "/products"
+    );
   };
 
-  // ── UI helpers (unchanged) ────────────────────────────────────────────
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path;
     return `transition-all duration-300 pb-1 ${isActive
@@ -171,8 +158,7 @@ const Navbar = () => {
 
   const getMobileLinkStyle = (path: string) => {
     const isActive = pathname === path;
-    return `text-lg font-bold transition-all duration-300 w-fit ${isActive ? "text-pink-600" : "text-gray-800"
-      }`;
+    return `text-lg font-bold transition-all duration-300 w-fit ${isActive ? "text-pink-600" : "text-gray-800"}`;
   };
 
   const iconCircleStyle =
@@ -224,7 +210,8 @@ const Navbar = () => {
 
           <div className="hidden lg:flex flex-1 justify-center max-w-md">
             <div className="relative w-full mx-4" ref={searchContainerRef}>
-              <form onSubmit={handleSearchSubmit}>
+              {/* ✅ form now calls navigateToSearch, not handleSearchSubmit */}
+              <form onSubmit={(e) => { e.preventDefault(); navigateToSearch(); }}>
                 <input
                   type="text"
                   value={searchQuery}
@@ -244,7 +231,7 @@ const Navbar = () => {
                 </button>
               </form>
 
-              {/* SEARCH DROPDOWN – API results */}
+              {/* SEARCH DROPDOWN */}
               {showSearchResults && searchQuery.trim().length > 1 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden custom-scrollbar max-h-[80vh] overflow-y-auto">
                   {searchResults.length > 0 ? (
@@ -266,7 +253,7 @@ const Navbar = () => {
                             {p.image && (
                               <Image
                                 src={p.image}
-                                alt={p.name}
+                                alt={p.name || "Product image"}
                                 width={48}
                                 height={48}
                                 className="w-full h-full object-cover"
@@ -282,13 +269,14 @@ const Navbar = () => {
                             </span>
                           </div>
                           <span className="text-sm font-black text-[#E8456A] shrink-0">
-                           ₹{p.price.toFixed(2)}
+                            ₹{p.price.toFixed(2)}
                           </span>
                         </Link>
                       ))}
+                      {/* ✅ Fixed: was passing handleSearchSubmit (expects FormEvent) to onClick (MouseEvent) */}
                       <button
                         suppressHydrationWarning
-                        onClick={handleSearchSubmit}
+                        onClick={navigateToSearch}
                         className="w-full mt-2 py-2.5 text-xs font-bold text-pink-600 bg-pink-50 rounded-xl hover:bg-pink-100 transition-colors flex items-center justify-center gap-1"
                       >
                         View all results <ChevronRight size={14} />
@@ -303,8 +291,7 @@ const Navbar = () => {
                         No products found
                       </p>
                       <p className="text-xs text-gray-500">
-                        Try adjusting your keywords (e.g., &quot;rose gold
-                        bracelet&quot;)
+                        Try adjusting your keywords (e.g., &quot;rose gold bracelet&quot;)
                       </p>
                     </div>
                   )}
@@ -315,15 +302,9 @@ const Navbar = () => {
 
           <div className="flex items-center gap-2 sm:gap-4">
             <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center font-bold">
-              <Link href="/products" className={getLinkStyle("/products")}>
-                All Products
-              </Link>
-              <Link href="/stories" className={getLinkStyle("/stories")}>
-                Stories
-              </Link>
-              <Link href="/contact" className={getLinkStyle("/contact")}>
-                Contact
-              </Link>
+              <Link href="/products" className={getLinkStyle("/products")}>All Products</Link>
+              <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
+              <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
             </nav>
 
             <div className="flex items-center gap-1.5 sm:gap-3">
@@ -345,17 +326,10 @@ const Navbar = () => {
                 )}
               </Link>
 
-              <div
-                className="relative flex items-center gap-2 ml-1"
-                ref={dropdownRef}
-              >
+              <div className="relative flex items-center gap-2 ml-1" ref={dropdownRef}>
                 <button
                   suppressHydrationWarning
-                  onClick={() =>
-                    user
-                      ? setShowDropdown(!showDropdown)
-                      : router.push("/login")
-                  }
+                  onClick={() => user ? setShowDropdown(!showDropdown) : router.push("/login")}
                   onMouseEnter={() => user && setShowDropdown(true)}
                   className={iconCircleStyle}
                 >
@@ -368,98 +342,37 @@ const Navbar = () => {
                     onMouseLeave={() => setShowDropdown(false)}
                   >
                     <div className="p-4 border-b border-pink-50 bg-pink-50/30">
-                      <p className="text-xs font-bold text-pink-600 uppercase tracking-wider">
-                        Your Account
-                      </p>
-                      <p className="text-sm font-bold text-gray-800 truncate">
-                        {user.name}
-                      </p>
+                      <p className="text-xs font-bold text-pink-600 uppercase tracking-wider">Your Account</p>
+                      <p className="text-sm font-bold text-gray-800 truncate">{user.name}</p>
                     </div>
 
                     <div className="p-2">
-                      <Link
-                        href="/profile"
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
-                            <User size={16} />
+                      {[
+                        { href: "/profile", icon: <User size={16} />, label: "My Profile" },
+                        { href: "/profile/orders", icon: <Package size={16} />, label: "Orders" },
+                        { href: "/profile/addresses", icon: <MapPin size={16} />, label: "Addresses" },
+                        { href: "/profile/settings", icon: <Settings size={16} />, label: "Settings" },
+                      ].map(({ href, icon, label }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
+                              {icon}
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">{label}</span>
                           </div>
-                          <span className="text-sm font-medium text-gray-700">
-                            My Profile
-                          </span>
-                        </div>
-                        <ChevronRight
-                          size={14}
-                          className="text-gray-400 group-hover:translate-x-1 transition-transform"
-                        />
-                      </Link>
-
-                      <Link
-                        href="/profile/orders"
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
-                            <Package size={16} />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Orders
-                          </span>
-                        </div>
-                        <ChevronRight
-                          size={14}
-                          className="text-gray-400 group-hover:translate-x-1 transition-transform"
-                        />
-                      </Link>
-
-                      <Link
-                        href="/profile/addresses"
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
-                            <MapPin size={16} />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Addresses
-                          </span>
-                        </div>
-                        <ChevronRight
-                          size={14}
-                          className="text-gray-400 group-hover:translate-x-1 transition-transform"
-                        />
-                      </Link>
-
-                      <Link
-                        href="/profile/settings"
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
-                            <Settings size={16} />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Settings
-                          </span>
-                        </div>
-                        <ChevronRight
-                          size={14}
-                          className="text-gray-400 group-hover:translate-x-1 transition-transform"
-                        />
-                      </Link>
+                          <ChevronRight size={14} className="text-gray-400 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      ))}
                     </div>
 
                     <button
                       suppressHydrationWarning
-                      onClick={() => {
-                        logout();
-                        setShowDropdown(false);
-                      }}
+                      onClick={() => { logout(); setShowDropdown(false); }}
                       className="w-full flex items-center gap-3 px-5 py-4 text-sm font-bold text-red-500 hover:bg-red-50 border-t border-pink-50 transition-colors"
                     >
                       <LogOut size={16} /> Logout
@@ -485,22 +398,15 @@ const Navbar = () => {
 
       {/* MOBILE MENU DRAWER */}
       <div
-        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-          }`}
+        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
       >
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-md"
-          onClick={() => setIsMenuOpen(false)}
-        ></div>
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={() => setIsMenuOpen(false)}></div>
 
         <div
-          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-0" : "translate-x-full"
-            }`}
+          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}
         >
           <div className="flex justify-between items-center mb-8 pb-4">
-            <span className="font-bold text-pink-600 text-xl font-serif">
-              Menu
-            </span>
+            <span className="font-bold text-pink-600 text-xl font-serif">Menu</span>
             <button
               suppressHydrationWarning
               onClick={() => setIsMenuOpen(false)}
@@ -511,34 +417,17 @@ const Navbar = () => {
           </div>
 
           <nav className="flex flex-col gap-6">
-            <Link
-              href="/products"
-              className={getMobileLinkStyle("/products")}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              All Products
-            </Link>
-            <Link
-              href="/stories"
-              className={getMobileLinkStyle("/stories")}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Stories
-            </Link>
-            <Link
-              href="/contact"
-              className={getMobileLinkStyle("/contact")}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Contact
-            </Link>
-
+            {[
+              { href: "/products", label: "All Products" },
+              { href: "/stories", label: "Stories" },
+              { href: "/contact", label: "Contact" },
+            ].map(({ href, label }) => (
+              <Link key={href} href={href} className={getMobileLinkStyle(href)} onClick={() => setIsMenuOpen(false)}>
+                {label}
+              </Link>
+            ))}
             {user && (
-              <Link
-                href="/profile"
-                className={getMobileLinkStyle("/profile")}
-                onClick={() => setIsMenuOpen(false)}
-              >
+              <Link href="/profile" className={getMobileLinkStyle("/profile")} onClick={() => setIsMenuOpen(false)}>
                 My Profile
               </Link>
             )}
@@ -547,46 +436,27 @@ const Navbar = () => {
           <div className="mt-auto pt-6 border-t border-gray-100">
             {!user ? (
               <div className="flex justify-between items-center gap-4">
-                <Link
-                  href="/login"
-                  className="flex items-center gap-2 text-gray-700 font-bold"
-                  onClick={() => setIsMenuOpen(false)}
-                >
+                <Link href="/login" className="flex items-center gap-2 text-gray-700 font-bold" onClick={() => setIsMenuOpen(false)}>
                   <User size={20} /> Login
                 </Link>
-                <Link
-                  href="/signup"
-                  className="bg-pink-600 text-white px-5 py-2.5 rounded-full font-bold shadow-md"
-                  onClick={() => setIsMenuOpen(false)}
-                >
+                <Link href="/signup" className="bg-pink-600 text-white px-5 py-2.5 rounded-full font-bold shadow-md" onClick={() => setIsMenuOpen(false)}>
                   Sign Up
                 </Link>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-3 p-3 bg-pink-50 rounded-2xl border border-pink-100"
-                  onClick={() => setIsMenuOpen(false)}
-                >
+                <Link href="/profile" className="flex items-center gap-3 p-3 bg-pink-50 rounded-2xl border border-pink-100" onClick={() => setIsMenuOpen(false)}>
                   <div className="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 font-bold shadow-sm">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-sm font-bold text-gray-800 truncate">
-                      {user.name}
-                    </span>
-                    <span className="text-xs text-gray-400 truncate">
-                      {user.email}
-                    </span>
+                    <span className="text-sm font-bold text-gray-800 truncate">{user.name}</span>
+                    <span className="text-xs text-gray-400 truncate">{user.email}</span>
                   </div>
                 </Link>
                 <button
                   suppressHydrationWarning
-                  onClick={() => {
-                    logout();
-                    setIsMenuOpen(false);
-                  }}
+                  onClick={() => { logout(); setIsMenuOpen(false); }}
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-red-50 text-red-500 font-bold hover:bg-red-50 transition-colors"
                 >
                   <LogOut size={18} /> Logout

@@ -39,3 +39,29 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI/debug artifacts
+build_log.txt
+build_output.txt
+build_output_utf8.txt
+branches8.txt
+dev_err.log
+dev_output.log
+error.log
+error_utf8.log
+fetch_error.txt
+lint-results.json
+lint_output.txt
+lint_output_after_fix.txt
+next_build_errors.txt
+project_lint.log
+project_lint_utf8.log
+response.html
+server.log
+ts-error.txt
+ts-error-utf8.txt
+tsc.txt
+tsc2.txt
+tsc_errors.txt
+tsc_errors2.txt
+_agents/
