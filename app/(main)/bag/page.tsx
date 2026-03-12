@@ -49,11 +49,18 @@ export default function BagPage() {
   const { user } = useAuth();
   const { cart: localCart, cartTotal: localCartTotal, updateQuantity: updateLocalQuantity, removeFromCart: removeLocalCart, clearCart: clearLocalCart } = useCart();
 
+  const getImageUrl = (imgData: any) => {
+    if (!imgData) return "";
+    if (typeof imgData === "string") return imgData;
+    if (typeof imgData === "object" && imgData.url) return imgData.url;
+    return "";
+  };
+
   const mappedRedux = reduxCart.map((item: any) => ({
     productId: String(item.productId || item.product?._id || item._id),
     name: item.name || item.product?.name || item.product?.title || "Untitled Product",
     price: item.price !== undefined ? item.price : item.product?.price || 0,
-    image: item.image || item.product?.images?.[0] || item.product?.image || "",
+    image: getImageUrl(item.image || item.product?.images?.[0] || item.product?.image),
     quantity: item.quantity || 1,
     originalPrice: item.originalPrice !== undefined ? item.originalPrice : item.product?.originalPrice,
   }));
@@ -62,12 +69,12 @@ export default function BagPage() {
     productId: String(item.id),
     name: item.name || item.title || "Untitled Product",
     price: item.price || 0,
-    image: item.image || "",
+    image: getImageUrl(item.image),
     quantity: item.quantity || 1,
     originalPrice: item.originalPrice,
   }));
 
-  const cart = user 
+  const cart = user
     ? [...mappedRedux, ...mappedLocal.filter(l => !mappedRedux.some((r: any) => r.productId === l.productId))]
     : mappedLocal;
 
@@ -119,7 +126,7 @@ export default function BagPage() {
         } else {
           triggerToast(`${item.name} removed from cart`, "Removed!");
         }
-        
+
         if (user) {
           await dispatch(removeFromCart(item.productId)).unwrap();
         } else {
@@ -133,9 +140,9 @@ export default function BagPage() {
           dispatch(addLocalWishlistItem({ _id: itemId, product: item, quantity: 1 }));
           triggerToast(`${item.name} moved to wishlist`, "Saved!");
           if (user) {
-             try { await dispatch(removeFromCart(item.productId)).unwrap(); } catch(e){}
+            try { await dispatch(removeFromCart(item.productId)).unwrap(); } catch (e) { }
           } else {
-             removeLocalCart(item.productId as unknown as number);
+            removeLocalCart(item.productId as unknown as number);
           }
         } else {
           triggerToast(`Failed to ${type === "wishlist" ? "move to wishlist" : "remove item"}`, "Error");
@@ -186,32 +193,29 @@ export default function BagPage() {
         );
         if (!exists) {
           try {
-             await dispatch(addWishlistItem(itemId)).unwrap();
+            await dispatch(addWishlistItem(itemId)).unwrap();
           } catch (e) {
-             dispatch(addLocalWishlistItem({ _id: itemId, product: item, quantity: 1 }));
+            dispatch(addLocalWishlistItem({ _id: itemId, product: item, quantity: 1 }));
           }
         }
         successCount++;
-        
-        // Make sure it clears out of local cart visually when successfully moved!
-        if (user) {
-           try { await dispatch(removeFromCart(itemId)).unwrap(); } catch(e){}
-        } else {
-           removeLocalCart(itemId as unknown as number);
-        }
       } catch (err) {
         // Silently skip tracking console.error to avoid React overlays.
       }
     }
 
     if (successCount > 0) {
+      // Clear the entire cart after all items have been moved to wishlist
+      if (user) {
+        try { await dispatch(clearCart()).unwrap(); } catch (e) { }
+      }
+      clearLocalCart();
+
       triggerToast(
         `${successCount} item${successCount > 1 ? "s" : ""} moved to your wishlist`,
+        "Moved to Wishlist!"
       );
-      
-      // Do not use clearCart because we already manually removed each successful item
-      // clearCart may accidentally destroy items that did NOT succeed moving.
-      
+
       // Automatically redirect to wishlist page
       router.push("/wishlist");
     } else {
@@ -221,7 +225,7 @@ export default function BagPage() {
 
   const handleRemoveAllFromCart = async () => {
     if (user) {
-      try { await dispatch(clearCart()).unwrap(); } catch (e) {}
+      try { await dispatch(clearCart()).unwrap(); } catch (e) { }
     }
     clearLocalCart();
     triggerToast("Cart cleared", "Removed!");
@@ -365,7 +369,7 @@ export default function BagPage() {
                         className="block group shrink-0"
                       >
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
-                          {item.image ? (
+                          {typeof item.image === "string" && item.image.trim() !== "" ? (
                             <Image
                               src={item.image}
                               alt={item.name || "Product"}
@@ -587,7 +591,7 @@ export default function BagPage() {
             </div>
 
             <Link href="/products" className="block">
-              <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-pink-50 transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
+              <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-[#D94F7A] hover:text-white transition-all active:scale-[0.98] text-sm tracking-widest uppercase shadow-sm hover:shadow-md">
                 Continue Shopping
               </button>
             </Link>

@@ -66,11 +66,18 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   // );
   const isSaved = false; // Wishlist disabled
 
+  const getImageUrl = (imgData: any) => {
+    if (!imgData) return "";
+    if (typeof imgData === "string") return imgData;
+    if (typeof imgData === "object" && imgData.url) return imgData.url;
+    return "";
+  };
+
   const images: string[] =
-    product.images?.length && product.images.length > 1
-      ? product.images
+    product.images?.length && product.images.length > 0
+      ? product.images.map(img => getImageUrl(img)).filter(Boolean)
       : product.image
-        ? [product.image, ...MOCK_IMAGES.slice(1)]
+        ? [getImageUrl(product.image), ...MOCK_IMAGES.slice(1)]
         : MOCK_IMAGES;
 
   const [currentSlide, setCurrentSlide] = useState(0);

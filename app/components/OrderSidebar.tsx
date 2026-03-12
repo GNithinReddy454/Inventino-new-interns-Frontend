@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useFetch, useMutate, swrMutate } from "@/hooks/useApi";
-import { cartService } from "@/services/cart.service";
+import { useState, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { fetchCart, applyPromoCode as applyPromoAction } from "@/redux/cartslice";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { CheckoutStep, PaymentMethod } from "@/lib/types";
@@ -21,20 +21,28 @@ export function OrderSidebar({
   onPlaceOrder,
   isProcessing,
 }: OrderSidebarProps) {
-  // Fetch cart data with SWR caching
-  const { data: cartData, isLoading: cartLoading } = useFetch("/api/cart");
-  const cart = cartData?.items || [];
+  const dispatch = useAppDispatch();
+  const { 
+    items: cart, 
+    totalAmount, 
+    isLoading: cartLoading, 
+    discount, 
+    promoCode: appliedCode 
+  } = useAppSelector((state) => state.cart);
 
   // Calculate summary from cart data
   const summary = {
     subtotal: cart.reduce(
-      (sum: any, item: any) => sum + item.price * item.quantity,
+      (sum: any, item: any) => {
+        const price = item.price || item.product?.price || 0;
+        return sum + price * item.quantity;
+      },
       0,
     ),
     shipping: 0, // Default free shipping
-    discount: cartData?.discount || 0,
-    tax: cartData?.tax || 0,
-    total: cartData?.total || 0,
+    discount: discount || 0,
+    tax: 0,
+    total: totalAmount,
   };
 
   const [promoCode, setPromoCode] = useState("");
@@ -47,11 +55,14 @@ export function OrderSidebar({
     setApplyingPromo(true);
     setPromoError("");
     try {
-      await cartService.applyPromoCode(promoCode);
-      swrMutate("/api/cart"); // Refresh cart data after applying promo
-      setPromoCode("");
+      const result = await dispatch(applyPromoAction(promoCode));
+      if (applyPromoAction.rejected.match(result)) {
+        setPromoError(result.payload as string || "Invalid promo code");
+      } else {
+        setPromoCode("");
+      }
     } catch (error) {
-      setPromoError("Invalid promo code");
+      setPromoError("Something went wrong");
     } finally {
       setApplyingPromo(false);
     }
@@ -83,30 +94,39 @@ export function OrderSidebar({
 
       {/* Cart Items with Product Cards */}
       <div className="space-y-4 mb-6">
-        {cart?.map((item: any, index: any) => (
-          <div
-            key={item.product?._id || index}
-            className="flex gap-3 items-start"
-          >
-            {/* Product Image Box */}
-            <div
-              className={`w-20 h-20 bg-gradient-to-br ${getGradient(item.product?.color)} rounded-xl flex-shrink-0 shadow-sm`}
-            />
+        {cart?.map((item: any, index: any) => {
+          const product = item.product || item;
+          const name = product.name || "Product Name";
+          const color = product.color || "Standard";
+          const price = product.price || 0;
+          const quantity = item.quantity || 1;
+          const id = product._id || product.productId || index;
 
-            {/* Product Details */}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-gray-900 mb-1">
-                {item.product?.name}
-              </h3>
-              <p className="text-xs text-gray-500 mb-1">
-                Qty: {item.quantity} • {item.product?.color}
-              </p>
-              <p className="text-sm font-bold text-pink-600">
-                ${item.product?.price.toFixed(2)}
-              </p>
+          return (
+            <div
+              key={id}
+              className="flex gap-3 items-start"
+            >
+              {/* Product Image Box */}
+              <div
+                className={`w-20 h-20 bg-gradient-to-br ${getGradient(color)} rounded-xl flex-shrink-0 shadow-sm`}
+              />
+
+              {/* Product Details */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm text-gray-900 mb-1 truncate">
+                  {name}
+                </h3>
+                <p className="text-xs text-gray-500 mb-1">
+                  Qty: {quantity} • {color}
+                </p>
+                <p className="text-sm font-bold text-pink-600">
+                  ₹{price.toFixed(2)}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Promo Code */}
