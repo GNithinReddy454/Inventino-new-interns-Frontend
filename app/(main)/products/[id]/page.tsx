@@ -14,12 +14,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { addToCart as reduxAddToCart } from "@/redux/cartslice";
-import { addWishlistItem, removeWishlistItem, addLocalWishlistItem } from "@/redux/wishlistslice";
+import { addWishlistItem, removeWishlistItem, fetchWishlist } from "@/redux/wishlistslice";
 import { useAuth } from "@/app/(main)/components/authContext";
 import ProductReviews from "@/app/components/ProductReviews";
 import ProductCard from "@/app/components/ProductCard";
@@ -42,6 +42,11 @@ interface Product {
   name: string;
   description?: string;
   badge?: string;
+  color?: string;
+  material?: string;
+  stock?: number;
+  colors?: string[];
+  sizes?: string[];
 }
 
 interface SimilarProduct {
@@ -69,12 +74,6 @@ interface ImageType {
   id?: string;
 }
 
-interface SavedItem {
-  product?: { _id?: string };
-  _id?: string;
-  id?: string | number;
-}
-
 interface ReviewData {
   reviews: Array<{
     user: {
@@ -94,33 +93,75 @@ interface ReviewData {
   };
 }
 
+interface VariantAttribute {
+  name: string;
+  value: string;
+}
+
+interface ProductVariant {
+  _id: string;
+  productId: string;
+  sku?: string;
+  price: number;
+  stock: number;
+  attributes: VariantAttribute[];
+  images?: Array<{ url: string }>;
+}
+
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800";
 
-const COLORS = [
+const FALLBACK_COLORS = [
   { label: "Rose Gold", value: "#C9956C" },
-  { label: "Silver",     value: "#B0B0B0" },
-  { label: "Gold",       value: "#FFD700" },
-  { label: "Pink",       value: "#D94F7A" },
+  { label: "Silver",    value: "#B0B0B0" },
+  { label: "Gold",      value: "#FFD700" },
+  { label: "Pink",      value: "#D94F7A" },
 ];
+
+const COLOR_NAME_TO_HEX: Record<string, string> = {
+  silver:    "#B0B0B0",
+  gold:      "#FFD700",
+  rosegold:  "#C9956C",
+  "rose gold": "#C9956C",
+  pink:      "#D94F7A",
+  red:       "#E53935",
+  blue:      "#1E88E5",
+  green:     "#43A047",
+  black:     "#212121",
+  white:     "#F5F5F5",
+  yellow:    "#FDD835",
+  orange:    "#FB8C00",
+  purple:    "#8E24AA",
+  brown:     "#6D4C41",
+  beige:     "#D7C5A0",
+  navy:      "#1A237E",
+  grey:      "#9E9E9E",
+  gray:      "#9E9E9E",
+  copper:    "#B87333",
+};
+
+const resolveColorHex = (colorVal: string): string => {
+  const key = colorVal.toLowerCase().trim();
+  if (COLOR_NAME_TO_HEX[key]) return COLOR_NAME_TO_HEX[key];
+  const match = FALLBACK_COLORS.find(c => c.label.toLowerCase() === key);
+  if (match) return match.value;
+  if (colorVal.startsWith("#") || colorVal.startsWith("rgb")) return colorVal;
+  return "#B0B0B0";
+};
 
 const SIZES = ["Small", "Medium", "Large"];
 
 export default function ProductDetailsPage() {
   const params = useParams();
+  const router = useRouter();
   const productId = params?.id as string;
   const { addToCart } = useCart();
   const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const { savedItems = [] } = useStore();
+  const { savedItems = [], addSavedItem, removeSavedItem } = useStore();
   const { showToast } = useToast();
 
-  // Debugging: Get wishlist directly from Redux
   const wishlistFromRedux = useAppSelector((state: any) => state.wishlist?.items || []);
-  console.log("=== DEBUG INFO ===");
-  console.log("Wishlist items from Redux:", wishlistFromRedux);
-  console.log("Saved items from store context:", savedItems);
-  console.log("Current user:", user);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,6 +185,10 @@ export default function ProductDetailsPage() {
   const [reviewsData, setReviewsData] = useState<ReviewData | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(false);
 
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [variantsLoading, setVariantsLoading] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const mainImageScrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -155,6 +200,14 @@ export default function ProductDetailsPage() {
   const hasFetchedProduct = useRef(false);
   const hasFetchedReviews = useRef(false);
 
+  // Fetch wishlist when user logs in
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchWishlist());
+    }
+  }, [dispatch, user]);
+
+  // ─── API: Similar Products ───────────────────────────────────────────────
   const fetchSimilarWith = async (id: string) => {
     if (!id || hasFetchedSimilar.current) return;
     hasFetchedSimilar.current = true;
@@ -165,115 +218,140 @@ export default function ProductDetailsPage() {
       const payload = similarRes?.data ?? similarRes;
       const list: SimilarProduct[] = Array.isArray(payload) ? payload : [];
       setSimilarProducts(list);
-    } catch {
-      console.error("[Similar] fetch failed");
+    } catch (err) {
+      console.error("[Similar] fetch failed", err);
+      setSimilarProducts([]);
     } finally {
       setSimilarLoading(false);
     }
   };
 
-  const fetchProductReviews = async (id: string) => {
-    if (!id || hasFetchedReviews.current) return;
+  // ─── API: Reviews ────────────────────────────────────────────────────────
+  const fetchProductReviews = async (prdId: string) => {
+    if (!prdId || hasFetchedReviews.current) return;
     hasFetchedReviews.current = true;
     setReviewsLoading(true);
     try {
-      const response = await productService.getReviews(id);
-      if (response?.data) {
-        setReviewsData(response.data);
+      const response = await productService.getReviews(prdId);
+      const reviewData: ReviewData =
+        response?.data?.data ?? response?.data ?? response;
+      if (reviewData?.reviews) {
+        setReviewsData(reviewData);
       }
     } catch (error) {
-      console.error("Failed to fetch reviews:", error);
+      console.error("[Reviews] fetch failed:", error);
     } finally {
       setReviewsLoading(false);
     }
   };
 
+  // ─── Variants: extracted directly from getById response ─────────────────
+  const loadVariantsFromProduct = (data: any) => {
+    const list: ProductVariant[] = Array.isArray(data?.variants) ? data.variants : [];
+    setVariants(list);
+    if (list.length > 0) setSelectedVariant(list[0]);
+    setVariantsLoading(false);
+  };
+
+  // ─── API: Product Detail ─────────────────────────────────────────────────
   useEffect(() => {
     if (!productId || hasFetchedProduct.current) return;
     hasFetchedProduct.current = true;
+
     const run = async () => {
-      if (productId.length < 20) {
-        setProduct({
-          id: parseInt(productId) || 999,
-          name: "Artisan Handcrafted Jewelry",
-          price: 89.99,
-          originalPrice: 129.99,
-          description: "Unique journey from concept to creation.",
-          category: "EXCLUSIVE",
-          image: FALLBACK_IMAGE,
-          images: [FALLBACK_IMAGE],
-          rating: 4.9,
-          reviews: 156,
-        });
-        setLoading(false);
-        return;
-      }
       try {
+        console.log(`Fetching product with ID: ${productId}`);
         const res = await productService.getById(productId);
         const data = res?.data ?? res;
-        
-        let liveRating = 4.8;
-        let liveReviewCount = 0;
-        try {
-          const reviewRes = await productService.getReviews(productId);
-          if (reviewRes?.data) {
-            const reviewData = reviewRes.data;
-            setReviewsData(reviewData);
-            liveReviewCount = reviewData.pagination.totalReviews;
-            
-            if (reviewData.reviews && reviewData.reviews.length > 0) {
-              const totalRating = reviewData.reviews.reduce((sum: number, review: any) => sum + review.rating, 0);
-              liveRating = Number((totalRating / reviewData.reviews.length).toFixed(1));
-            } else {
-              liveRating = data.ratingsAverage || 4.8;
-            }
-          }
-        } catch (e) { 
-          console.error("Review fetch error", e); 
+
+        if (!data) {
+          console.error("No product data found");
+          setLoading(false);
+          return;
         }
 
         const prdId: string = data?.productId ?? "";
         const slug: string = data?.slug ?? "";
         const mongoId: string = String(data?._id ?? productId);
-        
+
+        // Fetch reviews using prdId
+        let liveRating = data.ratingsAverage || 4.8;
+        let liveReviewCount = 0;
+        const reviewId = prdId || mongoId;
+        if (reviewId) {
+          try {
+            const reviewRes = await productService.getReviews(reviewId);
+            const reviewData: ReviewData =
+              reviewRes?.data?.data ?? reviewRes?.data ?? reviewRes;
+            if (reviewData?.reviews) {
+              setReviewsData(reviewData);
+              hasFetchedReviews.current = true;
+              liveReviewCount =
+                reviewData.pagination?.totalReviews ?? reviewData.reviews.length;
+              if (reviewData.reviews.length > 0) {
+                const total = reviewData.reviews.reduce(
+                  (sum: number, r: any) => sum + r.rating,
+                  0
+                );
+                liveRating = Number((total / reviewData.reviews.length).toFixed(1));
+              }
+            }
+          } catch (e) {
+            console.error("[Reviews] fetch failed:", e);
+          }
+        }
+
         setProduct({
           id: 0,
           mongoId,
           name: data.name,
           price: data.price,
-          originalPrice: data.price + 150,
+          originalPrice: data.originalPrice || data.price + 150,
           description: data.description,
           category: data.category,
           image: data.images?.[0]?.url || FALLBACK_IMAGE,
-          images: data.images?.length ? data.images.map((img: ImageType) => img.url) : [FALLBACK_IMAGE],
+          images: data.images?.length
+            ? data.images.map((img: ImageType) => img.url)
+            : [FALLBACK_IMAGE],
           slug,
-          prdId: prdId,
+          prdId,
           rating: liveRating,
           reviews: liveReviewCount,
+          color: data.color ?? "",
+          material: data.material ?? "",
+          stock: data.stock ?? 0,
+          colors: Array.isArray(data.colors) && data.colors.length > 0
+            ? data.colors
+            : (data.color
+                ? data.color.split(",").map((c: string) => c.trim()).filter(Boolean)
+                : []),
+          sizes: Array.isArray(data.sizes) && data.sizes.length > 0
+            ? data.sizes
+            : [],
         });
 
-        if (prdId) {
-          await fetchSimilarWith(prdId);
-          await fetchProductReviews(prdId);
-        } else if (mongoId) {
-          await fetchSimilarWith(mongoId);
-          await fetchProductReviews(mongoId);
-        } else if (slug) {
-          await fetchSimilarWith(slug);
-          await fetchProductReviews(slug);
+        loadVariantsFromProduct(data);
+
+        const resolvedId = prdId || mongoId || slug;
+        if (resolvedId) {
+          await fetchSimilarWith(resolvedId);
+          await fetchProductReviews(prdId || resolvedId);
         }
-      } catch {
-        console.error("[getById] failed:");
+      } catch (err) {
+        console.error("[getById] failed:", err);
       } finally {
         setLoading(false);
       }
     };
+
     run();
   }, [productId]);
 
+  // ─── API: Product Story ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!productId || productId.length < 20 || hasFetchedStory.current) return;
+    if (!productId || hasFetchedStory.current) return;
     hasFetchedStory.current = true;
+
     const run = async () => {
       setStoryLoading(true);
       try {
@@ -281,15 +359,17 @@ export default function ProductDetailsPage() {
         const storyRes = await productService.getStory(productId + cacheBuster);
         const storyData = storyRes?.data ?? storyRes;
         if (storyData) setProductStory(storyData);
-      } catch {
-        console.error("Failed to load product story");
+      } catch (err) {
+        console.error("Failed to load product story", err);
       } finally {
         setStoryLoading(false);
       }
     };
+
     run();
   }, [productId]);
 
+  // ─── UI Effects ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (mainImageScrollRef.current && window.innerWidth >= 768) {
       mainImageScrollRef.current.scrollTo({
@@ -319,6 +399,36 @@ export default function ProductDetailsPage() {
     return () => c.removeEventListener("scroll", handle);
   }, []);
 
+  // ─── Handle navigation to product details ─────────────────────────────────
+  const handleProductClick = (productId: string, slug?: string) => {
+    // Use slug if available, otherwise use productId
+    const path = slug ? `/products/${slug}` : `/products/${productId}`;
+    router.push(path);
+  };
+
+  // ─── Check if product is in wishlist ─────────────────────────────────────
+  const isInWishlist = () => {
+    if (!product) return false;
+    
+    const productIdStr = String(product.mongoId || product.prdId || productId);
+    
+    if (user) {
+      // Check Redux wishlist for logged-in users
+      return wishlistFromRedux.some((item: any) => {
+        const itemId = item.product?._id || item._id || item.id || item.productId;
+        return String(itemId) === productIdStr;
+      });
+    } else {
+      // Check local store for guest users
+      return savedItems.some((item: any) => {
+        const itemId = item.product?._id || item._id || item.id || item.productId;
+        return String(itemId) === productIdStr;
+      });
+    }
+  };
+
+  const isSaved = isInWishlist();
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -331,6 +441,7 @@ export default function ProductDetailsPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4 px-4">
         <h2 className="text-2xl font-bold text-gray-900 text-center">Product Not Found</h2>
+        <p className="text-gray-600 text-center mb-4">The product you're looking for doesn't exist or has been removed.</p>
         <Link href="/products" className="text-[#D94F7A] hover:underline font-medium">
           Return to Products
         </Link>
@@ -339,30 +450,21 @@ export default function ProductDetailsPage() {
   }
 
   const backendProductId: string = product.mongoId || product.prdId || productId;
-  console.log("Current product backend ID:", backendProductId);
-
-  // Updated isSaved check to match both store context and Redux structure
-  const isSaved = savedItems.some((item: any) => {
-    const itemId = item.product?._id || item._id || item.id;
-    const matches = String(itemId) === String(backendProductId);
-    if (matches) {
-      console.log("Found matching item in savedItems:", item);
-    }
-    return matches;
-  });
-
-  // Also check Redux directly
-  const isSavedInRedux = wishlistFromRedux.some((item: any) => {
-    const itemId = item.product?._id || item._id || item.id;
-    return String(itemId) === String(backendProductId);
-  });
-  console.log("isSaved (from context):", isSaved);
-  console.log("isSavedInRedux (direct):", isSavedInRedux);
 
   const discountPct =
     product.originalPrice && product.originalPrice > product.price
       ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
       : null;
+
+  const displayPrice = selectedVariant ? selectedVariant.price : product.price;
+
+  const variantColors: string[] =
+    (product.colors && product.colors.length > 0)
+      ? product.colors
+      : (product.color ? [product.color] : []);
+
+  const variantSizes: string[] =
+    (product.sizes && product.sizes.length > 0) ? product.sizes : [];
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isZoomMode) return;
@@ -377,7 +479,7 @@ export default function ProductDetailsPage() {
     id: backendProductId,
     name: product.name,
     image: product.image,
-    price: product.price,
+    price: displayPrice,
     category: product.category,
     badge: product.badge,
     rating: product.rating,
@@ -423,69 +525,40 @@ export default function ProductDetailsPage() {
     }
   };
 
-  // Updated handleWishlist with detailed logging
   const handleWishlist = () => {
     if (!product) return;
     
-    const productIdStr = String(backendProductId);
-    console.log("=== WISHLIST TOGGLE ===");
-    console.log("Toggling wishlist for product ID:", productIdStr);
-    console.log("Current isSaved state:", isSaved);
-    console.log("Current isSavedInRedux:", isSavedInRedux);
-    console.log("User logged in:", !!user);
-    
+    const productIdStr = String(product.mongoId || product.prdId || productId);
     const willBeSaved = !isSaved;
-    console.log("Will be saved:", willBeSaved);
     
-    if (willBeSaved) {
-      console.log("Dispatching addWishlistItem with:", {
-        productId: productIdStr,
-        product: {
-          _id: productIdStr,
-          id: productIdStr,
-          name: product.name,
-          image: product.image,
-          images: product.images,
-          price: product.price,
-          category: product.category,
-          badge: product.badge,
-          rating: product.rating,
-          reviews: product.reviews,
-          originalPrice: product.originalPrice || null,
-        }
-      });
-      
-      const itemData = {
-        _id: productIdStr,
-        id: productIdStr,
-        name: product.name,
-        image: product.image,
-        images: product.images,
-        price: product.price,
-        category: product.category,
-        badge: product.badge,
-        rating: product.rating,
-        reviews: product.reviews,
-        originalPrice: product.originalPrice || null,
-      };
-
-      if (user) {
+    if (user) {
+      // Logged-in user - use Redux
+      if (willBeSaved) {
         dispatch(addWishlistItem(productIdStr));
+        showToast("Success!", "Added to wishlist", "success");
       } else {
-        dispatch(addLocalWishlistItem({ product: itemData, _id: productIdStr, isLocal: true }));
+        dispatch(removeWishlistItem(productIdStr));
+        showToast("Removed", "Removed from wishlist", "info");
       }
-      showToast("Success!", "Added to wishlist", "success");
     } else {
-      console.log("Dispatching removeWishlistItem for ID:", productIdStr);
-      dispatch(removeWishlistItem(productIdStr));
-      showToast("Removed", "Removed from wishlist", "info");
+      // Guest user - use local store
+      if (willBeSaved) {
+        // Create a product object for local storage
+        const wishlistItem = {
+          id: productIdStr,
+          _id: productIdStr,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          category: product.category,
+        };
+        addSavedItem(wishlistItem);
+        showToast("Success!", "Added to wishlist", "success");
+      } else {
+        removeSavedItem(productIdStr);
+        showToast("Removed", "Removed from wishlist", "info");
+      }
     }
-    
-    // Log after 1 second to see if state changed
-    setTimeout(() => {
-      console.log("After toggle - Redux wishlist:", wishlistFromRedux);
-      console.log("After toggle - savedItems:", savedItems);
-    }, 1000);
   };
 
   const scrollSimilar = (dir: "left" | "right") => {
@@ -502,6 +575,7 @@ export default function ProductDetailsPage() {
     setIsZoomMode(false);
     setSelectedImage((selectedImage - 1 + product.images.length) % product.images.length);
   };
+  
   const goToNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsZoomMode(false);
@@ -513,23 +587,24 @@ export default function ProductDetailsPage() {
     ? productStory.story
     : "Every piece I create is infused with love and intention. I want the wearer to feel special and confident.";
 
-  const displaySimilarProducts =
-    !similarLoading && similarProducts.length > 0
-      ? similarProducts.map((p) => ({
-          id: p._id,
-          _id: p._id,
-          name: p.name,
-          price: p.price,
-          originalPrice: p.price + 150,
-          category: p.category,
-          image: p.images?.[0]?.url || FALLBACK_IMAGE,
-          images: p.images?.length ? p.images.map((img) => img.url) : [FALLBACK_IMAGE],
-          rating: p.ratingsAverage || 4.5,
-          reviews: p.ratingsCount || 0,
-          description: p.description,
-          slug: p.slug
-        }))
-      : [];
+  // Transform similar products for ProductCard component
+  const displaySimilarProducts = !similarLoading && similarProducts.length > 0
+    ? similarProducts.map((p) => ({
+        id: p._id,
+        _id: p._id,
+        name: p.name,
+        price: p.price,
+        originalPrice: p.price + 150,
+        category: p.category,
+        image: p.images?.[0]?.url || FALLBACK_IMAGE,
+        images: p.images?.length ? p.images.map((img) => img.url) : [FALLBACK_IMAGE],
+        rating: p.ratingsAverage || 4.5,
+        reviews: p.ratingsCount || 0,
+        description: p.description,
+        slug: p.slug,
+        productId: p.productId, // Include productId for navigation
+      }))
+    : [];
 
   return (
     <div className="bg-white font-sans overflow-x-clip min-h-screen relative pb-4 md:pb-0">
@@ -543,6 +618,7 @@ export default function ProductDetailsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-8 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 border-b border-gray-100">
+        {/* ── Left: Images ── */}
         <div className="flex flex-col gap-3 md:gap-6">
           <div className="flex flex-col gap-3 md:gap-4">
             <div
@@ -550,12 +626,11 @@ export default function ProductDetailsPage() {
               className="relative w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden border border-gray-100 group"
             >
               <div className="absolute top-3 left-3 md:top-6 md:left-6 flex flex-col gap-1.5 md:gap-2 z-30 pointer-events-none">
-                <div className="w-fit bg-[#E05C7E] text-white text-[9px] md:text-[13px] font-bold px-2.5 py-1 md:px-5 md:py-2 rounded-full shadow-md">
-                  Bestseller
-                </div>
-                <div className="w-fit bg-[#4CAF50] text-white text-[9px] md:text-[13px] font-bold px-2.5 py-1 md:px-5 md:py-2 rounded-full shadow-md">
-                  New
-                </div>
+                {product.badge && (
+                  <div className="w-fit bg-[#E05C7E] text-white text-[9px] md:text-[13px] font-bold px-2.5 py-1 md:px-5 md:py-2 rounded-full shadow-md">
+                    {product.badge}
+                  </div>
+                )}
               </div>
 
               <button
@@ -605,10 +680,10 @@ export default function ProductDetailsPage() {
                         transition: isZoomMode ? "transform 0.15s ease-out" : "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                       }}
                     >
-                      <Image 
-                        src={img} 
-                        className="w-full h-full object-cover" 
-                        draggable={false} 
+                      <Image
+                        src={img}
+                        className="w-full h-full object-cover"
+                        draggable={false}
                         alt={`Product ${idx + 1}`}
                         width={800}
                         height={800}
@@ -639,9 +714,9 @@ export default function ProductDetailsPage() {
                       : "border-gray-100 hover:border-gray-300"
                   }`}
                 >
-                  <Image 
-                    src={img} 
-                    className="w-full h-full object-cover" 
+                  <Image
+                    src={img}
+                    className="w-full h-full object-cover"
                     alt={`Thumbnail ${idx + 1}`}
                     width={96}
                     height={96}
@@ -658,6 +733,7 @@ export default function ProductDetailsPage() {
           </div>
         </div>
 
+        {/* ── Right: Info ── */}
         <div className="flex flex-col gap-4 md:gap-5">
           <span className="text-[#D94F7A] text-xs font-bold uppercase tracking-widest">
             {product.category}
@@ -683,7 +759,7 @@ export default function ProductDetailsPage() {
 
           <div className="bg-[#F7F0EE] rounded-xl md:rounded-2xl px-4 md:px-5 py-3 md:py-4">
             <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-              <span className="text-2xl md:text-3xl font-bold text-[#D94F7A]">₹{product.price.toFixed(2)}</span>
+              <span className="text-2xl md:text-3xl font-bold text-[#D94F7A]">₹{displayPrice.toFixed(2)}</span>
               {product.originalPrice && (
                 <span className="text-sm md:text-base text-gray-400 line-through">₹{product.originalPrice.toFixed(2)}</span>
               )}
@@ -698,46 +774,77 @@ export default function ProductDetailsPage() {
 
           <p className="text-sm md:text-base text-gray-600 leading-6 md:leading-7">{product.description}</p>
 
-          <div className="flex flex-col gap-2 md:gap-3">
-            <span className="text-sm md:text-[15px] font-semibold text-gray-900">Choose Color</span>
-            <div className="flex gap-3 md:gap-4">
-              {COLORS.map((col, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedColor(idx)}
-                  title={col.label}
-                  className={`w-9 h-9 md:w-11 md:h-11 rounded-full border-[3px] transition-all relative flex items-center justify-center ${
-                    selectedColor === idx ? "border-[#D94F7A] scale-105" : "border-transparent hover:border-gray-300"
-                  }`}
-                  style={{ backgroundColor: col.value }}
-                >
-                  {selectedColor === idx && (
-                    <svg width="11" height="11" className="md:w-3 md:h-3" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-              ))}
+          {/* ── Color selector: circular swatches (original UI) ── */}
+          {variantColors.length > 0 && (
+            <div className="flex flex-col gap-2 md:gap-3">
+              <span className="text-sm md:text-[15px] font-semibold text-gray-900">Choose Color</span>
+              <div className="flex gap-3 md:gap-4">
+                {variantColors.map((colorVal, idx) => {
+                  const bgColor = resolveColorHex(colorVal);
+                  const isSelected = selectedColor === idx;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedColor(idx)}
+                      title={colorVal}
+                      className={`w-9 h-9 md:w-11 md:h-11 rounded-full border-[3px] transition-all relative flex items-center justify-center hover:scale-110 ${
+                        isSelected ? "border-[#D94F7A] scale-105" : "border-transparent hover:border-gray-300"
+                      }`}
+                      style={{ backgroundColor: bgColor }}
+                    >
+                      {isSelected && (
+                        <svg width="11" height="11" className="md:w-3 md:h-3" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex flex-col gap-2 md:gap-3">
-            <span className="text-sm md:text-[15px] font-semibold text-gray-900">Choose Size</span>
-            <div className="flex gap-2 md:gap-3 flex-wrap">
-              {SIZES.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold border-2 transition-all ${
-                    selectedSize === size ? "bg-[#D94F7A] border-[#D94F7A] text-white" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
+          {/* ── Size selector ── */}
+          {variantSizes.length > 0 && (
+            <div className="flex flex-col gap-2 md:gap-3">
+              <span className="text-sm md:text-[15px] font-semibold text-gray-900">Choose Size</span>
+              <div className="flex gap-2 md:gap-3 flex-wrap">
+                {variantSizes.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(size)}
+                    className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold border-2 transition-all ${
+                      selectedSize === size
+                        ? "bg-[#D94F7A] border-[#D94F7A] text-white"
+                        : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
+          {/* ── Stock badge from product.stock ── */}
+          {product.stock !== undefined && (
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                  product.stock > 0
+                    ? "bg-green-50 text-green-700"
+                    : "bg-red-50 text-red-600"
+                }`}
+              >
+                {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+              </span>
+              {product.material && (
+                <span className="text-[10px] text-gray-400 capitalize">Material: {product.material}</span>
+              )}
+            </div>
+          )}
+
+          {/* ── Quantity ── */}
           <div className="flex items-center">
             <div className="inline-flex items-center gap-3 md:gap-4 bg-[#FAF0F0] rounded-full px-3 py-2.5 md:px-4 md:py-3">
               <button
@@ -756,12 +863,13 @@ export default function ProductDetailsPage() {
             </div>
           </div>
 
+          {/* ── Add to Bag / Wishlist ── */}
           <div className="flex gap-3 md:gap-4 w-full">
             <button
               onClick={(e) => handleAddToCart(e)}
-              disabled={isAdded}
+              disabled={isAdded || product.stock === 0}
               className={`flex-[3] font-semibold rounded-full flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${
-                isAdded ? "bg-emerald-500 text-white" : "bg-[#D94F7A] hover:bg-[#c2436d] text-white"
+                isAdded ? "bg-emerald-500 text-white" : "bg-[#D94F7A] hover:bg-[#c2436d] text-white disabled:opacity-60 disabled:cursor-not-allowed"
               }`}
             >
               {isAdded ? (
@@ -770,15 +878,32 @@ export default function ProductDetailsPage() {
                 <><ShoppingBag size={14} className="md:w-4 md:h-4" /> Add to Bag</>
               )}
             </button>
-            <button
-              onClick={handleBuyNow}
-              className="flex-[2] font-semibold rounded-full border-2 border-gray-200 bg-white text-gray-800 hover:border-gray-300 flex items-center justify-center py-3 md:py-3.5 text-xs md:text-sm transition-all"
-            >
-              Buy Now
-            </button>
+            
+            {product.stock > 0 ? (
+              <button
+                onClick={handleBuyNow}
+                className="flex-[2] font-semibold rounded-full border-2 border-gray-200 bg-white text-gray-800 hover:border-gray-300 flex items-center justify-center py-3 md:py-3.5 text-xs md:text-sm transition-all"
+              >
+                Buy Now
+              </button>
+            ) : (
+              <button
+                onClick={handleWishlist}
+                className={`flex-[2] font-semibold rounded-full border-2 flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${
+                  isSaved 
+                    ? "bg-[#D94F7A] border-[#D94F7A] text-white" 
+                    : "border-gray-200 bg-white text-gray-800 hover:border-gray-300"
+                }`}
+              >
+                <Heart size={14} className="md:w-4 md:h-4" fill={isSaved ? "currentColor" : "none"} />
+                {isSaved ? "Saved" : "Wishlist"}
+              </button>
+            )}
           </div>
 
+          {/* ── Accordions ── */}
           <div className="border border-gray-200 rounded-xl md:rounded-2xl overflow-hidden">
+            {/* Reviews accordion */}
             <div className="border-b border-gray-100">
               <button
                 onClick={() => setActiveAccordion(activeAccordion === "reviews" ? null : "reviews")}
@@ -838,6 +963,8 @@ export default function ProductDetailsPage() {
                 </div>
               )}
             </div>
+
+            {/* Product detail accordion */}
             <div>
               <button
                 onClick={() => setActiveAccordion(activeAccordion === "detail" ? null : "detail")}
@@ -861,13 +988,14 @@ export default function ProductDetailsPage() {
         </div>
       </div>
 
-      {!storyLoading && (
+      {/* ── Artisan Story ── */}
+      {!storyLoading && productStory && (
         <div className="bg-[#050505] py-10 md:py-16 lg:py-32 px-4 relative">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-10">
             <div className="w-full md:flex-1 relative aspect-video rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl group/story">
-              <Image 
-                src={storyImageSrc} 
-                className="w-full h-full object-cover opacity-70 transition-transform duration-700 group-hover/story:scale-110" 
+              <Image
+                src={storyImageSrc}
+                className="w-full h-full object-cover opacity-70 transition-transform duration-700 group-hover/story:scale-110"
                 alt="Artisan Story"
                 width={1200}
                 height={675}
@@ -894,12 +1022,13 @@ export default function ProductDetailsPage() {
         </div>
       )}
 
+      {/* ── Similar Products ── */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-12 md:pt-16 md:pb-8 group/similar">
         <h3 className="text-xl md:text-2xl font-serif text-gray-900 mb-4 md:mb-8">Similar Products</h3>
         <div className="relative flex items-center">
           <button
             onClick={() => scrollSimilar("left")}
-            className="absolute left-0 md:-left-8 top-1/2 -translate-y-[100%] md:-translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-lg rounded-full border border-gray-200 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all flex items-center justify-center lg:opacity-0 lg:group-hover/similar:opacity-100"
+            className="absolute left-0 md:-left-8 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-lg rounded-full border border-gray-200 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all flex items-center justify-center"
             style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
           >
             <ChevronLeft size={24} className="md:w-6 md:h-6" />
@@ -909,24 +1038,63 @@ export default function ProductDetailsPage() {
             ref={similarProductsRef}
             className="flex overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory scroll-smooth gap-4 md:gap-6 w-full"
           >
-            {!similarLoading &&
-              (displaySimilarProducts.length > 0 ? displaySimilarProducts : [1, 2, 3, 4]).map((p, index) => (
+            {similarLoading ? (
+              // Loading skeletons
+              [1, 2, 3, 4].map((i) => (
                 <div
-                  key={typeof p === "number" ? `skeleton-${index}` : p.id}
+                  key={`skeleton-${i}`}
                   className="flex-none w-full md:w-[calc(25%-1.25rem)] snap-start flex justify-center"
+                >
+                  <div className="w-full h-64 bg-gray-200 rounded-xl animate-pulse" />
+                </div>
+              ))
+            ) : displaySimilarProducts.length > 0 ? (
+              displaySimilarProducts.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex-none w-full md:w-[calc(25%-1.25rem)] snap-start flex justify-center cursor-pointer"
+                  onClick={() => handleProductClick(p.productId || p.id, p.slug)}
                 >
                   <div className="w-full">
                     <ProductCard
-                      product={typeof p === "number" ? { ...product, id: p } : p}
+                      product={p}
                     />
                   </div>
                 </div>
-              ))}
+              ))
+            ) : (
+              // Fallback similar products when API returns none
+              [1, 2, 3, 4].map((i) => (
+                <div
+                  key={`fallback-${i}`}
+                  className="flex-none w-full md:w-[calc(25%-1.25rem)] snap-start flex justify-center cursor-pointer"
+                  onClick={() => handleProductClick(product.prdId || product.mongoId || productId, product.slug)}
+                >
+                  <div className="w-full">
+                    <ProductCard
+                      product={{
+                        id: `fallback-${i}`,
+                        name: `${product.name} Style ${i}`,
+                        price: product.price,
+                        originalPrice: product.originalPrice,
+                        category: product.category,
+                        image: product.image,
+                        images: [product.image],
+                        rating: product.rating,
+                        reviews: product.reviews,
+                        description: product.description,
+                        slug: product.slug,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <button
             onClick={() => scrollSimilar("right")}
-            className="absolute right-0 md:-right-8 top-1/2 -translate-y-[100%] md:-translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-lg rounded-full border border-gray-200 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all flex items-center justify-center lg:opacity-0 lg:group-hover/similar:opacity-100"
+            className="absolute right-0 md:-right-8 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-lg rounded-full border border-gray-200 text-gray-700 hover:bg-[#D94F7A] hover:text-white transition-all flex items-center justify-center"
             style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
           >
             <ChevronRight size={24} className="md:w-6 md:h-6" />
@@ -934,16 +1102,17 @@ export default function ProductDetailsPage() {
         </div>
       </div>
 
+      {/* ── Reviews Section ── */}
       {showBottomReviews && (
         <div
           ref={reviewsSectionRef}
           className="max-w-7xl mx-auto pb-6 md:pb-10 px-4 md:px-6 pt-2 md:pt-6 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-1000"
         >
-          <ProductReviews 
-            productId={backendProductId} 
-            mongoProductId={backendProductId} 
-            isLoggedIn={!!user} 
-            hasPurchased={false} 
+          <ProductReviews
+            productId={backendProductId}
+            mongoProductId={backendProductId}
+            isLoggedIn={!!user}
+            hasPurchased={false}
           />
         </div>
       )}
@@ -953,7 +1122,7 @@ export default function ProductDetailsPage() {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @media (max-width: 768px) {
            .fixed.bottom-6.right-6 {
-             bottom: 5.5rem !important; 
+             bottom: 5.5rem !important;
              z-index: 50;
            }
         }
