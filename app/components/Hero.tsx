@@ -61,7 +61,7 @@ function bannerToSlide(banner: Banner) {
     pinkWord,
     subtitle:
       "Discover unique handmade treasures crafted with love and care for every occasion.",
-    link: banner.link || "/products",
+    link:  "/products",
   };
 }
 
@@ -128,7 +128,7 @@ export default function Hero() {
   }, [slides.length]);
 
   const slide = slides[current];
-
+console.log("Current slide:", slide);
   return (
     <section className="w-full">
       <div className="relative w-full h-[75vh] min-h-[500px] overflow-hidden bg-gray-900">
