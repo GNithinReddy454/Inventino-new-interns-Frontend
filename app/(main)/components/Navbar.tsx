@@ -349,9 +349,9 @@ const Navbar = () => {
                     <div className="p-2">
                       {[
                         { href: "/profile", icon: <User size={16} />, label: "My Profile" },
-                        { href: "/profile/orders", icon: <Package size={16} />, label: "Orders" },
-                        { href: "/profile/addresses", icon: <MapPin size={16} />, label: "Addresses" },
-                        { href: "/profile/settings", icon: <Settings size={16} />, label: "Settings" },
+                        // { href: "/profile/orders", icon: <Package size={16} />, label: "Orders" },
+                        // { href: "/profile/addresses", icon: <MapPin size={16} />, label: "Addresses" },
+                        // { href: "/profile/settings", icon: <Settings size={16} />, label: "Settings" },
                       ].map(({ href, icon, label }) => (
                         <Link
                           key={href}
