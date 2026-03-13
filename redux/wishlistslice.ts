@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { wishlistService } from "@/services/wishlist.service";
 
 interface WishlistState {
@@ -16,7 +16,18 @@ const initialState: WishlistState = {
 // ── localStorage helpers (for guests) ────────────────────────────────────────
 const LOCAL_KEY = "guest_wishlist";
 
-function getLocalWishlist(): any[] {
+interface GuestWishlistItem {
+  product: {
+    _id: string;
+    productId?: string;
+    id?: string;
+  };
+  color?: string | null;
+  size?: string | null;
+  isLocal?: boolean;
+}
+
+function getLocalWishlist(): GuestWishlistItem[] {
   try {
     const raw = localStorage.getItem(LOCAL_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -25,7 +36,7 @@ function getLocalWishlist(): any[] {
   }
 }
 
-function saveLocalWishlist(items: any[]) {
+function saveLocalWishlist(items: GuestWishlistItem[]) {
   try {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
   } catch {}
@@ -63,28 +74,42 @@ export const fetchWishlist = createAsyncThunk(
   }
 );
 
-// Accepts either a plain string ID or a product object
+// Accepts either a plain string ID or an object with productId, color, and size
 export const addWishlistItem = createAsyncThunk(
   "wishlist/add",
   async (payload: any, { rejectWithValue }) => {
-    const productId = typeof payload === "string" ? payload : String(payload.productId || payload._id || payload.id);
+    let productId: string;
+    let color: string | null = null;
+    let size: string | null = null;
+
+    if (typeof payload === "string") {
+      productId = payload;
+    } else {
+      productId = String(payload.productId || payload.product?._id || payload._id || payload.id);
+      color = payload.color || null;
+      size = payload.size || null;
+    }
+
     try {
       if (!isLoggedIn()) {
         const items = getLocalWishlist();
-        // Avoid duplicates checking all possible ID fields
+        // Avoid duplicates checking all possible ID fields AND color/size
         const exists = items.some((i: any) => {
           const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id);
-          return id === productId;
+          return id === productId && i.color === color && i.size === size;
         });
         if (!exists) {
           // If payload is an object, store it; otherwise create minimal structure
-          const itemToStore = typeof payload === "object" ? { product: payload, isLocal: true } : { product: { _id: productId }, _id: productId, productId: productId, isLocal: true };
+          const itemToStore = typeof payload === "object" 
+            ? { ...payload, isLocal: true } 
+            : { product: { _id: productId }, _id: productId, productId: productId, color, size, isLocal: true };
           items.push(itemToStore);
           saveLocalWishlist(items);
         }
         return items;
       }
-      const response = await wishlistService.addToWishlist(productId);
+      // Pass color and size to the service
+      const response = await wishlistService.addToWishlist(productId, color || undefined, size || undefined);
       return response.data?.wishlist?.items || [];
     } catch (error: any) {
       return rejectWithValue(
@@ -142,8 +167,12 @@ const wishlistSlice = createSlice({
     reducers: {
         addLocalWishlistItem: (state, action) => {
             const pId = String(action.payload?.product?.productId || action.payload?.product?._id || action.payload?.product?.id || action.payload?._id || action.payload?.productId);
+            const color = action.payload?.color;
+            const size = action.payload?.size;
             const exists = state.items.some((i: any) => 
-                String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) === pId
+                String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) === pId && 
+                i.color === color && 
+                i.size === size
             );
             if (!exists) {
                 state.items.push({ ...action.payload, isLocal: true });
@@ -170,7 +199,13 @@ const wishlistSlice = createSlice({
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
                 const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
-                if (!merged.some(m => String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id)) {
+                const color = loc.color;
+                const size = loc.size;
+                if (!merged.some(m => 
+                    String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id && 
+                    m.color === color && 
+                    m.size === size
+                )) {
                     merged.push(loc);
                 }
             });
@@ -188,7 +223,13 @@ const wishlistSlice = createSlice({
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
                 const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
-                if (!merged.some(m => String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id)) {
+                const color = loc.color;
+                const size = loc.size;
+                if (!merged.some(m => 
+                    String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id && 
+                    m.color === color && 
+                    m.size === size
+                )) {
                     merged.push(loc);
                 }
             });
@@ -203,7 +244,13 @@ const wishlistSlice = createSlice({
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
                 const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
-                if (!merged.some(m => String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id)) {
+                const color = loc.color;
+                const size = loc.size;
+                if (!merged.some(m => 
+                    String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id && 
+                    m.color === color && 
+                    m.size === size
+                )) {
                     merged.push(loc);
                 }
             });

@@ -13,6 +13,8 @@ interface WishlistProduct {
   product?: {
     _id?: string | number;
   };
+  color?: string | null;
+  size?: string | null;
 }
 
 interface WishlistItem {
@@ -20,11 +22,13 @@ interface WishlistItem {
     _id?: string;
   };
   _id?: string;
+  color?: string | null;
+  size?: string | null;
 }
 
 interface StoreContextType {
   savedItems: WishlistItem[];
-  handleSaved: (product: WishlistProduct) => void;
+  handleSaved: (product: WishlistProduct, color?: string | null, size?: string | null) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -34,22 +38,34 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
   const { items } = useAppSelector((state) => state.wishlist);
 
   useEffect(() => {
+    // Admin users don't have wishlists — skip the fetch to avoid
+    // hitting the user-only /wishlist endpoint with an admin token.
+    try {
+      const stored = localStorage.getItem("inventino_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.permissions)) return;
+      }
+    } catch { /* ignore parse errors */ }
     dispatch(fetchWishlist());
   }, [dispatch]);
 
-  const handleSaved = (product: WishlistProduct) => {
+  const handleSaved = (product: WishlistProduct, color?: string | null, size?: string | null) => {
     const productIdRaw = product.mongoId || product._id || product.id;
     if (!productIdRaw) return;
     const productId = String(productIdRaw);
 
+    // Check if exists with same color and size combination
     const exists = items.some((i: WishlistItem) => 
-      (i.product?._id === productId) || (i._id === productId)
+      (i.product?._id === productId || i._id === productId) && 
+      i.color === color && 
+      i.size === size
     );
 
     if (exists) {
       dispatch(removeWishlistItem(productId));
     } else {
-      dispatch(addWishlistItem(productId));
+      dispatch(addWishlistItem({ productId, color, size }));
     }
   };
 

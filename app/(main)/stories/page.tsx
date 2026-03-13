@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ShoppingCart, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ProductCard, { ProductCardProduct } from "@/app/components/ProductCard";
 import { useCart } from "@/lib/cartContext";
@@ -36,8 +36,7 @@ const MOCK_STORIES = [
     process: "The rose gold plating process uses a special technique that ensures durability and a lasting shine. Each bracelet is individually inspected and polished by hand before being carefully packaged in a handmade gift box, making it perfect for gifting or keeping as a personal treasure.",
     image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&auto=format&fit=crop",
     thumbnail: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=100&auto=format&fit=crop",
-    // TODO: Replace with actual productId from your database (e.g., "PRD-001")
-    productId: "PRD-001", // Use the custom productId format
+    productId: "PRD-001",
   },
   {
     id: 2,
@@ -176,12 +175,12 @@ const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1611591437281-460bfbe1
 
 function ProcessStepCard({ step }: { step: typeof PROCESS_STEPS[0] }) {
   return (
-    <div className="bg-white rounded-2xl p-8 border border-pink-100 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-pink-100/60 hover:border-pink-200 hover:-translate-y-1">
-      <div className="w-12 h-12 rounded-full bg-[#E8456A] text-white flex items-center justify-center text-lg font-black mb-6 shadow-[0_0_20px_rgba(232,69,106,0.5)]">
+    <div className="bg-white rounded-2xl p-6 md:p-8 border border-pink-100 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-pink-100/60 hover:border-pink-200 hover:-translate-y-1">
+      <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#E8456A] text-white flex items-center justify-center text-base md:text-lg font-black mb-4 md:mb-6 shadow-[0_0_20px_rgba(232,69,106,0.5)]">
         {step.id}
       </div>
-      <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
-      <p className="text-gray-600 text-[14px] leading-relaxed">{step.description}</p>
+      <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 md:mb-3">{step.title}</h3>
+      <p className="text-gray-600 text-[13px] md:text-[14px] leading-relaxed">{step.description}</p>
     </div>
   );
 }
@@ -191,15 +190,14 @@ export default function StoriesPage() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastTitle, setToastTitle] = useState("Added to Cart");
   const [toastType, setToastType] = useState<"success" | "error">("success");
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [similarProducts, setSimilarProducts] = useState<ProductCardProduct[]>(FALLBACK_SIMILAR_PRODUCTS);
   const [similarLoading, setSimilarLoading] = useState(false);
-  
+
   // Story API states
   const [storyData, setStoryData] = useState<ProductStory | null>(null);
   const [storyLoading, setStoryLoading] = useState(false);
-  
-  const { addToCart: localAddToCart, cart } = useCart();
+
+  const { addToCart: localAddToCart } = useCart();
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const router = useRouter();
@@ -208,29 +206,32 @@ export default function StoriesPage() {
 
   const activeStory = MOCK_STORIES.find(s => s.id === activeStoryId)!;
   const activeIndex = MOCK_STORIES.findIndex(s => s.id === activeStoryId);
+  const isFirst = activeIndex === 0;
+  const isLast = activeIndex === MOCK_STORIES.length - 1;
+
+  // ─── Scroll active circle into view ────────────────────────────────────────
+  const scrollActiveCircleIntoView = (storyId: number) => {
+    if (scrollRef.current) {
+      const activeButton = scrollRef.current.querySelector(`[data-story-id="${storyId}"]`);
+      if (activeButton) {
+        activeButton.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }
+  };
 
   // ─── API: Fetch Story Data ───────────────────────────────────────────────
   const fetchStoryData = async (productId: string) => {
     if (!productId) return;
-    
     setStoryLoading(true);
-    
     try {
-      console.log(`Fetching story for product ID: ${productId}`);
       const response = await productService.getStory(productId);
-      console.log("Story response:", response);
-      
-      // Handle different response structures
       const story = response?.data ?? response;
-      
       if (story && (story.story || story.storyMedia)) {
         setStoryData(story);
       } else {
-        console.log("No story found for this product");
         setStoryData(null);
       }
     } catch (err) {
-      // Handle 404 gracefully - story might not exist
       if (axios.isAxiosError(err) && err.response?.status === 404) {
         console.log(`Story not found for product ID: ${productId}`);
       } else {
@@ -245,20 +246,12 @@ export default function StoriesPage() {
   // ─── API: Similar Products ───────────────────────────────────────────────
   const fetchSimilarProducts = async (productId: string) => {
     if (!productId) return;
-    
     setSimilarLoading(true);
-    
     try {
-      console.log(`Fetching similar products for ID: ${productId}`);
       const response = await productService.getSimilar(productId);
-      console.log("Similar products response:", response);
-      
-      // Handle different response structures
       const payload = response?.data ?? response;
       const list: SimilarProduct[] = Array.isArray(payload) ? payload : [];
-      
       if (list.length > 0) {
-        // Transform API response to match ProductCard props
         const transformedProducts = list.map((p) => ({
           id: p._id,
           _id: p._id,
@@ -275,17 +268,14 @@ export default function StoriesPage() {
         }));
         setSimilarProducts(transformedProducts);
       } else {
-        console.log("No similar products found from API, keeping fallback");
         setSimilarProducts(FALLBACK_SIMILAR_PRODUCTS);
       }
     } catch (err) {
-      // Handle 404 gracefully - just keep using fallback products
       if (axios.isAxiosError(err) && err.response?.status === 404) {
         console.log(`Product with ID ${productId} not found in database, using fallback similar products`);
       } else {
         console.error("[Similar] fetch failed:", err);
       }
-      // Keep using fallback products
       setSimilarProducts(FALLBACK_SIMILAR_PRODUCTS);
     } finally {
       setSimilarLoading(false);
@@ -300,87 +290,33 @@ export default function StoriesPage() {
     }
   }, [activeStory]);
 
+  const scrollCirclesBy = (direction: "prev" | "next") => {
+    if (!scrollRef.current) return;
+    // On mobile show exactly 3 circles per scroll, on larger screens scroll full width
+    const buttons = scrollRef.current.querySelectorAll("[data-story-id]");
+    if (buttons.length > 0) {
+      const btnWidth = buttons[0].getBoundingClientRect().width;
+      const gap = window.innerWidth < 640 ? 8 : 12; // gap-2 = 8px, gap-3 = 12px
+      // Mobile/tablet: scroll 3 circles; Desktop (lg+): scroll all 5
+      const visibleCount = window.innerWidth >= 1024 ? 5 : 3;
+      const scrollAmount = (btnWidth + gap) * visibleCount;
+      scrollRef.current.scrollBy({
+        left: direction === "next" ? scrollAmount : -scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
   const handlePrev = () => {
     const prevIndex = (activeIndex - 1 + MOCK_STORIES.length) % MOCK_STORIES.length;
     setActiveStoryId(MOCK_STORIES[prevIndex].id);
-    
-    // Scroll to show the active story in the circles carousel
-    if (scrollRef.current) {
-      const activeButton = scrollRef.current.querySelector(`[data-story-id="${MOCK_STORIES[prevIndex].id}"]`);
-      if (activeButton) {
-        activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }
+    scrollCirclesBy("prev");
   };
 
   const handleNext = () => {
     const nextIndex = (activeIndex + 1) % MOCK_STORIES.length;
     setActiveStoryId(MOCK_STORIES[nextIndex].id);
-    
-    // Scroll to show the active story in the circles carousel
-    if (scrollRef.current) {
-      const activeButton = scrollRef.current.querySelector(`[data-story-id="${MOCK_STORIES[nextIndex].id}"]`);
-      if (activeButton) {
-        activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }
-  };
-
-  const handleAddToCart = async () => {
-    setIsAddingToCart(true);
-    
-    // Create a proper cart item with real product data
-    const cartItem = {
-      id: activeStory.productId,
-      name: activeStory.title,
-      price: 89.99,
-      image: activeStory.thumbnail,
-      category: activeStory.role,
-      quantity: 1,
-    };
-    
-    // Check if user is logged in
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    
-    if (user || token) {
-      // User is logged in - call the cart API
-      try {
-        console.log("Calling cart API with productId:", activeStory.productId);
-        
-        // Direct API call to add to cart
-        const response = await cartService.addToCart(activeStory.productId, 1);
-        
-        console.log("Cart API response:", response);
-        
-        // Also update Redux state
-        await dispatch(reduxAddToCart({ 
-          productId: activeStory.productId, 
-          quantity: 1 
-        })).unwrap();
-        
-        setToastTitle("Success!");
-        setToastType("success");
-        setToastMessage(`${activeStory.title} has been added to your cart.`);
-      } catch (error: any) {
-        console.error("Failed to add to cart via API:", error);
-        
-        // Show error message
-        setToastTitle("Error");
-        setToastType("error");
-        setToastMessage(error.response?.data?.message || "Failed to add to cart. Please try again.");
-        
-        // Fallback to local cart if API fails
-        localAddToCart(cartItem);
-      }
-    } else {
-      // User is not logged in - use local cart
-      localAddToCart(cartItem);
-      setToastTitle("Success!");
-      setToastType("success");
-      setToastMessage(`${activeStory.title} has been added to your cart.`);
-    }
-    
-    setIsAddingToCart(false);
+    scrollCirclesBy("next");
   };
 
   const handleViewDetails = () => {
@@ -405,40 +341,42 @@ export default function StoriesPage() {
   };
 
   // Determine which story content to display (API data or fallback)
-  const storyImageSrc = storyData?.storyMedia?.trim() 
-    ? storyData.storyMedia 
+  const storyImageSrc = storyData?.storyMedia?.trim()
+    ? storyData.storyMedia
     : activeStory.image;
-  
+
   const storyText = storyData?.story?.trim()
     ? storyData.story
     : activeStory.quote;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 px-6 pb-6 pt-2 md:px-12 md:pb-12 md:pt-4 lg:px-20 lg:pb-20 lg:pt-6 font-sans overflow-x-hidden">
-      <div className="max-w-7xl mx-auto space-y-16">
+    <div className="min-h-screen bg-gray-50 text-gray-900 px-4 pb-6 pt-2 sm:px-6 md:px-12 md:pb-12 md:pt-4 lg:px-20 lg:pb-20 lg:pt-6 font-sans overflow-x-hidden">
+      <div className="max-w-7xl mx-auto space-y-10 md:space-y-16">
 
         {/* Top Stories Section */}
         <section>
-          <h2 className="text-3xl font-bold text-[#E8456A] mb-8">Top Stories</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#E8456A] mb-5 md:mb-8">Top Stories</h2>
 
-          <div className="bg-white rounded-2xl p-6 md:p-10 flex flex-col lg:flex-row gap-8 lg:gap-14 border border-pink-100 shadow-xl shadow-pink-100/30">
+          <div className="mx-6 sm:mx-0 bg-white rounded-2xl p-4 sm:p-6 md:p-10 flex flex-col lg:flex-row gap-6 md:gap-8 lg:gap-14 border border-pink-100 shadow-xl shadow-pink-100/30">
 
             {/* Left Column */}
             <div className="w-full lg:w-5/12 flex flex-col">
 
               {/* Story Circles with Prev/Next Arrows */}
-              <div className="flex items-center gap-2 mb-8">
+              <div className="flex items-center justify-center gap-2 mb-5 md:mb-8">
                 <button
                   onClick={handlePrev}
-                  className="flex-shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95"
+                  disabled={isFirst}
+                  className="flex-shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#E8456A]"
                 >
                   <ChevronLeft size={16} strokeWidth={3} />
                 </button>
 
+                <div className="circles-container" style={{ overflowX: "hidden", overflowY: "visible" }}>
                 <div
                   ref={scrollRef}
-                  className="flex gap-3 overflow-x-auto scrollbar-hide flex-1 py-2 px-1 no-scrollbar snap-x snap-mandatory"
-                  style={{ scrollBehavior: 'smooth' }}
+                  className="flex gap-2 sm:gap-3 overflow-x-auto py-3 px-2 no-scrollbar"
+                  style={{ scrollBehavior: "smooth" }}
                 >
                   {MOCK_STORIES.map((story) => {
                     const isActive = activeStoryId === story.id;
@@ -446,29 +384,18 @@ export default function StoriesPage() {
                       <button
                         key={story.id}
                         data-story-id={story.id}
-                        onClick={() => {
-                          setActiveStoryId(story.id);
-                          // Scroll to the clicked button
-                          setTimeout(() => {
-                            if (scrollRef.current) {
-                              const activeButton = scrollRef.current.querySelector(`[data-story-id="${story.id}"]`);
-                              if (activeButton) {
-                                activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                              }
-                            }
-                          }, 50);
-                        }}
+                        onClick={() => setActiveStoryId(story.id)}
                         className="relative flex-shrink-0 hover:-translate-y-1 transition-transform snap-start"
                       >
                         <div
-                          className="w-[72px] h-[72px] rounded-full flex items-center justify-center transition-all duration-300"
+                          className="w-[56px] h-[56px] sm:w-[66px] sm:h-[66px] md:w-[72px] md:h-[72px] rounded-full flex items-center justify-center transition-all duration-300"
                           style={{
-                            padding: "3px",
+                            padding: isActive ? "3px" : "0px",
                             background: isActive
-                              ? "linear-gradient(135deg, #FFD700, #FFEC00, #FFC200, #FFD700)"
-                              : "linear-gradient(135deg, #f9a8c0, #E8456A, #f472b6)",
+                              ? "linear-gradient(135deg, #f472a0 0%, #E8456A 50%, #e05580 100%)"
+                              : "none",
                             boxShadow: isActive
-                              ? "0 0 12px 3px rgba(255, 215, 0, 0.75)"
+                              ? "0 0 12px 3px rgba(232,69,106,0.5)"
                               : "none",
                           }}
                         >
@@ -480,25 +407,31 @@ export default function StoriesPage() {
                             />
                           </div>
                         </div>
-                        <div className="absolute -top-1 -right-1 w-[20px] h-[20px] bg-[#E8456A] text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-md">
+                        {/* Badge: pink when active, gray when not */}
+                        <div
+                          className="absolute -top-1 -right-1 w-[18px] h-[18px] sm:w-[20px] sm:h-[20px] text-white text-[9px] sm:text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-md"
+                          style={{ background: isActive ? "#E8456A" : "#9ca3af" }}
+                        >
                           {story.id}
                         </div>
                       </button>
                     );
                   })}
                 </div>
+                </div>
 
                 <button
                   onClick={handleNext}
-                  className="flex-shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95"
+                  disabled={isLast}
+                  className="flex-shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#E8456A]"
                 >
                   <ChevronRight size={16} strokeWidth={3} />
                 </button>
               </div>
 
-              {/* Main Image - Now using story image from API if available */}
+              {/* Main Image */}
               <div
-                className="relative w-full rounded-3xl overflow-hidden mb-6 shadow-lg"
+                className="relative w-full rounded-3xl overflow-hidden mb-4 md:mb-6 shadow-lg"
                 style={{ backgroundColor: "#f0d9c8", aspectRatio: "4/3" }}
               >
                 {storyLoading ? (
@@ -517,25 +450,25 @@ export default function StoriesPage() {
 
               {/* Artisan Identifier */}
               <div className="inline-flex items-center gap-3 bg-[#E8456A]/10 border border-[#E8456A]/30 rounded-full py-2 px-4 w-fit shadow-lg shadow-[#E8456A]/5">
-                <div className="w-9 h-9 rounded-full bg-[#E8456A] text-white flex items-center justify-center font-bold text-sm">
-                  {activeStory.artisan.split(' ').map(n => n[0]).join('')}
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#E8456A] text-white flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0">
+                  {activeStory.artisan.split(" ").map(n => n[0]).join("")}
                 </div>
-                <div className="flex flex-col pr-2">
-                  <span className="text-gray-900 text-[13px] font-bold tracking-wide">{activeStory.artisan}</span>
-                  <span className="text-[#E8456A] text-[11px] font-medium">{activeStory.role}</span>
+                <div className="flex flex-col pr-1 sm:pr-2">
+                  <span className="text-gray-900 text-[12px] sm:text-[13px] font-bold tracking-wide">{activeStory.artisan}</span>
+                  <span className="text-[#E8456A] text-[10px] sm:text-[11px] font-medium">{activeStory.role}</span>
                 </div>
               </div>
             </div>
 
             {/* Right Column */}
             <div className="w-full lg:w-7/12 flex flex-col justify-center">
-              <h1 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 text-gray-900 tracking-tight">
                 {storyData?.productName || activeStory.title}
               </h1>
 
-              <div className="space-y-6 text-gray-600 text-[15px] leading-relaxed">
+              <div className="space-y-4 md:space-y-6 text-gray-600 text-[14px] md:text-[15px] leading-relaxed">
                 <p>Every piece we create carries a unique journey from concept to creation.</p>
-                
+
                 {storyLoading ? (
                   <div className="space-y-3">
                     <div className="h-4 bg-gray-200 rounded animate-pulse w-full" />
@@ -546,7 +479,7 @@ export default function StoriesPage() {
                   <p>{storyData?.story || activeStory.description}</p>
                 )}
 
-                <div className="border-l-[3px] border-[#E8456A] pl-5 py-2 my-8 bg-gradient-to-r from-[#E8456A]/10 to-transparent rounded-r-xl p-4">
+                <div className="border-l-[3px] border-[#E8456A] pl-4 md:pl-5 py-2 my-6 md:my-8 bg-gradient-to-r from-[#E8456A]/10 to-transparent rounded-r-xl p-3 md:p-4">
                   {storyLoading ? (
                     <div className="space-y-2">
                       <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
@@ -554,8 +487,8 @@ export default function StoriesPage() {
                     </div>
                   ) : (
                     <>
-                      <p className="italic text-gray-800 font-medium mb-3">"{storyText}"</p>
-                      <p className="text-[#E8456A] font-bold text-sm">— {activeStory.artisan}, {activeStory.role}</p>
+                      <p className="italic text-gray-800 font-medium mb-2 md:mb-3 text-[13px] md:text-[15px]">"{storyText}"</p>
+                      <p className="text-[#E8456A] font-bold text-xs md:text-sm">— {activeStory.artisan}, {activeStory.role}</p>
                     </>
                   )}
                 </div>
@@ -567,28 +500,18 @@ export default function StoriesPage() {
                 )}
               </div>
 
-              {/* Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 mt-12">
+              {/* View Details Button only — Add to Cart removed */}
+              <div className="flex flex-col sm:flex-row gap-4 mt-8 md:mt-12">
                 <button
                   onClick={handleViewDetails}
-                  className="flex-1 sm:max-w-[200px] flex items-center justify-center gap-2 px-8 py-3.5 rounded-full font-bold text-white transition-all hover:scale-105 active:scale-95"
+                  className="flex-1 sm:max-w-[200px] flex items-center justify-center gap-2 px-6 md:px-8 py-3 md:py-3.5 rounded-full font-bold text-white transition-all hover:scale-105 active:scale-95 text-sm md:text-base"
                   style={{
                     background: "linear-gradient(135deg, #f472a0 0%, #E8456A 50%, #e05580 100%)",
                     boxShadow: "0 4px 20px rgba(232,69,106,0.4)",
                   }}
                 >
-                  <ShoppingBag size={18} strokeWidth={2.5} />
+                  <ShoppingBag size={16} strokeWidth={2.5} />
                   View Details
-                </button>
-
-                <button
-                  onClick={handleAddToCart}
-                  disabled={isAddingToCart}
-                  className="flex-1 sm:max-w-[200px] flex items-center justify-center gap-2 px-8 py-3.5 rounded-full font-bold text-[#E8456A] bg-transparent transition-all hover:bg-pink-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ border: "2px solid #E8456A" }}
-                >
-                  <ShoppingCart size={18} strokeWidth={2.5} />
-                  {isAddingToCart ? "Adding..." : "Add to Cart"}
                 </button>
               </div>
             </div>
@@ -597,8 +520,8 @@ export default function StoriesPage() {
 
         {/* Creation Process Section */}
         <section>
-          <h2 className="text-2xl font-bold text-[#E8456A] mb-8">Our Creation Process</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <h2 className="text-xl md:text-2xl font-bold text-[#E8456A] mb-5 md:mb-8 px-6 sm:px-0">Our Creation Process</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 px-6 sm:px-0">
             {PROCESS_STEPS.map((step) => (
               <ProcessStepCard key={step.id} step={step} />
             ))}
@@ -607,32 +530,31 @@ export default function StoriesPage() {
 
         {/* Similar Products Section */}
         <section className="group/similar">
-          <h2 className="text-2xl font-bold text-[#E8456A] mb-8">Similar Products</h2>
-          
-          <div className="relative flex items-center">
-            {/* Navigation Button Left - Always visible */}
+          <h2 className="text-xl md:text-2xl font-bold text-[#E8456A] mb-5 md:mb-8 px-6 sm:px-0">Similar Products</h2>
+
+          <div className="flex items-center gap-3">
+            {/* Navigation Button Left */}
             <button
               onClick={scrollSimilarLeft}
-              className="absolute left-0 md:-left-5 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-xl rounded-full border border-gray-200 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-shrink-0 w-10 h-10 bg-white shadow-xl rounded-full border border-gray-200 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ boxShadow: "0 4px 15px rgba(0,0,0,0.15)" }}
               aria-label="Scroll left"
               disabled={similarLoading}
             >
-              <ChevronLeft size={24} className="md:w-6 md:h-6" />
+              <ChevronLeft size={20} />
             </button>
 
             {/* Scrollable Row */}
             <div
               ref={similarScrollRef}
-              className="flex gap-6 overflow-x-auto scrollbar-hide py-2 px-2 no-scrollbar scroll-smooth w-full"
+              className="flex gap-4 overflow-x-auto no-scrollbar py-2 scroll-smooth flex-1"
               style={{ scrollSnapType: "x mandatory" }}
             >
               {similarLoading ? (
-                // Loading skeletons
                 [1, 2, 3, 4].map((i) => (
                   <div
                     key={`skeleton-${i}`}
-                    className="flex-shrink-0 w-full md:w-[calc(25%-1.25rem)] snap-start flex justify-center"
+                    className="flex-shrink-0 w-full md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-1rem)] snap-center"
                   >
                     <div className="w-full h-64 bg-gray-200 rounded-xl animate-pulse" />
                   </div>
@@ -641,32 +563,30 @@ export default function StoriesPage() {
                 similarProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="flex-shrink-0 w-full md:w-[calc(25%-1.25rem)] snap-start flex justify-center"
+                    className="flex-shrink-0 w-full md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-1rem)] snap-center"
                   >
-                    <div className="w-full">
-                      <ProductCard
-                        product={product}
-                        onAdd={(productName) => {
-                          setToastTitle("Success!");
-                          setToastType("success");
-                          setToastMessage(`${productName} has been added to your cart.`);
-                        }}
-                      />
-                    </div>
+                    <ProductCard
+                      product={product}
+                      onAdd={(productName) => {
+                        setToastTitle("Success!");
+                        setToastType("success");
+                        setToastMessage(`${productName} has been added to your cart.`);
+                      }}
+                    />
                   </div>
                 ))
               )}
             </div>
 
-            {/* Navigation Button Right - Always visible */}
+            {/* Navigation Button Right */}
             <button
               onClick={scrollSimilarRight}
-              className="absolute right-0 md:-right-5 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 bg-white shadow-xl rounded-full border border-gray-200 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-shrink-0 w-10 h-10 bg-white shadow-xl rounded-full border border-gray-200 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ boxShadow: "0 4px 15px rgba(0,0,0,0.15)" }}
               aria-label="Scroll right"
               disabled={similarLoading}
             >
-              <ChevronRight size={24} className="md:w-6 md:h-6" />
+              <ChevronRight size={20} />
             </button>
           </div>
         </section>
@@ -686,34 +606,26 @@ export default function StoriesPage() {
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        @media (max-width: 768px) {
-           .fixed.bottom-6.right-6 {
-             bottom: 5.5rem !important;
-             z-index: 50;
-           }
+        /* Mobile: show exactly 3 circles (56px each + 8px gap + 10px for badge/glow on right edge) */
+        .circles-container {
+          width: calc(3 * 56px + 2 * 8px + 10px);
         }
-        
-        /* Mobile view: show exactly 2 full circles, no half circles */
-        @media (max-width: 640px) {
-          .gap-3 {
-            gap: 0.5rem;
+        /* sm: show all 5 circles (66px + 12px gap) */
+        @media (min-width: 640px) {
+          .circles-container {
+            width: calc(5 * 66px + 4 * 12px + 16px);
           }
-          .w-\[72px\] {
-            width: 60px;
+        }
+        /* md/tablet: circles become 72px, recalculate */
+        @media (min-width: 768px) {
+          .circles-container {
+            width: calc(5 * 72px + 4 * 12px + 16px);
           }
-          .h-\[72px\] {
-            height: 60px;
-          }
-          .w-8.h-8 {
-            width: 2rem;
-            height: 2rem;
-          }
-          
-          /* Hide scrollbar and mask the edges to show only 2 full circles */
-          .overflow-x-auto {
-            mask-image: linear-gradient(90deg, transparent 0, black 20px, black calc(100% - 20px), transparent 100%);
-            -webkit-mask-image: linear-gradient(90deg, transparent 0, black 20px, black calc(100% - 20px), transparent 100%);
+        }
+        /* lg and above */
+        @media (min-width: 1024px) {
+          .circles-container {
+            width: calc(5 * 72px + 4 * 12px + 16px);
           }
         }
       `}</style>
