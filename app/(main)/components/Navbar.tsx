@@ -11,9 +11,7 @@ import {
   Menu,
   X,
   ChevronRight,
-  Package,
-  MapPin,
-  Settings,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "@/app/(main)/components/authContext";
 import { useRouter, usePathname } from "next/navigation";
@@ -22,6 +20,8 @@ import { useAppSelector, useAppDispatch } from "@/redux/store";
 import { fetchCart } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { productService } from "@/services/product.service";
+// ✅ Same folder — no path change needed
+import NotificationsPanel, { useNotificationCount } from "@/app/(main)/components/NotificationsPanel";
 
 interface SearchProduct {
   id: string;
@@ -38,9 +38,13 @@ const Navbar = () => {
   const { cart: localCart } = useCart();
   const { user, logout } = useAuth();
 
-  const bagCount = user ? reduxBagCount : localCart.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
+  const bagCount = user
+    ? reduxBagCount
+    : localCart.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
+
   const dispatch = useAppDispatch();
   const router = useRouter();
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [announcementHeight, setAnnouncementHeight] = useState(40);
@@ -51,6 +55,11 @@ const Navbar = () => {
 
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // ── Notifications state ───────────────────────────────────────────────────
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifBtnRef = useRef<HTMLButtonElement>(null);
+  const { unreadCount, refetch: refetchCount } = useNotificationCount();
 
   useEffect(() => {
     dispatch(fetchCart());
@@ -85,18 +94,13 @@ const Navbar = () => {
         setSearchResults([]);
       }
     }, 300);
-
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
   useEffect(() => {
     const measureHeights = () => {
-      if (announcementRef.current) {
-        setAnnouncementHeight(announcementRef.current.offsetHeight);
-      }
-      if (navbarRef.current) {
-        setNavbarHeight(navbarRef.current.offsetHeight);
-      }
+      if (announcementRef.current) setAnnouncementHeight(announcementRef.current.offsetHeight);
+      if (navbarRef.current) setNavbarHeight(navbarRef.current.offsetHeight);
     };
     measureHeights();
     window.addEventListener("resize", measureHeights);
@@ -105,8 +109,7 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const progress = Math.min(scrollY / announcementHeight, 1);
+      const progress = Math.min(window.scrollY / announcementHeight, 1);
       setScrollProgress(progress);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -138,7 +141,6 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutsideSearch);
   }, []);
 
-  // ✅ Single navigation function used by both form submit and "View all" button
   const navigateToSearch = () => {
     setShowSearchResults(false);
     router.push(
@@ -150,15 +152,18 @@ const Navbar = () => {
 
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path;
-    return `transition-all duration-300 pb-1 ${isActive
-      ? "text-pink-600 font-bold border-b-2 border-pink-600"
-      : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
-      }`;
+    return `transition-all duration-300 pb-1 ${
+      isActive
+        ? "text-pink-600 font-bold border-b-2 border-pink-600"
+        : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
+    }`;
   };
 
   const getMobileLinkStyle = (path: string) => {
     const isActive = pathname === path;
-    return `text-lg font-bold transition-all duration-300 w-fit ${isActive ? "text-pink-600" : "text-gray-800"}`;
+    return `text-lg font-bold transition-all duration-300 w-fit ${
+      isActive ? "text-pink-600" : "text-gray-800"
+    }`;
   };
 
   const iconCircleStyle =
@@ -196,6 +201,7 @@ const Navbar = () => {
           ref={navbarRef}
           className="bg-pink-100 px-3 sm:px-6 md:px-12 py-2 sm:py-3 flex justify-between items-center border-b border-pink-200"
         >
+          {/* Logo */}
           <div className="shrink-0">
             <Link href="/">
               <Image
@@ -208,9 +214,9 @@ const Navbar = () => {
             </Link>
           </div>
 
+          {/* Search — desktop */}
           <div className="hidden lg:flex flex-1 justify-center max-w-md">
             <div className="relative w-full mx-4" ref={searchContainerRef}>
-              {/* ✅ form now calls navigateToSearch, not handleSearchSubmit */}
               <form onSubmit={(e) => { e.preventDefault(); navigateToSearch(); }}>
                 <input
                   type="text"
@@ -231,7 +237,7 @@ const Navbar = () => {
                 </button>
               </form>
 
-              {/* SEARCH DROPDOWN */}
+              {/* Search dropdown */}
               {showSearchResults && searchQuery.trim().length > 1 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden custom-scrollbar max-h-[80vh] overflow-y-auto">
                   {searchResults.length > 0 ? (
@@ -273,7 +279,6 @@ const Navbar = () => {
                           </span>
                         </Link>
                       ))}
-                      {/* ✅ Fixed: was passing handleSearchSubmit (expects FormEvent) to onClick (MouseEvent) */}
                       <button
                         suppressHydrationWarning
                         onClick={navigateToSearch}
@@ -287,9 +292,7 @@ const Navbar = () => {
                       <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3 text-gray-400">
                         <Search size={20} />
                       </div>
-                      <p className="text-sm font-bold text-gray-800 mb-1">
-                        No products found
-                      </p>
+                      <p className="text-sm font-bold text-gray-800 mb-1">No products found</p>
                       <p className="text-xs text-gray-500">
                         Try adjusting your keywords (e.g., &quot;rose gold bracelet&quot;)
                       </p>
@@ -300,7 +303,9 @@ const Navbar = () => {
             </div>
           </div>
 
+          {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Desktop nav links */}
             <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center font-bold">
               <Link href="/products" className={getLinkStyle("/products")}>All Products</Link>
               <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
@@ -308,6 +313,7 @@ const Navbar = () => {
             </nav>
 
             <div className="flex items-center gap-1.5 sm:gap-3">
+              {/* Wishlist */}
               <Link href="/wishlist" className={iconCircleStyle}>
                 <Heart size={18} />
                 {savedItems.length > 0 && (
@@ -317,6 +323,7 @@ const Navbar = () => {
                 )}
               </Link>
 
+              {/* Bag */}
               <Link href="/bag" className={iconCircleStyle}>
                 <ShoppingCart size={18} />
                 {bagCount > 0 && (
@@ -326,10 +333,46 @@ const Navbar = () => {
                 )}
               </Link>
 
+              {/* ── Bell icon — only for logged-in users ── */}
+              {user && (
+                <div className="relative">
+                  <button
+                    ref={notifBtnRef}
+                    suppressHydrationWarning
+                    onClick={() => {
+                      setShowNotifications((prev) => !prev);
+                      if (!showNotifications) refetchCount();
+                    }}
+                    className={iconCircleStyle}
+                    aria-label="Notifications"
+                  >
+                    <Bell size={18} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-pink-100 shadow-sm animate-in zoom-in">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Dropdown panel */}
+                  <NotificationsPanel
+                    isOpen={showNotifications}
+                    onClose={() => {
+                      setShowNotifications(false);
+                      refetchCount();
+                    }}
+                    anchorRef={notifBtnRef}
+                  />
+                </div>
+              )}
+
+              {/* User dropdown */}
               <div className="relative flex items-center gap-2 ml-1" ref={dropdownRef}>
                 <button
                   suppressHydrationWarning
-                  onClick={() => user ? setShowDropdown(!showDropdown) : router.push("/login")}
+                  onClick={() =>
+                    user ? setShowDropdown(!showDropdown) : router.push("/login")
+                  }
                   onMouseEnter={() => user && setShowDropdown(true)}
                   className={iconCircleStyle}
                 >
@@ -342,16 +385,15 @@ const Navbar = () => {
                     onMouseLeave={() => setShowDropdown(false)}
                   >
                     <div className="p-4 border-b border-pink-50 bg-pink-50/30">
-                      <p className="text-xs font-bold text-pink-600 uppercase tracking-wider">Your Account</p>
+                      <p className="text-xs font-bold text-pink-600 uppercase tracking-wider">
+                        Your Account
+                      </p>
                       <p className="text-sm font-bold text-gray-800 truncate">{user.name}</p>
                     </div>
 
                     <div className="p-2">
                       {[
                         { href: "/profile", icon: <User size={16} />, label: "My Profile" },
-                        // { href: "/profile/orders", icon: <Package size={16} />, label: "Orders" },
-                        // { href: "/profile/addresses", icon: <MapPin size={16} />, label: "Addresses" },
-                        // { href: "/profile/settings", icon: <Settings size={16} />, label: "Settings" },
                       ].map(({ href, icon, label }) => (
                         <Link
                           key={href}
@@ -365,14 +407,20 @@ const Navbar = () => {
                             </div>
                             <span className="text-sm font-medium text-gray-700">{label}</span>
                           </div>
-                          <ChevronRight size={14} className="text-gray-400 group-hover:translate-x-1 transition-transform" />
+                          <ChevronRight
+                            size={14}
+                            className="text-gray-400 group-hover:translate-x-1 transition-transform"
+                          />
                         </Link>
                       ))}
                     </div>
 
                     <button
                       suppressHydrationWarning
-                      onClick={() => { logout(); setShowDropdown(false); }}
+                      onClick={() => {
+                        logout();
+                        setShowDropdown(false);
+                      }}
                       className="w-full flex items-center gap-3 px-5 py-4 text-sm font-bold text-red-500 hover:bg-red-50 border-t border-pink-50 transition-colors"
                     >
                       <LogOut size={16} /> Logout
@@ -381,6 +429,7 @@ const Navbar = () => {
                 )}
               </div>
 
+              {/* Hamburger */}
               <button
                 suppressHydrationWarning
                 className="lg:hidden w-9 h-9 flex items-center justify-center text-gray-800"
@@ -398,12 +447,19 @@ const Navbar = () => {
 
       {/* MOBILE MENU DRAWER */}
       <div
-        className={`fixed inset-0 z-60 lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        className={`fixed inset-0 z-60 lg:hidden transition-opacity duration-300 ${
+          isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
       >
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={() => setIsMenuOpen(false)}></div>
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-md"
+          onClick={() => setIsMenuOpen(false)}
+        />
 
         <div
-          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}
+          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${
+            isMenuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
         >
           <div className="flex justify-between items-center mb-8 pb-4">
             <span className="font-bold text-pink-600 text-xl font-serif">Menu</span>
@@ -422,12 +478,21 @@ const Navbar = () => {
               { href: "/stories", label: "Stories" },
               { href: "/contact", label: "Contact" },
             ].map(({ href, label }) => (
-              <Link key={href} href={href} className={getMobileLinkStyle(href)} onClick={() => setIsMenuOpen(false)}>
+              <Link
+                key={href}
+                href={href}
+                className={getMobileLinkStyle(href)}
+                onClick={() => setIsMenuOpen(false)}
+              >
                 {label}
               </Link>
             ))}
             {user && (
-              <Link href="/profile" className={getMobileLinkStyle("/profile")} onClick={() => setIsMenuOpen(false)}>
+              <Link
+                href="/profile"
+                className={getMobileLinkStyle("/profile")}
+                onClick={() => setIsMenuOpen(false)}
+              >
                 My Profile
               </Link>
             )}
@@ -436,16 +501,28 @@ const Navbar = () => {
           <div className="mt-auto pt-6 border-t border-gray-100">
             {!user ? (
               <div className="flex justify-between items-center gap-4">
-                <Link href="/login" className="flex items-center gap-2 text-gray-700 font-bold" onClick={() => setIsMenuOpen(false)}>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 text-gray-700 font-bold"
+                  onClick={() => setIsMenuOpen(false)}
+                >
                   <User size={20} /> Login
                 </Link>
-                <Link href="/signup" className="bg-pink-600 text-white px-5 py-2.5 rounded-full font-bold shadow-md" onClick={() => setIsMenuOpen(false)}>
+                <Link
+                  href="/signup"
+                  className="bg-pink-600 text-white px-5 py-2.5 rounded-full font-bold shadow-md"
+                  onClick={() => setIsMenuOpen(false)}
+                >
                   Sign Up
                 </Link>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                <Link href="/profile" className="flex items-center gap-3 p-3 bg-pink-50 rounded-2xl border border-pink-100" onClick={() => setIsMenuOpen(false)}>
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-3 p-3 bg-pink-50 rounded-2xl border border-pink-100"
+                  onClick={() => setIsMenuOpen(false)}
+                >
                   <div className="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 font-bold shadow-sm">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
@@ -456,7 +533,10 @@ const Navbar = () => {
                 </Link>
                 <button
                   suppressHydrationWarning
-                  onClick={() => { logout(); setIsMenuOpen(false); }}
+                  onClick={() => {
+                    logout();
+                    setIsMenuOpen(false);
+                  }}
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-red-50 text-red-500 font-bold hover:bg-red-50 transition-colors"
                 >
                   <LogOut size={18} /> Logout

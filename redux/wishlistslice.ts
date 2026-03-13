@@ -16,7 +16,16 @@ const initialState: WishlistState = {
 // ── localStorage helpers (for guests) ────────────────────────────────────────
 const LOCAL_KEY = "guest_wishlist";
 
-function getLocalWishlist(): any[] {
+interface GuestWishlistItem {
+  product: {
+    _id: string;
+  };
+  color?: string | null;
+  size?: string | null;
+  isLocal?: boolean;
+}
+
+function getLocalWishlist(): GuestWishlistItem[] {
   try {
     const raw = localStorage.getItem(LOCAL_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -25,7 +34,7 @@ function getLocalWishlist(): any[] {
   }
 }
 
-function saveLocalWishlist(items: any[]) {
+function saveLocalWishlist(items: GuestWishlistItem[]) {
   try {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
   } catch {}
@@ -60,24 +69,33 @@ export const fetchWishlist = createAsyncThunk(
   }
 );
 
-// Accepts either a plain string ID (logged-in) or { productId, product } (guest fallback)
+// Updated to accept color and size
 export const addWishlistItem = createAsyncThunk(
   "wishlist/add",
-  async (productId: string, { rejectWithValue }) => {
+  async ({ productId, color, size }: { productId: string; color?: string | null; size?: string | null }, { rejectWithValue }) => {
     try {
       if (!isLoggedIn()) {
         const items = getLocalWishlist();
-        // Avoid duplicates
+        // Avoid duplicates (check both productId, color, and size)
         const exists = items.some(
-          (i: any) => (i.product?._id || i.product?.id) === productId
+          (i: GuestWishlistItem) => 
+            i.product?._id === productId && 
+            i.color === color && 
+            i.size === size
         );
         if (!exists) {
-          items.push({ product: { _id: productId } });
+          items.push({ 
+            product: { _id: productId },
+            color: color || null,
+            size: size || null,
+            isLocal: true 
+          });
           saveLocalWishlist(items);
         }
         return items;
       }
-      const response = await wishlistService.addToWishlist(productId);
+      // Pass color and size to the service
+      const response = await wishlistService.addToWishlist(productId, color, size);
       return response.data?.wishlist?.items || [];
     } catch (error: any) {
       return rejectWithValue(
@@ -93,7 +111,7 @@ export const removeWishlistItem = createAsyncThunk(
     try {
       if (!isLoggedIn()) {
         const items = getLocalWishlist().filter(
-          (i: any) => (i.product?._id || i.product?.id) !== productId
+          (i: GuestWishlistItem) => i.product?._id !== productId
         );
         saveLocalWishlist(items);
         return items;
@@ -134,7 +152,13 @@ const wishlistSlice = createSlice({
     reducers: {
         addLocalWishlistItem: (state, action) => {
             const pId = String(action.payload?.product?._id || action.payload?._id);
-            const exists = state.items.some((i: any) => String(i.product?._id) === pId || String(i._id) === pId);
+            const color = action.payload?.color;
+            const size = action.payload?.size;
+            const exists = state.items.some((i: any) => 
+                String(i.product?._id) === pId && 
+                i.color === color && 
+                i.size === size
+            );
             if (!exists) {
                 state.items.push({ ...action.payload, isLocal: true });
             }
@@ -158,7 +182,13 @@ const wishlistSlice = createSlice({
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
                 const id = String(loc.product?._id || loc._id);
-                if (!merged.some(m => String(m.product?._id || m._id) === id)) {
+                const color = loc.color;
+                const size = loc.size;
+                if (!merged.some(m => 
+                    String(m.product?._id || m._id) === id && 
+                    m.color === color && 
+                    m.size === size
+                )) {
                     merged.push(loc);
                 }
             });
@@ -176,7 +206,13 @@ const wishlistSlice = createSlice({
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
                 const id = String(loc.product?._id || loc._id);
-                if (!merged.some(m => String(m.product?._id || m._id) === id)) {
+                const color = loc.color;
+                const size = loc.size;
+                if (!merged.some(m => 
+                    String(m.product?._id || m._id) === id && 
+                    m.color === color && 
+                    m.size === size
+                )) {
                     merged.push(loc);
                 }
             });
@@ -191,7 +227,13 @@ const wishlistSlice = createSlice({
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
                 const id = String(loc.product?._id || loc._id);
-                if (!merged.some(m => String(m.product?._id || m._id) === id)) {
+                const color = loc.color;
+                const size = loc.size;
+                if (!merged.some(m => 
+                    String(m.product?._id || m._id) === id && 
+                    m.color === color && 
+                    m.size === size
+                )) {
                     merged.push(loc);
                 }
             });

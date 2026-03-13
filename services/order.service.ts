@@ -9,74 +9,61 @@ import { Address, PaymentMethod } from "@/lib/types";
 export const orderService = {
   /**
    * 1. Place a new order
-   * POST /orders
+   * POST /api/orders
+   * 
+   * Backend expects: {
+   *   addressId: string,
+   *   items: Array<{ productId: string, quantity: number, color?: string, size?: string }>,
+   *   payment: { method: string }
+   * }
    */
   async placeOrder(payload: {
     addressId: string;
-    paymentMethod: string;
+    items: Array<{
+      productId: string;
+      quantity: number;
+      color?: string | null;
+      size?: string;
+    }>;
+    payment: {
+      method: string;
+    };
   }) {
     const response = await apiClient.post("/orders", payload);
     return response.data;
   },
 
-  /**
-   * 2. Get my orders
-   * GET /orders
-   */
+  // ... rest of your functions remain the same
   async getOrders() {
     const response = await apiClient.get("/orders");
     return response.data;
   },
 
-  /**
-   * 3. Get order by id
-   * GET /orders/:id
-   */
   async getOrderById(id: string) {
     const response = await apiClient.get(`/orders/${id}`);
     return response.data;
   },
 
-  /**
-   * 4. Update order status (Admin)
-   * PUT /orders/:id/status
-   */
   async updateOrderStatus(id: string, status: string) {
     const response = await apiClient.put(`/orders/${id}/status`, { status });
     return response.data;
   },
 
-  /**
-   * 5. Cancel order
-   * PATCH /orders/:id/cancel
-   */
   async cancelOrder(id: string) {
     const response = await apiClient.patch(`/orders/${id}/cancel`);
     return response.data;
   },
 
-  /**
-   * 6. Reorder
-   * POST /orders/:id/reorder
-   */
   async reorder(id: string) {
     const response = await apiClient.post(`/orders/${id}/reorder`);
     return response.data;
   },
 
-  /**
-   * 7. Tracking order
-   * GET /orders/:id/tracking
-   */
   async trackOrder(id: string) {
     const response = await apiClient.get(`/orders/${id}/tracking`);
     return response.data;
   },
 
-  /**
-   * 8. Return/Exchange order
-   * POST /orders/:id/request
-   */
   async requestReturnExchange(id: string, payload: any) {
     const response = await apiClient.post(`/orders/${id}/request`, payload);
     return response.data;
