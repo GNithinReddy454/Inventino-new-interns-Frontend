@@ -13,7 +13,13 @@ import {
   X,
   Loader2,
 } from "lucide-react";
-import { orderService } from "@/services/order.service";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import {
+  fetchOrderByIdAction,
+  returnOrderAction,
+  exchangeOrderAction,
+  resetOrderState
+} from "@/redux/orderslice";
 
 // ── Reason lists ──────────────────────────────────────────────────────────────
 const RETURN_REASONS = [
@@ -54,57 +60,52 @@ export default function ReturnExchangePage({
   const unwrappedParams = React.use(params as Promise<{ id: string }>);
   const orderId = unwrappedParams.id;
 
+  const dispatch = useAppDispatch();
+  const { currentOrder, isLoading, error: reduxError } = useAppSelector((state) => state.order);
+
   // ── Fetch order ──────────────────────────────────────────────────────────
   const [orderItems, setOrderItems]     = useState<OrderItem[]>([]);
   const [orderNumber, setOrderNumber]   = useState<string>("");
-  const [loadingOrder, setLoadingOrder] = useState(true);
-  const [orderError, setOrderError]     = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchOrder() {
-      try {
-        setLoadingOrder(true);
-        const res  = await orderService.getOrderById(orderId);
-        const data = res?.data ?? res;
+    dispatch(fetchOrderByIdAction(orderId));
+    return () => {
+      dispatch(resetOrderState());
+    };
+  }, [orderId, dispatch]);
 
-        setOrderNumber(data?.orderNumber ?? data?.orderId ?? orderId);
+  useEffect(() => {
+    if (currentOrder) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOrderNumber(currentOrder.orderNumber ?? currentOrder.orderId ?? orderId);
 
-        const rawItems: any[] = data?.items ?? [];
-        const mapped: OrderItem[] = rawItems.map((item: any) => {
-          const objectId =
-            (isObjectId(item.product?._id)   ? item.product._id   : null) ??
-            (isObjectId(item._id)             ? item._id            : null) ??
-            (isObjectId(item.productObjectId) ? item.productObjectId : null) ??
-            null;
+      const rawItems: any[] = currentOrder.items ?? [];
+      const mapped: OrderItem[] = rawItems.map((item: any) => {
+        const objectId =
+          (isObjectId(item.product?._id) ? item.product._id : null) ??
+          (isObjectId(item._id) ? item._id : null) ??
+          (isObjectId(item.productObjectId) ? item.productObjectId : null) ??
+          null;
 
-          if (!objectId) {
-            console.warn("[ReturnExchange] Could not find a valid ObjectId for item:", item);
-          }
+        return {
+          productObjectId: objectId ?? "",
+          name: item.name ?? item.product?.name ?? "Product",
+          imageUrl: item.imageUrl ?? item.product?.images?.[0]?.url ?? "",
+          price: item.price ?? 0,
+          quantity: item.quantity ?? item.qty ?? 1,
+        };
+      });
 
-          return {
-            productObjectId: objectId ?? "",
-            name:     item.name ?? item.product?.name ?? "Product",
-            imageUrl: item.imageUrl ?? item.product?.images?.[0]?.url ?? "",
-            price:    item.price ?? 0,
-            quantity: item.quantity ?? item.qty ?? 1, // ✅ correctly mapped from API
-          };
-        });
-
-        setOrderItems(mapped);
-      } catch (err: any) {
-        console.error("[ReturnExchange] Failed to load order:", err);
-        setOrderError(err?.response?.data?.message ?? "Failed to load order details.");
-      } finally {
-        setLoadingOrder(false);
-      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOrderItems(mapped);
     }
-    fetchOrder();
-  }, [orderId]);
+  }, [currentOrder, orderId]);
 
   // Pre-select all items once loaded
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   useEffect(() => {
     if (orderItems.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedIds(orderItems.map((i) => i.productObjectId).filter(Boolean));
     }
   }, [orderItems]);
@@ -117,7 +118,6 @@ export default function ReturnExchangePage({
   const [newColor, setNewColor] = useState<string | null>(null);
 
   const [isSubmitted,  setIsSubmitted]  = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [images,       setImages]       = useState<File[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -154,48 +154,49 @@ export default function ReturnExchangePage({
       return;
     }
 
-    // ✅ FIX: Look up the real quantity from orderItems instead of hardcoding 1
     const selectedItem = orderItems.find((i) => i.productObjectId === productId);
     const selectedQuantity = selectedItem?.quantity ?? 1;
 
-    setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      // both return and exchange use the same API endpoint in the service
       if (requestType === "return") {
-        await orderService.requestReturnExchange(orderId, {
-          reason,
-          items: selectedIds.map((pid) => {
-            const item = orderItems.find((i) => i.productObjectId === pid);
-            return { productId: pid, quantity: item?.quantity ?? 1 };
-          }),
-          resolution: "refund",
-        });
+        const result = await dispatch(returnOrderAction({
+          id: orderId,
+          data: {
+            reason,
+            items: selectedIds.map((pid) => {
+              const item = orderItems.find((i) => i.productObjectId === pid);
+              return { productId: pid, quantity: item?.quantity ?? 1 };
+            }),
+            resolution: "refund",
+          }
+        })).unwrap();
+        console.log("Return success:", result);
       } else {
-        await orderService.requestReturnExchange(orderId, {
-          reasonForExchange: reason,
-          condition: "Unworn/Original Packaging",
-          exchangeDetails: {
-            newSize:  newSize  ?? null,
-            newColor: newColor ?? null,
-          },
-          comments: comments || undefined,
-          // backend expects productId/quantity fields same as above
-          productId,
-          quantity: selectedQuantity,
-        });
+        const result = await dispatch(exchangeOrderAction({
+          id: orderId,
+          data: {
+            productId,
+            quantity: selectedQuantity,
+            reasonForExchange: reason,
+            condition: "Unworn/Original Packaging",
+            exchangeDetails: {
+              newSize: newSize ?? null,
+              newColor: newColor ?? null,
+              newProductId: productId,
+            },
+            comments: comments || undefined,
+          }
+        })).unwrap();
+        console.log("Exchange success:", result);
       }
 
       sessionStorage.removeItem("returnExchangeOrder");
       setIsSubmitted(true);
     } catch (err: any) {
       console.error("Submit error:", err);
-      setSubmitError(
-        err?.response?.data?.message ?? err?.message ?? "Failed to submit. Please try again."
-      );
-    } finally {
-      setIsSubmitting(false);
+      setSubmitError(err || "Failed to submit. Please try again.");
     }
   };
 
@@ -205,7 +206,7 @@ export default function ReturnExchangePage({
     (requestType === "return" || newSize || newColor);
 
   // ── Loading ───────────────────────────────────────────────────────────────
-  if (loadingOrder) {
+  if (isLoading && !currentOrder) {
     return (
       <div style={{ background: "#fdf8f9", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif" }}>
         <div style={{ textAlign: "center" }}>
@@ -217,11 +218,11 @@ export default function ReturnExchangePage({
     );
   }
 
-  if (orderError) {
+  if (reduxError && !currentOrder) {
     return (
       <div style={{ background: "#fdf8f9", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif" }}>
         <div style={{ textAlign: "center" }}>
-          <p style={{ color: "#ef4444", marginBottom: 12 }}>{orderError}</p>
+          <p style={{ color: "#ef4444", marginBottom: 12 }}>{reduxError}</p>
           <Link href="/profile/orders" style={{ color: "#D94F7A", textDecoration: "underline" }}>← Back to Orders</Link>
         </div>
       </div>
@@ -419,15 +420,15 @@ export default function ReturnExchangePage({
 
             {/* Submit */}
             <div style={{ marginTop: 32 }}>
-              <button type="submit" disabled={!isFormValid || isSubmitting} style={{
-                width: "100%", background: isFormValid && !isSubmitting ? "#D94F7A" : "#f3f4f6",
-                color: isFormValid && !isSubmitting ? "#fff" : "#9ca3af",
+              <button type="submit" disabled={!isFormValid || isLoading} style={{
+                width: "100%", background: isFormValid && !isLoading ? "#D94F7A" : "#f3f4f6",
+                color: isFormValid && !isLoading ? "#fff" : "#9ca3af",
                 border: "none", padding: "18px 24px", borderRadius: 16, fontWeight: 700, fontSize: 16,
-                cursor: isFormValid && !isSubmitting ? "pointer" : "not-allowed", transition: "all 0.2s",
+                cursor: isFormValid && !isLoading ? "pointer" : "not-allowed", transition: "all 0.2s",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                boxShadow: isFormValid && !isSubmitting ? "0 4px 14px rgba(217,79,122,0.3)" : "none",
+                boxShadow: isFormValid && !isLoading ? "0 4px 14px rgba(217,79,122,0.3)" : "none",
               }}>
-                {isSubmitting ? (
+                {isLoading ? (
                   <>
                     <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
                     Submitting…
