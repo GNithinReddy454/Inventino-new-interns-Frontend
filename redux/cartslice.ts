@@ -7,6 +7,8 @@ export interface CartItem {
     price: number;
     quantity: number;
     image: string;
+    color?: string | null;  // Add this
+    size?: string | null;   // Add this
 }
 
 export interface CartState {
@@ -55,12 +57,14 @@ export const fetchCart = createAsyncThunk(
     }
 );
 
+// UPDATED: Add color and size parameters
 export const addToCart = createAsyncThunk(
     "cart/addToCart",
-    async ({ productId, quantity }: { productId: string; quantity: number }, { rejectWithValue }) => {
+    async ({ productId, quantity, color, size }: { productId: string; quantity: number; color?: string | null; size?: string | null }, { rejectWithValue }) => {
         try {
             if (!isLoggedIn()) return { data: { items: [], totalAmount: 0 } };
-            return await cartService.addToCart(productId, quantity);
+            // Pass color and size to the service
+            return await cartService.addToCart(productId, quantity, color, size);
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.message || "Failed to add to cart");
         }
@@ -123,11 +127,26 @@ const cartSlice = createSlice({
     reducers: {
         addLocalCartItem: (state, action) => {
             const pId = String(action.payload?.productId || action.payload?._id || action.payload?.id);
-            const exists = state.items.find((i: any) => String(i.productId || i._id) === pId);
+            const color = action.payload?.color;
+            const size = action.payload?.size;
+            
+            // Check if item with same productId, color, and size exists
+            const exists = state.items.find((i: any) => 
+                String(i.productId || i._id) === pId && 
+                i.color === color && 
+                i.size === size
+            );
+            
             if (exists) {
                 exists.quantity += (action.payload.quantity || 1);
             } else {
-                state.items.push({ ...action.payload, productId: pId, isLocal: true });
+                state.items.push({ 
+                    ...action.payload, 
+                    productId: pId, 
+                    color, 
+                    size,
+                    isLocal: true 
+                });
             }
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
             state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -139,7 +158,6 @@ const cartSlice = createSlice({
             state.isLoading = true;
             state.error = null;
         });
-        // fetchCart
         builder.addCase(fetchCart.fulfilled, (state, action: any) => {
             state.isLoading = false;
             state.error = null;
@@ -147,7 +165,12 @@ const cartSlice = createSlice({
             const localItems = state.items.filter((i: any) => i.isLocal);
             const merged = [...backendItems];
             localItems.forEach((loc: any) => {
-                if (!merged.some((m: any) => String(m.productId || m._id) === String(loc.productId))) {
+                // Check for same productId, color, and size combination
+                if (!merged.some((m: any) => 
+                    String(m.productId || m._id) === String(loc.productId) && 
+                    m.color === loc.color && 
+                    m.size === loc.size
+                )) {
                     merged.push(loc);
                 }
             });
@@ -166,7 +189,11 @@ const cartSlice = createSlice({
             const localItems = state.items.filter((i: any) => i.isLocal);
             const merged = [...backendItems];
             localItems.forEach((loc: any) => {
-                if (!merged.some((m: any) => String(m.productId || m._id) === String(loc.productId))) {
+                if (!merged.some((m: any) => 
+                    String(m.productId || m._id) === String(loc.productId) && 
+                    m.color === loc.color && 
+                    m.size === loc.size
+                )) {
                     merged.push(loc);
                 }
             });
@@ -181,7 +208,11 @@ const cartSlice = createSlice({
             const localItems = state.items.filter((i: any) => i.isLocal);
             const merged = [...backendItems];
             localItems.forEach((loc: any) => {
-                if (!merged.some((m: any) => String(m.productId || m._id) === String(loc.productId))) {
+                if (!merged.some((m: any) => 
+                    String(m.productId || m._id) === String(loc.productId) && 
+                    m.color === loc.color && 
+                    m.size === loc.size
+                )) {
                     merged.push(loc);
                 }
             });
@@ -196,7 +227,11 @@ const cartSlice = createSlice({
             const localItems = state.items.filter((i: any) => i.isLocal && String(i.productId) !== String(action.meta.arg));
             const merged = [...backendItems];
             localItems.forEach((loc: any) => {
-                if (!merged.some((m: any) => String(m.productId || m._id) === String(loc.productId))) {
+                if (!merged.some((m: any) => 
+                    String(m.productId || m._id) === String(loc.productId) && 
+                    m.color === loc.color && 
+                    m.size === loc.size
+                )) {
                     merged.push(loc);
                 }
             });
