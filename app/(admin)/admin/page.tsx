@@ -29,6 +29,7 @@ import CustomersView from "./_components/CustomersView";
 import ReportsAnalyticsView from "./_components/ReportsAnalyticsView";
 import SettingsView from "./_components/SettingsView";
 import LandingPageCMSView from "./_components/LandingPageCMSView";
+import LandingPagePreviewModal from "./_components/LandingPagePreviewModal";
 import ReviewsView from "./_components/ReviewsView";
 import CustomerProfileView from "./_components/CustomerProfileView";
 
@@ -69,6 +70,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [showLandingPreview, setShowLandingPreview] = useState(false);
 
   const navigationGroups = [
     {
@@ -169,12 +171,25 @@ export default function AdminDashboard() {
                 <h1 className="text-[28px] font-bold text-gray-900 tracking-tight">Welcome back, Admin!</h1>
                 <p className="text-[13px] text-gray-500 mt-1 font-medium tracking-wide">Here's what's happening with your store today.</p>
               </>
+            ) : activeTab === "Landing Page CMS" ? (
+              <>
+                <h1 className="text-[28px] font-bold text-gray-900 tracking-tight">Landing Page CMS</h1>
+                <p className="text-[13px] text-gray-500 mt-1 font-medium tracking-wide">Manage your landing page content with live preview</p>
+              </>
             ) : (
               <h1 className="text-[28px] font-bold text-gray-900 tracking-tight">{activeTab}</h1>
             )}
           </div>
 
           <div className="flex items-center gap-4">
+            {activeTab === "Landing Page CMS" && (
+              <button
+                onClick={() => setShowLandingPreview(true)}
+                className="px-4 py-2 border border-[#E91E63] text-[#E91E63] rounded-xl text-[13px] font-bold hover:bg-pink-50 transition-all shrink-0"
+              >
+                Preview Landing Page
+              </button>
+            )}
             {/* Search */}
             <div className="relative hidden lg:block w-72 h-10">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
@@ -201,6 +216,10 @@ export default function AdminDashboard() {
             </div>
           </div>
         </header>
+
+        {showLandingPreview && (
+          <LandingPagePreviewModal onClose={() => setShowLandingPreview(false)} />
+        )}
 
         {/* Dynamic View Content */}
         <div className="flex-1 px-6 lg:px-10 pb-10">
