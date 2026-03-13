@@ -7,6 +7,8 @@ export interface CartItem {
     price: number;
     quantity: number;
     image: string;
+    color?: string;
+    size?: string;
 }
 
 export interface CartState {
@@ -57,10 +59,10 @@ export const fetchCart = createAsyncThunk(
 
 export const addToCart = createAsyncThunk(
     "cart/addToCart",
-    async ({ productId, quantity }: { productId: string; quantity: number }, { rejectWithValue }) => {
+    async ({ productId, quantity, color, size }: { productId: string; quantity: number; color?: string; size?: string }, { rejectWithValue }) => {
         try {
             if (!isLoggedIn()) return { data: { items: [], totalAmount: 0 } };
-            return await cartService.addToCart(productId, quantity);
+            return await cartService.addToCart(productId, quantity, color, size);
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.message || "Failed to add to cart");
         }
@@ -123,12 +125,23 @@ const cartSlice = createSlice({
     reducers: {
         addLocalCartItem: (state, action) => {
             const pId = String(action.payload?.productId || action.payload?._id || action.payload?.id);
-            const exists = state.items.find((i: any) => String(i.productId || i._id) === pId);
+            const { color, size } = action.payload;
+            const exists = state.items.find((i: any) => 
+                String(i.productId || (i as any)._id) === pId && 
+                i.color === color && 
+                i.size === size
+            );
             if (exists) {
                 exists.quantity += (action.payload.quantity || 1);
             } else {
                 state.items.push({ ...action.payload, productId: pId, isLocal: true });
             }
+            state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
+            state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        },
+        removeLocalCartItem: (state, action) => {
+            const id = String(action.payload);
+            state.items = state.items.filter(i => String(i.productId || (i as any)._id) !== id);
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
             state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
         }
@@ -226,5 +239,5 @@ const cartSlice = createSlice({
     },
 });
 
-export const { addLocalCartItem } = cartSlice.actions;
+export const { addLocalCartItem, removeLocalCartItem } = cartSlice.actions;
 export default cartSlice.reducer;
