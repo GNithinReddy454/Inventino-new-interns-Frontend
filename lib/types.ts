@@ -43,6 +43,7 @@ export interface Product {
   isActive?: boolean;
   quantity?: number;
   color?: string;
+  size?: string;
 }
 
 export interface ProductResponse {
@@ -83,6 +84,8 @@ export type ShippingAddress = Address;
 export interface CartItem {
   product: Product;
   quantity: number;
+  color?: string;
+  size?: string;
 }
 
 export interface CartResponse {

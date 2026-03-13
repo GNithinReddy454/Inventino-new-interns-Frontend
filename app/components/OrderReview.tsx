@@ -130,12 +130,19 @@ export function OrderReview({
               
               return (
                 <div key={id} className="flex items-center gap-4 p-3 bg-white border border-gray-100 rounded-xl hover:border-pink-100 transition-colors">
-                  <div className="w-16 h-16 bg-pink-50 rounded-lg flex-shrink-0 flex items-center justify-center">
-                    <ShoppingCart className="w-6 h-6 text-pink-200" />
+                  <div className="w-16 h-16 bg-pink-50 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    {item.image || item.product?.images?.[0]?.url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.image || item.product?.images?.[0]?.url} alt={name} className="w-full h-full object-cover" />
+                    ) : (
+                        <ShoppingCart className="w-6 h-6 text-pink-200" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-sm text-gray-900 truncate">{name}</h4>
-                    <p className="text-xs text-gray-500">Quantity: {quantity}</p>
+                    <p className="text-[10px] text-gray-500">
+                        Qty: {quantity} {item.color ? `• ${item.color}` : ""} {item.size ? `• ${item.size}` : ""}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-sm text-pink-600">₹{(price * quantity).toFixed(2)}</p>

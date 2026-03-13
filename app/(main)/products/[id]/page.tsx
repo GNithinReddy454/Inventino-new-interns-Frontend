@@ -485,6 +485,8 @@ export default function ProductDetailsPage() {
     rating: product.rating,
     reviews: product.reviews,
     originalPrice: product.originalPrice,
+    color: variantColors[selectedColor],
+    size: selectedSize,
   });
 
   const handleAddToCart = async (e?: React.MouseEvent) => {
@@ -494,7 +496,12 @@ export default function ProductDetailsPage() {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (user || token) {
       try {
-        await dispatch(reduxAddToCart({ productId: backendProductId, quantity })).unwrap();
+        await dispatch(reduxAddToCart({ 
+            productId: backendProductId, 
+            quantity,
+            color: variantColors[selectedColor],
+            size: selectedSize
+        })).unwrap();
         setIsAdded(true);
         showToast("Success!", "Added to bag", "success");
         setTimeout(() => setIsAdded(false), 3500);
@@ -514,7 +521,12 @@ export default function ProductDetailsPage() {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     try {
       if (user || token) {
-        await dispatch(reduxAddToCart({ productId: backendProductId, quantity })).unwrap();
+        await dispatch(reduxAddToCart({ 
+            productId: backendProductId, 
+            quantity,
+            color: variantColors[selectedColor],
+            size: selectedSize
+        })).unwrap();
       } else {
         addToCart(buildCartItem(), quantity);
       }

@@ -49,7 +49,7 @@ export default function CheckoutFlow() {
 
     // Initial cart fetch if needed
     dispatch(fetchCart());
-    
+
     return () => {
       dispatch(resetOrderState());
     };
@@ -90,23 +90,23 @@ export default function CheckoutFlow() {
           addressId: addressId!,
           paymentMethod: "COD"
         }));
-        
+
         if (placeOrderAction.fulfilled.match(resultAction)) {
-            const orderRes = resultAction.payload;
-            setOrderResponse({
-              status: "success",
-              orderId: orderRes.data._id || orderRes.data.orderNumber,
-              orderNumber: orderRes.data.orderNumber,
-              orderDate: orderRes.data.createdAt || new Date().toISOString(),
-              totalAmount: orderRes.data.total || totalAmount,
-              paymentMethod: "cod",
-              shippingAddress: shippingAddress,
-              trackingNumber: "TRK-" + Math.floor(Math.random() * 1000000),
-              estimatedDelivery: "5-7 Days",
-            });
-            setCurrentStep("success");
+          const orderRes = resultAction.payload;
+          setOrderResponse({
+            status: "success",
+            orderId: orderRes.data._id || orderRes.data.orderNumber,
+            orderNumber: orderRes.data.orderNumber,
+            orderDate: orderRes.data.createdAt || new Date().toISOString(),
+            totalAmount: orderRes.data.total || totalAmount,
+            paymentMethod: "cod",
+            shippingAddress: shippingAddress,
+            trackingNumber: "TRK-" + Math.floor(Math.random() * 1000000),
+            estimatedDelivery: "5-7 Days",
+          });
+          setCurrentStep("success");
         } else {
-            throw new Error(resultAction.payload as string || "Failed to place order");
+          throw new Error(resultAction.payload as string || "Failed to place order");
         }
         setLocalIsProcessing(false);
         return;
@@ -123,6 +123,7 @@ export default function CheckoutFlow() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: amountInPaise,
         currency: "INR",
+        order_id: "ORD-" + Math.floor(Math.random() * 1000000),
         name: "Inventino Jewels",
         description: "Order Payment",
         handler: async function (response: any) {
@@ -238,7 +239,7 @@ export default function CheckoutFlow() {
             <OrderSidebar
               currentStep={currentStep}
               paymentMethod={paymentMethod}
-              onPlaceOrder={currentStep === "review" ? handlePlaceOrder : (currentStep === "payment" && paymentMethod === "cod" ? handlePlaceOrder : () => {})}
+              onPlaceOrder={currentStep === "review" ? handlePlaceOrder : (currentStep === "payment" && paymentMethod === "cod" ? handlePlaceOrder : () => { })}
               isProcessing={isProcessing}
             />
           </div>

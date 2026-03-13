@@ -74,11 +74,35 @@ export const orderService = {
   },
 
   /**
-   * 8. Return/Exchange order
-   * POST /orders/:id/request
+   * 8. Return order
+   * POST /orders/:id/returns
    */
-  async requestReturnExchange(id: string, payload: any) {
-    const response = await apiClient.post(`/orders/${id}/request`, payload);
+  async returnOrder(id: string, payload: {
+    reason: string;
+    items: Array<{ productId: string; quantity: number }>;
+    resolution: string;
+  }) {
+    const response = await apiClient.post(`/orders/${id}/returns`, payload);
+    return response.data;
+  },
+
+  /**
+   * 9. Exchange order
+   * POST /orders/:id/exchanges
+   */
+  async exchangeOrder(id: string, payload: {
+    productId: string;
+    quantity: number;
+    reasonForExchange: string;
+    condition: string;
+    exchangeDetails: {
+      newSize?: string | null;
+      newColor?: string | null;
+      newProductId?: string | null;
+    };
+    comments?: string;
+  }) {
+    const response = await apiClient.post(`/orders/${id}/exchanges`, payload);
     return response.data;
   }
 };

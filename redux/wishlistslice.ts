@@ -32,12 +32,15 @@ function saveLocalWishlist(items: any[]) {
 }
 
 function isLoggedIn(): boolean {
-  // Adjust this to match how your app stores the auth token
-  return !!(
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    document.cookie.includes("token=")
-  );
+  try {
+    return !!(
+      localStorage.getItem("token") ||
+      localStorage.getItem("accessToken") ||
+      localStorage.getItem("inventino_user")
+    );
+  } catch {
+    return false;
+  }
 }
 
 // ── Thunks ────────────────────────────────────────────────────────────────────
@@ -60,19 +63,23 @@ export const fetchWishlist = createAsyncThunk(
   }
 );
 
-// Accepts either a plain string ID (logged-in) or { productId, product } (guest fallback)
+// Accepts either a plain string ID or a product object
 export const addWishlistItem = createAsyncThunk(
   "wishlist/add",
-  async (productId: string, { rejectWithValue }) => {
+  async (payload: any, { rejectWithValue }) => {
+    const productId = typeof payload === "string" ? payload : String(payload.productId || payload._id || payload.id);
     try {
       if (!isLoggedIn()) {
         const items = getLocalWishlist();
-        // Avoid duplicates
-        const exists = items.some(
-          (i: any) => (i.product?._id || i.product?.id) === productId
-        );
+        // Avoid duplicates checking all possible ID fields
+        const exists = items.some((i: any) => {
+          const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id);
+          return id === productId;
+        });
         if (!exists) {
-          items.push({ product: { _id: productId } });
+          // If payload is an object, store it; otherwise create minimal structure
+          const itemToStore = typeof payload === "object" ? { product: payload, isLocal: true } : { product: { _id: productId }, _id: productId, productId: productId, isLocal: true };
+          items.push(itemToStore);
           saveLocalWishlist(items);
         }
         return items;
@@ -92,9 +99,10 @@ export const removeWishlistItem = createAsyncThunk(
   async (productId: string, { rejectWithValue }) => {
     try {
       if (!isLoggedIn()) {
-        const items = getLocalWishlist().filter(
-          (i: any) => (i.product?._id || i.product?.id) !== productId
-        );
+        const items = getLocalWishlist().filter((i: any) => {
+          const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id);
+          return id !== productId;
+        });
         saveLocalWishlist(items);
         return items;
       }
@@ -133,15 +141,19 @@ const wishlistSlice = createSlice({
     initialState,
     reducers: {
         addLocalWishlistItem: (state, action) => {
-            const pId = String(action.payload?.product?._id || action.payload?._id);
-            const exists = state.items.some((i: any) => String(i.product?._id) === pId || String(i._id) === pId);
+            const pId = String(action.payload?.product?.productId || action.payload?.product?._id || action.payload?.product?.id || action.payload?._id || action.payload?.productId);
+            const exists = state.items.some((i: any) => 
+                String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) === pId
+            );
             if (!exists) {
                 state.items.push({ ...action.payload, isLocal: true });
             }
         },
         removeLocalWishlistItem: (state, action) => {
             const id = String(action.payload);
-            state.items = state.items.filter(i => String(i.product?._id || i._id) !== id);
+            state.items = state.items.filter(i => 
+                String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) !== id
+            );
         }
     },
     extraReducers: (builder) => {
@@ -157,8 +169,8 @@ const wishlistSlice = createSlice({
             const backendOnes = action.payload || [];
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
-                const id = String(loc.product?._id || loc._id);
-                if (!merged.some(m => String(m.product?._id || m._id) === id)) {
+                const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
+                if (!merged.some(m => String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id)) {
                     merged.push(loc);
                 }
             });
@@ -175,8 +187,8 @@ const wishlistSlice = createSlice({
             const backendOnes = action.payload || [];
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
-                const id = String(loc.product?._id || loc._id);
-                if (!merged.some(m => String(m.product?._id || m._id) === id)) {
+                const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
+                if (!merged.some(m => String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id)) {
                     merged.push(loc);
                 }
             });
@@ -186,12 +198,12 @@ const wishlistSlice = createSlice({
         // Remove Item
         builder.addCase(removeWishlistItem.fulfilled, (state, action) => {
             const removedId = String(action.meta.arg);
-            const localOnes = state.items.filter(i => i.isLocal && String(i.product?._id || i._id) !== removedId);
+            const localOnes = state.items.filter(i => i.isLocal && String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) !== removedId);
             const backendOnes = action.payload || [];
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
-                const id = String(loc.product?._id || loc._id);
-                if (!merged.some(m => String(m.product?._id || m._id) === id)) {
+                const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
+                if (!merged.some(m => String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id)) {
                     merged.push(loc);
                 }
             });

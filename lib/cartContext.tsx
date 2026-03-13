@@ -18,6 +18,8 @@ export type Product = {
   price: number;
   quantity?: number;
   category?: string;
+  color?: string;
+  size?: string;
 };
 
 type CartContextType = {
@@ -68,11 +70,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addToCart = (product: Product, quantity: number = 1) => {
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === product.id);
+      const existingItem = prevCart.find((item) => 
+        item.id === product.id && 
+        item.color === product.color && 
+        item.size === product.size
+      );
 
       if (existingItem) {
         return prevCart.map((item) =>
-          item.id === product.id
+          (item.id === product.id && item.color === product.color && item.size === product.size)
             ? { ...item, quantity: (item.quantity || 1) + quantity }
             : item,
         );
@@ -85,7 +91,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const handleBag = addToCart;
 
   const removeFromCart = (productId: number | string) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+    const idToCompare = String(productId);
+    setCart((prevCart) => prevCart.filter((item) => String(item.id) !== idToCompare));
   };
 
   const clearCart = () => {

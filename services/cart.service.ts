@@ -24,9 +24,11 @@ export const cartService = {
    * Add product to cart
    * @param productId - Product ID to add
    * @param quantity - Quantity (default: 1)
+   * @param color - Selected color
+   * @param size - Selected size
    */
-  async addToCart(productId: string, quantity: number = 1) {
-    const response = await apiClient.post("/cart", { productId, quantity });
+  async addToCart(productId: string, quantity: number = 1, color?: string, size?: string) {
+    const response = await apiClient.post("/cart", { productId, quantity, color, size });
     return response.data;
   },
 
