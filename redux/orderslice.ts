@@ -58,7 +58,7 @@ export const returnOrderAction = createAsyncThunk(
     "order/return",
     async (payload: { id: string; data: any }, { rejectWithValue }) => {
         try {
-            const response = await orderService.returnOrder(payload.id, payload.data);
+            const response = await orderService.requestReturnExchange(payload.id, payload.data);
             return response;
         } catch (error: any) {
             const errorMsg = error.response?.data?.message || error.message || "Return request failed";
@@ -74,7 +74,7 @@ export const exchangeOrderAction = createAsyncThunk(
     "order/exchange",
     async (payload: { id: string; data: any }, { rejectWithValue }) => {
         try {
-            const response = await orderService.exchangeOrder(payload.id, payload.data);
+            const response = await orderService.requestReturnExchange(payload.id, payload.data);
             return response;
         } catch (error: any) {
             const errorMsg = error.response?.data?.message || error.message || "Exchange request failed";

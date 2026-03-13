@@ -96,7 +96,6 @@ export default function ReturnExchangePage({
         };
       });
 
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOrderItems(mapped);
     }
   }, [currentOrder, orderId]);

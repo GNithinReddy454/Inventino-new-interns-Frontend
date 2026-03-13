@@ -86,11 +86,15 @@ export default function LandingPagePreviewModal({ onClose, overrides }: LandingP
     }
 
     if (overrides.features) {
+      const explicitFeaturesSection = doc.querySelector(
+        "section[data-cms-features-section='true'], section#try-before-you-buy-section"
+      ) as HTMLElement | null;
+
       const featuresHeading = Array.from(doc.querySelectorAll("h2")).find((heading) =>
         heading.textContent?.toLowerCase().includes("try before you buy")
       ) as HTMLElement | undefined;
 
-      const featuresSection = featuresHeading?.closest("section") as HTMLElement | null;
+      const featuresSection = explicitFeaturesSection ?? (featuresHeading?.closest("section") as HTMLElement | null);
       const cardsGrid = featuresSection?.querySelector("div.grid") as HTMLElement | null;
 
       if (featuresSection && cardsGrid) {
