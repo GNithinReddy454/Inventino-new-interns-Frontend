@@ -29,21 +29,113 @@ export interface AdminProduct {
     totalRevenue: number;
 }
 
-export interface AdminOrder {
-    _id: string;
-    totalAmount: number;
-    status: string;
-    trackingNumber: string;
-}
+// ─── Customer Types ───────────────────────────────────────────────────────────
 
 export interface AdminCustomer {
     _id: string;
     name: string;
     email: string;
+    phone?: string;
     totalOrders: number;
     totalSpent: number;
     customerType: string;
+    registeredAt?: string;
+    active?: boolean;
 }
+
+export interface AdminCustomerDetail extends AdminCustomer {
+    addresses: {
+        billing: Address;
+        shipping: Address;
+    };
+}
+
+export interface Address {
+    line1: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+}
+
+export interface CustomerStats {
+    total_customers: number;
+    new_customers: number;
+    regular_customers: number;
+    vip_customers: number;
+}
+
+// ─── Order Types ──────────────────────────────────────────────────────────────
+
+export interface AdminOrderListItem {
+    _id: string;
+    orderNumber: string;
+    customer: string;
+    email: string;
+    initials?: string;
+    bg?: string;
+    products: Array<{ name: string; quantity: number; price: number }>;
+    totalAmount: number;
+    status: string;
+    date: string;
+    trackingNumber?: string;
+}
+
+export interface AdminOrderDetail {
+    _id: string;
+    orderNumber: string;
+    customer: {
+        name: string;
+        email: string;
+        phone?: string;
+        billingAddress: Address | null;
+        shippingAddress: Address | null;
+    };
+    payment: {
+        method: string;
+        transactionId?: string;
+        status: string;
+        subtotal: number;
+        shipping: number;
+        tax: number;
+        discount: number;
+        total: number;
+    };
+    items: Array<{
+        name: string;
+        sku: string;
+        quantity: number;
+        price: number;
+        total: number;
+        image?: string;
+    }>;
+    status: string;
+    allowedNextStatuses: string[];
+    trackingNumber?: string;
+    trackingUpdates: Array<{
+        status: string;
+        timestamp: string;
+        location: string;
+        note?: string;
+    }>;
+    notes: Array<{
+        author: string;
+        text: string;
+        timestamp: string;
+    }>;
+    createdAt: string;
+}
+
+export interface OrderStats {
+    total_orders: number;
+    pending_orders: number;
+    processing_orders: number;
+    shipped_orders: number;
+    delivered_orders: number;
+    returned_orders: number;
+}
+
+// ─── Other Existing Types ─────────────────────────────────────────────────────
 
 export interface AdminReview {
     _id: string;
@@ -105,6 +197,16 @@ export interface CategoryListResponse {
     meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
+// ─── Paginated Response Wrapper ───────────────────────────────────────────────
+
+export interface PaginatedResponse<T> {
+    data: T[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
 // ─── API Response Wrapper ─────────────────────────────────────────────────────
 
 interface ApiResponse<T> {
@@ -115,11 +217,6 @@ interface ApiResponse<T> {
 
 // ─── Helper: Graceful fetch — returns null on 404/any error ──────────────────
 
-/**
- * Wraps an API call and returns null if the endpoint is not found (404)
- * or if any network/server error occurs. This prevents console errors
- * when the backend hasn't implemented an endpoint yet.
- */
 async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
     try {
         return await fn();
@@ -127,17 +224,12 @@ async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
         if (axios.isAxiosError(err)) {
             const status = err.response?.status;
             if (status === 404) {
-                // Endpoint not implemented yet — fail silently
                 return null;
             }
             if (status === 401) {
-                // Already handled by the global interceptor in lib/api.ts
                 return null;
             }
-            // Other HTTP errors (500, 400, etc.) — log but don't rethrow
-            console.warn(
-                `[admin.service] API error ${status ?? "network"}: ${err.config?.url}`
-            );
+            console.warn(`[admin.service] API error ${status ?? "network"}: ${err.config?.url}`);
             return null;
         }
         console.warn("[admin.service] Unexpected error:", err);
@@ -145,217 +237,248 @@ async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
     }
 }
 
-// ─── Admin Service Functions ──────────────────────────────────────────────────
+// ─── Dashboard & Analytics ────────────────────────────────────────────────────
 
-/**
- * GET /api/admin/dashboard
- * Fetch dashboard KPI stats: revenue, orders, products, activeUsers.
- */
 export const getDashboard = (): Promise<DashboardData | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<DashboardData>>(
-            "/admin/dashboard"
-        );
+        const res = await apiMethods.get<ApiResponse<DashboardData>>("/admin/dashboard") as ApiResponse<DashboardData>;
         return res.data;
     });
 
-/**
- * GET /api/admin/analytics?period=<period>
- * Fetch analytics data for charts. period e.g. "7d", "30d", "90d", "1y"
- */
 export const getAnalytics = (period: string = "30d"): Promise<AnalyticsData | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<AnalyticsData>>(
-            `/admin/analytics?period=${period}`
-        );
+        const res = await apiMethods.get<ApiResponse<AnalyticsData>>(`/admin/analytics?period=${period}`) as ApiResponse<AnalyticsData>;
         return res.data;
     });
 
-/**
- * GET /api/admin/products
- * Fetch all products with sales statistics.
- */
+// ─── Products ──────────────────────────────────────────────────────────────────
+
 export const getAdminProducts = (): Promise<AdminProduct[] | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<AdminProduct[]>>(
-            "/admin/products"
-        );
+        const res = await apiMethods.get<ApiResponse<AdminProduct[]>>("/admin/products") as ApiResponse<AdminProduct[]>;
         return res.data;
     });
 
-/**
- * GET /api/admin/orders
- * Fetch all orders for order management.
- */
-export const getAdminOrders = (): Promise<AdminOrder[] | null> =>
+// ─── Customers ─────────────────────────────────────────────────────────────────
+
+export const getAdminCustomers = (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: string;
+    status?: string;
+    registeredFrom?: string;
+    registeredTo?: string;
+    minOrders?: number;
+    maxOrders?: number;
+    minSpent?: number;
+    maxSpent?: number;
+    sortBy?: string;
+    sortOrder?: string;
+}): Promise<PaginatedResponse<AdminCustomer> | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<AdminOrder[]>>(
-            "/admin/orders"
-        );
+        const res = await apiMethods.get<ApiResponse<PaginatedResponse<AdminCustomer>>>("/admin/customers", { params }) as ApiResponse<PaginatedResponse<AdminCustomer>>;
         return res.data;
     });
 
-/**
- * GET /api/admin/customers
- * Fetch all registered customers with order stats.
- */
-export const getAdminCustomers = (): Promise<AdminCustomer[] | null> =>
+export const getAdminCustomerStats = (params?: { from?: string; to?: string }): Promise<CustomerStats | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<AdminCustomer[]>>(
-            "/admin/customers"
-        );
+        const res = await apiMethods.get<ApiResponse<CustomerStats>>("/admin/customers/stats", { params }) as ApiResponse<CustomerStats>;
         return res.data;
     });
 
-/**
- * GET /api/admin/reviews
- * Fetch all product reviews for moderation.
- */
+export const getAdminCustomerById = (id: string): Promise<AdminCustomerDetail | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<AdminCustomerDetail>>(`/admin/customers/${id}`) as ApiResponse<AdminCustomerDetail>;
+        return res.data;
+    });
+
+export const getAdminCustomerOrders = (
+    id: string,
+    params?: { page?: number; limit?: number; sortBy?: string; sortOrder?: string }
+): Promise<PaginatedResponse<{ _id: string; orderNumber: string; date: string; status: string; total: number; paymentMethod: string }> | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<PaginatedResponse<any>>>(`/admin/customers/${id}/orders`, { params }) as ApiResponse<PaginatedResponse<any>>;
+        return res.data;
+    });
+
+export const updateAdminCustomer = (id: string, data: { customerType?: string; active?: boolean }): Promise<{ _id: string; customerType?: string; active?: boolean } | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.put<ApiResponse<any>>(`/admin/customers/${id}`, data) as ApiResponse<any>;
+        return res.data;
+    });
+
+export const exportAdminCustomers = (filters: any): Promise<Blob | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.post("/admin/customers/export", filters, {
+            responseType: "blob",
+        }) as Blob;
+        return res;
+    });
+
+// ─── Orders ────────────────────────────────────────────────────────────────────
+
+export const getAdminOrders = (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    paymentStatus?: string;
+    from?: string;
+    to?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    customerId?: string;
+    sortBy?: string;
+    sortOrder?: string;
+}): Promise<PaginatedResponse<AdminOrderListItem> | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<PaginatedResponse<AdminOrderListItem>>>("/admin/orders", { params }) as ApiResponse<PaginatedResponse<AdminOrderListItem>>;
+        return res.data;
+    });
+
+export const getAdminOrderStats = (params?: { from?: string; to?: string }): Promise<OrderStats | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<OrderStats>>("/admin/orders/stats", { params }) as ApiResponse<OrderStats>;
+        return res.data;
+    });
+
+export const getAdminOrderById = (id: string): Promise<AdminOrderDetail | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<ApiResponse<AdminOrderDetail>>(`/admin/orders/${id}`) as ApiResponse<AdminOrderDetail>;
+        return res.data;
+    });
+
+export const updateOrderStatus = (id: string, status: string): Promise<{ orderId: string; newStatus: string } | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.put<ApiResponse<any>>(`/admin/orders/${id}/status`, { status }) as ApiResponse<any>;
+        return res.data;
+    });
+
+export const updateOrderTracking = (id: string, trackingNumber: string): Promise<{ orderId: string; trackingNumber: string } | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.put<ApiResponse<any>>(`/admin/orders/${id}/tracking`, { trackingNumber }) as ApiResponse<any>;
+        return res.data;
+    });
+
+export const cancelOrder = (id: string, reason?: string): Promise<{ orderId: string; status: string } | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.patch<ApiResponse<any>>(`/admin/orders/${id}/cancel`, { reason }) as ApiResponse<any>;
+        return res.data;
+    });
+
+export const addOrderNote = (id: string, note: string): Promise<{ noteId: string; author: string; text: string; timestamp: string } | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.post<ApiResponse<any>>(`/admin/orders/${id}/notes`, { note }) as ApiResponse<any>;
+        return res.data;
+    });
+
+export const downloadOrderInvoice = (id: string): Promise<Blob | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get(`/admin/orders/${id}/invoice`, {
+            responseType: "blob",
+        }) as Blob;
+        return res;
+    });
+
+export const exportAdminOrders = (filters: any): Promise<Blob | null> =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.post("/admin/orders/export", filters, {
+            responseType: "blob",
+        }) as Blob;
+        return res;
+    });
+
+// ─── Reviews ───────────────────────────────────────────────────────────────────
+
 export const getAdminReviews = (): Promise<AdminReview[] | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<AdminReview[]>>(
-            "/admin/reviews"
-        );
+        const res = await apiMethods.get<ApiResponse<AdminReview[]>>("/admin/reviews") as ApiResponse<AdminReview[]>;
         return res.data;
     });
 
-/**
- * GET /api/admin/cms
- * Fetch CMS configuration for homepage content.
- */
+// ─── CMS ───────────────────────────────────────────────────────────────────────
+
 export const getCMSData = (): Promise<CMSData | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<CMSData>>("/admin/cms");
+        const res = await apiMethods.get<ApiResponse<CMSData>>("/admin/cms") as ApiResponse<CMSData>;
         return res.data;
     });
 
-/**
- * PUT /api/admin/cms
- * Update CMS homepage content.
- */
 export const updateCMSData = (data: Partial<CMSData>): Promise<{ message: string } | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.put<{ statusCode: number; message: string }>(
-            "/admin/cms",
-            data
-        );
+        const res = await apiMethods.put<{ statusCode: number; message: string }>("/admin/cms", data) as { statusCode: number; message: string };
         return res;
     });
 
-/**
- * GET /api/admin/settings
- * Fetch store configuration settings.
- */
+// ─── Settings ──────────────────────────────────────────────────────────────────
+
 export const getAdminSettings = (): Promise<SettingsData | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<SettingsData>>(
-            "/admin/settings"
-        );
+        const res = await apiMethods.get<ApiResponse<SettingsData>>("/admin/settings") as ApiResponse<SettingsData>;
         return res.data;
     });
 
-/**
- * PUT /api/admin/settings
- * Update store settings.
- */
 export const updateAdminSettings = (data: Partial<SettingsData>): Promise<{ message: string } | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.put<{ statusCode: number; message: string }>(
-            "/admin/settings",
-            data
-        );
+        const res = await apiMethods.put<{ statusCode: number; message: string }>("/admin/settings", data) as { statusCode: number; message: string };
         return res;
     });
 
-/**
- * GET /api/banners
- * Fetch active banners (public).
- */
+// ─── Banners ───────────────────────────────────────────────────────────────────
+
 export const getActiveBanners = (): Promise<Banner[] | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<Banner[]>>("/banners");
+        const res = await apiMethods.get<ApiResponse<Banner[]>>("/banners") as ApiResponse<Banner[]>;
         return res.data;
     });
 
-/**
- * POST /api/banners
- * Create a banner (admin).
- */
 export const createBanner = (formData: FormData): Promise<Banner | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.post<ApiResponse<Banner>>("/banners", formData, {
             headers: { "Content-Type": "multipart/form-data" },
-        });
+        }) as ApiResponse<Banner>;
         return res.data;
     });
 
-/**
- * PATCH /api/banners/:id
- * Update a banner (admin).
- */
 export const updateBanner = (id: string, formData: FormData): Promise<Banner | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.patch<ApiResponse<Banner>>(`/banners/${id}`, formData, {
             headers: { "Content-Type": "multipart/form-data" },
-        });
+        }) as ApiResponse<Banner>;
         return res.data;
     });
 
-/**
- * DELETE /api/banners/:id
- * Delete a banner (admin).
- */
 export const deleteBanner = (id: string): Promise<null> =>
     gracefulFetch(async () => {
         await apiMethods.delete(`/banners/${id}`);
         return null;
     });
 
-// ─── Category Service Functions ───────────────────────────────────────────────
+// ─── Categories ─────────────────────────────────────────────────────────────────
 
-/**
- * GET /api/categories
- * Fetch all active categories (public).
- */
 export const getCategories = (): Promise<CategoryListResponse | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<CategoryListResponse>>("/categories?limit=100");
+        const res = await apiMethods.get<ApiResponse<CategoryListResponse>>("/categories?limit=100") as ApiResponse<CategoryListResponse>;
         return res.data;
     });
 
-/**
- * GET /api/categories/admin/all
- * Fetch all categories including inactive (admin).
- */
 export const getAdminCategories = (): Promise<CategoryListResponse | null> =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<ApiResponse<CategoryListResponse>>("/categories/admin/all?limit=100");
+        const res = await apiMethods.get<ApiResponse<CategoryListResponse>>("/categories/admin/all?limit=100") as ApiResponse<CategoryListResponse>;
         return res.data;
     });
 
-/**
- * POST /api/categories
- * Create a category (admin).
- */
 export const createCategory = async (data: { name: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category> => {
-    const res = await apiMethods.post<ApiResponse<Category>>("/categories", data);
+    const res = await apiMethods.post<ApiResponse<Category>>("/categories", data) as ApiResponse<Category>;
     return res.data;
 };
 
-/**
- * PATCH /api/categories/:id
- * Update a category (admin).
- */
 export const updateCategory = async (id: string, data: { name?: string; description?: string; isActive?: boolean; displayOrder?: number }): Promise<Category> => {
-    const res = await apiMethods.patch<ApiResponse<Category>>(`/categories/${id}`, data);
+    const res = await apiMethods.patch<ApiResponse<Category>>(`/categories/${id}`, data) as ApiResponse<Category>;
     return res.data;
 };
 
-/**
- * DELETE /api/categories/:id
- * Soft-delete a category (admin).
- */
 export const deleteCategory = async (id: string): Promise<void> => {
     await apiMethods.delete(`/categories/${id}`);
 };
-

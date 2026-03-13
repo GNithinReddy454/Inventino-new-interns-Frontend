@@ -117,9 +117,9 @@ export default function BagPage() {
           const exists = savedItems.some((si: any) => String(si.product?._id) === itemId || String(si.product?.id) === itemId || si.product?._id === itemId || String(si._id) === itemId);
           if (!exists) {
             if (user) {
-              await dispatch(addWishlistItem(itemId)).unwrap();
+              await dispatch(addWishlistItem({ productId: itemId })).unwrap();
             } else {
-              dispatch(addWishlistItem(itemId));
+              dispatch(addWishlistItem({ productId: itemId }));
             }
           }
           triggerToast(`${item.name} moved to wishlist`, "Saved!");
@@ -193,7 +193,7 @@ export default function BagPage() {
         );
         if (!exists) {
           try {
-            await dispatch(addWishlistItem(itemId)).unwrap();
+            await dispatch(addWishlistItem({ productId: itemId })).unwrap();
           } catch (e) {
             dispatch(addLocalWishlistItem({ _id: itemId, product: item, quantity: 1 }));
           }
