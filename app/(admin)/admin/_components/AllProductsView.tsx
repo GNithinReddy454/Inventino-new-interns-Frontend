@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, MoreVertical, Search, Package, Edit, Trash2, ToggleLeft, ToggleRight, RefreshCw } from "lucide-react";
+import { ChevronDown, MoreVertical, Search, Package, Edit, Trash2, ToggleLeft, ToggleRight, RefreshCw, CheckSquare, Square, XCircle } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
 import Pagination from "./Pagination";
 import { productService } from "@/services/product.service";
@@ -52,6 +52,9 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
     const [editProduct, setEditProduct] = useState<EditableProduct | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [batchLoading, setBatchLoading] = useState(false);
+    const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false);
     const localAddedProducts = useAppSelector((state) => state.admin.localAddedProducts);
 
     const resolveThumbnail = (p: any) =>
@@ -225,11 +228,14 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
             category: prod.category,
             stock: prod.stock,
             material: prod.material,
+            color: (prod as any).color || "",
+            size: (prod as any).size || "",
             isActive: prod.isActive,
             trendy: prod.trendy,
             bestSeller: prod.bestSeller,
             hashtags: prod.hashtags,
             story: prod.story,
+            images: prod.images || [],
         });
         setOpenMenu(null);
     };
@@ -248,6 +254,74 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
 
     // Category names for the edit modal dropdown (without "All Categories")
     const editCategories = categoryOptions.filter((c) => c !== "All Categories");
+
+    // Batch selection handlers
+    const toggleSelectAll = () => {
+        if (selectedIds.size === paginated.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(paginated.map((p) => p._id)));
+        }
+    };
+    const toggleSelect = (id: string) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+    const clearSelection = () => {
+        setSelectedIds(new Set());
+        setBatchDeleteConfirm(false);
+    };
+
+    /** Batch: toggle status for all selected products */
+    const handleBatchToggleStatus = async (activate: boolean) => {
+        setBatchLoading(true);
+        try {
+            const selected = products.filter((p) => selectedIds.has(p._id));
+            await Promise.all(
+                selected.map((p) => {
+                    const id = p.productId || p._id;
+                    return productService.updateStatus(id, { isActive: activate });
+                })
+            );
+            setProducts((prev) =>
+                prev.map((p) => {
+                    if (!selectedIds.has(p._id)) return p;
+                    const updated = { ...p, isActive: activate };
+                    updated.status = deriveStatus(updated);
+                    return updated;
+                })
+            );
+            clearSelection();
+        } catch (err) {
+            console.error("Batch status update failed:", err);
+        } finally {
+            setBatchLoading(false);
+        }
+    };
+
+    /** Batch: delete all selected products */
+    const handleBatchDelete = async () => {
+        setBatchLoading(true);
+        try {
+            const selected = products.filter((p) => selectedIds.has(p._id));
+            await Promise.all(
+                selected.map((p) => {
+                    const id = p.productId || p._id;
+                    return productService.delete(id);
+                })
+            );
+            setProducts((prev) => prev.filter((p) => !selectedIds.has(p._id)));
+            clearSelection();
+        } catch (err) {
+            console.error("Batch delete failed:", err);
+        } finally {
+            setBatchLoading(false);
+        }
+    };
 
     return (
         <div className="space-y-6 w-full">
@@ -340,6 +414,71 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                 </div>
             </div>
 
+            {/* Batch Action Bar */}
+            {selectedIds.size > 0 && (
+                <div className="bg-card border border-primary/30 rounded-2xl shadow-sm p-4 flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                        <CheckSquare size={16} className="text-primary" />
+                        {selectedIds.size} product{selectedIds.size !== 1 ? "s" : ""} selected
+                    </div>
+                    <div className="flex items-center gap-2 ml-auto">
+                        <button
+                            onClick={() => handleBatchToggleStatus(true)}
+                            disabled={batchLoading}
+                            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-all disabled:opacity-50"
+                        >
+                            <ToggleRight size={14} /> Activate
+                        </button>
+                        <button
+                            onClick={() => handleBatchToggleStatus(false)}
+                            disabled={batchLoading}
+                            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-orange-700 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition-all disabled:opacity-50"
+                        >
+                            <ToggleLeft size={14} /> Deactivate
+                        </button>
+                        {batchDeleteConfirm ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-red-500 font-bold">Confirm delete?</span>
+                                <button
+                                    onClick={handleBatchDelete}
+                                    disabled={batchLoading}
+                                    className="px-4 py-2 text-xs font-bold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all disabled:opacity-50"
+                                >
+                                    Yes, Delete
+                                </button>
+                                <button
+                                    onClick={() => setBatchDeleteConfirm(false)}
+                                    className="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setBatchDeleteConfirm(true)}
+                                disabled={batchLoading}
+                                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-all disabled:opacity-50"
+                            >
+                                <Trash2 size={14} /> Delete
+                            </button>
+                        )}
+                        <button
+                            onClick={clearSelection}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 transition-all"
+                        >
+                            <XCircle size={14} /> Clear
+                        </button>
+                    </div>
+                    {batchLoading && (
+                        <div className="w-full mt-2">
+                            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: '60%' }} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Table grid view */}
             {isLoading ? (
                 <SkeletonTable rows={10} cols={6} />
@@ -349,6 +488,11 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                         <table className="w-full text-left text-sm whitespace-nowrap">
                             <thead className="bg-muted/60 text-muted-foreground font-bold text-xs uppercase tracking-wider hidden md:table-header-group">
                                 <tr>
+                                    <th className="px-4 py-4 w-10">
+                                        <button type="button" onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground transition-colors">
+                                            {selectedIds.size === paginated.length && paginated.length > 0 ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} />}
+                                        </button>
+                                    </th>
                                     <th className="px-6 py-4">Product</th>
                                     <th className="px-6 py-4">Category</th>
                                     <th className="px-6 py-4">Price</th>
@@ -360,14 +504,19 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                             <tbody className="divide-y divide-border">
                                 {filtered.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-16 text-muted-foreground">
+                                        <td colSpan={7} className="text-center py-16 text-muted-foreground">
                                             <Package size={36} className="mx-auto mb-3 opacity-20" />
                                             <p className="text-sm">No products found matching criteria</p>
                                         </td>
                                     </tr>
                                 ) : (
                                     paginated.map((prod) => (
-                                        <tr key={prod._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors group">
+                                        <tr key={prod._id} className={`flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors group ${selectedIds.has(prod._id) ? 'bg-primary/5' : ''}`}>
+                                            <td className="px-0 py-2 md:px-4 md:py-4 hidden md:table-cell w-10">
+                                                <button type="button" onClick={() => toggleSelect(prod._id)} className="text-muted-foreground hover:text-foreground transition-colors">
+                                                    {selectedIds.has(prod._id) ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} />}
+                                                </button>
+                                            </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-12 h-12 rounded-lg flex-shrink-0 hidden md:flex overflow-hidden bg-[#f3f4f6] items-center justify-center">

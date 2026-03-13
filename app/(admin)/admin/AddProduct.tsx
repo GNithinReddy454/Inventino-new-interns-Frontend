@@ -35,6 +35,13 @@ export default function AddProduct() {
   ];
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
 
+  // Custom sizes
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [newSize, setNewSize] = useState("");
+
+  // Custom color input
+  const [customColorHex, setCustomColorHex] = useState("");
+
   // Story fields (including Artisan Quote & Artisan Info steps)
   const [storyTitle, setStoryTitle] = useState("");
   const [storyContent, setStoryContent] = useState("");
@@ -89,6 +96,29 @@ export default function AddProduct() {
     );
   };
 
+  // Sizes handlers
+  const handleAddSize = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && newSize.trim() !== "") {
+      e.preventDefault();
+      if (!sizes.includes(newSize.trim())) {
+        setSizes([...sizes, newSize.trim()]);
+      }
+      setNewSize("");
+    }
+  };
+  const removeSize = (sizeToRemove: string) => {
+    setSizes(sizes.filter((s) => s !== sizeToRemove));
+  };
+
+  // Custom color handler
+  const addCustomColor = () => {
+    const hex = customColorHex.trim();
+    if (hex && /^#[0-9A-Fa-f]{6}$/.test(hex) && !selectedColors.includes(hex)) {
+      setSelectedColors((prev) => [...prev, hex]);
+      setCustomColorHex("");
+    }
+  };
+
   // Artisan Steps handlers
   const handleAddStep = () => {
     setArtisanSteps([...artisanSteps, { title: "", description: "" }]);
@@ -102,8 +132,17 @@ export default function AddProduct() {
   // File handlers
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
+      const newFiles = Array.from(e.target.files);
+      setSelectedFiles((prev) => {
+        const combined = [...prev, ...newFiles];
+        return combined.slice(0, 5); // Max 5 images per backend limit
+      });
     }
+    // Reset input so same file can be re-selected
+    if (e.target) e.target.value = "";
+  };
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
   const handleStoryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -154,6 +193,7 @@ export default function AddProduct() {
     if (discount) createPayload.append("discountPrice", String(Number(discount)));
     tags.forEach((tag) => createPayload.append("hashtags", tag));
     if (selectedColors.length > 0) createPayload.append("color", selectedColors.join(","));
+    if (sizes.length > 0) createPayload.append("size", sizes.join(","));
     createPayload.append("trendy", String(isFeatured));
     createPayload.append("bestSeller", String(reviewsEnabled));
     if (storyContent) createPayload.append("story", storyContent);
@@ -163,7 +203,27 @@ export default function AddProduct() {
     try {
       setIsLoading(true);
 
-      const created = await productService.create(createPayload);
+      let created;
+      let imageUploadFailed = false;
+
+      try {
+        created = await productService.create(createPayload);
+      } catch (uploadErr: any) {
+        // If S3/image upload fails, retry without images
+        const errMsg = uploadErr?.response?.data?.message || uploadErr?.message || "";
+        if (selectedFiles.length > 0 && (errMsg.toLowerCase().includes("s3") || errMsg.toLowerCase().includes("upload"))) {
+          imageUploadFailed = true;
+          const retryPayload = new FormData();
+          createPayload.forEach((value, key) => {
+            if (key !== "images") {
+              retryPayload.append(key, value);
+            }
+          });
+          created = await productService.create(retryPayload);
+        } else {
+          throw uploadErr;
+        }
+      }
 
       const createdData = created?.data ?? created;
       const newProduct = {
@@ -203,15 +263,24 @@ export default function AddProduct() {
       const createdProductId =
         createdData?.productId || createdData?._id || createdData?.id;
 
-      if (createdProductId && !createdData?.images?.length && selectedFiles.length > 0) {
-        const imageFormData = new FormData();
-        selectedFiles.forEach((file) => imageFormData.append("images", file));
-        await productService.addImages(createdProductId, imageFormData);
+      // If initial create succeeded but had no images (or we retried without), try adding images separately
+      if (createdProductId && !createdData?.images?.length && selectedFiles.length > 0 && !imageUploadFailed) {
+        try {
+          const imageFormData = new FormData();
+          selectedFiles.forEach((file) => imageFormData.append("images", file));
+          await productService.addImages(createdProductId, imageFormData);
+        } catch {
+          imageUploadFailed = true;
+        }
       }
 
       dispatch(addProduct(newProduct));
 
-      triggerToast("Product added successfully", "success");
+      if (imageUploadFailed) {
+        triggerToast("Product created, but images could not be uploaded (S3 not configured)", "success");
+      } else {
+        triggerToast("Product added successfully", "success");
+      }
 
       setTimeout(() => {
         router.push("/admin");
@@ -324,15 +393,32 @@ export default function AddProduct() {
               <label className="text-xs font-bold text-gray-500">Colors</label>
               <div className="flex gap-1 mt-1">
                 {selectedColors.map((c) => {
-                  const color = colorOptions.find((co) => co.id === c);
-                  return (
+                  const preset = colorOptions.find((co) => co.id === c);
+                  return preset ? (
                     <div
                       key={c}
-                      className={`w-6 h-6 rounded-full ${color?.bg} border border-gray-300`}
-                      title={color?.label}
+                      className={`w-6 h-6 rounded-full ${preset.bg} border border-gray-300`}
+                      title={preset.label}
+                    />
+                  ) : (
+                    <div
+                      key={c}
+                      className="w-6 h-6 rounded-full border border-gray-300"
+                      style={{ backgroundColor: c }}
+                      title={c}
                     />
                   );
                 })}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500">Sizes</label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {sizes.length > 0 ? sizes.map((s) => (
+                  <span key={s} className="px-2 py-0.5 bg-pink-100 text-pink-800 rounded-full text-xs">{s}</span>
+                )) : (
+                  <p className="text-sm text-gray-500">No sizes added</p>
+                )}
               </div>
             </div>
             <div>
@@ -754,8 +840,33 @@ export default function AddProduct() {
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground mt-4">
-                Selected colors: {selectedColors.length}
+              {/* Custom color input */}
+              <div className="flex items-center gap-2 mt-4">
+                <input
+                  type="color"
+                  value={customColorHex || "#000000"}
+                  onChange={(e) => setCustomColorHex(e.target.value)}
+                  className="w-10 h-10 rounded-lg border border-pink-200 cursor-pointer p-0.5"
+                  title="Pick a custom color"
+                />
+                <input
+                  type="text"
+                  value={customColorHex}
+                  onChange={(e) => setCustomColorHex(e.target.value)}
+                  placeholder="#FF5733"
+                  className="w-28 px-3 py-2 bg-[#FDF2F5] border border-pink-200 rounded-xl text-sm focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={addCustomColor}
+                  className="px-4 py-2 bg-[#E91E63] text-white text-xs font-bold rounded-xl hover:bg-[#C83B61] transition-all disabled:opacity-50"
+                  disabled={!customColorHex || !/^#[0-9A-Fa-f]{6}$/.test(customColorHex.trim())}
+                >
+                  Add Color
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Selected colors: {selectedColors.length} — Pick a preset or add a custom hex color
               </p>
             </div>
 
@@ -765,27 +876,36 @@ export default function AddProduct() {
                 Sizes (Optional)
               </h3>
               <p className="text-xs text-muted-foreground mb-6">
-                Add size options if applicable
+                Add custom size options — press Enter to add
               </p>
               <div className="flex flex-wrap items-center gap-2 p-3 bg-[#FDF2F5] border border-pink-200 rounded-xl min-h-13 transition-all focus-within:border-[#E91E63] focus-within:ring-1 focus-within:ring-[#E91E63]">
-                <span className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-full shadow-sm">
-                  Small{" "}
-                  <X size={12} strokeWidth={3} className="cursor-pointer" />
-                </span>
-                <span className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-full shadow-sm">
-                  Medium{" "}
-                  <X size={12} strokeWidth={3} className="cursor-pointer" />
-                </span>
-                <span className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-full shadow-sm">
-                  Large{" "}
-                  <X size={12} strokeWidth={3} className="cursor-pointer" />
-                </span>
+                {sizes.map((size, idx) => (
+                  <span
+                    key={idx}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-full shadow-sm"
+                  >
+                    {size}
+                    <button
+                      type="button"
+                      onClick={() => removeSize(size)}
+                      className="hover:opacity-80 ml-1"
+                    >
+                      <X size={12} strokeWidth={3} />
+                    </button>
+                  </span>
+                ))}
                 <input
                   type="text"
+                  value={newSize}
+                  onChange={(e) => setNewSize(e.target.value)}
+                  onKeyDown={handleAddSize}
                   placeholder="Add a size..."
-                  className="flex-1 bg-transparent text-sm focus:outline-none px-1 text-foreground placeholder-muted-foreground"
+                  className="flex-1 bg-transparent text-sm min-w-20 focus:outline-none px-1 text-foreground placeholder-muted-foreground"
                 />
               </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Press Enter to add sizes • {sizes.length} size{sizes.length !== 1 ? "s" : ""} added
+              </p>
             </div>
           </div>
 
@@ -1072,16 +1192,28 @@ export default function AddProduct() {
                   onChange={handleFilesChange}
                 />
               </div>
-              <div className="flex gap-4 mt-8 overflow-x-auto">
+              {selectedFiles.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-6 mb-2">
+                  {selectedFiles.length}/5 images selected
+                </p>
+              )}
+              <div className="flex gap-4 mt-2 overflow-x-auto">
                 {selectedFiles.length > 0 && (
                   selectedFiles.map((file, idx) => (
-                    <div key={idx} className="w-24 h-24 rounded-xl overflow-hidden shrink-0 relative">
+                    <div key={idx} className="w-24 h-24 rounded-xl overflow-hidden shrink-0 relative group">
                       <Image
                         src={URL.createObjectURL(file)}
                         alt={file.name}
                         fill
                         className="object-cover"
                       />
+                      <button
+                        type="button"
+                        onClick={() => removeFile(idx)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={10} strokeWidth={3} />
+                      </button>
                     </div>
                   ))
                 )}
