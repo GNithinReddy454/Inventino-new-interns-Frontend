@@ -3,149 +3,15 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Download, Save, XCircle, MessageSquare } from "lucide-react";
 import { SkeletonTable } from "./Skeleton";
-
-const MOCK_ORDERS_BY_ID: Record<string, any> = {
-    "order-1": {
-        _id: "order-1",
-        orderNumber: "ORD-001",
-        customer: {
-            name: "John Doe",
-            email: "john.doe@example.com",
-            phone: "+91 98765 43210",
-            billingAddress: {
-                line1: "123 Main St",
-                city: "Mumbai",
-                state: "Maharashtra",
-                postalCode: "400001",
-                country: "India"
-            },
-            shippingAddress: {
-                line1: "123 Main St",
-                city: "Mumbai",
-                state: "Maharashtra",
-                postalCode: "400001",
-                country: "India"
-            }
-        },
-        payment: {
-            method: "Credit Card",
-            transactionId: "txn_123456",
-            status: "paid",
-            subtotal: 1600,
-            shipping: 50,
-            tax: 128,
-            discount: 0,
-            total: 1778
-        },
-        items: [
-            { name: "Gold Necklace", sku: "GN-001", quantity: 1, price: 1250, total: 1250, image: "/product1.jpg" },
-            { name: "Silver Earrings", sku: "SE-002", quantity: 2, price: 350, total: 700, image: "/product2.jpg" },
-        ],
-        status: "Delivered",
-        allowedNextStatuses: [],
-        trackingNumber: "TRK123456789",
-        trackingUpdates: [
-            { status: "Order Placed", timestamp: "2026-03-10T10:00:00Z", location: "Online", note: "" },
-            { status: "Shipped", timestamp: "2026-03-11T14:30:00Z", location: "Mumbai Hub", note: "" },
-            { status: "Out for Delivery", timestamp: "2026-03-13T09:15:00Z", location: "Local Facility", note: "" },
-            { status: "Delivered", timestamp: "2026-03-13T16:45:00Z", location: "Customer Address", note: "" },
-        ],
-        notes: [
-            { author: "Admin", text: "Customer requested gift wrapping.", timestamp: "2026-03-09T11:22:00Z" },
-        ],
-        createdAt: "2026-03-10T10:00:00Z",
-    },
-    "order-2": {
-        _id: "order-2",
-        orderNumber: "ORD-002",
-        customer: {
-            name: "Sarah Miller",
-            email: "sarah.m@example.com",
-            phone: "+91 99887 66554",
-            billingAddress: {
-                line1: "456 Park Ave",
-                city: "Delhi",
-                state: "Delhi",
-                postalCode: "110001",
-                country: "India"
-            },
-            shippingAddress: {
-                line1: "456 Park Ave",
-                city: "Delhi",
-                state: "Delhi",
-                postalCode: "110001",
-                country: "India"
-            }
-        },
-        payment: {
-            method: "UPI",
-            transactionId: "txn_789012",
-            status: "paid",
-            subtotal: 700,
-            shipping: 0,
-            tax: 56,
-            discount: 0,
-            total: 756
-        },
-        items: [
-            { name: "Silver Earrings", sku: "SE-002", quantity: 2, price: 350, total: 700, image: "/product2.jpg" },
-        ],
-        status: "Shipped",
-        allowedNextStatuses: ["Out for Delivery", "Delivered", "Cancelled"],
-        trackingNumber: "TRK987654321",
-        trackingUpdates: [
-            { status: "Order Placed", timestamp: "2026-03-12T09:30:00Z", location: "Online", note: "" },
-            { status: "Shipped", timestamp: "2026-03-13T11:20:00Z", location: "Delhi Hub", note: "" },
-        ],
-        notes: [],
-        createdAt: "2026-03-12T09:30:00Z",
-    },
-    "order-3": {
-        _id: "order-3",
-        orderNumber: "ORD-003",
-        customer: {
-            name: "Emily Brown",
-            email: "emily.b@example.com",
-            phone: "+91 77665 44332",
-            billingAddress: {
-                line1: "789 Lake Road",
-                city: "Bangalore",
-                state: "Karnataka",
-                postalCode: "560001",
-                country: "India"
-            },
-            shippingAddress: {
-                line1: "789 Lake Road",
-                city: "Bangalore",
-                state: "Karnataka",
-                postalCode: "560001",
-                country: "India"
-            }
-        },
-        payment: {
-            method: "COD",
-            transactionId: "",
-            status: "pending",
-            subtotal: 1950,
-            shipping: 0,
-            tax: 156,
-            discount: 0,
-            total: 2106
-        },
-        items: [
-            { name: "Diamond Ring", sku: "DR-003", quantity: 1, price: 1500, total: 1500, image: "/product3.jpg" },
-            { name: "Pearl Bracelet", sku: "PB-004", quantity: 1, price: 450, total: 450, image: "/product4.jpg" },
-        ],
-        status: "Processing",
-        allowedNextStatuses: ["Shipped", "Cancelled"],
-        trackingNumber: "",
-        trackingUpdates: [
-            { status: "Order Placed", timestamp: "2026-03-14T15:10:00Z", location: "Online", note: "" },
-        ],
-        notes: [],
-        createdAt: "2026-03-14T15:10:00Z",
-    },
-};
+import { 
+    getAdminOrderById, 
+    updateOrderStatus, 
+    updateOrderTracking, 
+    cancelOrder, 
+    addOrderNote,
+    AdminOrderDetail 
+} from "@/services/admin.service";
+import { useToast } from "@/app/components/GlobalToast";
 
 interface OrderDetailsViewProps {
     orderId: string;
@@ -153,7 +19,7 @@ interface OrderDetailsViewProps {
 }
 
 export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewProps) {
-    const [order, setOrder] = useState<any>(null);
+    const [order, setOrder] = useState<AdminOrderDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [newStatus, setNewStatus] = useState("");
     const [newTracking, setNewTracking] = useState("");
@@ -162,100 +28,108 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewPro
     const [pendingStatus, setPendingStatus] = useState("");
     const [newNote, setNewNote] = useState("");
     const [notes, setNotes] = useState<any[]>([]);
+    const { showToast } = useToast();
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            const foundOrder = MOCK_ORDERS_BY_ID[orderId] || {
-                _id: orderId,
-                orderNumber: orderId,
-                customer: {
-                    name: "Unknown Customer",
-                    email: "unknown@example.com",
-                    phone: "",
-                    billingAddress: null,
-                    shippingAddress: null,
-                },
-                payment: {
-                    method: "",
-                    transactionId: "",
-                    status: "unknown",
-                    subtotal: 0,
-                    shipping: 0,
-                    tax: 0,
-                    discount: 0,
-                    total: 0,
-                },
-                items: [],
-                status: "Unknown",
-                allowedNextStatuses: [],
-                trackingNumber: "",
-                trackingUpdates: [],
-                notes: [],
-                createdAt: new Date().toISOString(),
-            };
-            setOrder(foundOrder);
-            setNewStatus(foundOrder.status);
-            setNewTracking(foundOrder.trackingNumber || "");
-            setNotes(foundOrder.notes || []);
-            setLoading(false);
-        }, 800);
-        return () => clearTimeout(timer);
+        fetchOrder();
     }, [orderId]);
 
+    const fetchOrder = async () => {
+        setLoading(true);
+        try {
+            const data = await getAdminOrderById(orderId);
+            if (data) {
+                setOrder(data);
+                setNewStatus(data.status);
+                setNewTracking(data.trackingNumber || "");
+                setNotes(data.notes || []);
+            }
+        } catch (err) {
+            console.error("Failed to fetch order:", err);
+            showToast("Error", "Could not load order details", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleStatusChangeClick = () => {
-        if (!newStatus || newStatus === order.status) return;
+        if (!newStatus || newStatus === order?.status) return;
         setPendingStatus(newStatus);
         setShowStatusConfirm(true);
     };
 
-    const confirmStatusUpdate = () => {
-        console.log("Updating status to", pendingStatus);
-        setOrder({ ...order, status: pendingStatus });
-        const newUpdate = {
-            status: pendingStatus,
-            timestamp: new Date().toISOString(),
-            location: "Admin",
-            note: "Status updated by admin",
-        };
-        setOrder((prev: any) => ({
-            ...prev,
-            trackingUpdates: [...prev.trackingUpdates, newUpdate],
-        }));
-        setShowStatusConfirm(false);
-        setPendingStatus("");
+    const confirmStatusUpdate = async () => {
+        if (!order) return;
+        try {
+            await updateOrderStatus(order._id, pendingStatus);
+            setOrder({ ...order, status: pendingStatus });
+            // Add optimistic update to timeline (or refetch)
+            const newUpdate = {
+                status: pendingStatus,
+                timestamp: new Date().toISOString(),
+                location: "Admin",
+                note: "Status updated by admin",
+            };
+            setOrder((prev: any) => ({
+                ...prev,
+                trackingUpdates: [...(prev.trackingUpdates || []), newUpdate],
+            }));
+            showToast("Success", "Order status updated", "success");
+        } catch (err) {
+            showToast("Error", "Failed to update status", "error");
+        } finally {
+            setShowStatusConfirm(false);
+            setPendingStatus("");
+        }
     };
 
-    const handleTrackingUpdate = () => {
-        console.log("Updating tracking to", newTracking);
-        setOrder({ ...order, trackingNumber: newTracking });
+    const handleTrackingUpdate = async () => {
+        if (!order) return;
+        try {
+            await updateOrderTracking(order._id, newTracking);
+            setOrder({ ...order, trackingNumber: newTracking });
+            showToast("Success", "Tracking number updated", "success");
+        } catch (err) {
+            showToast("Error", "Failed to update tracking", "error");
+        }
     };
 
-    const handleCancelOrder = () => {
-        console.log("Cancelling order");
-        setShowCancelConfirm(false);
-        setOrder({ ...order, status: "Cancelled" });
-        const newUpdate = {
-            status: "Cancelled",
-            timestamp: new Date().toISOString(),
-            location: "Admin",
-            note: "Order cancelled by admin",
-        };
-        setOrder((prev: any) => ({
-            ...prev,
-            status: "Cancelled",
-            trackingUpdates: [...prev.trackingUpdates, newUpdate],
-        }));
+    const handleCancelOrder = async () => {
+        if (!order) return;
+        try {
+            await cancelOrder(order._id);
+            setOrder({ ...order, status: "Cancelled" });
+            const newUpdate = {
+                status: "Cancelled",
+                timestamp: new Date().toISOString(),
+                location: "Admin",
+                note: "Order cancelled by admin",
+            };
+            setOrder((prev: any) => ({
+                ...prev,
+                status: "Cancelled",
+                trackingUpdates: [...(prev.trackingUpdates || []), newUpdate],
+            }));
+            showToast("Success", "Order cancelled", "success");
+        } catch (err) {
+            showToast("Error", "Failed to cancel order", "error");
+        } finally {
+            setShowCancelConfirm(false);
+        }
     };
 
-    const handleAddNote = () => {
-        if (!newNote.trim()) return;
-        const note = {
-            author: "Admin User",
-            text: newNote,
-            timestamp: new Date().toISOString(),
-        };
-        setNotes([...notes, note]);
-        setNewNote("");
+    const handleAddNote = async () => {
+        if (!newNote.trim() || !order) return;
+        try {
+            const savedNote = await addOrderNote(order._id, newNote);
+            if (savedNote) {
+                setNotes([...notes, savedNote]);
+                setNewNote("");
+                showToast("Success", "Note added", "success");
+            }
+        } catch (err) {
+            showToast("Error", "Failed to add note", "error");
+        }
     };
 
     if (loading) return <div className="p-6"><SkeletonTable rows={8} cols={4} /></div>;
@@ -268,10 +142,10 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewPro
                     <button onClick={onBack} className="p-2 hover:bg-muted rounded-full">
                         <ArrowLeft size={20} />
                     </button>
-                    <h1 className="text-2xl font-bold">Order #{order.orderNumber || order._id.slice(-8).toUpperCase()}</h1>
+                    <h1 className="text-2xl font-bold">Order #{order.orderNumber}</h1>
                 </div>
                 <button
-                    onClick={() => window.open(`/api/invoice/${orderId}`, "_blank")}
+                    onClick={() => window.open(`/api/admin/orders/${orderId}/invoice`, "_blank")}
                     className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold flex items-center gap-2"
                 >
                     <Download size={16} /> Invoice
@@ -406,11 +280,11 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewPro
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {order.items.map((item: any, idx: number) => (
+                            {order.items.map((item, idx) => (
                                 <tr key={idx}>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-gray-200 rounded"></div>
+                                            {item.image && <img src={item.image} alt={item.name} className="w-10 h-10 object-cover rounded" />}
                                             <span className="font-medium">{item.name}</span>
                                         </div>
                                     </td>
@@ -428,7 +302,7 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewPro
             <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
                 <h2 className="text-lg font-semibold mb-4">Order Timeline</h2>
                 <div className="space-y-4">
-                    {order.trackingUpdates?.map((update: any, idx: number) => (
+                    {order.trackingUpdates?.map((update, idx) => (
                         <div key={idx} className="flex gap-4">
                             <div className="relative">
                                 <div className="w-4 h-4 rounded-full bg-primary mt-1"></div>

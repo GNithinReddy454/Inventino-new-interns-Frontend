@@ -3,8 +3,16 @@ import { ChevronDown, MoreVertical, Search, Users } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
 import { exportToCSV } from "./exportUtils";
 import Pagination from "./Pagination";
-import { getAdminCustomers, AdminCustomer } from "@/services/admin.service";
+import { 
+    getAdminCustomers, 
+    getAdminCustomerStats, 
+    exportAdminCustomers,
+    updateAdminCustomer,
+    AdminCustomer 
+} from "@/services/admin.service";
+import { useToast } from "@/app/components/GlobalToast";
 
+// Mock data for development
 const MOCK_CUSTOMERS: AdminCustomer[] = [
     {
         _id: "mock-1",
@@ -14,7 +22,7 @@ const MOCK_CUSTOMERS: AdminCustomer[] = [
         totalOrders: 10,
         totalSpent: 2450,
         customerType: "VIP",
-        registeredAt: "2025-01-15T10:00:00Z",
+        registeredAt: "2025-01-15T10:00:00.000Z",
         active: true,
     },
     {
@@ -25,7 +33,7 @@ const MOCK_CUSTOMERS: AdminCustomer[] = [
         totalOrders: 3,
         totalSpent: 350,
         customerType: "Regular",
-        registeredAt: "2025-02-20T09:30:00Z",
+        registeredAt: "2025-02-20T09:30:00.000Z",
         active: true,
     },
     {
@@ -36,7 +44,7 @@ const MOCK_CUSTOMERS: AdminCustomer[] = [
         totalOrders: 7,
         totalSpent: 1890,
         customerType: "VIP",
-        registeredAt: "2024-11-05T14:15:00Z",
+        registeredAt: "2024-11-05T14:15:00.000Z",
         active: true,
     },
     {
@@ -47,10 +55,17 @@ const MOCK_CUSTOMERS: AdminCustomer[] = [
         totalOrders: 1,
         totalSpent: 89,
         customerType: "New",
-        registeredAt: "2026-03-01T11:20:00Z",
+        registeredAt: "2026-03-01T11:20:00.000Z",
         active: false,
     },
 ];
+
+const MOCK_STATS = {
+    total_customers: 4,
+    new_customers: 1,
+    regular_customers: 1,
+    vip_customers: 2,
+};
 
 export default function CustomersView({ onViewProfile }: { onViewProfile?: (customerId: string) => void }) {
     const [search, setSearch] = useState("");
@@ -62,37 +77,97 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+    const [totalItems, setTotalItems] = useState(0);
+    const [stats, setStats] = useState(MOCK_STATS);
+    const { showToast } = useToast();
 
     useEffect(() => {
-        const fetchCustomers = async () => {
-            setIsLoading(true);
-            try {
-                const data = await getAdminCustomers();
-                if (data && data.length > 0) {
-                    setCustomers(data);
-                } else {
-                    setCustomers(MOCK_CUSTOMERS);
-                }
-            } catch (err) {
-                console.error("Failed to fetch admin customers:", err);
+        fetchData();
+    }, [currentPage, pageSize, search, typeFilter, sort]);
+
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const sortByMap: Record<string, string> = {
+                Newest: "registeredAt",
+                Oldest: "registeredAt",
+                "Most Orders": "totalOrders",
+                "Highest Spent": "totalSpent",
+            };
+            const sortOrder = sort === "Oldest" ? "asc" : "desc";
+            const sortBy = sortByMap[sort] || "registeredAt";
+
+            const [customersRes, statsRes] = await Promise.all([
+                getAdminCustomers({
+                    page: currentPage,
+                    limit: pageSize,
+                    search: search || undefined,
+                    type: typeFilter !== "All Types" ? typeFilter : undefined,
+                    sortBy,
+                    sortOrder,
+                }),
+                getAdminCustomerStats(),
+            ]);
+
+            if (customersRes && customersRes.data && Array.isArray(customersRes.data)) {
+                setCustomers(customersRes.data);
+                setTotalItems(customersRes.total);
+            } else {
                 setCustomers(MOCK_CUSTOMERS);
-            } finally {
-                setIsLoading(false);
+                setTotalItems(MOCK_CUSTOMERS.length);
             }
-        };
-        fetchCustomers();
-    }, []);
+
+            if (statsRes) {
+                setStats(statsRes);
+            } else {
+                setStats(MOCK_STATS);
+            }
+        } catch (err) {
+            console.error("Failed to fetch customers:", err);
+            setCustomers(MOCK_CUSTOMERS);
+            setTotalItems(MOCK_CUSTOMERS.length);
+            setStats(MOCK_STATS);
+            showToast("Error", "Could not load customers", "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleExport = async () => {
+        try {
+            const blob = await exportAdminCustomers({
+                search: search || undefined,
+                type: typeFilter !== "All Types" ? typeFilter : undefined,
+            });
+            if (blob) {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "customers.csv";
+                a.click();
+                window.URL.revokeObjectURL(url);
+            }
+        } catch (err) {
+            showToast("Error", "Export failed", "error");
+        }
+    };
+
+    const handleToggleActive = async (customerId: string, currentActive: boolean) => {
+        try {
+            const result = await updateAdminCustomer(customerId, { active: !currentActive });
+            if (result) {
+                setCustomers(prev =>
+                    prev.map(c => c._id === customerId ? { ...c, active: !currentActive } : c)
+                );
+                showToast("Success", !currentActive ? "Customer activated" : "Customer deactivated", "success");
+            }
+            setOpenMenu(null);
+        } catch (err) {
+            showToast("Error", "Failed to update status", "error");
+        }
+    };
 
     const tabs = ["All Customers", "Returns", "Replacements", "Support"];
-
-    const filtered = customers.filter((c) => {
-        const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-                            c.email.toLowerCase().includes(search.toLowerCase());
-        const matchType = typeFilter === "All Types" || c.customerType === typeFilter;
-        return matchSearch && matchType;
-    });
-
-    const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const typeBadge = (type: string) => {
         const map: Record<string, string> = {
@@ -110,18 +185,18 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                     <h2 className="text-2xl font-bold text-foreground">Customers Management</h2>
                     <p className="text-sm text-muted-foreground mt-0.5">View and manage all customers, returns, and support requests</p>
                 </div>
-                <button onClick={() => exportToCSV(filtered, "customers.csv", ["initials", "bg"])} className="px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-sm shrink-0">Export Customers</button>
+                <button onClick={handleExport} className="px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-sm shrink-0">Export Customers</button>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {isLoading ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />) : (
                     [
-                        { label: "Total Customers", value: customers.length.toLocaleString(), color: "text-primary" },
-                        { label: "New", value: customers.filter((c) => c.customerType === "New").length, color: "text-primary" },
-                        { label: "Regular", value: customers.filter((c) => c.customerType === "Regular").length, color: "text-primary" },
-                        { label: "VIP", value: customers.filter((c) => c.customerType === "VIP").length, color: "text-primary" },
+                        { label: "Total Customers", value: stats.total_customers.toLocaleString(), color: "text-primary", key: "total" },
+                        { label: "New", value: stats.new_customers.toLocaleString(), color: "text-primary", key: "new" },
+                        { label: "Regular", value: stats.regular_customers.toLocaleString(), color: "text-primary", key: "regular" },
+                        { label: "VIP", value: stats.vip_customers.toLocaleString(), color: "text-primary", key: "vip" },
                     ].map((c) => (
-                        <div key={c.label} className="bg-card rounded-2xl border border-border shadow-sm p-5">
+                        <div key={c.key} className="bg-card rounded-2xl border border-border shadow-sm p-5">
                             <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">{c.label}</p>
                             <p className={`text-3xl font-bold ${c.color}`}>{c.value}</p>
                         </div>
@@ -142,16 +217,39 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                 <div className="flex flex-col md:flex-row gap-3 p-4 border-b border-border">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
-                        <input type="text" placeholder="Search customers..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2.5 bg-[#FDF2F5] border border-pink-200 rounded-xl text-sm focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all" />
+                        <input
+                            type="text"
+                            placeholder="Search customers..."
+                            value={search}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="w-full pl-9 pr-4 py-2.5 bg-[#FDF2F5] border border-pink-200 rounded-xl text-sm focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all"
+                        />
                     </div>
                     <div className="relative">
-                        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer">
+                        <select
+                            value={typeFilter}
+                            onChange={(e) => {
+                                setTypeFilter(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer"
+                        >
                             {["All Types", "VIP", "Regular", "New"].map((t) => <option key={t}>{t}</option>)}
                         </select>
                         <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     </div>
                     <div className="relative">
-                        <select value={sort} onChange={(e) => setSort(e.target.value)} className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer">
+                        <select
+                            value={sort}
+                            onChange={(e) => {
+                                setSort(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer"
+                        >
                             {["Newest", "Oldest", "Most Orders", "Highest Spent"].map((s) => <option key={s}>Sort: {s}</option>)}
                         </select>
                         <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -177,14 +275,14 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {filtered.length === 0 ? (
+                                {customers.length === 0 ? (
                                     <tr><td colSpan={9} className="text-center py-12 text-muted-foreground text-sm">No customers found</td></tr>
                                 ) : (
-                                    paginated.map((c) => (
+                                    customers.map((c) => (
                                         <tr key={c._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/20 transition-colors">
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-[#E91E63] flex items-center justify-center text-white text-xs font-bold shrink-0 hidden md:flex">{c.name.slice(0, 2).toUpperCase()}</div>
+                                                    <div className="w-10 h-10 rounded-full bg-[#E91E63] text-white text-xs font-bold shrink-0 hidden md:flex md:items-center md:justify-center">{c.name.slice(0, 2).toUpperCase()}</div>
                                                     <div className="flex md:block justify-between w-full md:w-auto items-center">
                                                         <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Customer</span>
                                                         <div className="text-right md:text-left">
@@ -211,7 +309,7 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                                                     <div className="absolute right-0 md:right-6 top-12 md:top-8 z-20 bg-white border border-border rounded-xl shadow-xl py-2 w-48 text-sm">
                                                         <button onClick={() => { onViewProfile?.(c._id); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">View Profile</button>
                                                         <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">View Orders</button>
-                                                        <button onClick={() => { /* TODO: toggle active status */ setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500">{c.active ? "Deactivate" : "Activate"}</button>
+                                                        <button onClick={() => handleToggleActive(c._id, c.active ?? true)} className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500">{c.active ? "Deactivate" : "Activate"}</button>
                                                     </div>
                                                 )}
                                             </td>
@@ -220,7 +318,13 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                                 )}
                             </tbody>
                         </table>
-                        <Pagination currentPage={currentPage} totalItems={filtered.length} pageSize={pageSize} onPageChange={(p) => { setCurrentPage(p); setOpenMenu(null); }} onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }} />
+                        <Pagination
+                            currentPage={currentPage}
+                            totalItems={totalItems}
+                            pageSize={pageSize}
+                            onPageChange={(p) => { setCurrentPage(p); setOpenMenu(null); }}
+                            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                        />
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground"><Users size={36} className="mb-3 opacity-20" /><p className="text-sm">{activeTab} — No records found</p></div>

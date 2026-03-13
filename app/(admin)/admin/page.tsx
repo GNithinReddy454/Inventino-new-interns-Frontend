@@ -154,11 +154,11 @@ export default function AdminDashboard() {
 
             <button className="relative w-10 h-10 flex items-center justify-center bg-white text-gray-500 hover:text-gray-900 rounded-full shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] transition-colors cursor-pointer shrink-0">
               <Bell size={18} />
-              <span className="absolute top-0 right-0 w-[14px] h-[14px] bg-[#E91E63] text-white text-[8px] font-bold rounded-full flex items-center justify-center border-2 border-white">5</span>
+              <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-[#E91E63] text-white text-[8px] font-bold rounded-full flex items-center justify-center border-2 border-white">5</span>
             </button>
 
             <div className="flex items-center gap-3 bg-white rounded-full p-1 pr-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] cursor-pointer hover:bg-gray-50 transition-colors">
-              <div className="w-[32px] h-[32px] rounded-full bg-[#E91E63] text-white font-bold flex items-center justify-center shrink-0 text-xs shadow-sm">A</div>
+              <div className="w-8 h-8 rounded-full bg-[#E91E63] text-white font-bold flex items-center justify-center shrink-0 text-xs shadow-sm">A</div>
               <div className="hidden sm:flex flex-col justify-center">
                 <p className="text-[12px] font-bold text-gray-900 leading-none mb-1">Admin User</p>
                 <p className="text-[10px] text-gray-400 leading-none font-medium">Administrator</p>

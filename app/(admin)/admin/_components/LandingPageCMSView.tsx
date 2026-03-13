@@ -503,7 +503,7 @@ export default function LandingPageCMSView() {
                 {!isLoading && banners.length > 0 && (
                     <div className="mb-5">
                         <p className="text-xs font-bold text-foreground mb-2">Existing Banners ({banners.length})</p>
-                        <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                             {banners.map((b, idx) => (
                                 <div
                                     key={b._id}
@@ -869,10 +869,10 @@ export default function LandingPageCMSView() {
 
                         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mx-auto w-full max-w-[320px] mt-4">
                             {/* Card Image Area */}
-                            <div className="bg-[#f5e0cf] h-[260px] relative w-full p-4 flex items-center justify-center">
+                            <div className="bg-[#f5e0cf] h-65 relative w-full p-4 flex items-center justify-center">
                                 <span className="absolute top-4 left-4 bg-[#DF4C77] text-white text-[11px] font-bold px-3 py-1 rounded-full z-10 shadow-sm shadow-[#DF4C77]/30">New</span>
                                 {/* Stylized Image Representation */}
-                                <div className="relative w-[200px] h-[150px] bg-[#fffcf9] rounded shadow-sm flex before:content-[''] before:absolute before:inset-0 before:border-[3px] before:border-dashed before:border-[#ebd5c1] before:m-2">
+                                <div className="relative w-50 h-37.5 bg-[#fffcf9] rounded shadow-sm flex before:content-[''] before:absolute before:inset-0 before:border-[3px] before:border-dashed before:border-[#ebd5c1] before:m-2">
                                     <div className="w-1/2 h-full border-r border-[#e8d2bd] shadow-[inset_-5px_0_10px_rgba(0,0,0,0.02)] bg-[#fffcf9]"></div>
                                     <div className="w-1/2 h-full bg-[#fdfaf5]"></div>
                                 </div>

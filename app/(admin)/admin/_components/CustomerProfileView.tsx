@@ -3,13 +3,16 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Save } from "lucide-react";
 import { SkeletonTable } from "./Skeleton";
+import { getAdminCustomerById, getAdminCustomerOrders, updateAdminCustomer, AdminCustomerDetail } from "@/services/admin.service";
+import { useToast } from "@/app/components/GlobalToast";
 
-const MOCK_CUSTOMER = {
+// Mock data for development
+const MOCK_CUSTOMER: AdminCustomerDetail = {
     _id: "mock-customer-1",
     name: "John Doe",
     email: "john.doe@example.com",
     phone: "+91 98765 43210",
-    registeredAt: "2025-01-15T10:00:00Z",
+    registeredAt: "2025-01-15T10:00:00.000Z",
     active: true,
     totalOrders: 8,
     totalSpent: 3450,
@@ -33,9 +36,9 @@ const MOCK_CUSTOMER = {
 };
 
 const MOCK_ORDERS = [
-    { _id: "order-1", orderNumber: "ORD-001", date: "2026-03-10", status: "Delivered", total: 1250, paymentMethod: "Credit Card" },
-    { _id: "order-2", orderNumber: "ORD-002", date: "2026-03-05", status: "Shipped", total: 700, paymentMethod: "UPI" },
-    { _id: "order-3", orderNumber: "ORD-003", date: "2026-02-28", status: "Processing", total: 1950, paymentMethod: "COD" },
+    { _id: "order-1", orderNumber: "ORD-001", date: "2026-03-10T10:00:00.000Z", status: "Delivered", total: 1250, paymentMethod: "Credit Card" },
+    { _id: "order-2", orderNumber: "ORD-002", date: "2026-03-05T14:30:00.000Z", status: "Shipped", total: 700, paymentMethod: "UPI" },
+    { _id: "order-3", orderNumber: "ORD-003", date: "2026-02-28T09:15:00.000Z", status: "Processing", total: 1950, paymentMethod: "COD" },
 ];
 
 interface CustomerProfileViewProps {
@@ -45,32 +48,79 @@ interface CustomerProfileViewProps {
 }
 
 export default function CustomerProfileView({ customerId, onBack, onViewOrder }: CustomerProfileViewProps) {
-    const [customer, setCustomer] = useState<any>(null);
+    const [customer, setCustomer] = useState<AdminCustomerDetail | null>(null);
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingType, setEditingType] = useState(false);
     const [newType, setNewType] = useState("");
     const [isActive, setIsActive] = useState(true);
+    const { showToast } = useToast();
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setCustomer({ ...MOCK_CUSTOMER, _id: customerId });
-            setOrders(MOCK_ORDERS);
-            setIsActive(MOCK_CUSTOMER.active);
-            setLoading(false);
-        }, 800);
-        return () => clearTimeout(timer);
+        fetchCustomerData();
     }, [customerId]);
 
-    const handleTypeUpdate = () => {
-        console.log("Updating type to", newType);
-        setCustomer({ ...customer, customerType: newType });
-        setEditingType(false);
+    const fetchCustomerData = async () => {
+        setLoading(true);
+        try {
+            const [customerData, ordersData] = await Promise.all([
+                getAdminCustomerById(customerId),
+                getAdminCustomerOrders(customerId),
+            ]);
+
+            if (customerData) {
+                setCustomer(customerData);
+                // Ensure active status is boolean (fallback to true if undefined)
+                setIsActive(customerData.active ?? true);
+            } else {
+                // Fallback to mock data
+                setCustomer({ ...MOCK_CUSTOMER, _id: customerId });
+                setIsActive(MOCK_CUSTOMER.active); // MOCK_CUSTOMER.active is true (boolean)
+            }
+
+            if (ordersData && Array.isArray(ordersData.data) && ordersData.data.length > 0) {
+                setOrders(ordersData.data);
+            } else {
+                setOrders(MOCK_ORDERS);
+            }
+        } catch (err) {
+            console.error("Failed to fetch customer profile:", err);
+            // Fallback to mock data on error
+            setCustomer({ ...MOCK_CUSTOMER, _id: customerId });
+            setOrders(MOCK_ORDERS);
+            setIsActive(MOCK_CUSTOMER.active); // boolean
+            showToast("Error", "Could not load customer details", "error");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleToggleActive = () => {
-        console.log("Toggling active to", !isActive);
-        setIsActive(!isActive);
+    const handleTypeUpdate = async () => {
+        if (!customer) return;
+        try {
+            const result = await updateAdminCustomer(customerId, { customerType: newType });
+            if (result) {
+                setCustomer(prev => prev ? { ...prev, customerType: newType } : prev);
+                showToast("Success", "Customer type updated", "success");
+            }
+            setEditingType(false);
+        } catch (err) {
+            showToast("Error", "Failed to update customer type", "error");
+        }
+    };
+
+    const handleToggleActive = async () => {
+        if (!customer) return;
+        try {
+            const newActive = !isActive;
+            const result = await updateAdminCustomer(customerId, { active: newActive });
+            if (result) {
+                setIsActive(newActive);
+                showToast("Success", newActive ? "Customer activated" : "Customer deactivated", "success");
+            }
+        } catch (err) {
+            showToast("Error", "Failed to update account status", "error");
+        }
     };
 
     if (loading) return <div className="p-6"><SkeletonTable rows={8} cols={5} /></div>;
@@ -100,7 +150,7 @@ export default function CustomerProfileView({ customerId, onBack, onViewOrder }:
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wider">Registered</p>
-                        <p className="text-lg font-semibold mt-1">{new Date(customer.registeredAt).toLocaleDateString()}</p>
+                        <p className="text-lg font-semibold mt-1">{customer.registeredAt ? new Date(customer.registeredAt).toLocaleDateString() : "—"}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
@@ -198,6 +248,8 @@ export default function CustomerProfileView({ customerId, onBack, onViewOrder }:
                                                 order.status === "Delivered" ? "bg-green-100 text-green-700" :
                                                 order.status === "Shipped" ? "bg-blue-100 text-blue-700" :
                                                 order.status === "Processing" ? "bg-orange-100 text-orange-700" :
+                                                order.status === "Pending" ? "bg-purple-100 text-purple-700" :
+                                                order.status === "Cancelled" ? "bg-red-100 text-red-700" :
                                                 "bg-gray-100 text-gray-600"
                                             }`}>
                                                 {order.status}
