@@ -92,10 +92,22 @@ export function useNotificationCount() {
   }, []);
 
   useEffect(() => {
-    fetchCount();
-    const interval = setInterval(fetchCount, 30000);
-    return () => clearInterval(interval);
-  }, [fetchCount]);
+    const controller = new AbortController();
+    const runFetch = async () => {
+      try {
+        const res = await notificationService.getUnreadCount();
+        if (!controller.signal.aborted) {
+          setUnreadCount(res.data?.data?.unreadCount ?? 0);
+        }
+      } catch {}
+    };
+    runFetch();
+    const interval = setInterval(runFetch, 30000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, []);
 
   return { unreadCount, refetch: fetchCount };
 }

@@ -13,6 +13,150 @@ import {
 } from "@/services/admin.service";
 import { useToast } from "@/app/components/GlobalToast";
 
+// Mock orders by ID for development
+const MOCK_ORDERS_BY_ID: Record<string, AdminOrderDetail> = {
+    "order-1": {
+        _id: "order-1",
+        orderNumber: "ORD-001",
+        customer: {
+            name: "John Doe",
+            email: "john.doe@example.com",
+            phone: "+91 98765 43210",
+            billingAddress: {
+                line1: "123 Main St",
+                city: "Mumbai",
+                state: "Maharashtra",
+                postalCode: "400001",
+                country: "India"
+            },
+            shippingAddress: {
+                line1: "123 Main St",
+                city: "Mumbai",
+                state: "Maharashtra",
+                postalCode: "400001",
+                country: "India"
+            }
+        },
+        payment: {
+            method: "Credit Card",
+            transactionId: "txn_123456",
+            status: "paid",
+            subtotal: 1600,
+            shipping: 50,
+            tax: 128,
+            discount: 0,
+            total: 1778
+        },
+        items: [
+            { name: "Gold Necklace", sku: "GN-001", quantity: 1, price: 1250, total: 1250, image: "/product1.jpg" },
+            { name: "Silver Earrings", sku: "SE-002", quantity: 2, price: 350, total: 700, image: "/product2.jpg" },
+        ],
+        status: "Delivered",
+        allowedNextStatuses: [],
+        trackingNumber: "TRK123456789",
+        trackingUpdates: [
+            { status: "Order Placed", timestamp: "2026-03-10T10:00:00.000Z", location: "Online", note: "" },
+            { status: "Shipped", timestamp: "2026-03-11T14:30:00.000Z", location: "Mumbai Hub", note: "" },
+            { status: "Out for Delivery", timestamp: "2026-03-13T09:15:00.000Z", location: "Local Facility", note: "" },
+            { status: "Delivered", timestamp: "2026-03-13T16:45:00.000Z", location: "Customer Address", note: "" },
+        ],
+        notes: [
+            { author: "Admin", text: "Customer requested gift wrapping.", timestamp: "2026-03-09T11:22:00.000Z" },
+        ],
+        createdAt: "2026-03-10T10:00:00.000Z",
+    },
+    "order-2": {
+        _id: "order-2",
+        orderNumber: "ORD-002",
+        customer: {
+            name: "Sarah Miller",
+            email: "sarah.m@example.com",
+            phone: "+91 99887 66554",
+            billingAddress: {
+                line1: "456 Park Ave",
+                city: "Delhi",
+                state: "Delhi",
+                postalCode: "110001",
+                country: "India"
+            },
+            shippingAddress: {
+                line1: "456 Park Ave",
+                city: "Delhi",
+                state: "Delhi",
+                postalCode: "110001",
+                country: "India"
+            }
+        },
+        payment: {
+            method: "UPI",
+            transactionId: "txn_789012",
+            status: "paid",
+            subtotal: 700,
+            shipping: 0,
+            tax: 56,
+            discount: 0,
+            total: 756
+        },
+        items: [
+            { name: "Silver Earrings", sku: "SE-002", quantity: 2, price: 350, total: 700, image: "/product2.jpg" },
+        ],
+        status: "Shipped",
+        allowedNextStatuses: ["Out for Delivery", "Delivered", "Cancelled"],
+        trackingNumber: "TRK987654321",
+        trackingUpdates: [
+            { status: "Order Placed", timestamp: "2026-03-12T09:30:00.000Z", location: "Online", note: "" },
+            { status: "Shipped", timestamp: "2026-03-13T11:20:00.000Z", location: "Delhi Hub", note: "" },
+        ],
+        notes: [],
+        createdAt: "2026-03-12T09:30:00.000Z",
+    },
+    "order-3": {
+        _id: "order-3",
+        orderNumber: "ORD-003",
+        customer: {
+            name: "Emily Brown",
+            email: "emily.b@example.com",
+            phone: "+91 77665 44332",
+            billingAddress: {
+                line1: "789 Lake Road",
+                city: "Bangalore",
+                state: "Karnataka",
+                postalCode: "560001",
+                country: "India"
+            },
+            shippingAddress: {
+                line1: "789 Lake Road",
+                city: "Bangalore",
+                state: "Karnataka",
+                postalCode: "560001",
+                country: "India"
+            }
+        },
+        payment: {
+            method: "COD",
+            transactionId: "",
+            status: "pending",
+            subtotal: 1950,
+            shipping: 0,
+            tax: 156,
+            discount: 0,
+            total: 2106
+        },
+        items: [
+            { name: "Diamond Ring", sku: "DR-003", quantity: 1, price: 1500, total: 1500, image: "/product3.jpg" },
+            { name: "Pearl Bracelet", sku: "PB-004", quantity: 1, price: 450, total: 450, image: "/product4.jpg" },
+        ],
+        status: "Processing",
+        allowedNextStatuses: ["Shipped", "Cancelled"],
+        trackingNumber: "",
+        trackingUpdates: [
+            { status: "Order Placed", timestamp: "2026-03-14T15:10:00.000Z", location: "Online", note: "" },
+        ],
+        notes: [],
+        createdAt: "2026-03-14T15:10:00.000Z",
+    },
+};
+
 interface OrderDetailsViewProps {
     orderId: string;
     onBack: () => void;
@@ -43,9 +187,22 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewPro
                 setNewStatus(data.status);
                 setNewTracking(data.trackingNumber || "");
                 setNotes(data.notes || []);
+            } else {
+                // Fallback to mock data
+                const mockOrder = MOCK_ORDERS_BY_ID[orderId] || { ...MOCK_ORDERS_BY_ID["order-1"], _id: orderId };
+                setOrder(mockOrder);
+                setNewStatus(mockOrder.status);
+                setNewTracking(mockOrder.trackingNumber || "");
+                setNotes(mockOrder.notes || []);
             }
         } catch (err) {
             console.error("Failed to fetch order:", err);
+            // Fallback to mock data on error
+            const mockOrder = MOCK_ORDERS_BY_ID[orderId] || { ...MOCK_ORDERS_BY_ID["order-1"], _id: orderId };
+            setOrder(mockOrder);
+            setNewStatus(mockOrder.status);
+            setNewTracking(mockOrder.trackingNumber || "");
+            setNotes(mockOrder.notes || []);
             showToast("Error", "Could not load order details", "error");
         } finally {
             setLoading(false);
@@ -63,7 +220,6 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewPro
         try {
             await updateOrderStatus(order._id, pendingStatus);
             setOrder({ ...order, status: pendingStatus });
-            // Add optimistic update to timeline (or refetch)
             const newUpdate = {
                 status: pendingStatus,
                 timestamp: new Date().toISOString(),

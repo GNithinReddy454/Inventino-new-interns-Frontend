@@ -70,12 +70,12 @@ export default function CustomerProfileView({ customerId, onBack, onViewOrder }:
 
             if (customerData) {
                 setCustomer(customerData);
-                // Ensure active status is boolean (fallback to true if undefined)
+                // ✅ Ensure we always pass a boolean to setIsActive
                 setIsActive(customerData.active ?? true);
             } else {
                 // Fallback to mock data
                 setCustomer({ ...MOCK_CUSTOMER, _id: customerId });
-                setIsActive(MOCK_CUSTOMER.active); // MOCK_CUSTOMER.active is true (boolean)
+                setIsActive(MOCK_CUSTOMER.active ?? true);
             }
 
             if (ordersData && Array.isArray(ordersData.data) && ordersData.data.length > 0) {
@@ -88,7 +88,7 @@ export default function CustomerProfileView({ customerId, onBack, onViewOrder }:
             // Fallback to mock data on error
             setCustomer({ ...MOCK_CUSTOMER, _id: customerId });
             setOrders(MOCK_ORDERS);
-            setIsActive(MOCK_CUSTOMER.active); // boolean
+            setIsActive(MOCK_CUSTOMER.active ?? true);
             showToast("Error", "Could not load customer details", "error");
         } finally {
             setLoading(false);

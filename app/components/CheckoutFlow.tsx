@@ -24,7 +24,7 @@ import { useEffect } from "react";
 
 export default function CheckoutFlow() {
   const dispatch = useAppDispatch();
-  const { totalAmount } = useAppSelector((state) => state.cart);
+  const { totalAmount, items: cartItems = [] } = useAppSelector((state) => state.cart);
   const { isLoading: isOrderProcessing, error: orderError } = useAppSelector((state) => state.order);
 
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("shipping");
@@ -88,6 +88,12 @@ export default function CheckoutFlow() {
       if (paymentMethod === "cod") {
         const resultAction = await dispatch(placeOrderAction({
           addressId: addressId!,
+          items: cartItems.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            color: item.color || undefined,
+            size: item.size || undefined,
+          })),
           paymentMethod: "COD"
         }));
         
@@ -129,6 +135,12 @@ export default function CheckoutFlow() {
           try {
             const resultAction = await dispatch(placeOrderAction({
               addressId: addressId!,
+              items: cartItems.map(item => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                color: item.color || undefined,
+                size: item.size || undefined,
+              })),
               paymentMethod: paymentMethod.toUpperCase()
             }));
 

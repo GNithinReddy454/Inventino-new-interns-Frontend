@@ -594,7 +594,7 @@ export default function ProductDetailsPage() {
           showToast("Success!", "Added to bag", "success");
           setTimeout(() => setIsAdded(false), 3500);
         } else {
-          addToCart(buildCartItem(), quantity, currentColor, currentSize);
+          addToCart(buildCartItem(), quantity);
           setIsAdded(true);
           showToast("Success!", "Added to bag", "success");
           setTimeout(() => setIsAdded(false), 3500);
@@ -647,9 +647,6 @@ export default function ProductDetailsPage() {
           color: currentColor,
           size: currentSize,
           quantity,
-          price: displayPrice,
-          name: product.name,
-          image: product.image,
         })
       );
 
@@ -1166,7 +1163,7 @@ export default function ProductDetailsPage() {
               )}
             </button>
 
-            {product.stock > 0 ? (
+            {(product?.stock ?? 0) > 0 ? (
               <button
                 onClick={handleBuyNow}
                 disabled={isBuyNowLoading}

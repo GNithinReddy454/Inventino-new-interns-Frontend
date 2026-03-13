@@ -88,7 +88,6 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
 
     useEffect(() => {
         fetchData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPage, pageSize, search, statusFilter, dateFilter, sort]);
 
     const fetchData = async () => {
