@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Toggle from "./Toggle";
+import LandingPagePreviewModal, { type LandingPagePreviewOverrides } from "./LandingPagePreviewModal";
 import { useToast } from "@/app/components/GlobalToast";
 import { getCMSData, updateCMSData, getActiveBanners, createBanner, updateBanner, deleteBanner, getAdminCategories, createCategory, updateCategory, deleteCategory } from "@/services/admin.service";
 import type { Banner, Category } from "@/services/admin.service";
@@ -66,6 +67,8 @@ export default function LandingPageCMSView() {
     const [savingOffer, setSavingOffer] = useState(false);
     const [savingBanner, setSavingBanner] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [showSectionPreview, setShowSectionPreview] = useState(false);
+    const [sectionPreviewOverrides, setSectionPreviewOverrides] = useState<LandingPagePreviewOverrides | undefined>(undefined);
 
     // Category state
     const [categories, setCategories] = useState<Category[]>([]);
@@ -145,6 +148,18 @@ export default function LandingPageCMSView() {
         showToast("Success", "Feature section updated", "success");
     };
 
+    const handlePreviewFeatures = () => {
+        setSectionPreviewOverrides({
+            features: features.map((feature) => ({
+                title: feature.title,
+                description: feature.description,
+                enabled: feature.enabled,
+                icon: feature.icon,
+            })),
+        });
+        setShowSectionPreview(true);
+    };
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -173,6 +188,16 @@ export default function LandingPageCMSView() {
         } finally {
             setSavingOffer(false);
         }
+    };
+
+    const handlePreviewOffer = () => {
+        setSectionPreviewOverrides({
+            offerBar: {
+                text: offerText,
+                isActive: showOfferBar,
+            },
+        });
+        setShowSectionPreview(true);
     };
 
     const resolveImageUrl = (imagePath: string | null | undefined): string | null => {
@@ -255,6 +280,17 @@ export default function LandingPageCMSView() {
         } finally {
             setSavingBanner(false);
         }
+    };
+
+    const handlePreviewBanner = () => {
+        setSectionPreviewOverrides({
+            heroBanner: {
+                heading: bannerHeading,
+                text: bannerText,
+                image: bannerImage,
+            },
+        });
+        setShowSectionPreview(true);
     };
 
     // ── Category Handlers ─────────────────────────────────────────────────────
@@ -346,6 +382,19 @@ export default function LandingPageCMSView() {
         }
     };
 
+    const handlePreviewCategories = () => {
+        setSectionPreviewOverrides({
+            categories: categories.map((category) => ({
+                categoryId: category.categoryId,
+                name: category.name,
+                isActive: category.isActive,
+                imageUrl: category.image?.url,
+                productCount: category.productCount,
+            })),
+        });
+        setShowSectionPreview(true);
+    };
+
     return (
         <div className="space-y-6 w-full">
             {/* 1. OFFER BAR */}
@@ -400,21 +449,27 @@ export default function LandingPageCMSView() {
                             />
                         </div>
 
-                        <div className="flex gap-3 mt-5">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
                             <button
                                 onClick={() =>
                                     setOfferText(
                                         "Free Shipping on Orders Over $50! Limited Time Offer",
                                     )
                                 }
-                                className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
+                                className="py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
                             >
                                 Reset
                             </button>
                             <button
+                                onClick={handlePreviewOffer}
+                                className="py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
+                            >
+                                Preview
+                            </button>
+                            <button
                                 onClick={handleSaveOffer}
                                 disabled={savingOffer}
-                                className="flex-1 py-2.5 bg-[#DF4C77] text-white rounded-xl text-sm font-bold hover:bg-[#C83B61] transition-all shadow-sm disabled:opacity-70"
+                                className="py-2.5 bg-[#DF4C77] text-white rounded-xl text-sm font-bold hover:bg-[#C83B61] transition-all shadow-sm disabled:opacity-70"
                             >
                                 {savingOffer ? "Saving..." : "Save Changes"}
                             </button>
@@ -586,17 +641,23 @@ export default function LandingPageCMSView() {
                             />
                         </div>
 
-                        <div className="flex gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <button
                                 onClick={startNewBanner}
-                                className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
+                                className="py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
                             >
                                 Reset
                             </button>
                             <button
+                                onClick={handlePreviewBanner}
+                                className="py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
+                            >
+                                Preview
+                            </button>
+                            <button
                                 onClick={handleSaveBanner}
                                 disabled={savingBanner}
-                                className="flex-1 py-2.5 bg-[#DF4C77] text-white rounded-xl text-sm font-bold hover:bg-[#C83B61] transition-all shadow-sm disabled:opacity-70"
+                                className="py-2.5 bg-[#DF4C77] text-white rounded-xl text-sm font-bold hover:bg-[#C83B61] transition-all shadow-sm disabled:opacity-70"
                             >
                                 {savingBanner ? "Saving..." : activeBannerId ? "Update Banner" : "Create Banner"}
                             </button>
@@ -616,12 +677,20 @@ export default function LandingPageCMSView() {
                             Manage categories displayed on your landing page
                         </p>
                     </div>
-                    <button
-                        onClick={openAddCategoryModal}
-                        className="px-5 py-2.5 bg-[#DF4C77] text-white text-[13px] font-bold rounded-xl hover:bg-[#C83B61] transition-all shadow-sm shrink-0"
-                    >
-                        + Add New Category
-                    </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                        <button
+                            onClick={handlePreviewCategories}
+                            className="px-5 py-2.5 border border-border text-[13px] font-bold rounded-xl text-muted-foreground hover:bg-muted transition-all"
+                        >
+                            Preview
+                        </button>
+                        <button
+                            onClick={openAddCategoryModal}
+                            className="px-5 py-2.5 bg-[#DF4C77] text-white text-[13px] font-bold rounded-xl hover:bg-[#C83B61] transition-all shadow-sm"
+                        >
+                            + Add New Category
+                        </button>
+                    </div>
                 </div>
 
                 {isLoading ? (
@@ -892,12 +961,18 @@ export default function LandingPageCMSView() {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
                     <button
                         onClick={handleResetFeatures}
                         className="py-2.5 border border-border bg-white rounded-xl text-sm font-bold text-foreground hover:bg-muted transition-all"
                     >
                         Cancel
+                    </button>
+                    <button
+                        onClick={handlePreviewFeatures}
+                        className="py-2.5 border border-border bg-white rounded-xl text-sm font-bold text-foreground hover:bg-muted transition-all"
+                    >
+                        Preview
                     </button>
                     <button
                         onClick={handleSaveFeatures}
@@ -1087,6 +1162,15 @@ export default function LandingPageCMSView() {
                         </form>
                     </div>
                 </div>
+            )}
+            {showSectionPreview && (
+                <LandingPagePreviewModal
+                    overrides={sectionPreviewOverrides}
+                    onClose={() => {
+                        setShowSectionPreview(false);
+                        setSectionPreviewOverrides(undefined);
+                    }}
+                />
             )}
         </div>
     );
