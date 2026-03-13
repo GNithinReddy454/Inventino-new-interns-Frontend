@@ -3,12 +3,12 @@ import { ChevronDown, MoreVertical, Search, ShoppingCart, TrendingUp } from "luc
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
 import { exportToCSV } from "./exportUtils";
 import Pagination from "./Pagination";
-import { getAdminOrders, AdminOrder } from "@/services/admin.service";
+import { getAdminOrders } from "@/services/admin.service";
 
-// --- Mock data for development ---
 const MOCK_ORDERS: any[] = [
     {
         _id: "order-1",
+        orderNumber: "ORD-001",
         customer: "John Doe",
         email: "john@example.com",
         initials: "JD",
@@ -21,6 +21,7 @@ const MOCK_ORDERS: any[] = [
     },
     {
         _id: "order-2",
+        orderNumber: "ORD-002",
         customer: "Sarah Miller",
         email: "sarah@example.com",
         initials: "SM",
@@ -33,6 +34,7 @@ const MOCK_ORDERS: any[] = [
     },
     {
         _id: "order-3",
+        orderNumber: "ORD-003",
         customer: "Emily Brown",
         email: "emily@example.com",
         initials: "EB",
@@ -80,11 +82,17 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         fetchOrders();
     }, []);
 
-    const statuses = ["All Status", "Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+    const statuses = ["All Status", "Pending", "Processing", "Shipped", "Out for Delivery", "Delivered", "Cancelled"];
     const dateOptions = ["All Dates", "Today", "Last 7 Days", "Last 30 Days"];
 
     const handleDownloadInvoice = (orderId: string) => {
         window.open(`/api/invoice/${orderId}`, "_blank");
+    };
+
+    const handleCancelOrder = (orderId: string) => {
+        console.log("Cancel order", orderId);
+        setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: "Cancelled" } : o));
+        setOpenMenu(null);
     };
 
     const filtered = orders.filter((o) => {
@@ -100,6 +108,7 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         const map: Record<string, string> = {
             Delivered: "bg-green-100 text-green-700",
             Shipped: "bg-blue-100 text-blue-700",
+            "Out for Delivery": "bg-indigo-100 text-indigo-700",
             Processing: "bg-orange-100 text-orange-700",
             Pending: "bg-purple-100 text-purple-700",
             Cancelled: "bg-red-100 text-red-700",
@@ -153,10 +162,9 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                                 <button onClick={() => setOpenMenu(openMenu === order._id ? null : order._id)} className="text-muted-foreground hover:text-foreground md:p-1.5 px-4 py-2 bg-muted md:bg-transparent rounded-lg hover:bg-muted/80 transition-colors flex items-center gap-2 text-xs font-bold"><span className="md:hidden">Actions</span><MoreVertical size={16} /></button>
                                                 {openMenu === order._id && (
                                                     <div className="absolute right-0 md:right-6 top-12 md:top-8 z-20 bg-white border border-border rounded-xl shadow-xl py-2 w-48 text-sm">
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground" onClick={() => onViewOrder?.(order._id)}>View Details</button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground" onClick={() => { const newStatus = order.status === "pending" ? "processing" : order.status === "processing" ? "shipped" : "completed"; setOrders(prev => prev.map(o => o._id === order._id ? { ...o, status: newStatus } : o)); setOpenMenu(null); }}>Update Status</button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground" onClick={() => handleDownloadInvoice(order._id)}>Download Invoice</button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500" onClick={() => { setOrders(prev => prev.filter(o => o._id !== order._id)); setOpenMenu(null); }}>Cancel Order</button>
+                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted" onClick={() => onViewOrder?.(order._id)}>View Details</button>
+                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted" onClick={() => handleDownloadInvoice(order._id)}>Download Invoice</button>
+                                                        <button className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-500" onClick={() => handleCancelOrder(order._id)}>Cancel Order</button>
                                                     </div>
                                                 )}
                                             </td>

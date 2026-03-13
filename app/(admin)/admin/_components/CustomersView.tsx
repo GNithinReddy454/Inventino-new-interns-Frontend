@@ -5,12 +5,51 @@ import { exportToCSV } from "./exportUtils";
 import Pagination from "./Pagination";
 import { getAdminCustomers, AdminCustomer } from "@/services/admin.service";
 
-// --- Mock data for development ---
 const MOCK_CUSTOMERS: AdminCustomer[] = [
-    { _id: "mock-1", name: "John Doe", email: "john@example.com", totalOrders: 10, totalSpent: 2450, customerType: "VIP" },
-    { _id: "mock-2", name: "Jane Smith", email: "jane.smith@example.com", totalOrders: 3, totalSpent: 350, customerType: "Regular" },
-    { _id: "mock-3", name: "Alice Johnson", email: "alice.j@example.com", totalOrders: 7, totalSpent: 1890, customerType: "VIP" },
-    { _id: "mock-4", name: "Bob Williams", email: "bob.w@example.com", totalOrders: 1, totalSpent: 89, customerType: "New" },
+    {
+        _id: "mock-1",
+        name: "John Doe",
+        email: "john@example.com",
+        phone: "+91 98765 43210",
+        totalOrders: 10,
+        totalSpent: 2450,
+        customerType: "VIP",
+        registeredAt: "2025-01-15T10:00:00Z",
+        active: true,
+    },
+    {
+        _id: "mock-2",
+        name: "Jane Smith",
+        email: "jane.smith@example.com",
+        phone: "+91 99887 66554",
+        totalOrders: 3,
+        totalSpent: 350,
+        customerType: "Regular",
+        registeredAt: "2025-02-20T09:30:00Z",
+        active: true,
+    },
+    {
+        _id: "mock-3",
+        name: "Alice Johnson",
+        email: "alice.j@example.com",
+        phone: "+91 77665 44332",
+        totalOrders: 7,
+        totalSpent: 1890,
+        customerType: "VIP",
+        registeredAt: "2024-11-05T14:15:00Z",
+        active: true,
+    },
+    {
+        _id: "mock-4",
+        name: "Bob Williams",
+        email: "bob.w@example.com",
+        phone: "+91 88997 55443",
+        totalOrders: 1,
+        totalSpent: 89,
+        customerType: "New",
+        registeredAt: "2026-03-01T11:20:00Z",
+        active: false,
+    },
 ];
 
 export default function CustomersView({ onViewProfile }: { onViewProfile?: (customerId: string) => void }) {
@@ -32,7 +71,6 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                 if (data && data.length > 0) {
                     setCustomers(data);
                 } else {
-                    // Use mock data if API returns nothing (e.g., backend not ready)
                     setCustomers(MOCK_CUSTOMERS);
                 }
             } catch (err) {
@@ -121,16 +159,26 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                 </div>
 
                 {isLoading ? (
-                    <div className="p-4"><SkeletonTable rows={10} cols={6} /></div>
+                    <div className="p-4"><SkeletonTable rows={10} cols={9} /></div>
                 ) : activeTab === "All Customers" ? (
                     <div className="overflow-x-auto w-full">
                         <table className="w-full text-left text-sm whitespace-nowrap">
                             <thead className="bg-pink-50/50 text-muted-foreground font-bold text-xs uppercase tracking-wider hidden md:table-header-group">
-                                <tr><th className="px-6 py-4">Customer</th><th className="px-6 py-4">Email</th><th className="px-6 py-4">Total Orders</th><th className="px-6 py-4">Total Spent</th><th className="px-6 py-4">Type</th><th className="px-6 py-4">Actions</th></tr>
+                                <tr>
+                                    <th className="px-6 py-4">Customer</th>
+                                    <th className="px-6 py-4">Email</th>
+                                    <th className="px-6 py-4">Phone</th>
+                                    <th className="px-6 py-4">Total Orders</th>
+                                    <th className="px-6 py-4">Total Spent</th>
+                                    <th className="px-6 py-4">Type</th>
+                                    <th className="px-6 py-4">Registered</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">Actions</th>
+                                </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {filtered.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">No customers found</td></tr>
+                                    <tr><td colSpan={9} className="text-center py-12 text-muted-foreground text-sm">No customers found</td></tr>
                                 ) : (
                                     paginated.map((c) => (
                                         <tr key={c._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/20 transition-colors">
@@ -146,17 +194,24 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                                                 </div>
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Email</span>{c.email}</td>
+                                            <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Phone</span>{c.phone || "—"}</td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 text-foreground font-semibold flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Total Orders</span>{c.totalOrders}</td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Total Spent</span>₹{c.totalSpent?.toLocaleString() ?? 0}</td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Type</span>{typeBadge(c.customerType)}</td>
+                                            <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Registered</span>{c.registeredAt ? new Date(c.registeredAt).toLocaleDateString() : "—"}</td>
+                                            <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
+                                                <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Status</span>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${c.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                                                    {c.active ? "Active" : "Inactive"}
+                                                </span>
+                                            </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
                                                 <button onClick={() => setOpenMenu(openMenu === c._id ? null : c._id)} className="text-muted-foreground hover:text-foreground md:p-1.5 px-4 py-2 bg-muted md:bg-transparent rounded-lg hover:bg-muted/80 transition-colors flex items-center gap-2 text-xs font-bold"><span className="md:hidden">Actions</span><MoreVertical size={16} /></button>
                                                 {openMenu === c._id && (
                                                     <div className="absolute right-0 md:right-6 top-12 md:top-8 z-20 bg-white border border-border rounded-xl shadow-xl py-2 w-48 text-sm">
                                                         <button onClick={() => { onViewProfile?.(c._id); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">View Profile</button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">Send Email</button>
                                                         <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">View Orders</button>
-                                                        <button onClick={() => { setCustomers(prev => prev.filter(cu => cu._id !== c._id)); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500">Block Customer</button>
+                                                        <button onClick={() => { /* TODO: toggle active status */ setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500">{c.active ? "Deactivate" : "Activate"}</button>
                                                     </div>
                                                 )}
                                             </td>

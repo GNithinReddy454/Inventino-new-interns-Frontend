@@ -29,7 +29,8 @@ import LandingPageCMSView from "./_components/LandingPageCMSView";
 import ReviewsView from "./_components/ReviewsView";
 import CustomerProfileView from "./_components/CustomerProfileView";
 import AddProduct from "./AddProduct";
-import OrderDetailsView from "./_components/OrderDetailView";
+import OrderDetailView from "./_components/OrderDetailView"; // Note: file is OrderDetailView.tsx
+
 interface NavItemProps {
   icon: React.ElementType;
   label: string;
@@ -146,6 +147,10 @@ export default function AdminDashboard() {
             {activeTab === "Customers" && <CustomersView onViewProfile={(id) => { setSelectedCustomerId(id); setActiveTab("Customer Profile"); }} />}
             {activeTab === "Customer Profile" && selectedCustomerId && (
               <CustomerProfileView customerId={selectedCustomerId} onBack={() => { setActiveTab("Customers"); setSelectedCustomerId(null); }} onViewOrder={(orderId) => { setSelectedOrderId(orderId); setActiveTab("Order Details"); }} />
+            )}
+            {/* ✅ Added missing Order Details block */}
+            {activeTab === "Order Details" && selectedOrderId && (
+              <OrderDetailView orderId={selectedOrderId} onBack={() => { setActiveTab("Orders"); setSelectedOrderId(null); }} />
             )}
             {activeTab === "Settings" && <SettingsView />}
           </div>
