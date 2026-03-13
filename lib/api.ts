@@ -50,8 +50,17 @@ apiClient.interceptors.response.use(
         }
       } catch { /* ignore parse errors */ }
 
-      const isUserOnlyEndpoint = requestUrl.includes("/users/me") || requestUrl.includes("/auth/logout");
-      if (!(isAdmin && isUserOnlyEndpoint)) {
+      if (isAdmin) {
+        // For admin sessions, only wipe credentials when an admin-protected
+        // endpoint rejects the token (meaning the token is truly invalid).
+        // User-only endpoints (e.g. /wishlist, /cart, /users/me) naturally
+        // reject admin tokens — that is expected and must not clear the session.
+        const isAdminEndpoint = requestUrl.includes("/admin");
+        if (isAdminEndpoint) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("inventino_user");
+        }
+      } else {
         localStorage.removeItem("token");
         localStorage.removeItem("inventino_user");
       }

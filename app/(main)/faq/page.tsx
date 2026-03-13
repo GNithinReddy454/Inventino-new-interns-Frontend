@@ -96,7 +96,7 @@ export default function FAQPage() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-pink-50 pb-20">
+    <main className="min-h-screen bg-linear-to-b from-pink-50 via-white to-pink-50 pb-20">
       {/* 1. HEADER */}
       <section className="pt-24 pb-12 px-6 text-center">
         <div className="flex justify-center mb-6">

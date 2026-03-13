@@ -1,10 +1,20 @@
 import apiClient from "@/lib/api";
+import axios from "axios";
 import {
   GetAllProductsParams,
   ProductListResponse,
   ProductDetailResponse,
 } from "@/types/products.type";
-import axios from "axios";
+
+/** Proxy-aware client for PATCH requests (routes through Next.js rewrite to bypass CORS) */
+const patchClient = axios.create({ baseURL: "/api" });
+patchClient.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export const productService = {
   // GET /products — category + sort + pagination
@@ -63,7 +73,10 @@ export const productService = {
   },
 
   async update(id: string | number, data: any) {
-    const response = await apiClient.patch(`/products/${id}`, data);
+    const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+    const response = await patchClient.patch(`/products/${id}`, data, {
+      headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+    });
     return response.data;
   },
 
@@ -86,7 +99,7 @@ export const productService = {
   },
 
   async updateStatus(id: string | number, data: any) {
-    const response = await apiClient.patch(`/products/${id}/status`, data);
+    const response = await patchClient.patch(`/products/${id}/status`, data);
     return response.data;
   },
 
