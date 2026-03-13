@@ -86,12 +86,12 @@ function mapApiOrder(apiOrder: any): Order {
     total: `₹${Number(apiOrder.pricing?.total ?? 0).toFixed(2)}`,
     status: mappedStatus,
     items: (apiOrder.items ?? []).map((item: any) => ({
-      name: item.name ?? "Product",
+      name: item.productName ?? item.name ?? "Product",
       variant: `Qty: ${item.quantity ?? 1}`,
       price: `₹${Number(item.price).toFixed(2)}`,
-      image: item.imageUrl ?? "",
+      image: item.imageUrl ?? item.image ?? "",
     })),
-    _raw: apiOrder, // preserve full raw order for passing to Return/Exchange page
+    _raw: apiOrder,
   };
 }
 
@@ -133,7 +133,6 @@ export default function OrdersPage() {
     return true;
   });
 
-  // Store full raw order in sessionStorage, then navigate to Return/Exchange page
   const handleReturnExchange = (order: Order) => {
     sessionStorage.setItem("returnExchangeOrder", JSON.stringify(order._raw));
     router.push(`/profile/orders/return/${order.backendId}`);
@@ -386,70 +385,131 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* Items */}
+                  {/* Items - 2 column: first & last */}
                   <div style={{ padding: "16px 24px" }}>
-                    {order.items.map((item, i) => (
-                      <div
-                        key={i}
-                        style={{ display: "flex", alignItems: "center", gap: 16 }}
-                      >
-                        {item.image ? (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            style={{
-                              width: 60,
-                              height: 60,
-                              borderRadius: 10,
-                              objectFit: "cover",
-                              border: "1px solid #fce7f3",
-                              flexShrink: 0,
-                            }}
-                          />
-                        ) : (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          order.items.length > 1 ? "1fr 1fr" : "1fr",
+                        gap: 12,
+                      }}
+                    >
+                      {[
+                        order.items[0],
+                        order.items.length > 1
+                          ? order.items[order.items.length - 1]
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .map((item, i) => (
                           <div
+                            key={i}
                             style={{
-                              width: 60,
-                              height: 60,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                              background: "#fdf8fb",
                               borderRadius: 10,
-                              background: "#fdf2f7",
+                              padding: "10px 12px",
                               border: "1px solid #fce7f3",
-                              flexShrink: 0,
-                            }}
-                          />
-                        )}
-                        <div>
-                          <p
-                            style={{
-                              fontSize: 14,
-                              fontWeight: 700,
-                              color: "#111",
-                              marginBottom: 3,
+                              position: "relative",
                             }}
                           >
-                            {item.name}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 12,
-                              color: "#9ca3af",
-                              marginBottom: 3,
-                            }}
-                          >
-                            {item.variant}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: "#E8456A",
-                            }}
-                          >
-                            {item.price}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                            {i === 1 && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: 6,
+                                  right: 8,
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  color: "#D94F7A",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.06em",
+                                  background: "#fce7f3",
+                                  padding: "2px 6px",
+                                  borderRadius: 4,
+                                }}
+                              >
+                                Last
+                              </span>
+                            )}
+                            {item!.image ? (
+                              <img
+                                src={item!.image}
+                                alt={item!.name}
+                                style={{
+                                  width: 52,
+                                  height: 52,
+                                  borderRadius: 8,
+                                  objectFit: "cover",
+                                  border: "1px solid #fce7f3",
+                                  flexShrink: 0,
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: 52,
+                                  height: 52,
+                                  borderRadius: 8,
+                                  background: "#fdf2f7",
+                                  border: "1px solid #fce7f3",
+                                  flexShrink: 0,
+                                }}
+                              />
+                            )}
+                            <div style={{ minWidth: 0 }}>
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  color: "#111",
+                                  marginBottom: 2,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {item!.name}
+                              </p>
+                              <p
+                                style={{
+                                  fontSize: 11,
+                                  color: "#9ca3af",
+                                  marginBottom: 2,
+                                }}
+                              >
+                                {item!.variant}
+                              </p>
+                              <p
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: "#E8456A",
+                                }}
+                              >
+                                {item!.price}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+
+                    {order.items.length > 2 && (
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "#9ca3af",
+                          marginTop: 8,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        +{order.items.length - 2} more item
+                        {order.items.length - 2 > 1 ? "s" : ""} in this order
+                      </p>
+                    )}
                   </div>
 
                   {/* Action buttons */}
@@ -463,7 +523,7 @@ export default function OrdersPage() {
                           : order.status === "Shipped"
                             ? "repeat(3,1fr)"
                             : order.status === "Processing"
-                              ? "repeat(3,1fr)"
+                              ? "repeat(2,1fr)"
                               : "1fr",
                     }}
                   >
@@ -513,7 +573,6 @@ export default function OrdersPage() {
                         >
                           <FileText size={13} /> Download Invoice
                         </button>
-                        {/* ── Return/Exchange: uses handleReturnExchange to pass order data ── */}
                         <button
                           onClick={() => handleReturnExchange(order)}
                           style={{
@@ -633,23 +692,6 @@ export default function OrdersPage() {
                         >
                           <XCircle size={13} /> Cancel Order
                         </button>
-                        <Link
-                          href="/profile/addresses"
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 6,
-                            padding: "12px 8px",
-                            fontSize: 12,
-                            fontWeight: 500,
-                            textDecoration: "none",
-                            color: "#374151",
-                            borderRight: "1px solid #fce7f3",
-                          }}
-                        >
-                          <MapPin size={13} /> Modify Address
-                        </Link>
                         <Link
                           href="/contact"
                           style={{
