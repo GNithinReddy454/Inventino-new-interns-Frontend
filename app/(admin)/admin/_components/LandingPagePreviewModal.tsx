@@ -3,13 +3,186 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 
-interface LandingPagePreviewModalProps {
-  onClose: () => void;
+export interface LandingPagePreviewOverrides {
+  offerBar?: {
+    text: string;
+    isActive: boolean;
+  };
+  heroBanner?: {
+    heading: string;
+    text: string;
+    image?: string | null;
+  };
+  features?: Array<{
+    title: string;
+    description: string;
+    enabled: boolean;
+    icon?: string;
+  }>;
+  categories?: Array<{
+    categoryId: string;
+    name: string;
+    isActive: boolean;
+    imageUrl?: string;
+    productCount?: number;
+  }>;
 }
 
-export default function LandingPagePreviewModal({ onClose }: LandingPagePreviewModalProps) {
+interface LandingPagePreviewModalProps {
+  onClose: () => void;
+  overrides?: LandingPagePreviewOverrides;
+}
+
+export default function LandingPagePreviewModal({ onClose, overrides }: LandingPagePreviewModalProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [showReadonlyHint, setShowReadonlyHint] = useState(false);
+
+  const applyPreviewOverrides = (doc: Document) => {
+    if (!overrides) return;
+
+    if (overrides.offerBar) {
+      const offerBar = doc.querySelector("div.bg-pink-500.text-white.text-sm") as HTMLElement | null;
+      if (offerBar) {
+        offerBar.style.display = overrides.offerBar.isActive ? "flex" : "none";
+        const textNode = offerBar.querySelector("p");
+        if (textNode) {
+          textNode.textContent = overrides.offerBar.text || "";
+        }
+      }
+    }
+
+    if (overrides.heroBanner) {
+      const heroSection = doc.querySelector("section.w-full");
+      const heroContainer = heroSection?.querySelector("div.relative") as HTMLElement | null;
+
+      if (heroContainer) {
+        const headingEl = heroContainer.querySelector("h1") as HTMLElement | null;
+        if (headingEl && overrides.heroBanner.heading?.trim()) {
+          const words = overrides.heroBanner.heading.trim().split(/\s+/);
+          const pinkWord = words[words.length - 1];
+          headingEl.innerHTML = words
+            .map((word) =>
+              word === pinkWord
+                ? `<span class=\"text-pink-400\">${word} </span>`
+                : `<span>${word} </span>`
+            )
+            .join("");
+        }
+
+        const subtitleEl = heroContainer.querySelector("p") as HTMLElement | null;
+        if (subtitleEl && overrides.heroBanner.text?.trim()) {
+          subtitleEl.textContent = overrides.heroBanner.text;
+        }
+
+        if (overrides.heroBanner.image) {
+          const activeHeroImage = heroContainer.querySelector("img.opacity-100") as HTMLImageElement | null;
+          const firstHeroImage = heroContainer.querySelector("img") as HTMLImageElement | null;
+          const imageTarget = activeHeroImage || firstHeroImage;
+          if (imageTarget) {
+            imageTarget.src = overrides.heroBanner.image;
+          }
+        }
+      }
+    }
+
+    if (overrides.features) {
+      const featuresHeading = Array.from(doc.querySelectorAll("h2")).find((heading) =>
+        heading.textContent?.toLowerCase().includes("try before you buy")
+      ) as HTMLElement | undefined;
+
+      const featuresSection = featuresHeading?.closest("section") as HTMLElement | null;
+      const cardsGrid = featuresSection?.querySelector("div.grid") as HTMLElement | null;
+
+      if (featuresSection && cardsGrid) {
+        const enabledFeatures = overrides.features.filter((feature) => feature.enabled);
+        if (enabledFeatures.length > 0) {
+          const existingCards = Array.from(cardsGrid.children) as HTMLElement[];
+
+          existingCards.forEach((card, idx) => {
+            const feature = enabledFeatures[idx];
+            if (!feature) {
+              card.style.display = "none";
+              return;
+            }
+
+            card.style.display = "block";
+
+            const iconContainer = card.querySelector(".w-16.h-16") as HTMLElement | null;
+            if (iconContainer) {
+              const iconSpan = iconContainer.querySelector("span");
+              if (iconSpan) {
+                iconSpan.textContent = feature.icon || "✨";
+              }
+            }
+
+            const titleEl = card.querySelector("h3") as HTMLElement | null;
+            if (titleEl) titleEl.textContent = feature.title;
+
+            const descEl = card.querySelector("p") as HTMLElement | null;
+            if (descEl) descEl.textContent = feature.description;
+          });
+        }
+      }
+    }
+
+    if (overrides.categories) {
+      const categoryHeading = Array.from(doc.querySelectorAll("h2")).find((heading) =>
+        heading.textContent?.toLowerCase().includes("shop by category")
+      ) as HTMLElement | undefined;
+
+      const categorySection = categoryHeading?.closest("section") as HTMLElement | null;
+      const categoryGrid = categorySection?.querySelector("div.grid") as HTMLElement | null;
+
+      if (categorySection && categoryGrid) {
+        const activeCategories = overrides.categories.filter((category) => category.isActive);
+        const existingCards = Array.from(categoryGrid.children) as HTMLElement[];
+
+        existingCards.forEach((card, idx) => {
+          const category = activeCategories[idx];
+          if (!category) {
+            card.style.display = "none";
+            return;
+          }
+
+          card.style.display = "flex";
+
+          const img = card.querySelector("img") as HTMLImageElement | null;
+          const fallbackEmoji = card.querySelector("span") as HTMLElement | null;
+
+          if (category.imageUrl) {
+            if (img) {
+              img.src = category.imageUrl;
+              img.alt = category.name;
+              img.style.display = "block";
+            }
+            if (fallbackEmoji && fallbackEmoji.textContent?.includes("📦")) {
+              fallbackEmoji.style.display = "none";
+            }
+          } else {
+            if (img) {
+              img.style.display = "none";
+            }
+            if (fallbackEmoji && fallbackEmoji.textContent?.includes("📦")) {
+              fallbackEmoji.style.display = "block";
+            }
+          }
+
+          const nameEl = card.querySelector("p, span.text-[11px], span.text-sm") as HTMLElement | null;
+          if (nameEl) nameEl.textContent = category.name;
+
+          const countEl = card.querySelector("span.text-[9px], span.text-[10px]") as HTMLElement | null;
+          if (countEl) {
+            if (typeof category.productCount === "number") {
+              countEl.textContent = `${category.productCount} items`;
+              countEl.style.display = "inline";
+            } else {
+              countEl.style.display = "none";
+            }
+          }
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -29,6 +202,9 @@ export default function LandingPagePreviewModal({ onClose }: LandingPagePreviewM
     const attachReadonlyGuards = () => {
       const doc = iframeEl.contentDocument;
       if (!doc) return;
+
+      window.setTimeout(() => applyPreviewOverrides(doc), 2200);
+      window.setTimeout(() => applyPreviewOverrides(doc), 3500);
 
       const showHint = () => {
         setShowReadonlyHint(true);
@@ -66,13 +242,12 @@ export default function LandingPagePreviewModal({ onClose }: LandingPagePreviewM
     };
 
     iframeEl.addEventListener("load", attachReadonlyGuards);
-    attachReadonlyGuards();
 
     return () => {
       iframeEl.removeEventListener("load", attachReadonlyGuards);
       cleanup?.();
     };
-  }, []);
+  }, [overrides]);
 
   return (
     <div className="fixed inset-0 z-[120] bg-black/70">

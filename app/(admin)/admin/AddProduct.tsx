@@ -1,6 +1,21 @@
 "use client";
 
 import { useState, useRef } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, X, Eye, Upload, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -8,13 +23,72 @@ import { useAppDispatch } from "@/redux/store";
 import { addProduct } from "@/redux/adminSlice";
 import { productService } from "@/services/product.service";
 
+function SortableImageItem({
+  id,
+  file,
+  isFirst,
+  onRemove,
+}: {
+  id: string;
+  file: File;
+  isFirst: boolean;
+  onRemove: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="w-24 h-24 rounded-xl overflow-hidden shrink-0 relative group cursor-grab active:cursor-grabbing select-none"
+      {...attributes}
+      {...listeners}
+    >
+      <Image
+        src={URL.createObjectURL(file)}
+        alt={file.name}
+        fill
+        className="object-cover pointer-events-none"
+      />
+      {isFirst && (
+        <div className="absolute bottom-0 left-0 right-0 bg-[#E91E63]/80 text-white text-[9px] font-bold text-center py-0.5 pointer-events-none">
+          Cover
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRemove(id); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+      >
+        <X size={10} strokeWidth={3} />
+      </button>
+    </div>
+  );
+}
+
 export default function AddProduct() {
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyImageInputRef = useRef<HTMLInputElement>(null);
 
   // File states
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileItems, setFileItems] = useState<Array<{ id: string; file: File }>>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [storyImage, setStoryImage] = useState<File | null>(null);
   const [storyImagePreview, setStoryImagePreview] = useState<string | null>(
     null,
@@ -75,6 +149,9 @@ export default function AddProduct() {
   const [showPreview, setShowPreview] = useState(false);
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   // Tag handlers
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -132,17 +209,40 @@ export default function AddProduct() {
   // File handlers
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setSelectedFiles((prev) => {
-        const combined = [...prev, ...newFiles];
-        return combined.slice(0, 5); // Max 5 images per backend limit
-      });
+      const newItems = Array.from(e.target.files).map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+      }));
+      setFileItems((prev) => [...prev, ...newItems].slice(0, 5));
     }
-    // Reset input so same file can be re-selected
     if (e.target) e.target.value = "";
   };
-  const removeFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  const removeFile = (id: string) => {
+    setFileItems((prev) => prev.filter((item) => item.id !== id));
+  };
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setFileItems((prev) => {
+        const oldIndex = prev.findIndex((item) => item.id === active.id);
+        const newIndex = prev.findIndex((item) => item.id === over.id);
+        return arrayMove(prev, oldIndex, newIndex);
+      });
+    }
+  };
+  const handleDropZoneDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const droppedFiles = Array.from(e.dataTransfer.files).filter((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (droppedFiles.length > 0) {
+      const newItems = droppedFiles.map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+      }));
+      setFileItems((prev) => [...prev, ...newItems].slice(0, 5));
+    }
   };
   const handleStoryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -198,7 +298,7 @@ export default function AddProduct() {
     createPayload.append("bestSeller", String(reviewsEnabled));
     if (storyContent) createPayload.append("story", storyContent);
     if (storyImage) createPayload.append("storyMedia", storyImage);
-    selectedFiles.forEach((file) => createPayload.append("images", file));
+    fileItems.forEach(({ file }) => createPayload.append("images", file));
 
     try {
       setIsLoading(true);
@@ -211,7 +311,7 @@ export default function AddProduct() {
       } catch (uploadErr: any) {
         // If S3/image upload fails, retry without images
         const errMsg = uploadErr?.response?.data?.message || uploadErr?.message || "";
-        if (selectedFiles.length > 0 && (errMsg.toLowerCase().includes("s3") || errMsg.toLowerCase().includes("upload"))) {
+        if (fileItems.length > 0 && (errMsg.toLowerCase().includes("s3") || errMsg.toLowerCase().includes("upload"))) {
           imageUploadFailed = true;
           const retryPayload = new FormData();
           createPayload.forEach((value, key) => {
@@ -255,8 +355,8 @@ export default function AddProduct() {
         totalRevenue: Number(createdData?.totalRevenue) || 0,
         imageUrl:
           createdData?.images?.[0]?.url ||
-          (selectedFiles.length > 0
-            ? URL.createObjectURL(selectedFiles[0])
+          (fileItems.length > 0
+            ? URL.createObjectURL(fileItems[0].file)
             : null),
       };
 
@@ -264,10 +364,10 @@ export default function AddProduct() {
         createdData?.productId || createdData?._id || createdData?.id;
 
       // If initial create succeeded but had no images (or we retried without), try adding images separately
-      if (createdProductId && !createdData?.images?.length && selectedFiles.length > 0 && !imageUploadFailed) {
+      if (createdProductId && !createdData?.images?.length && fileItems.length > 0 && !imageUploadFailed) {
         try {
           const imageFormData = new FormData();
-          selectedFiles.forEach((file) => imageFormData.append("images", file));
+          fileItems.forEach(({ file }) => imageFormData.append("images", file));
           await productService.addImages(createdProductId, imageFormData);
         } catch {
           imageUploadFailed = true;
@@ -324,11 +424,11 @@ export default function AddProduct() {
           <div className="mb-6">
             <h3 className="font-semibold mb-2">Images</h3>
             <div className="flex gap-2 overflow-x-auto">
-              {selectedFiles.length > 0 ? (
-                selectedFiles.map((file, idx) => (
-                  <div key={idx} className="w-24 h-24 relative shrink-0 rounded-lg overflow-hidden border">
+              {fileItems.length > 0 ? (
+                fileItems.map((item, idx) => (
+                  <div key={item.id} className="w-24 h-24 relative shrink-0 rounded-lg overflow-hidden border">
                     <Image
-                      src={URL.createObjectURL(file)}
+                      src={URL.createObjectURL(item.file)}
                       alt={`preview-${idx}`}
                       fill
                       className="object-cover"
@@ -1165,7 +1265,12 @@ export default function AddProduct() {
               <p className="text-xs text-muted-foreground mb-8">
                 Upload high-quality images of your product
               </p>
-              <div className="w-full border-2 border-dashed border-border rounded-2xl py-12 flex flex-col items-center justify-center bg-muted">
+              <div
+                className={`w-full border-2 border-dashed rounded-2xl py-12 flex flex-col items-center justify-center transition-colors ${isDragOver ? "border-[#E91E63] bg-pink-50" : "border-border bg-muted"}`}
+                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={handleDropZoneDrop}
+              >
                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm text-pink-300">
                   <Upload className="text-[#E91E63]" size={24} />
                 </div>
@@ -1192,32 +1297,33 @@ export default function AddProduct() {
                   onChange={handleFilesChange}
                 />
               </div>
-              {selectedFiles.length > 0 && (
+              {fileItems.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-6 mb-2">
-                  {selectedFiles.length}/5 images selected
+                  {fileItems.length}/5 images selected — drag to reorder · first image is the cover
                 </p>
               )}
-              <div className="flex gap-4 mt-2 overflow-x-auto">
-                {selectedFiles.length > 0 && (
-                  selectedFiles.map((file, idx) => (
-                    <div key={idx} className="w-24 h-24 rounded-xl overflow-hidden shrink-0 relative group">
-                      <Image
-                        src={URL.createObjectURL(file)}
-                        alt={file.name}
-                        fill
-                        className="object-cover"
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={fileItems.map((item) => item.id)}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  <div className="flex gap-4 mt-2 overflow-x-auto pb-1">
+                    {fileItems.map((item, idx) => (
+                      <SortableImageItem
+                        key={item.id}
+                        id={item.id}
+                        file={item.file}
+                        isFirst={idx === 0}
+                        onRemove={removeFile}
                       />
-                      <button
-                        type="button"
-                        onClick={() => removeFile(idx)}
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X size={10} strokeWidth={3} />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
 
             <div className="flex gap-4">

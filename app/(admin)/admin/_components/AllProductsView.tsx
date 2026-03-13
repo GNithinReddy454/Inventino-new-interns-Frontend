@@ -94,7 +94,7 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
         try {
             const response = await productService.getAll({ limit: 200, page: 1 });
             const responseData = response?.data;
-            const items = responseData?.data?.items || responseData?.items || [];
+            const items = responseData?.data?.items || [];
             const normalized = items.map(normalizeProduct);
             setProducts(normalized);
         } catch (err) {

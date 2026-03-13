@@ -112,10 +112,20 @@ export const productService = {
   // GET /products/:productId/story
   // NOTE: productId here must be the PRD-xxx format ID, not the MongoDB _id
   async getStory(productId: string) {
-    const response = await apiClient.get(`/products/${productId}/story`, {
-      headers: { 'Cache-Control': 'no-cache' }
-    });
-    return response.data;
+    try {
+      const response = await apiClient.get(`/products/${productId}/story`, {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      return response.data;
+    } catch (error) {
+      // If 404 occurs, return null instead of throwing
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        console.warn(`Story not found for product ID: ${productId}`);
+        return null;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   },
 
   // GET /reviews/product/:productId
@@ -123,6 +133,12 @@ export const productService = {
     const response = await apiClient.get(`/reviews/product/${productId}`, {
       params: { page, limit }
     });
+    return response.data;
+  },
+
+  // GET /products/:productId/variants
+  async getVariants(productId: string) {
+    const response = await apiClient.get(`/products/${productId}/variants`);
     return response.data;
   },
 };
