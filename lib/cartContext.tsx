@@ -22,10 +22,10 @@ export type Product = {
   size?: string;
 };
 
-type CartContextType = {
+  type CartContextType = {
   cart: Product[];
-  addToCart: (product: Product, quantity?: number) => void;
-  handleBag: (product: Product, quantity?: number) => void;
+  addToCart: (product: Product, quantity?: number, color?: string | null, size?: string | null) => void;
+  handleBag: (product: Product, quantity?: number, color?: string | null, size?: string | null) => void;
   updateQuantity: (productId: number | string, newQuantity: number) => void;
   removeFromCart: (productId: number | string) => void;
   clearCart: () => void;
@@ -68,23 +68,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const addToCart = (product: Product, quantity: number = 1) => {
+  const addToCart = (product: Product, quantity: number = 1, color?: string | null, size?: string | null) => {
     setCart((prevCart) => {
+      const itemColor = color != null ? color : product.color;
+      const itemSize = size != null ? size : product.size;
+
       const existingItem = prevCart.find((item) => 
-        item.id === product.id && 
-        item.color === product.color && 
-        item.size === product.size
+        String(item.id) === String(product.id) && 
+        item.color === itemColor && 
+        item.size === itemSize
       );
 
       if (existingItem) {
         return prevCart.map((item) =>
-          (item.id === product.id && item.color === product.color && item.size === product.size)
+          (String(item.id) === String(product.id) && item.color === itemColor && item.size === itemSize)
             ? { ...item, quantity: (item.quantity || 1) + quantity }
             : item,
         );
       }
 
-      return [...prevCart, { ...product, quantity }];
+      return [...prevCart, { ...product, quantity, color: itemColor || undefined, size: itemSize || undefined }];
     });
   };
 

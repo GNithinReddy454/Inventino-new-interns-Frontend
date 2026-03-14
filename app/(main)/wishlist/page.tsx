@@ -110,25 +110,33 @@ export default function WishlistPage() {
     };
 
     const handleAddToCart = useCallback(
-      async (item: any, explicitId?: string) => {
+      async (apiItem: any, explicitId?: string) => {
         try {
+          const item = apiItem.product || apiItem || {};
           const pId = String(item.productId || item._id || item.id);
           const wishId = explicitId || pId;
+          const color = apiItem.color || null;
+          const size = apiItem.size || null;
+          const quantity = apiItem.quantity || 1;
           
           if (user) {
-            await dispatch(reduxAddToCart({ productId: pId, quantity: 1 })).unwrap();
+            await dispatch(reduxAddToCart({ productId: pId, quantity, color, size })).unwrap();
           } else {
             // Ensure item has 'id' for local cart context
             const localItem = { ...item, id: pId };
-            addToCart(localItem as any, 1);
+            addToCart(localItem as any, quantity, color, size);
           }
           
           await dispatch(removeWishlistItem(wishId));
           triggerToast(`${item.name || item.title || "Item"} added to cart`);
         } catch (error: any) {
           // Fallback logic for Stock/Formatting issues
+          const item = apiItem.product || apiItem || {};
           const pId = String(item.productId || item._id || item.id);
           const wishId = explicitId || pId;
+          const color = apiItem.color || null;
+          const size = apiItem.size || null;
+          const quantity = apiItem.quantity || 1;
           const errorMessage = typeof error === 'string' ? error : error.message || "";
           
           if (errorMessage.includes("stock") || errorMessage.includes("format") || pId === "7") {
@@ -137,7 +145,9 @@ export default function WishlistPage() {
               name: item.name || item.title || "Untitled Product",
               price: item.price || 0,
               image: getImageUrl(item.images?.[0] || item.image),
-              quantity: 1
+              quantity,
+              color,
+              size
             };
             dispatch(addLocalCartItem(cartPayload));
             await dispatch(removeWishlistItem(wishId));
@@ -151,10 +161,10 @@ export default function WishlistPage() {
     );
 
   const handleAddAllToCart = async () => {
-    const itemsToProcess = savedItems.map((p: any, idx: number) => {
-      const item = p.product || p || {};
-      const selectionId = String(item._id || item.productId || item.id || p._id || `fallback-${idx}`);
-      return { item, selectionId };
+    const itemsToProcess = savedItems.map((apiItem: any, idx: number) => {
+      const item = apiItem.product || apiItem || {};
+      const selectionId = String(item._id || item.productId || item.id || apiItem._id || `fallback-${idx}`);
+      return { apiItem, item, selectionId };
     }).filter(entry => selectedIds.includes(entry.selectionId));
 
     if (itemsToProcess.length === 0) return;
@@ -162,15 +172,19 @@ export default function WishlistPage() {
     let count = 0;
     for (const entry of itemsToProcess) {
       try {
-        const { item, selectionId } = entry;
+        const { apiItem, item, selectionId } = entry;
+        const color = apiItem.color || null;
+        const size = apiItem.size || null;
+        const quantity = apiItem.quantity || 1;
+
         if (item && (item._id || item.id || item.productId)) {
           const pId = String(item.productId || item._id || item.id);
           try {
             if (user) {
-              await dispatch(reduxAddToCart({ productId: pId, quantity: 1 })).unwrap();
+              await dispatch(reduxAddToCart({ productId: pId, quantity, color, size })).unwrap();
             } else {
               const localItem = { ...item, id: pId };
-              addToCart(localItem as any, 1);
+              addToCart(localItem as any, quantity, color, size);
             }
             // Individually remove using the same ID used for selection
             await dispatch(removeWishlistItem(selectionId)).unwrap();
@@ -183,7 +197,9 @@ export default function WishlistPage() {
                 name: item.name || item.title || "Untitled Product",
                 price: item.price || 0,
                 image: getImageUrl(item.images?.[0] || item.image),
-                quantity: 1
+                quantity,
+                color,
+                size
               };
               dispatch(addLocalCartItem(cartPayload));
               await dispatch(removeWishlistItem(selectionId)).unwrap();
@@ -252,15 +268,19 @@ export default function WishlistPage() {
     for (const itemWrapper of itemsSnapshot) {
       try {
         const item = itemWrapper.product || itemWrapper;
+        const color = itemWrapper.color || null;
+        const size = itemWrapper.size || null;
+        const quantity = itemWrapper.quantity || 1;
+
         if (item && (item._id || item.id || item.productId)) {
           const pId = String(item.productId || item._id || item.id);
           try {
             if (user) {
-              await dispatch(reduxAddToCart({ productId: pId, quantity: 1 })).unwrap();
+              await dispatch(reduxAddToCart({ productId: pId, quantity, color, size })).unwrap();
             } else {
               // Ensure item has 'id' for local cart context
               const localItem = { ...item, id: pId };
-              addToCart(localItem as any, 1);
+              addToCart(localItem as any, quantity, color, size);
             }
             count++;
           } catch (error: any) {
@@ -273,7 +293,9 @@ export default function WishlistPage() {
                 name: item.name || item.title || "Untitled Product",
                 price: item.price || 0,
                 image: getImageUrl(item.images?.[0] || item.image),
-                quantity: 1
+                quantity,
+                color,
+                size
               };
               dispatch(addLocalCartItem(cartPayload));
               count++;
