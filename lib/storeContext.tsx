@@ -24,11 +24,12 @@ interface WishlistItem {
   _id?: string;
   color?: string | null;
   size?: string | null;
+  quantity?: number; // Add quantity to WishlistItem interface
 }
 
 interface StoreContextType {
   savedItems: WishlistItem[];
-  handleSaved: (product: WishlistProduct, color?: string | null, size?: string | null) => void;
+  handleSaved: (product: WishlistProduct, color?: string | null, size?: string | null, quantity?: number) => void; // Add quantity parameter
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -50,7 +51,7 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
     dispatch(fetchWishlist());
   }, [dispatch]);
 
-  const handleSaved = (product: WishlistProduct, color?: string | null, size?: string | null) => {
+  const handleSaved = (product: WishlistProduct, color?: string | null, size?: string | null, quantity: number = 1) => { // Add quantity parameter with default 1
     const productIdRaw = product.mongoId || product._id || product.id;
     if (!productIdRaw) return;
     const productId = String(productIdRaw);
@@ -65,7 +66,8 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
     if (exists) {
       dispatch(removeWishlistItem(productId));
     } else {
-      dispatch(addWishlistItem({ productId, color, size }));
+      // Pass quantity to the addWishlistItem action
+      dispatch(addWishlistItem({ productId, color, size, quantity }));
     }
   };
 
