@@ -325,7 +325,7 @@ export default function WishlistPage() {
       const item = apiItem.product || apiItem || {};
       // Robust ID check: handle strings, objects, and nested IDs
       const rawId = typeof item === 'string' ? item : (item._id || item.productId || item.id);
-      return String(rawId || apiItem._id || `fallback-${idx}`);
+      return String(apiItem._id || rawId || `fallback-${idx}`);
     }).filter(id => id && id !== "undefined" && !id.startsWith("fallback-"));
   }, [savedItems]);
 
@@ -496,18 +496,23 @@ export default function WishlistPage() {
             {savedItems.map((apiItem: any, index: number) => {
               const item = apiItem.product || apiItem || {};
               const rawId = typeof item === 'string' ? item : (item._id || item.productId || item.id);
-              const id = String(rawId || apiItem._id || `fallback-${index}`);
+              const id = String(apiItem._id || rawId || `fallback-${index}`);
               
               if (!id || id === "undefined" || id.startsWith("fallback-")) return null;
 
               const isSelected = selectedIds.includes(id);
-              const name = item.name || item.title || "Untitled Product";
+              const name = item.name || item.title || item.productName || "Untitled Product";
               const image = getImageUrl(item.images?.[0] || item.image);
               const rating =
                 typeof item.rating === "number" ? item.rating : 4.7;
               const badge = getBadgeInfo(item.badge);
               const hasDiscount =
                 !!item.originalPrice && item.originalPrice > (item.price || 0);
+
+              // Extract color, size, quantity from the apiItem wrapper (API response level)
+              const itemColor = apiItem.color || null;
+              const itemSize = apiItem.size || null;
+              const itemQuantity = apiItem.quantity || 1;
 
               return (
                 <div
@@ -636,7 +641,7 @@ export default function WishlistPage() {
                     </Link>
 
                     {/* Price */}
-                    <div className="flex items-center gap-1 mt-auto mb-2">
+                    <div className="flex items-center gap-1 mb-1.5">
                       <span className="text-sm sm:text-base font-black text-[#E8456A]">
                         ₹{item.price?.toFixed(2)}
                       </span>
@@ -647,10 +652,34 @@ export default function WishlistPage() {
                       )}
                     </div>
 
+                    {/* Color, Size & Quantity */}
+                    {(itemColor || itemSize || itemQuantity) && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
+                        {itemColor && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-bold">Color:</span>
+                            <span className="text-[10px] sm:text-xs font-bold text-gray-700 capitalize">{itemColor}</span>
+                          </div>
+                        )}
+                        {itemSize && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-bold">Size:</span>
+                            <span className="text-[10px] sm:text-xs font-bold text-gray-700">{itemSize}</span>
+                          </div>
+                        )}
+                        {itemQuantity && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-bold">Qty:</span>
+                            <span className="text-[10px] sm:text-xs font-bold text-gray-700">{itemQuantity}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Action buttons */}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 mt-auto">
                       <button
-                        onClick={() => handleAddToCart(item, id)}
+                        onClick={() => handleAddToCart(apiItem, id)}
                         className="flex-1 inline-flex items-center justify-center gap-1 bg-[#E8456A] hover:bg-[#c73358] text-white py-1.5 sm:py-2 rounded-lg text-[9px] sm:text-[11px] font-bold uppercase tracking-wide transition-all active:scale-95 shadow-sm shadow-pink-100"
                       >
                         <ShoppingBag size={10} className="flex-shrink-0" />

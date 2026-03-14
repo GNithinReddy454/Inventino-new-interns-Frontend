@@ -98,22 +98,37 @@ export const addWishlistItem = createAsyncThunk(
         const items = getLocalWishlist();
         // Avoid duplicates checking all possible ID fields AND color/size
         const exists = items.some((i: any) => {
-          const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id);
+          const id = String(i.productId || i.product?.productId || i.product?._id || i.product?.id || i._id || i.id);
           return id === productId && i.color === color && i.size === size;
         });
         if (!exists) {
-          // If payload is an object, store it; otherwise create minimal structure
-          const itemToStore = typeof payload === "object" 
-            ? { ...payload, isLocal: true } 
-            : { 
-                product: { _id: productId }, 
-                _id: productId, 
-                productId: productId, 
-                color, 
-                size, 
-                quantity, // Include quantity in stored item
-                isLocal: true 
-              };
+          // Build a properly structured item that mirrors the backend API response shape
+          // so the wishlist page can display name, price, image, color, size, quantity
+          const itemToStore = {
+            product: {
+              _id: productId,
+              productId: productId,
+              name: (typeof payload === "object" ? payload.name || payload.product?.name : "") || "",
+              price: (typeof payload === "object" ? payload.price ?? payload.product?.price : 0) ?? 0,
+              images: (() => {
+                if (typeof payload !== "object") return [];
+                const img = payload.image || payload.product?.image;
+                const imgs = payload.images || payload.product?.images;
+                if (Array.isArray(imgs) && imgs.length > 0) {
+                  return imgs.map((i: any) => typeof i === "string" ? { url: i } : i);
+                }
+                if (img) return [typeof img === "string" ? { url: img } : img];
+                return [];
+              })(),
+              category: (typeof payload === "object" ? payload.category || payload.product?.category : "") || "",
+            },
+            _id: `${productId}-${color || ""}-${size || ""}`,
+            productId: productId,
+            color,
+            size,
+            quantity,
+            isLocal: true,
+          };
           items.push(itemToStore);
           saveLocalWishlist(items);
         }
@@ -136,7 +151,10 @@ export const removeWishlistItem = createAsyncThunk(
     try {
       if (!isLoggedIn()) {
         const items = getLocalWishlist().filter((i: any) => {
-          const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id);
+          // If we passed a unique _id (like "prod-color-size"), match that first
+          if (i._id === productId) return false;
+          // Fallback to product level IDs if _id didn't match
+          const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i.id);
           return id !== productId;
         });
         saveLocalWishlist(items);
