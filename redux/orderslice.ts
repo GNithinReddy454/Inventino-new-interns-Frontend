@@ -24,9 +24,17 @@ const initialState: OrderState = {
  */
 export const placeOrderAction = createAsyncThunk(
     "order/placeOrder",
-    async (payload: { addressId: string; paymentMethod: string }, { rejectWithValue }) => {
+    async (payload: {
+        addressId: string;
+        items: Array<{ productId: string; quantity: number; color?: string | null; size?: string }>;
+        paymentMethod: string;
+    }, { rejectWithValue }) => {
         try {
-            const response = await orderService.placeOrder(payload);
+            const response = await orderService.placeOrder({
+                addressId: payload.addressId,
+                items: payload.items,
+                payment: { method: payload.paymentMethod },
+            });
             return response;
         } catch (error: any) {
             const errorMsg = error.response?.data?.message || error.message || "Order placement failed";

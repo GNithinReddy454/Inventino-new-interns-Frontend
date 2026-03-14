@@ -121,7 +121,7 @@ export default function BagPage() {
           );
           if (!exists) {
             if (user) {
-              await dispatch(addWishlistItem(itemId)).unwrap();
+              await dispatch(addWishlistItem({ productId: itemId })).unwrap();
             } else {
               // Now passing full item object for better guest experience
               dispatch(addWishlistItem(item));
@@ -211,7 +211,7 @@ export default function BagPage() {
         if (!exists) {
           try {
             if (user) {
-              await dispatch(addWishlistItem(itemId)).unwrap();
+              await dispatch(addWishlistItem({ productId: itemId })).unwrap();
             } else {
               // Pass full item object
               dispatch(addWishlistItem(item));
