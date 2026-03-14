@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { wishlistService } from "@/services/wishlist.service";
 
 interface WishlistState {
@@ -19,6 +19,8 @@ const LOCAL_KEY = "guest_wishlist";
 interface GuestWishlistItem {
   product: {
     _id: string;
+    productId?: string;
+    id?: string;
   };
   color?: string | null;
   size?: string | null;
@@ -41,12 +43,15 @@ function saveLocalWishlist(items: GuestWishlistItem[]) {
 }
 
 function isLoggedIn(): boolean {
-  // Adjust this to match how your app stores the auth token
-  return !!(
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    document.cookie.includes("token=")
-  );
+  try {
+    return !!(
+      localStorage.getItem("token") ||
+      localStorage.getItem("accessToken") ||
+      localStorage.getItem("inventino_user")
+    );
+  } catch {
+    return false;
+  }
 }
 
 // ── Thunks ────────────────────────────────────────────────────────────────────
@@ -69,33 +74,42 @@ export const fetchWishlist = createAsyncThunk(
   }
 );
 
-// Updated to accept color and size
+// Accepts either a plain string ID or an object with productId, color, and size
 export const addWishlistItem = createAsyncThunk(
   "wishlist/add",
-  async ({ productId, color, size }: { productId: string; color?: string | null; size?: string | null }, { rejectWithValue }) => {
+  async (payload: any, { rejectWithValue }) => {
+    let productId: string;
+    let color: string | null = null;
+    let size: string | null = null;
+
+    if (typeof payload === "string") {
+      productId = payload;
+    } else {
+      productId = String(payload.productId || payload.product?._id || payload._id || payload.id);
+      color = payload.color || null;
+      size = payload.size || null;
+    }
+
     try {
       if (!isLoggedIn()) {
         const items = getLocalWishlist();
-        // Avoid duplicates (check both productId, color, and size)
-        const exists = items.some(
-          (i: GuestWishlistItem) => 
-            i.product?._id === productId && 
-            i.color === color && 
-            i.size === size
-        );
+        // Avoid duplicates checking all possible ID fields AND color/size
+        const exists = items.some((i: any) => {
+          const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id);
+          return id === productId && i.color === color && i.size === size;
+        });
         if (!exists) {
-          items.push({ 
-            product: { _id: productId },
-            color: color || null,
-            size: size || null,
-            isLocal: true 
-          });
+          // If payload is an object, store it; otherwise create minimal structure
+          const itemToStore = typeof payload === "object" 
+            ? { ...payload, isLocal: true } 
+            : { product: { _id: productId }, _id: productId, productId: productId, color, size, isLocal: true };
+          items.push(itemToStore);
           saveLocalWishlist(items);
         }
         return items;
       }
       // Pass color and size to the service
-      const response = await wishlistService.addToWishlist(productId, color, size);
+      const response = await wishlistService.addToWishlist(productId, color || undefined, size || undefined);
       return response.data?.wishlist?.items || [];
     } catch (error: any) {
       return rejectWithValue(
@@ -110,9 +124,10 @@ export const removeWishlistItem = createAsyncThunk(
   async (productId: string, { rejectWithValue }) => {
     try {
       if (!isLoggedIn()) {
-        const items = getLocalWishlist().filter(
-          (i: GuestWishlistItem) => i.product?._id !== productId
-        );
+        const items = getLocalWishlist().filter((i: any) => {
+          const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id);
+          return id !== productId;
+        });
         saveLocalWishlist(items);
         return items;
       }
@@ -151,11 +166,11 @@ const wishlistSlice = createSlice({
     initialState,
     reducers: {
         addLocalWishlistItem: (state, action) => {
-            const pId = String(action.payload?.product?._id || action.payload?._id);
+            const pId = String(action.payload?.product?.productId || action.payload?.product?._id || action.payload?.product?.id || action.payload?._id || action.payload?.productId);
             const color = action.payload?.color;
             const size = action.payload?.size;
             const exists = state.items.some((i: any) => 
-                String(i.product?._id) === pId && 
+                String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) === pId && 
                 i.color === color && 
                 i.size === size
             );
@@ -165,7 +180,9 @@ const wishlistSlice = createSlice({
         },
         removeLocalWishlistItem: (state, action) => {
             const id = String(action.payload);
-            state.items = state.items.filter(i => String(i.product?._id || i._id) !== id);
+            state.items = state.items.filter(i => 
+                String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) !== id
+            );
         }
     },
     extraReducers: (builder) => {
@@ -181,11 +198,11 @@ const wishlistSlice = createSlice({
             const backendOnes = action.payload || [];
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
-                const id = String(loc.product?._id || loc._id);
+                const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
                 const color = loc.color;
                 const size = loc.size;
                 if (!merged.some(m => 
-                    String(m.product?._id || m._id) === id && 
+                    String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id && 
                     m.color === color && 
                     m.size === size
                 )) {
@@ -205,11 +222,11 @@ const wishlistSlice = createSlice({
             const backendOnes = action.payload || [];
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
-                const id = String(loc.product?._id || loc._id);
+                const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
                 const color = loc.color;
                 const size = loc.size;
                 if (!merged.some(m => 
-                    String(m.product?._id || m._id) === id && 
+                    String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id && 
                     m.color === color && 
                     m.size === size
                 )) {
@@ -222,15 +239,15 @@ const wishlistSlice = createSlice({
         // Remove Item
         builder.addCase(removeWishlistItem.fulfilled, (state, action) => {
             const removedId = String(action.meta.arg);
-            const localOnes = state.items.filter(i => i.isLocal && String(i.product?._id || i._id) !== removedId);
+            const localOnes = state.items.filter(i => i.isLocal && String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) !== removedId);
             const backendOnes = action.payload || [];
             const merged = [...backendOnes];
             localOnes.forEach(loc => {
-                const id = String(loc.product?._id || loc._id);
+                const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
                 const color = loc.color;
                 const size = loc.size;
                 if (!merged.some(m => 
-                    String(m.product?._id || m._id) === id && 
+                    String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id && 
                     m.color === color && 
                     m.size === size
                 )) {

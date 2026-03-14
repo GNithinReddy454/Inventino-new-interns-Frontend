@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { addWishlistItem, addLocalWishlistItem } from "@/redux/wishlistslice";
-import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode } from "@/redux/cartslice";
+import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode, removeLocalCartItem } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { useAuth } from "@/app/(main)/components/authContext";
 
@@ -28,6 +28,8 @@ interface CartItem {
   image: string;
   quantity?: number;
   originalPrice?: number;
+  color?: string;
+  size?: string;
 }
 
 interface ToastState {
@@ -63,6 +65,9 @@ export default function BagPage() {
     image: getImageUrl(item.image || item.product?.images?.[0] || item.product?.image),
     quantity: item.quantity || 1,
     originalPrice: item.originalPrice !== undefined ? item.originalPrice : item.product?.originalPrice,
+    color: item.color,
+    size: item.size,
+    id: item.productId || item.product?._id || item._id, // Backwards compatibility for removal
   }));
 
   const mappedLocal = localCart.map((item: any) => ({
@@ -72,6 +77,9 @@ export default function BagPage() {
     image: getImageUrl(item.image),
     quantity: item.quantity || 1,
     originalPrice: item.originalPrice,
+    color: item.color,
+    size: item.size,
+    id: item.id, // Keep original ID for filter
   }));
 
   const cart = user
@@ -103,23 +111,20 @@ export default function BagPage() {
   );
 
   const handleAction = (item: CartItem, type: "wishlist" | "remove") => {
-    if (type === "wishlist" && !user) {
-      triggerToast("Please login to save items", "Login required");
-      router.push("/login?redirect=/bag");
-      return;
-    }
-
     setAnimatingItem({ id: item.productId, type });
     setTimeout(async () => {
       try {
-        const itemId = String((item as any)._id || item.productId);
+        const itemId = String(item.productId || (item as any)._id || (item as any).id);
         if (type === "wishlist") {
-          const exists = savedItems.some((si: any) => String(si.product?._id) === itemId || String(si.product?.id) === itemId || si.product?._id === itemId || String(si._id) === itemId);
+          const exists = savedItems.some((si: any) => 
+            String(si.product?.productId || si.product?._id || si.product?.id || si.productId || si._id || si.id) === itemId
+          );
           if (!exists) {
             if (user) {
               await dispatch(addWishlistItem({ productId: itemId })).unwrap();
             } else {
-              dispatch(addWishlistItem({ productId: itemId }));
+              // Now passing full item object for better guest experience
+              dispatch(addWishlistItem(item));
             }
           }
           triggerToast(`${item.name} moved to wishlist`, "Saved!");
@@ -128,24 +133,45 @@ export default function BagPage() {
         }
 
         if (user) {
-          await dispatch(removeFromCart(item.productId)).unwrap();
+          // Robust ID check for backend removal
+          const removeId = String(item.productId || (item as any).id || (item as any)._id);
+          try {
+            await dispatch(removeFromCart(removeId)).unwrap();
+          } catch (e) {
+            // Fallback for mock/invalid IDs that the server rejects
+            dispatch(removeLocalCartItem(removeId));
+          }
         } else {
-          removeLocalCart(item.productId as unknown as number);
+          // Robust ID check for local removal
+          const removeId = String((item as any).id || item.productId || (item as any)._id);
+          removeLocalCart(removeId);
         }
         setAnimatingItem(null);
       } catch (err: any) {
-        // Silently skip tracking console.error to avoid React overlays.
-        const itemId = String((item as any)._id || item.productId);
-        if (type === "wishlist" && itemId !== "undefined") {
-          dispatch(addLocalWishlistItem({ _id: itemId, product: item, quantity: 1 }));
+        // Fallback for any other unexpected issues to ensure the UI updates
+        const removeId = String(item.productId || (item as any).id || (item as any)._id);
+        
+        if (type === "wishlist" && removeId !== "undefined") {
+          dispatch(addLocalWishlistItem({ _id: removeId, product: item, quantity: 1 }));
           triggerToast(`${item.name} moved to wishlist`, "Saved!");
           if (user) {
-            try { await dispatch(removeFromCart(item.productId)).unwrap(); } catch (e) { }
+            try { 
+              await dispatch(removeFromCart(removeId)).unwrap(); 
+            } catch (e) {
+              dispatch(removeLocalCartItem(removeId));
+            }
           } else {
-            removeLocalCart(item.productId as unknown as number);
+            removeLocalCart((item as any).id || removeId);
           }
         } else {
-          triggerToast(`Failed to ${type === "wishlist" ? "move to wishlist" : "remove item"}`, "Error");
+          // FORCE removal even on failure to avoid "stuck" items in UI
+          if (type === "remove") {
+             if (user) dispatch(removeLocalCartItem(removeId));
+             else removeLocalCart((item as any).id || removeId);
+             triggerToast(`${item.name} removed from cart`, "Removed!");
+          } else {
+             triggerToast(`Failed to ${type === "wishlist" ? "move to wishlist" : "remove item"}`, "Error");
+          }
         }
         setAnimatingItem(null);
       }
@@ -172,28 +198,24 @@ export default function BagPage() {
       return;
     }
 
-    if (!user) {
-      triggerToast("Please login to move items to your wishlist", "Login required");
-      router.push("/login?redirect=/bag");
-      return;
-    }
-
     let successCount = 0;
     // Process all wishlist additions ensuring they complete before clearing the cart
     for (const item of cart) {
       try {
-        const itemId = String((item as any)._id || item.productId);
-        if (itemId === "undefined") continue;
+        const itemId = String(item.productId || (item as any)._id || (item as any).id);
+        if (itemId === "undefined" || !itemId) continue;
 
         const exists = savedItems.some((si: any) =>
-          String(si.product?._id) === itemId ||
-          String(si.product?.id) === itemId ||
-          si.product?._id === itemId ||
-          String(si._id) === itemId
+          String(si.product?.productId || si.product?._id || si.product?.id || si.productId || si._id || si.id) === itemId
         );
         if (!exists) {
           try {
-            await dispatch(addWishlistItem({ productId: itemId })).unwrap();
+            if (user) {
+              await dispatch(addWishlistItem({ productId: itemId })).unwrap();
+            } else {
+              // Pass full item object
+              dispatch(addWishlistItem(item));
+            }
           } catch (e) {
             dispatch(addLocalWishlistItem({ _id: itemId, product: item, quantity: 1 }));
           }
@@ -439,6 +461,24 @@ export default function BagPage() {
                                 </span>
                               )}
                           </div>
+
+                          {/* Color and Size */}
+                          {(item.color || item.size) && (
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 justify-center md:justify-start">
+                              {item.color && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Color:</span>
+                                  <span className="text-xs font-bold text-gray-700">{item.color}</span>
+                                </div>
+                              )}
+                              {item.size && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Size:</span>
+                                  <span className="text-xs font-bold text-gray-700">{item.size}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Quantity */}

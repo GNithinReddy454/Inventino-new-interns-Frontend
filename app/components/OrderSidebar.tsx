@@ -97,10 +97,10 @@ export function OrderSidebar({
         {cart?.map((item: any, index: any) => {
           const product = item.product || item;
           const name = product.name || "Product Name";
-          const color = product.color || "Standard";
-          const price = product.price || 0;
+          const selectedColor = item.color || product.color || "Standard";
+          const price = product.price || item.price || 0;
           const quantity = item.quantity || 1;
-          const id = product._id || product.productId || index;
+          const id = product._id || product.productId || item.productId || index;
 
           return (
             <div
@@ -109,16 +109,21 @@ export function OrderSidebar({
             >
               {/* Product Image Box */}
               <div
-                className={`w-20 h-20 bg-gradient-to-br ${getGradient(color)} rounded-xl flex-shrink-0 shadow-sm`}
-              />
+                className={`w-16 h-16 bg-gradient-to-br ${getGradient(selectedColor)} rounded-xl flex-shrink-0 shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden`}
+              >
+                  {(product.image || product.images?.[0]?.url) && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={product.image || product.images?.[0]?.url} alt={name} className="w-full h-full object-cover" />
+                  )}
+              </div>
 
               {/* Product Details */}
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm text-gray-900 mb-1 truncate">
+                <h3 className="font-semibold text-sm text-gray-900 mb-0.5 truncate">
                   {name}
                 </h3>
-                <p className="text-xs text-gray-500 mb-1">
-                  Qty: {quantity} • {color}
+                <p className="text-[10px] text-gray-500 mb-1">
+                  Qty: {quantity} {item.color ? `• ${item.color}` : ""} {item.size ? `• ${item.size}` : ""}
                 </p>
                 <p className="text-sm font-bold text-pink-600">
                   ₹{price.toFixed(2)}

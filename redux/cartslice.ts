@@ -7,8 +7,8 @@ export interface CartItem {
     price: number;
     quantity: number;
     image: string;
-    color?: string | null;  // Add this
-    size?: string | null;   // Add this
+    color?: string | null;
+    size?: string | null;
 }
 
 export interface CartState {
@@ -132,11 +132,10 @@ const cartSlice = createSlice({
             
             // Check if item with same productId, color, and size exists
             const exists = state.items.find((i: any) => 
-                String(i.productId || i._id) === pId && 
+                String(i.productId || (i as any)._id) === pId && 
                 i.color === color && 
                 i.size === size
             );
-            
             if (exists) {
                 exists.quantity += (action.payload.quantity || 1);
             } else {
@@ -148,6 +147,12 @@ const cartSlice = createSlice({
                     isLocal: true 
                 });
             }
+            state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
+            state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        },
+        removeLocalCartItem: (state, action) => {
+            const id = String(action.payload);
+            state.items = state.items.filter(i => String(i.productId || (i as any)._id) !== id);
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
             state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
         }
@@ -261,5 +266,5 @@ const cartSlice = createSlice({
     },
 });
 
-export const { addLocalCartItem } = cartSlice.actions;
+export const { addLocalCartItem, removeLocalCartItem } = cartSlice.actions;
 export default cartSlice.reducer;

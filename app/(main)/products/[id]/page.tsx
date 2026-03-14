@@ -796,9 +796,11 @@ export default function ProductDetailsPage() {
     );
   }
 
+
   // ============================================================================
   // RENDER
   // ============================================================================
+
 
   return (
     <div className="bg-white font-sans overflow-x-clip min-h-screen relative pb-4 md:pb-0">

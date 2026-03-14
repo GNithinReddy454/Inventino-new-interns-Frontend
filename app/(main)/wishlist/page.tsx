@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { fetchWishlist, removeWishlistItem, clearWishlist, addWishlistItem } from "@/redux/wishlistslice";
+import { fetchWishlist, removeWishlistItem, clearWishlist, addWishlistItem, removeLocalWishlistItem } from "@/redux/wishlistslice";
 import { addToCart as reduxAddToCart, addLocalCartItem } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { useAuth } from "@/app/(main)/components/authContext";
@@ -17,6 +17,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // ── Star Rating ───────────────────────────────────────────────────────────────
 function StarRating({ rating }: { rating: number }) {
@@ -80,6 +81,7 @@ export default function WishlistPage() {
   const { items: savedItems, isLoading, error } = useAppSelector((state) => state.wishlist);
   const { addToCart } = useCart();
   const { user } = useAuth();
+  const router = useRouter();
 
   const [toast, setToast] = useState<{
     title?: string;
@@ -108,19 +110,33 @@ export default function WishlistPage() {
     };
 
     const handleAddToCart = useCallback(
-      async (item: any) => {
+      async (apiItem: any, explicitId?: string) => {
         try {
-          const pId = String(item._id || item.id);
+          const item = apiItem.product || apiItem || {};
+          const pId = String(item.productId || item._id || item.id);
+          const wishId = explicitId || pId;
+          const color = apiItem.color || null;
+          const size = apiItem.size || null;
+          const quantity = apiItem.quantity || 1;
+          
           if (user) {
-            await dispatch(reduxAddToCart({ productId: pId, quantity: 1 })).unwrap();
+            await dispatch(reduxAddToCart({ productId: pId, quantity, color, size })).unwrap();
           } else {
-            addToCart(item, 1);
+            // Ensure item has 'id' for local cart context
+            const localItem = { ...item, id: pId };
+            addToCart(localItem as any, quantity, color, size);
           }
-          await dispatch(removeWishlistItem(pId));
+          
+          await dispatch(removeWishlistItem(wishId));
           triggerToast(`${item.name || item.title || "Item"} added to cart`);
         } catch (error: any) {
-          // Fallback for Product Name 7 (stock/formatting issues)
-          const pId = String(item._id || item.id);
+          // Fallback logic for Stock/Formatting issues
+          const item = apiItem.product || apiItem || {};
+          const pId = String(item.productId || item._id || item.id);
+          const wishId = explicitId || pId;
+          const color = apiItem.color || null;
+          const size = apiItem.size || null;
+          const quantity = apiItem.quantity || 1;
           const errorMessage = typeof error === 'string' ? error : error.message || "";
           
           if (errorMessage.includes("stock") || errorMessage.includes("format") || pId === "7") {
@@ -129,10 +145,12 @@ export default function WishlistPage() {
               name: item.name || item.title || "Untitled Product",
               price: item.price || 0,
               image: getImageUrl(item.images?.[0] || item.image),
-              quantity: 1
+              quantity,
+              color,
+              size
             };
             dispatch(addLocalCartItem(cartPayload));
-            await dispatch(removeWishlistItem(pId));
+            await dispatch(removeWishlistItem(wishId));
             triggerToast(`${item.name || "Item"} added to cart`);
           } else {
             triggerToast(`Failed to add: ${errorMessage}`, "Error");
@@ -143,24 +161,35 @@ export default function WishlistPage() {
     );
 
   const handleAddAllToCart = async () => {
-    if (!selectedIds.length) return;
+    const itemsToProcess = savedItems.map((apiItem: any, idx: number) => {
+      const item = apiItem.product || apiItem || {};
+      const selectionId = String(item._id || item.productId || item.id || apiItem._id || `fallback-${idx}`);
+      return { apiItem, item, selectionId };
+    }).filter(entry => selectedIds.includes(entry.selectionId));
+
+    if (itemsToProcess.length === 0) return;
+
     let count = 0;
-    for (const id of selectedIds) {
+    for (const entry of itemsToProcess) {
       try {
-        const itemWrapper = savedItems.find((p: any) => p.product?._id === id || p.product?.id === id);
-        if (itemWrapper && itemWrapper.product) {
-          const item = itemWrapper.product;
-          const pId = String(id);
+        const { apiItem, item, selectionId } = entry;
+        const color = apiItem.color || null;
+        const size = apiItem.size || null;
+        const quantity = apiItem.quantity || 1;
+
+        if (item && (item._id || item.id || item.productId)) {
+          const pId = String(item.productId || item._id || item.id);
           try {
             if (user) {
-              await dispatch(reduxAddToCart({ productId: pId, quantity: 1 })).unwrap();
+              await dispatch(reduxAddToCart({ productId: pId, quantity, color, size })).unwrap();
             } else {
-              addToCart(item as any, 1);
+              const localItem = { ...item, id: pId };
+              addToCart(localItem as any, quantity, color, size);
             }
-            await dispatch(removeWishlistItem(id));
+            // Individually remove using the same ID used for selection
+            await dispatch(removeWishlistItem(selectionId)).unwrap();
             count++;
           } catch (error: any) {
-            // Fallback for Product Name 7 (stock/formatting issues)
             const errorMessage = typeof error === 'string' ? error : error.message || "";
             if (errorMessage.includes("stock") || errorMessage.includes("format") || pId === "7") {
               const cartPayload = {
@@ -168,20 +197,25 @@ export default function WishlistPage() {
                 name: item.name || item.title || "Untitled Product",
                 price: item.price || 0,
                 image: getImageUrl(item.images?.[0] || item.image),
-                quantity: 1
+                quantity,
+                color,
+                size
               };
               dispatch(addLocalCartItem(cartPayload));
-              await dispatch(removeWishlistItem(id));
+              await dispatch(removeWishlistItem(selectionId)).unwrap();
               count++;
             }
           }
         }
       } catch (err) {
-        // Silently skip tracking console.error to avoid React overlays.
+        // Silently skip
       }
     }
+    
     if (count > 0) {
       triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart`);
+      // Optional: Redirect to cart after bulk add
+      setTimeout(() => router.push("/bag"), 1000);
     } else {
       triggerToast(`Failed to add items to cart`, "Error");
     }
@@ -193,14 +227,25 @@ export default function WishlistPage() {
     const idsToRemove = [...selectedIds];
     setSelectedIds([]);
     
-    // Process removals sequentially to avoid race conditions in Redux/Backend
-    for (const id of idsToRemove) {
-      try {
-        await dispatch(removeWishlistItem(id)).unwrap();
-      } catch (err) {
-        console.error(`Failed to remove item ${id}:`, err);
-      }
+    // Process removals in parallel
+    const results = await Promise.allSettled(
+      idsToRemove.map(id => dispatch(removeWishlistItem(id)).unwrap())
+    );
+    
+    // Check for any rejections (e.g. "Invalid Product ID format")
+    const failedIndices = results
+      .map((res, idx) => (res.status === "rejected" ? idx : -1))
+      .filter(idx => idx !== -1);
+      
+    if (failedIndices.length > 0) {
+      // For any that failed on the server (possibly due to local-only IDs like "7"),
+      // manually remove them from the Redux state to keep the UI in sync.
+      failedIndices.forEach(idx => {
+        dispatch(removeLocalWishlistItem(idsToRemove[idx]));
+      });
+      console.warn(`${failedIndices.length} items failed server removal but were removed locally.`);
     }
+
     triggerToast(
       `${idsToRemove.length} item${idsToRemove.length > 1 ? "s" : ""} removed from your wishlist`,
       "Removed Selected Items"
@@ -215,22 +260,32 @@ export default function WishlistPage() {
 
   const handleAddEntireWishlistToCart = async () => {
     if (!savedItems.length) return;
+    
+    // Take a snapshot to avoid issues with state updates during loop
+    const itemsSnapshot = [...savedItems];
     let count = 0;
-    for (const itemWrapper of savedItems) {
+    
+    for (const itemWrapper of itemsSnapshot) {
       try {
-        if (itemWrapper.product) {
-          const item = itemWrapper.product;
-          const pId = String(item._id || item.id);
+        const item = itemWrapper.product || itemWrapper;
+        const color = itemWrapper.color || null;
+        const size = itemWrapper.size || null;
+        const quantity = itemWrapper.quantity || 1;
+
+        if (item && (item._id || item.id || item.productId)) {
+          const pId = String(item.productId || item._id || item.id);
           try {
             if (user) {
-              await dispatch(reduxAddToCart({ productId: pId, quantity: 1 })).unwrap();
+              await dispatch(reduxAddToCart({ productId: pId, quantity, color, size })).unwrap();
             } else {
-              addToCart(item as any, 1);
+              // Ensure item has 'id' for local cart context
+              const localItem = { ...item, id: pId };
+              addToCart(localItem as any, quantity, color, size);
             }
-            await dispatch(removeWishlistItem(pId));
             count++;
           } catch (error: any) {
             // Fallback for Product Name 7 (stock/formatting issues)
+            const pId = String(item.productId || item._id || item.id);
             const errorMessage = typeof error === 'string' ? error : error.message || "";
             if (errorMessage.includes("stock") || errorMessage.includes("format") || pId === "7") {
               const cartPayload = {
@@ -238,20 +293,27 @@ export default function WishlistPage() {
                 name: item.name || item.title || "Untitled Product",
                 price: item.price || 0,
                 image: getImageUrl(item.images?.[0] || item.image),
-                quantity: 1
+                quantity,
+                color,
+                size
               };
               dispatch(addLocalCartItem(cartPayload));
-              await dispatch(removeWishlistItem(pId));
               count++;
             }
           }
         }
       } catch (err) {
-        // Silently skip tracking console.error to avoid React overlays.
+        // Silently skip
       }
     }
+    
     if (count > 0) {
-      triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart`);
+      // Once all items are added to cart, clear the entire wishlist for efficiency
+      await dispatch(clearWishlist()).unwrap();
+      triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart and wishlist cleared`);
+      
+      // Redirect to cart page
+      setTimeout(() => router.push("/bag"), 1000);
     } else {
       triggerToast(`Failed to add items to cart`, "Error");
     }
@@ -261,13 +323,18 @@ export default function WishlistPage() {
   const selectableIds = useMemo(() => {
     return savedItems.map((apiItem: any, idx: number) => {
       const item = apiItem.product || apiItem || {};
-      return String(item._id || item.productId || item.id || apiItem._id || `fallback-${idx}`);
+      // Robust ID check: handle strings, objects, and nested IDs
+      const rawId = typeof item === 'string' ? item : (item._id || item.productId || item.id);
+      return String(rawId || apiItem._id || `fallback-${idx}`);
     }).filter(id => id && id !== "undefined" && !id.startsWith("fallback-"));
   }, [savedItems]);
 
   const toggleSelectAll = () => {
-    // Always select all when clicking "Select All"
-    setSelectedIds(selectableIds);
+    if (allSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(selectableIds);
+    }
   };
 
   const toggleSelect = (id: string) =>
@@ -428,7 +495,9 @@ export default function WishlistPage() {
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
             {savedItems.map((apiItem: any, index: number) => {
               const item = apiItem.product || apiItem || {};
-              const id = String(item._id || item.productId || item.id || apiItem._id || `fallback-${index}`);
+              const rawId = typeof item === 'string' ? item : (item._id || item.productId || item.id);
+              const id = String(rawId || apiItem._id || `fallback-${index}`);
+              
               if (!id || id === "undefined" || id.startsWith("fallback-")) return null;
 
               const isSelected = selectedIds.includes(id);
@@ -485,12 +554,15 @@ export default function WishlistPage() {
                         <button
                           onClick={(e) => {
                             e.preventDefault();
-                            e.stopPropagation();
-                            dispatch(removeWishlistItem(id));
-                            triggerToast(
-                              `${name} removed from the wishlist`,
-                              "Removed from Wishlist",
-                            );
+                             e.stopPropagation();
+                             dispatch(removeWishlistItem(id)).unwrap().catch(() => {
+                               // Fallback for invalid/local IDs
+                               dispatch(removeLocalWishlistItem(id));
+                             });
+                             triggerToast(
+                               `${name} removed from the wishlist`,
+                               "Removed from Wishlist",
+                             );
                           }}
                           className="w-7 h-7 flex items-center justify-center rounded-full bg-[#E8456A] shadow-md text-white transition-all backdrop-blur-sm hover:bg-[#c73358] active:scale-95"
                         >
@@ -578,15 +650,18 @@ export default function WishlistPage() {
                     {/* Action buttons */}
                     <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => handleAddToCart(item)}
+                        onClick={() => handleAddToCart(item, id)}
                         className="flex-1 inline-flex items-center justify-center gap-1 bg-[#E8456A] hover:bg-[#c73358] text-white py-1.5 sm:py-2 rounded-lg text-[9px] sm:text-[11px] font-bold uppercase tracking-wide transition-all active:scale-95 shadow-sm shadow-pink-100"
                       >
                         <ShoppingBag size={10} className="flex-shrink-0" />
                         Add to Cart
                       </button>
-                      <button
+                       <button
                         onClick={() => {
-                          dispatch(removeWishlistItem(id));
+                          dispatch(removeWishlistItem(id)).unwrap().catch(() => {
+                            // Fallback for invalid/local IDs
+                            dispatch(removeLocalWishlistItem(id));
+                          });
                           triggerToast("Removed from Wishlist", "Removed");
                         }}
                         title="Remove from wishlist"
