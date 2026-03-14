@@ -24,6 +24,7 @@ interface GuestWishlistItem {
   };
   color?: string | null;
   size?: string | null;
+  quantity?: number; // Add quantity to GuestWishlistItem
   isLocal?: boolean;
 }
 
@@ -74,13 +75,14 @@ export const fetchWishlist = createAsyncThunk(
   }
 );
 
-// Accepts either a plain string ID or an object with productId, color, and size
+// Accepts either a plain string ID or an object with productId, color, size, and quantity
 export const addWishlistItem = createAsyncThunk(
   "wishlist/add",
   async (payload: any, { rejectWithValue }) => {
     let productId: string;
     let color: string | null = null;
     let size: string | null = null;
+    let quantity: number = 1; // Default quantity to 1
 
     if (typeof payload === "string") {
       productId = payload;
@@ -88,6 +90,7 @@ export const addWishlistItem = createAsyncThunk(
       productId = String(payload.productId || payload.product?._id || payload._id || payload.id);
       color = payload.color || null;
       size = payload.size || null;
+      quantity = payload.quantity || 1; // Extract quantity from payload
     }
 
     try {
@@ -102,14 +105,22 @@ export const addWishlistItem = createAsyncThunk(
           // If payload is an object, store it; otherwise create minimal structure
           const itemToStore = typeof payload === "object" 
             ? { ...payload, isLocal: true } 
-            : { product: { _id: productId }, _id: productId, productId: productId, color, size, isLocal: true };
+            : { 
+                product: { _id: productId }, 
+                _id: productId, 
+                productId: productId, 
+                color, 
+                size, 
+                quantity, // Include quantity in stored item
+                isLocal: true 
+              };
           items.push(itemToStore);
           saveLocalWishlist(items);
         }
         return items;
       }
-      // Pass color and size to the service
-      const response = await wishlistService.addToWishlist(productId, color || undefined, size || undefined);
+      // Pass color, size, and quantity to the service
+      const response = await wishlistService.addToWishlist(productId, color || undefined, size || undefined, quantity);
       return response.data?.wishlist?.items || [];
     } catch (error: any) {
       return rejectWithValue(
@@ -169,13 +180,14 @@ const wishlistSlice = createSlice({
             const pId = String(action.payload?.product?.productId || action.payload?.product?._id || action.payload?.product?.id || action.payload?._id || action.payload?.productId);
             const color = action.payload?.color;
             const size = action.payload?.size;
+            const quantity = action.payload?.quantity || 1; // Include quantity
             const exists = state.items.some((i: any) => 
                 String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) === pId && 
                 i.color === color && 
                 i.size === size
             );
             if (!exists) {
-                state.items.push({ ...action.payload, isLocal: true });
+                state.items.push({ ...action.payload, quantity, isLocal: true }); // Store quantity
             }
         },
         removeLocalWishlistItem: (state, action) => {
@@ -201,12 +213,13 @@ const wishlistSlice = createSlice({
                 const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
                 const color = loc.color;
                 const size = loc.size;
+                const quantity = loc.quantity || 1; // Preserve quantity
                 if (!merged.some(m => 
                     String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id && 
                     m.color === color && 
                     m.size === size
                 )) {
-                    merged.push(loc);
+                    merged.push({ ...loc, quantity });
                 }
             });
             state.items = merged;
@@ -225,12 +238,13 @@ const wishlistSlice = createSlice({
                 const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
                 const color = loc.color;
                 const size = loc.size;
+                const quantity = loc.quantity || 1; // Preserve quantity
                 if (!merged.some(m => 
                     String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id && 
                     m.color === color && 
                     m.size === size
                 )) {
-                    merged.push(loc);
+                    merged.push({ ...loc, quantity });
                 }
             });
             state.items = merged;
@@ -246,12 +260,13 @@ const wishlistSlice = createSlice({
                 const id = String(loc.product?.productId || loc.product?._id || loc.product?.id || loc.productId || loc._id || loc.id);
                 const color = loc.color;
                 const size = loc.size;
+                const quantity = loc.quantity || 1; // Preserve quantity
                 if (!merged.some(m => 
                     String(m.product?.productId || m.product?._id || m.product?.id || m.productId || m._id || m.id) === id && 
                     m.color === color && 
                     m.size === size
                 )) {
-                    merged.push(loc);
+                    merged.push({ ...loc, quantity });
                 }
             });
             state.items = merged;

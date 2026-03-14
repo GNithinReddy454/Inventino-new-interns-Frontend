@@ -685,21 +685,21 @@ export default function ProductDetailsPage() {
   ]);
 
   const handleWishlist = useCallback(() => {
-    if (!product) return;
+  if (!product) return;
 
-    const willBeSaved = !isSaved;
-    const currentColor = variantColors[selectedColor] || null;
-    const currentSize = selectedSize;
+  const willBeSaved = !isSaved;
+  const currentColor = variantColors[selectedColor] || null;
+  const currentSize = selectedSize;
 
-    handleSaved(product, currentColor, currentSize);
+  // Pass quantity to the wishlist function
+  handleSaved(product, currentColor, currentSize, quantity);
 
-    showToast(
-      willBeSaved ? "Success!" : "Removed",
-      willBeSaved ? "Added to wishlist" : "Removed from wishlist",
-      willBeSaved ? "success" : "info"
-    );
-  }, [product, isSaved, variantColors, selectedColor, selectedSize, handleSaved, showToast]);
-
+  showToast(
+    willBeSaved ? "Success!" : "Removed",
+    willBeSaved ? "Added to wishlist" : "Removed from wishlist",
+    willBeSaved ? "success" : "info"
+  );
+}, [product, isSaved, variantColors, selectedColor, selectedSize, quantity, handleSaved, showToast]);
   const handleScrollSimilar = useCallback((direction: "left" | "right") => {
     if (!similarProductsRef.current) return;
 

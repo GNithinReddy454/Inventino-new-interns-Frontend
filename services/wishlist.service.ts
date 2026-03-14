@@ -8,11 +8,12 @@ export const wishlistService = {
     },
 
     // POST: Create / Add to wishlist
-    addToWishlist: async (productId: string, color?: string | null, size?: string | null) => {
+    addToWishlist: async (productId: string, color?: string | null, size?: string | null, quantity: number = 1) => {
         const response = await apiClient.post("/wishlist", { 
             productId,
             color: color || null,
-            size: size || null
+            size: size || null,
+            quantity // Add quantity to the payload
         });
         return response.data;
     },
