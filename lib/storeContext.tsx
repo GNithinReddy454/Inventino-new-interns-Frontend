@@ -15,6 +15,10 @@ interface WishlistProduct {
   };
   color?: string | null;
   size?: string | null;
+  name?: string;
+  price?: number;
+  image?: string;
+  images?: string[];
 }
 
 interface WishlistItem {
@@ -66,8 +70,16 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
     if (exists) {
       dispatch(removeWishlistItem(productId));
     } else {
-      // Pass quantity to the addWishlistItem action
-      dispatch(addWishlistItem({ productId, color, size, quantity }));
+      // Pass full product data so guest localStorage has name, price, image for display
+      dispatch(addWishlistItem({
+        productId,
+        color,
+        size,
+        quantity,
+        name: product.name || "",
+        price: product.price || 0,
+        image: product.image || (product.images && product.images.length > 0 ? product.images[0] : ""),
+      }));
     }
   };
 

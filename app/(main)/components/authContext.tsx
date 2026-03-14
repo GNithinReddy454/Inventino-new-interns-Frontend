@@ -7,6 +7,7 @@ import { logout as logoutAction } from "@/redux/authslice";
 import { User as BaseUser } from "@/lib/types";
 import { authService } from "@/services/auth.service";
 import { fetchCart, addToCart as reduxAddToCart } from "@/redux/cartslice";
+import { fetchWishlist, addWishlistItem } from "@/redux/wishlistslice";
 import { useToast } from "@/app/components/GlobalToast";
 
 type User = BaseUser & {
@@ -102,12 +103,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // 2. Fetch the user's server cart
       await dispatch(fetchCart());
 
-      // 3. Push each guest item into the server cart
+      // 3. Push each guest item into the server cart (with color, size, quantity)
       if (guestItems.length > 0) {
         for (const item of guestItems) {
           const productId = String(item._id || item.id);
           const quantity = item.quantity || 1;
-          await dispatch(reduxAddToCart({ productId, quantity }));
+          const color = item.color || null;
+          const size = item.size || null;
+          await dispatch(reduxAddToCart({ productId, quantity, color, size }));
         }
 
         // 4. Clear guest cart from localStorage after merging
@@ -115,6 +118,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (err) {
       console.error("Cart merge failed:", err);
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    // ── Merge guest localStorage wishlist into server wishlist ─────────────
+    try {
+      const rawWishlist = localStorage.getItem("guest_wishlist");
+      const guestWishlistItems: any[] = rawWishlist ? JSON.parse(rawWishlist) : [];
+
+      // Fetch the user's server wishlist
+      await dispatch(fetchWishlist());
+
+      // Push each guest wishlist item into the server wishlist (with color, size, quantity)
+      if (guestWishlistItems.length > 0) {
+        for (const item of guestWishlistItems) {
+          const productId = String(item.product?.productId || item.product?._id || item.product?.id || item.productId || item._id || item.id);
+          const color = item.color || null;
+          const size = item.size || null;
+          const quantity = item.quantity || 1;
+          if (productId && productId !== "undefined") {
+            await dispatch(addWishlistItem({ productId, color, size, quantity }));
+          }
+        }
+
+        // Clear guest wishlist from localStorage after merging
+        localStorage.removeItem("guest_wishlist");
+      }
+    } catch (err) {
+      console.error("Wishlist merge failed:", err);
     }
     // ────────────────────────────────────────────────────────────────────────
   };
