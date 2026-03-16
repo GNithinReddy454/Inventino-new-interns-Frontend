@@ -197,7 +197,7 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                 console.log("✅ Received paginated response with data array");
                 console.log(`📊 Page ${customersResponse.page} of ${customersResponse.totalPages}, Total: ${customersResponse.total}`);
                 
-                const transformedCustomers = customersResponse.data.map(transformApiCustomer);
+                const transformedCustomers = (customersResponse.data as any[]).map(transformApiCustomer);
                 setCustomers(transformedCustomers);
                 
                 // IMPORTANT: Set totalItems from API response for correct pagination
@@ -206,7 +206,7 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
             // Handle direct array response (if API returns without pagination)
             else if (Array.isArray(customersResponse)) {
                 console.log("✅ Received direct array of customers");
-                const transformedCustomers = customersResponse.map(transformApiCustomer);
+                const transformedCustomers = (customersResponse as any[]).map(transformApiCustomer);
                 setCustomers(transformedCustomers);
                 setTotalItems(transformedCustomers.length);
             }
@@ -217,8 +217,8 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
             }
 
             // Handle stats data
-            if (statsResponse?.data) {
-                const apiStats = statsResponse.data;
+            if (statsResponse) {
+                const apiStats = (statsResponse as any).data || statsResponse;
                 console.log("✅ Stats data:", apiStats);
                 
                 setStats({
