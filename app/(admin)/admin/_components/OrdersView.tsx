@@ -174,6 +174,7 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     };
 
     const handleDownloadInvoice = (orderId: string) => {
+        // The backend now accepts both MongoDB ID and custom order ID
         window.open(`/api/admin/orders/${orderId}/invoice`, "_blank");
     };
 
@@ -199,6 +200,14 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
             setShowCancelConfirm(false);
             setCancellingOrderId(null);
             setOpenMenu(null);
+        }
+    };
+
+    const handleViewOrder = (orderId: string) => {
+        // We can pass either MongoDB ID or custom order ID
+        // The backend will handle both
+        if (onViewOrder) {
+            onViewOrder(orderId);
         }
     };
 
@@ -261,7 +270,7 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
                         <input
                             type="text"
-                            placeholder="Search by order ID, customer name..."
+                            placeholder="Search by order ID (ORD-001), customer name, email..."
                             value={search}
                             onChange={(e) => {
                                 setSearch(e.target.value);
@@ -344,13 +353,17 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                         <tr key={order._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors">
                                             <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground font-mono text-xs flex justify-between md:table-cell">
                                                 <span className="md:hidden text-muted-foreground uppercase tracking-wider">Order ID</span>
-                                                {order.orderNumber}
+                                                {/* Display both IDs for reference, but show orderNumber prominently */}
+                                                <div className="flex flex-col">
+                                                    <span className="text-primary font-bold">{order.orderNumber}</span>
+                                                    <span className="text-[10px] text-muted-foreground">({order._id.substring(0, 8)}...)</span>
+                                                </div>
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex md:block justify-between w-full md:w-auto items-center">
                                                     <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Product</span>
                                                     <button
-                                                        onClick={() => onViewOrder?.(order._id)}
+                                                        onClick={() => handleViewOrder(order._id)}
                                                         className="text-primary hover:underline font-medium text-sm text-left"
                                                     >
                                                         {order.products?.[0]?.name || "View Details"}
@@ -400,8 +413,11 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                                 </button>
                                                 {openMenu === order._id && (
                                                     <div className="absolute right-0 md:right-6 top-12 md:top-8 z-20 bg-white border border-border rounded-xl shadow-xl py-2 w-48 text-sm">
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted" onClick={() => onViewOrder?.(order._id)}>
+                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted" onClick={() => handleViewOrder(order._id)}>
                                                             View Details
+                                                        </button>
+                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted" onClick={() => handleViewOrder(order.orderNumber)}>
+                                                            View by Order #{order.orderNumber}
                                                         </button>
                                                         <button className="w-full text-left px-4 py-2 hover:bg-muted" onClick={() => handleDownloadInvoice(order._id)}>
                                                             Download Invoice

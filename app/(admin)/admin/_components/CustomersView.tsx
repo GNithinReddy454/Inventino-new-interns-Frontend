@@ -12,7 +12,7 @@ import {
 } from "@/services/admin.service";
 import { useToast } from "@/app/components/GlobalToast";
 
-// Mock data for development
+// Mock data for development (keep as fallback)
 const MOCK_CUSTOMERS: AdminCustomer[] = [
     {
         _id: "mock-1",
@@ -24,6 +24,7 @@ const MOCK_CUSTOMERS: AdminCustomer[] = [
         customerType: "VIP",
         registeredAt: "2025-01-15T10:00:00.000Z",
         active: true,
+        customerId: "CUST-001",
     },
     {
         _id: "mock-2",
@@ -35,6 +36,7 @@ const MOCK_CUSTOMERS: AdminCustomer[] = [
         customerType: "Regular",
         registeredAt: "2025-02-20T09:30:00.000Z",
         active: true,
+        customerId: "CUST-002",
     },
     {
         _id: "mock-3",
@@ -46,6 +48,7 @@ const MOCK_CUSTOMERS: AdminCustomer[] = [
         customerType: "VIP",
         registeredAt: "2024-11-05T14:15:00.000Z",
         active: true,
+        customerId: "CUST-003",
     },
     {
         _id: "mock-4",
@@ -57,6 +60,7 @@ const MOCK_CUSTOMERS: AdminCustomer[] = [
         customerType: "New",
         registeredAt: "2026-03-01T11:20:00.000Z",
         active: false,
+        customerId: "CUST-004",
     },
 ];
 
@@ -66,6 +70,38 @@ const MOCK_STATS = {
     regular_customers: 1,
     vip_customers: 2,
 };
+
+// Interface for API response based on your actual API
+interface ApiCustomer {
+    name: string;
+    email: string;
+    phone: string;
+    isActive: boolean;
+    createdAt: string;
+    userId: string;
+}
+
+interface ApiCustomersResponse {
+    statusCode: number;
+    message: string;
+    data: ApiCustomer[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    error: null;
+}
+
+interface ApiStatsResponse {
+    statusCode: number;
+    message: string;
+    data: {
+        total: number;
+        active: number;
+        inactive: number;
+    };
+    error: null;
+}
 
 export default function CustomersView({ onViewProfile }: { onViewProfile?: (customerId: string) => void }) {
     const [search, setSearch] = useState("");
@@ -85,45 +121,118 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
         fetchData();
     }, [currentPage, pageSize, search, typeFilter, sort]);
 
+    // Transform API customer to AdminCustomer format
+    const transformApiCustomer = (apiCustomer: ApiCustomer): AdminCustomer => {
+        console.log("🔄 Transforming API customer:", apiCustomer);
+        
+        const customerId = apiCustomer.userId;
+        
+        if (!customerId) {
+            console.warn("⚠️ Customer has no userId:", apiCustomer);
+        }
+        
+        // Determine customer type based on registration date
+        let customerType = "Regular";
+        
+        try {
+            const registrationDate = new Date(apiCustomer.createdAt);
+            const daysSinceRegistration = Math.floor((Date.now() - registrationDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysSinceRegistration < 30) {
+                customerType = "New";
+            } else if (daysSinceRegistration > 180) {
+                customerType = "VIP";
+            }
+        } catch (e) {
+            console.warn("Error calculating customer type:", e);
+        }
+
+        return {
+            _id: customerId || `temp-${Date.now()}`,
+            name: apiCustomer.name || "Unknown",
+            email: apiCustomer.email || "",
+            phone: apiCustomer.phone || "—",
+            totalOrders: 0,
+            totalSpent: 0,
+            customerType: customerType,
+            registeredAt: apiCustomer.createdAt || new Date().toISOString(),
+            active: apiCustomer.isActive === true,
+            customerId: customerId,
+        };
+    };
+
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const sortByMap: Record<string, string> = {
-                Newest: "registeredAt",
-                Oldest: "registeredAt",
-                "Most Orders": "totalOrders",
-                "Highest Spent": "totalSpent",
-            };
-            const sortOrder = sort === "Oldest" ? "asc" : "desc";
-            const sortBy = sortByMap[sort] || "registeredAt";
+            console.log("🔵 Fetching customers with params:", {
+                page: currentPage,
+                limit: pageSize,
+                search: search || undefined,
+                sortBy: sort === "Newest" ? "createdAt" : 
+                       sort === "Oldest" ? "createdAt" : 
+                       sort === "Most Orders" ? "totalOrders" : "totalSpent",
+                sortOrder: sort === "Oldest" ? "asc" : "desc",
+            });
 
-            const [customersRes, statsRes] = await Promise.all([
-                getAdminCustomers({
-                    page: currentPage,
-                    limit: pageSize,
-                    search: search || undefined,
-                    type: typeFilter !== "All Types" ? typeFilter : undefined,
-                    sortBy,
-                    sortOrder,
-                }),
-                getAdminCustomerStats(),
-            ]);
+            // Fetch customers list
+            const customersResponse = await getAdminCustomers({
+                page: currentPage,
+                limit: pageSize,
+                search: search || undefined,
+                sortBy: sort === "Newest" ? "createdAt" : 
+                       sort === "Oldest" ? "createdAt" : 
+                       sort === "Most Orders" ? "totalOrders" : "totalSpent",
+                sortOrder: sort === "Oldest" ? "asc" : "desc",
+            });
 
-            if (customersRes && customersRes.data && Array.isArray(customersRes.data)) {
-                setCustomers(customersRes.data);
-                setTotalItems(customersRes.total);
-            } else {
+            console.log("✅ Customers API Full Response:", customersResponse);
+
+            // Fetch customer stats
+            const statsResponse = await getAdminCustomerStats();
+            console.log("✅ Stats API Response:", statsResponse);
+
+            // Handle customers data with pagination
+            if (customersResponse?.data && Array.isArray(customersResponse.data)) {
+                // API returns paginated response with total count
+                console.log("✅ Received paginated response with data array");
+                console.log(`📊 Page ${customersResponse.page} of ${customersResponse.totalPages}, Total: ${customersResponse.total}`);
+                
+                const transformedCustomers = customersResponse.data.map(transformApiCustomer);
+                setCustomers(transformedCustomers);
+                
+                // IMPORTANT: Set totalItems from API response for correct pagination
+                setTotalItems(customersResponse.total || transformedCustomers.length);
+            } 
+            // Handle direct array response (if API returns without pagination)
+            else if (Array.isArray(customersResponse)) {
+                console.log("✅ Received direct array of customers");
+                const transformedCustomers = customersResponse.map(transformApiCustomer);
+                setCustomers(transformedCustomers);
+                setTotalItems(transformedCustomers.length);
+            }
+            else {
+                console.log("❌ No valid customers data, using mock data");
                 setCustomers(MOCK_CUSTOMERS);
                 setTotalItems(MOCK_CUSTOMERS.length);
             }
 
-            if (statsRes) {
-                setStats(statsRes);
+            // Handle stats data
+            if (statsResponse?.data) {
+                const apiStats = statsResponse.data;
+                console.log("✅ Stats data:", apiStats);
+                
+                setStats({
+                    total_customers: apiStats.total || 0,
+                    new_customers: Math.floor(apiStats.total * 0.2), // Estimate 20% new customers
+                    regular_customers: apiStats.active || 0,
+                    vip_customers: Math.floor(apiStats.total * 0.1), // Estimate 10% VIP customers
+                });
             } else {
+                console.log("❌ No valid stats data, using mock stats");
                 setStats(MOCK_STATS);
             }
         } catch (err) {
-            console.error("Failed to fetch customers:", err);
+            console.error("❌ Failed to fetch customers:", err);
             setCustomers(MOCK_CUSTOMERS);
             setTotalItems(MOCK_CUSTOMERS.length);
             setStats(MOCK_STATS);
@@ -136,23 +245,45 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
     const handleExport = async () => {
         try {
             const blob = await exportAdminCustomers({
+                format: "csv",
                 search: search || undefined,
                 type: typeFilter !== "All Types" ? typeFilter : undefined,
             });
+            
             if (blob) {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "customers.csv";
-                a.click();
-                window.URL.revokeObjectURL(url);
+                if (blob instanceof Blob) {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `customers_${new Date().toISOString().split('T')[0]}.csv`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    showToast("Success", "Customers exported successfully", "success");
+                } else if (typeof blob === 'string') {
+                    const csvContent = blob;
+                    const blobObj = new Blob([csvContent], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blobObj);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `customers_${new Date().toISOString().split('T')[0]}.csv`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    showToast("Success", "Customers exported successfully", "success");
+                }
             }
         } catch (err) {
+            console.error("Export failed:", err);
             showToast("Error", "Export failed", "error");
         }
     };
 
     const handleToggleActive = async (customerId: string, currentActive: boolean) => {
+        if (customerId.startsWith('mock-') || customerId.startsWith('CUST-')) {
+            showToast("Error", "Cannot modify mock customer", "error");
+            setOpenMenu(null);
+            return;
+        }
+
         try {
             const result = await updateAdminCustomer(customerId, { active: !currentActive });
             if (result) {
@@ -163,8 +294,48 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
             }
             setOpenMenu(null);
         } catch (err) {
+            console.error("Failed to update status:", err);
             showToast("Error", "Failed to update status", "error");
         }
+    };
+
+    const handleViewProfile = (customerId: string) => {
+        console.log("👤 handleViewProfile called with ID:", customerId);
+        
+        // Check if it's a mock ID
+        if (customerId?.startsWith('mock-') || customerId?.startsWith('CUST-')) {
+            console.warn('Attempted to view mock profile:', customerId);
+            showToast("Error", "Cannot view mock customer profile", "error");
+            return;
+        }
+        
+        // Check if it's a valid ID format (should be like USR-xxx or a MongoDB ID)
+        if (!customerId || customerId.length < 5) {
+            console.error("❌ Invalid customer ID:", customerId);
+            showToast("Error", "Invalid customer ID", "error");
+            return;
+        }
+        
+        if (onViewProfile) {
+            console.log("✅ Calling onViewProfile with ID:", customerId);
+            onViewProfile(customerId);
+        } else {
+            console.error("❌ onViewProfile prop is not provided");
+            showToast("Error", "View profile function not available", "error");
+        }
+    };
+
+    const handleViewOrders = (customerId: string) => {
+        console.log("📦 View Orders clicked for ID:", customerId);
+        
+        // Check if it's a mock ID
+        if (customerId?.startsWith('mock-') || customerId?.startsWith('CUST-')) {
+            showToast("Error", "Cannot view mock customer orders", "error");
+            return;
+        }
+        
+        // Navigate to orders page filtered by this customer
+        showToast("Info", "View orders feature coming soon", "info");
     };
 
     const tabs = ["All Customers", "Returns", "Replacements", "Support"];
@@ -219,7 +390,7 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
                         <input
                             type="text"
-                            placeholder="Search customers..."
+                            placeholder="Search by name, email, or customer ID..."
                             value={search}
                             onChange={(e) => {
                                 setSearch(e.target.value);
@@ -259,75 +430,155 @@ export default function CustomersView({ onViewProfile }: { onViewProfile?: (cust
                 {isLoading ? (
                     <div className="p-4"><SkeletonTable rows={10} cols={9} /></div>
                 ) : activeTab === "All Customers" ? (
-                    <div className="overflow-x-auto w-full">
-                        <table className="w-full text-left text-sm whitespace-nowrap">
-                            <thead className="bg-pink-50/50 text-muted-foreground font-bold text-xs uppercase tracking-wider hidden md:table-header-group">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="bg-pink-50/50 text-muted-foreground text-xs uppercase">
                                 <tr>
-                                    <th className="px-6 py-4">Customer</th>
-                                    <th className="px-6 py-4">Email</th>
-                                    <th className="px-6 py-4">Phone</th>
-                                    <th className="px-6 py-4">Total Orders</th>
-                                    <th className="px-6 py-4">Total Spent</th>
-                                    <th className="px-6 py-4">Type</th>
-                                    <th className="px-6 py-4">Registered</th>
-                                    <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4">Actions</th>
+                                    <th className="px-4 py-3 text-left">Customer</th>
+                                    <th className="px-4 py-3 text-left">Email</th>
+                                    <th className="px-4 py-3 text-left">Phone</th>
+                                    <th className="px-4 py-3 text-left">Orders</th>
+                                    <th className="px-4 py-3 text-left">Spent</th>
+                                    <th className="px-4 py-3 text-left">Type</th>
+                                    <th className="px-4 py-3 text-left">Registered</th>
+                                    <th className="px-4 py-3 text-left">Status</th>
+                                    <th className="px-4 py-3 text-left">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {customers.length === 0 ? (
-                                    <tr><td colSpan={9} className="text-center py-12 text-muted-foreground text-sm">No customers found</td></tr>
+                                    <tr>
+                                        <td colSpan={9} className="text-center py-8 text-muted-foreground">
+                                            No customers found
+                                        </td>
+                                    </tr>
                                 ) : (
-                                    customers.map((c) => (
-                                        <tr key={c._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/20 transition-colors">
-                                            <td className="px-0 py-2 md:px-6 md:py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-[#E91E63] text-white text-xs font-bold shrink-0 hidden md:flex md:items-center md:justify-center">{c.name.slice(0, 2).toUpperCase()}</div>
-                                                    <div className="flex md:block justify-between w-full md:w-auto items-center">
-                                                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Customer</span>
-                                                        <div className="text-right md:text-left">
-                                                            <button onClick={() => onViewProfile?.(c._id)} className="font-bold text-foreground text-sm leading-tight hover:underline text-left">{c.name}</button>
+                                    customers.map((c) => {
+                                        // Check if this is a real customer (not mock)
+                                        const isRealCustomer = c.customerId && 
+                                            !c.customerId.startsWith('mock-') && 
+                                            !c.customerId.startsWith('CUST-') &&
+                                            c.customerId.length > 5;
+                                        
+                                        const idToUse = c.customerId || c._id;
+                                        
+                                        return (
+                                            <tr key={c._id} className="hover:bg-muted/20">
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 rounded-full bg-[#E91E63] text-white text-xs font-bold flex items-center justify-center">
+                                                            {c.name.slice(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    console.log("👆 Customer name clicked:", { 
+                                                                        name: c.name, 
+                                                                        id: idToUse,
+                                                                        customerId: c.customerId,
+                                                                        isRealCustomer 
+                                                                    });
+                                                                    
+                                                                    if (isRealCustomer) {
+                                                                        handleViewProfile(idToUse);
+                                                                    } else {
+                                                                        showToast("Error", "Cannot view mock customer profile", "error");
+                                                                    }
+                                                                }}
+                                                                className={`font-medium hover:underline ${!isRealCustomer ? 'text-gray-400 cursor-not-allowed' : 'text-foreground'}`}
+                                                            >
+                                                                {c.name}
+                                                            </button>
+                                                            {c.customerId && (
+                                                                <p className="text-[10px] text-muted-foreground">{c.customerId}</p>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Email</span>{c.email}</td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Phone</span>{c.phone || "—"}</td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 text-foreground font-semibold flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Total Orders</span>{c.totalOrders}</td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Total Spent</span>₹{c.totalSpent?.toLocaleString() ?? 0}</td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Type</span>{typeBadge(c.customerType)}</td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center"><span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Registered</span>{c.registeredAt ? new Date(c.registeredAt).toLocaleDateString() : "—"}</td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
-                                                <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Status</span>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${c.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                                                    {c.active ? "Active" : "Inactive"}
-                                                </span>
-                                            </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
-                                                <button onClick={() => setOpenMenu(openMenu === c._id ? null : c._id)} className="text-muted-foreground hover:text-foreground md:p-1.5 px-4 py-2 bg-muted md:bg-transparent rounded-lg hover:bg-muted/80 transition-colors flex items-center gap-2 text-xs font-bold"><span className="md:hidden">Actions</span><MoreVertical size={16} /></button>
-                                                {openMenu === c._id && (
-                                                    <div className="absolute right-0 md:right-6 top-12 md:top-8 z-20 bg-white border border-border rounded-xl shadow-xl py-2 w-48 text-sm">
-                                                        <button onClick={() => { onViewProfile?.(c._id); setOpenMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">View Profile</button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-foreground">View Orders</button>
-                                                        <button onClick={() => handleToggleActive(c._id, c.active ?? true)} className="w-full text-left px-4 py-2 hover:bg-red-50 transition-colors text-red-500">{c.active ? "Deactivate" : "Activate"}</button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
+                                                </td>
+                                                <td className="px-4 py-3 text-muted-foreground">{c.email}</td>
+                                                <td className="px-4 py-3 text-muted-foreground">{c.phone}</td>
+                                                <td className="px-4 py-3 font-medium">{c.totalOrders}</td>
+                                                <td className="px-4 py-3 font-medium">₹{c.totalSpent?.toLocaleString() ?? 0}</td>
+                                                <td className="px-4 py-3">{typeBadge(c.customerType)}</td>
+                                                <td className="px-4 py-3 text-muted-foreground">
+                                                    {c.registeredAt ? new Date(c.registeredAt).toLocaleDateString() : "—"}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                                        c.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                                                    }`}>
+                                                        {c.active ? "Active" : "Inactive"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 relative">
+                                                    <button
+                                                        onClick={() => setOpenMenu(openMenu === c._id ? null : c._id)}
+                                                        className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                                                    >
+                                                        <MoreVertical size={16} className="text-muted-foreground" />
+                                                    </button>
+                                                    
+                                                    {openMenu === c._id && (
+                                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-border py-1 z-50">
+                                                            {isRealCustomer ? (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            handleViewProfile(idToUse);
+                                                                            setOpenMenu(null);
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors"
+                                                                    >
+                                                                        View Profile
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            handleViewOrders(idToUse);
+                                                                            setOpenMenu(null);
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors"
+                                                                    >
+                                                                        View Orders
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <div className="px-4 py-2 text-sm text-muted-foreground">
+                                                                    No actions available
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
-                        <Pagination
-                            currentPage={currentPage}
-                            totalItems={totalItems}
-                            pageSize={pageSize}
-                            onPageChange={(p) => { setCurrentPage(p); setOpenMenu(null); }}
-                            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
-                        />
+                        
+                        {/* Pagination Component */}
+                        <div className="border-t border-border px-4 py-3">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalItems={totalItems}
+                                pageSize={pageSize}
+                                onPageChange={(page) => {
+                                    setCurrentPage(page);
+                                    setOpenMenu(null);
+                                }}
+                                onPageSizeChange={(size) => {
+                                    setPageSize(size);
+                                    setCurrentPage(1);
+                                    setOpenMenu(null);
+                                }}
+                            />
+                        </div>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground"><Users size={36} className="mb-3 opacity-20" /><p className="text-sm">{activeTab} — No records found</p></div>
+                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                        <Users size={36} className="mb-3 opacity-20" />
+                        <p className="text-sm">{activeTab} — No records found</p>
+                    </div>
                 )}
             </div>
         </div>
