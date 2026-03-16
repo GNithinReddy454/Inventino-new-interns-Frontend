@@ -1,17 +1,33 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, MoreVertical, Search, ShoppingCart, TrendingUp } from "lucide-react";
+import { Search, ShoppingCart, TrendingUp } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
-import { exportToCSV } from "./exportUtils";
 import Pagination from "./Pagination";
-import { 
-    getAdminOrders, 
-    getAdminOrderStats, 
-    exportAdminOrders, 
-    cancelOrder 
+import {
+    getAdminOrders,
+    getAdminOrderStats,
+    exportAdminOrders,
+    cancelOrder,
+    downloadOrderInvoice,
+    OrderStats,
 } from "@/services/admin.service";
 import { useToast } from "@/app/components/GlobalToast";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { MoreVertical } from "lucide-react";
 
-// Mock data for development (will be used until backend returns real data)
+// ── Fallback mock data ────────────────────────────────────────────────────────
 const MOCK_ORDERS: any[] = [
     {
         _id: "order-1",
@@ -22,7 +38,7 @@ const MOCK_ORDERS: any[] = [
         bg: "bg-purple-500",
         products: [{ name: "Gold Necklace", quantity: 1, price: 1250 }],
         totalAmount: 1250,
-        status: "Delivered",
+        status: "delivered",
         date: "2026-03-10T10:00:00.000Z",
         trackingNumber: "FDX-8945632",
     },
@@ -35,7 +51,7 @@ const MOCK_ORDERS: any[] = [
         bg: "bg-blue-500",
         products: [{ name: "Silver Earrings", quantity: 2, price: 350 }],
         totalAmount: 700,
-        status: "Shipped",
+        status: "shipped",
         date: "2026-03-09T14:30:00.000Z",
         trackingNumber: "UPS-7532641",
     },
@@ -46,22 +62,22 @@ const MOCK_ORDERS: any[] = [
         email: "emily@example.com",
         initials: "EB",
         bg: "bg-green-500",
-        products: [{ name: "Diamond Ring", quantity: 1, price: 1500 }, { name: "Pearl Bracelet", quantity: 1, price: 450 }],
+        products: [
+            { name: "Diamond Ring", quantity: 1, price: 1500 },
+            { name: "Pearl Bracelet", quantity: 1, price: 450 },
+        ],
         totalAmount: 1950,
-        status: "Processing",
+        status: "confirmed",
         date: "2026-03-08T09:15:00.000Z",
         trackingNumber: "",
     },
 ];
 
-// Mock stats for development
-const MOCK_STATS = {
-    total_orders: 1245,
-    pending_orders: 23,
-    processing_orders: 45,
-    shipped_orders: 89,
-    delivered_orders: 1125,
-    returned_orders: 8,
+const MOCK_STATS: OrderStats = {
+    total: 32, created: 4, confirmed: 3, packed: 0,
+    shipped: 1, delivered: 4, cancelled: 19, returned: 0,
+    total_orders: 32, pending_orders: 7, processing_orders: 0,
+    shipped_orders: 1, delivered_orders: 4, returned_orders: 0,
 };
 
 interface OrdersViewProps {
@@ -70,79 +86,69 @@ interface OrdersViewProps {
 
 export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All Status");
     const [dateFilter, setDateFilter] = useState("All Dates");
     const [sort, setSort] = useState("Newest");
-    const [openMenu, setOpenMenu] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [orders, setOrders] = useState<any[]>([]);
     const [totalItems, setTotalItems] = useState(0);
-    const [stats, setStats] = useState(MOCK_STATS);
+    const [stats, setStats] = useState<OrderStats>(MOCK_STATS);
     const { showToast } = useToast();
 
-    // Cancel confirmation state
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
+    // Debounce search input by 400ms
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search), 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
     useEffect(() => {
         fetchData();
-    }, [currentPage, pageSize, search, statusFilter, dateFilter, sort]);
+    }, [currentPage, pageSize, debouncedSearch, statusFilter, dateFilter, sort]);
 
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            // Convert date filter to from/to
             let from: string | undefined;
             let to: string | undefined;
             const now = new Date();
             if (dateFilter === "Today") {
-                from = new Date(now.setHours(0, 0, 0, 0)).toISOString();
-                to = new Date(now.setHours(23, 59, 59, 999)).toISOString();
+                from = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+                to = new Date(new Date().setHours(23, 59, 59, 999)).toISOString();
             } else if (dateFilter === "Last 7 Days") {
                 from = new Date(now.setDate(now.getDate() - 7)).toISOString();
             } else if (dateFilter === "Last 30 Days") {
                 from = new Date(now.setDate(now.getDate() - 30)).toISOString();
             }
 
-            const sortByMap: Record<string, string> = {
-                Newest: "createdAt",
-                Oldest: "createdAt",
-            };
-            const sortOrder = sort === "Oldest" ? "asc" : "desc";
-            const sortBy = sortByMap[sort] || "createdAt";
-
             const [ordersRes, statsRes] = await Promise.all([
                 getAdminOrders({
                     page: currentPage,
                     limit: pageSize,
-                    search: search || undefined,
-                    status: statusFilter !== "All Status" ? statusFilter : undefined,
+                    search: debouncedSearch || undefined,
+                    status: statusFilter !== "All Status" ? statusFilter.toLowerCase() : undefined,
                     from,
                     to,
-                    sortBy,
-                    sortOrder,
+                    sortBy: "createdAt",
+                    sortOrder: sort === "Oldest" ? "asc" : "desc",
                 }),
                 getAdminOrderStats({ from, to }),
             ]);
 
-            // Safely set orders – fallback to mock if no data
-            if (ordersRes && ordersRes.data && Array.isArray(ordersRes.data)) {
+            if (ordersRes?.data?.length) {
                 setOrders(ordersRes.data);
                 setTotalItems(ordersRes.total);
             } else {
-                // Use mock data for development
                 setOrders(MOCK_ORDERS);
                 setTotalItems(MOCK_ORDERS.length);
             }
 
-            // Safely set stats – fallback to mock
-            if (statsRes) {
-                setStats(statsRes);
-            } else {
-                setStats(MOCK_STATS);
-            }
+            setStats(statsRes ?? MOCK_STATS);
         } catch (err) {
             console.error("Failed to fetch orders:", err);
             setOrders(MOCK_ORDERS);
@@ -157,8 +163,8 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     const handleExport = async () => {
         try {
             const blob = await exportAdminOrders({
-                search: search || undefined,
-                status: statusFilter !== "All Status" ? statusFilter : undefined,
+                search: debouncedSearch || undefined,
+                status: statusFilter !== "All Status" ? statusFilter.toLowerCase() : undefined,
             });
             if (blob) {
                 const url = window.URL.createObjectURL(blob);
@@ -168,13 +174,22 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                 a.click();
                 window.URL.revokeObjectURL(url);
             }
-        } catch (err) {
+        } catch {
             showToast("Error", "Export failed", "error");
         }
     };
 
-    const handleDownloadInvoice = (orderId: string) => {
-        window.open(`/api/admin/orders/${orderId}/invoice`, "_blank");
+    const handleDownloadInvoice = async (orderId: string) => {
+        try {
+            const blob = await downloadOrderInvoice(orderId);
+            if (blob) {
+                const url = window.URL.createObjectURL(blob);
+                window.open(url, "_blank");
+                window.URL.revokeObjectURL(url);
+            }
+        } catch {
+            showToast("Error", "Could not download invoice", "error");
+        }
     };
 
     const handleCancelClick = (orderId: string) => {
@@ -185,37 +200,47 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     const confirmCancel = async () => {
         if (!cancellingOrderId) return;
         try {
-            await cancelOrder(cancellingOrderId);
-            // Update local state optimistically
-            setOrders(prev =>
-                prev.map(o =>
-                    o._id === cancellingOrderId ? { ...o, status: "Cancelled" } : o
-                )
+            await cancelOrder(cancellingOrderId, "Cancelled by admin");
+            setOrders((prev) =>
+                prev.map((o) => o._id === cancellingOrderId ? { ...o, status: "cancelled" } : o)
             );
             showToast("Success", "Order cancelled", "success");
-        } catch (err) {
+        } catch {
             showToast("Error", "Failed to cancel order", "error");
         } finally {
             setShowCancelConfirm(false);
             setCancellingOrderId(null);
-            setOpenMenu(null);
         }
     };
 
-    const statuses = ["All Status", "Pending", "Processing", "Shipped", "Out for Delivery", "Delivered", "Cancelled"];
+    // Lowercase to match API
+    const statuses = ["All Status", "created", "confirmed", "packed", "shipped", "delivered", "cancelled"];
     const dateOptions = ["All Dates", "Today", "Last 7 Days", "Last 30 Days"];
 
     const statusBadge = (status: string) => {
         const map: Record<string, string> = {
-            Delivered: "bg-green-100 text-green-700",
-            Shipped: "bg-blue-100 text-blue-700",
-            "Out for Delivery": "bg-indigo-100 text-indigo-700",
-            Processing: "bg-orange-100 text-orange-700",
-            Pending: "bg-purple-100 text-purple-700",
-            Cancelled: "bg-red-100 text-red-700",
+            delivered: "bg-green-100 text-green-700",
+            shipped: "bg-blue-100 text-blue-700",
+            packed: "bg-orange-100 text-orange-700",
+            confirmed: "bg-yellow-100 text-yellow-700",
+            created: "bg-purple-100 text-purple-700",
+            cancelled: "bg-red-100 text-red-700",
         };
-        return <span className={`px-3 py-1 rounded-full text-xs font-bold ${map[status] || "bg-gray-100 text-gray-600"}`}>{status}</span>;
+        const key = (status ?? "").toLowerCase();
+        return (
+            <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${map[key] || "bg-gray-100 text-gray-600"}`}>
+                {status}
+            </span>
+        );
     };
+
+    const statsCards = [
+        { label: "Total Orders",  value: stats.total ?? 0,           color: "text-primary",      sub: "+8.3% vs last month", subColor: "text-green-500" },
+        { label: "Pending",       value: (stats.created ?? 0) + (stats.confirmed ?? 0), color: "text-orange-500", sub: "Need attention", subColor: "text-muted-foreground" },
+        { label: "Processing",    value: stats.packed ?? 0,           color: "text-yellow-600",   sub: "", subColor: "" },
+        { label: "Shipped",       value: stats.shipped ?? 0,          color: "text-blue-500",     sub: "", subColor: "" },
+        { label: "Delivered",     value: stats.delivered ?? 0,        color: "text-foreground",   sub: "", subColor: "" },
+    ];
 
     return (
         <div className="space-y-6 w-full">
@@ -226,32 +251,21 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                {isLoading ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />) : (
-                    <>
-                        <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
-                            <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">Total Orders</p>
-                            <p className="text-3xl font-bold text-primary">{stats.total_orders.toLocaleString()}</p>
-                            <p className="text-xs text-green-500 font-bold mt-2 flex items-center gap-1"><TrendingUp size={11} /> +8.3% vs last month</p>
+                {isLoading
+                    ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
+                    : statsCards.map((card) => (
+                        <div key={card.label} className="bg-card rounded-2xl border border-border shadow-sm p-5">
+                            <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">{card.label}</p>
+                            <p className={`text-3xl font-bold ${card.color}`}>{card.value.toLocaleString()}</p>
+                            {card.sub && (
+                                <p className={`text-xs font-bold mt-2 flex items-center gap-1 ${card.subColor}`}>
+                                    {card.label === "Total Orders" && <TrendingUp size={11} />}
+                                    {card.sub}
+                                </p>
+                            )}
                         </div>
-                        <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
-                            <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">Pending</p>
-                            <p className="text-3xl font-bold text-orange-500">{stats.pending_orders}</p>
-                            <p className="text-xs text-muted-foreground mt-2">Need attention</p>
-                        </div>
-                        <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
-                            <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">Processing</p>
-                            <p className="text-3xl font-bold text-yellow-600">{stats.processing_orders}</p>
-                        </div>
-                        <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
-                            <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">Shipped</p>
-                            <p className="text-3xl font-bold text-blue-500">{stats.shipped_orders}</p>
-                        </div>
-                        <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
-                            <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">Delivered</p>
-                            <p className="text-3xl font-bold text-foreground">{stats.delivered_orders}</p>
-                        </div>
-                    </>
-                )}
+                    ))
+                }
             </div>
 
             {/* Filters */}
@@ -263,52 +277,43 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                             type="text"
                             placeholder="Search by order ID, customer name..."
                             value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setCurrentPage(1);
-                            }}
+                            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                             className="w-full pl-9 pr-4 py-2.5 bg-[#FDF2F5] border border-pink-200 rounded-xl text-sm focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all"
                         />
                     </div>
-                    <div className="relative">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => {
-                                setStatusFilter(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer"
-                        >
-                            {statuses.map((s) => <option key={s}>{s}</option>)}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    </div>
-                    <div className="relative">
-                        <select
-                            value={dateFilter}
-                            onChange={(e) => {
-                                setDateFilter(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer"
-                        >
-                            {dateOptions.map((d) => <option key={d}>{d}</option>)}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    </div>
-                    <div className="relative">
-                        <select
-                            value={sort}
-                            onChange={(e) => {
-                                setSort(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer"
-                        >
-                            {["Newest", "Oldest"].map((s) => <option key={s}>Sort: {s}</option>)}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    </div>
+
+                    <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}>
+                        <SelectTrigger className="w-full md:w-[160px] rounded-xl border-border bg-background text-sm capitalize">
+                            <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {statuses.map((s) => (
+                                <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={dateFilter} onValueChange={(val) => { setDateFilter(val); setCurrentPage(1); }}>
+                        <SelectTrigger className="w-full md:w-[150px] rounded-xl border-border bg-background text-sm">
+                            <SelectValue placeholder="All Dates" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {dateOptions.map((d) => (
+                                <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={sort} onValueChange={(val) => { setSort(val); setCurrentPage(1); }}>
+                        <SelectTrigger className="w-full md:w-[140px] rounded-xl border-border bg-background text-sm">
+                            <SelectValue placeholder="Sort: Newest" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {["Newest", "Oldest"].map((s) => (
+                                <SelectItem key={s} value={s}>Sort: {s}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
@@ -349,10 +354,7 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex md:block justify-between w-full md:w-auto items-center">
                                                     <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Product</span>
-                                                    <button
-                                                        onClick={() => onViewOrder?.(order._id)}
-                                                        className="text-primary hover:underline font-medium text-sm text-left"
-                                                    >
+                                                    <button onClick={() => onViewOrder?.(order._id)} className="text-primary hover:underline font-medium text-sm text-left">
                                                         {order.products?.[0]?.name || "View Details"}
                                                         {order.products?.length > 1 && ` +${order.products.length - 1}`}
                                                     </button>
@@ -360,8 +362,8 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-9 h-9 rounded-full ${order.bg} text-white text-xs font-bold shrink-0 hidden md:flex md:items-center md:justify-center`}>
-                                                        {order.initials}
+                                                    <div className={`w-9 h-9 rounded-full ${order.bg || "bg-purple-500"} text-white text-xs font-bold shrink-0 hidden md:flex md:items-center md:justify-center`}>
+                                                        {order.initials || (typeof order.customer === "string" ? order.customer.slice(0, 2) : "??").toUpperCase()}
                                                     </div>
                                                     <div className="flex md:block justify-between w-full md:w-auto items-center">
                                                         <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Customer</span>
@@ -374,11 +376,11 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Date</span>
-                                                {new Date(order.date).toLocaleDateString()}
+                                                {order.date ? new Date(order.date).toLocaleDateString() : "—"}
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Amount</span>
-                                                ₹{order.totalAmount?.toLocaleString()}
+                                                ₹{(order.totalAmount ?? order.total ?? 0).toLocaleString()}
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
                                                 <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Status</span>
@@ -391,26 +393,28 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                                 </span>
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
-                                                <button
-                                                    onClick={() => setOpenMenu(openMenu === order._id ? null : order._id)}
-                                                    className="text-muted-foreground hover:text-foreground md:p-1.5 px-4 py-2 bg-muted md:bg-transparent rounded-lg hover:bg-muted/80 transition-colors flex items-center gap-2 text-xs font-bold"
-                                                >
-                                                    <span className="md:hidden">Actions</span>
-                                                    <MoreVertical size={16} />
-                                                </button>
-                                                {openMenu === order._id && (
-                                                    <div className="absolute right-0 md:right-6 top-12 md:top-8 z-20 bg-white border border-border rounded-xl shadow-xl py-2 w-48 text-sm">
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted" onClick={() => onViewOrder?.(order._id)}>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                                            <MoreVertical size={16} />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-48">
+                                                        <DropdownMenuItem onClick={() => onViewOrder?.(order._id)} className="cursor-pointer">
                                                             View Details
-                                                        </button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-muted" onClick={() => handleDownloadInvoice(order._id)}>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleDownloadInvoice(order._id)} className="cursor-pointer">
                                                             Download Invoice
-                                                        </button>
-                                                        <button className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-500" onClick={() => handleCancelClick(order._id)}>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleCancelClick(order._id)}
+                                                            className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-50"
+                                                            disabled={order.status === "cancelled" || order.status === "delivered"}
+                                                        >
                                                             Cancel Order
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </td>
                                         </tr>
                                     ))
@@ -419,13 +423,12 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                         </table>
                     </div>
 
-                    {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-6 py-3 border-t border-border bg-muted/20">
                         <Pagination
                             currentPage={currentPage}
                             totalItems={totalItems}
                             pageSize={pageSize}
-                            onPageChange={(p) => { setCurrentPage(p); setOpenMenu(null); }}
+                            onPageChange={(p) => setCurrentPage(p)}
                             onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
                         />
                         <button className="text-xs font-bold text-primary hover:text-primary-dark transition-colors shrink-0" onClick={handleExport}>
@@ -438,22 +441,12 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
             {/* Cancel Confirmation Modal */}
             {showCancelConfirm && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-md">
-                        <h3 className="text-lg font-bold mb-4">Cancel Order</h3>
-                        <p className="mb-4">Are you sure you want to cancel this order? This action cannot be undone.</p>
+                    <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+                        <h3 className="text-lg font-bold mb-2">Cancel Order</h3>
+                        <p className="text-sm text-muted-foreground mb-6">Are you sure you want to cancel this order? This action cannot be undone.</p>
                         <div className="flex gap-3 justify-end">
-                            <button
-                                onClick={() => setShowCancelConfirm(false)}
-                                className="px-4 py-2 border rounded-lg"
-                            >
-                                No, Keep
-                            </button>
-                            <button
-                                onClick={confirmCancel}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg"
-                            >
-                                Yes, Cancel
-                            </button>
+                            <Button variant="outline" onClick={() => setShowCancelConfirm(false)}>No, Keep</Button>
+                            <Button variant="destructive" onClick={confirmCancel}>Yes, Cancel</Button>
                         </div>
                     </div>
                 </div>
