@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Download, Save, XCircle, MessageSquare } from "lucide-react";
+import { ArrowLeft, Download, Save, XCircle, MessageSquare, Copy } from "lucide-react";
 import { SkeletonTable } from "./Skeleton";
 import { 
     getAdminOrderById, 
@@ -172,6 +172,7 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewPro
     const [pendingStatus, setPendingStatus] = useState("");
     const [newNote, setNewNote] = useState("");
     const [notes, setNotes] = useState<any[]>([]);
+    const [copySuccess, setCopySuccess] = useState("");
     const { showToast } = useToast();
 
     useEffect(() => {
@@ -288,6 +289,13 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewPro
         }
     };
 
+    const copyToClipboard = (text: string, type: string) => {
+        navigator.clipboard.writeText(text);
+        setCopySuccess(type);
+        setTimeout(() => setCopySuccess(""), 2000);
+        showToast("Copied", `${type} copied to clipboard`, "success");
+    };
+
     if (loading) return <div className="p-6"><SkeletonTable rows={8} cols={4} /></div>;
     if (!order) return <div className="p-6 text-center text-muted-foreground">Order not found.</div>;
 
@@ -298,7 +306,28 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailsViewPro
                     <button onClick={onBack} className="p-2 hover:bg-muted rounded-full">
                         <ArrowLeft size={20} />
                     </button>
-                    <h1 className="text-2xl font-bold">Order #{order.orderNumber}</h1>
+                    <div>
+                        <h1 className="text-2xl font-bold flex items-center gap-2">
+                            Order #{order.orderNumber}
+                            <button 
+                                onClick={() => copyToClipboard(order.orderNumber, "Order Number")}
+                                className="p-1 hover:bg-muted rounded"
+                                title="Copy order number"
+                            >
+                                <Copy size={14} className="text-muted-foreground" />
+                            </button>
+                        </h1>
+                        <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            MongoDB ID: {order._id}
+                            <button 
+                                onClick={() => copyToClipboard(order._id, "MongoDB ID")}
+                                className="p-1 hover:bg-muted rounded"
+                                title="Copy MongoDB ID"
+                            >
+                                <Copy size={12} className="text-muted-foreground" />
+                            </button>
+                        </p>
+                    </div>
                 </div>
                 <button
                     onClick={() => window.open(`/api/admin/orders/${orderId}/invoice`, "_blank")}
