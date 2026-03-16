@@ -41,6 +41,8 @@ export interface AdminCustomer {
     customerType: string;
     registeredAt?: string;
     active?: boolean;
+    // Add custom customer ID if exists
+    customerId?: string; // For CUST-001 style IDs
 }
 
 export interface AdminCustomerDetail extends AdminCustomer {
@@ -48,6 +50,8 @@ export interface AdminCustomerDetail extends AdminCustomer {
         billing: Address;
         shipping: Address;
     };
+    // Add custom customer ID if exists
+    customerId?: string; // For CUST-001 style IDs
 }
 
 export interface Address {
@@ -69,7 +73,7 @@ export interface CustomerStats {
 
 export interface AdminOrderListItem {
     _id: string;
-    orderNumber: string;
+    orderNumber: string; // This is the custom ID like ORD-001
     customer: string;
     email: string;
     initials?: string;
@@ -83,7 +87,7 @@ export interface AdminOrderListItem {
 
 export interface AdminOrderDetail {
     _id: string;
-    orderNumber: string;
+    orderNumber: string; // This is the custom ID like ORD-001
     customer: {
         name: string;
         email: string;
@@ -287,17 +291,21 @@ export const getAdminCustomerStats = (params?: { from?: string; to?: string }): 
         return res.data;
     });
 
+// UPDATED: Support both MongoDB ID and custom customer ID
 export const getAdminCustomerById = (id: string): Promise<AdminCustomerDetail | null> =>
     gracefulFetch(async () => {
+        // The backend now accepts both MongoDB IDs and custom IDs (CUST-001)
         const res = await apiMethods.get<ApiResponse<AdminCustomerDetail>>(`/admin/customers/${id}`) as ApiResponse<AdminCustomerDetail>;
         return res.data;
     });
 
+// UPDATED: Support both MongoDB ID and custom customer ID for orders
 export const getAdminCustomerOrders = (
     id: string,
     params?: { page?: number; limit?: number; sortBy?: string; sortOrder?: string }
 ): Promise<PaginatedResponse<{ _id: string; orderNumber: string; date: string; status: string; total: number; paymentMethod: string }> | null> =>
     gracefulFetch(async () => {
+        // The backend now accepts both MongoDB IDs and custom IDs (CUST-001)
         const res = await apiMethods.get<ApiResponse<PaginatedResponse<any>>>(`/admin/customers/${id}/orders`, { params }) as ApiResponse<PaginatedResponse<any>>;
         return res.data;
     });
@@ -343,36 +351,43 @@ export const getAdminOrderStats = (params?: { from?: string; to?: string }): Pro
         return res.data;
     });
 
+// UPDATED: Support both MongoDB ID and custom order ID (ORD-001)
 export const getAdminOrderById = (id: string): Promise<AdminOrderDetail | null> =>
     gracefulFetch(async () => {
+        // The backend now accepts both MongoDB IDs and custom IDs (ORD-001)
         const res = await apiMethods.get<ApiResponse<AdminOrderDetail>>(`/admin/orders/${id}`) as ApiResponse<AdminOrderDetail>;
         return res.data;
     });
 
+// UPDATED: Support both MongoDB ID and custom order ID (ORD-001)
 export const updateOrderStatus = (id: string, status: string): Promise<{ orderId: string; newStatus: string } | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.put<ApiResponse<any>>(`/admin/orders/${id}/status`, { status }) as ApiResponse<any>;
         return res.data;
     });
 
+// UPDATED: Support both MongoDB ID and custom order ID (ORD-001)
 export const updateOrderTracking = (id: string, trackingNumber: string): Promise<{ orderId: string; trackingNumber: string } | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.put<ApiResponse<any>>(`/admin/orders/${id}/tracking`, { trackingNumber }) as ApiResponse<any>;
         return res.data;
     });
 
+// UPDATED: Support both MongoDB ID and custom order ID (ORD-001)
 export const cancelOrder = (id: string, reason?: string): Promise<{ orderId: string; status: string } | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.patch<ApiResponse<any>>(`/admin/orders/${id}/cancel`, { reason }) as ApiResponse<any>;
         return res.data;
     });
 
+// UPDATED: Support both MongoDB ID and custom order ID (ORD-001)
 export const addOrderNote = (id: string, note: string): Promise<{ noteId: string; author: string; text: string; timestamp: string } | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.post<ApiResponse<any>>(`/admin/orders/${id}/notes`, { note }) as ApiResponse<any>;
         return res.data;
     });
 
+// UPDATED: Support both MongoDB ID and custom order ID (ORD-001)
 export const downloadOrderInvoice = (id: string): Promise<Blob | null> =>
     gracefulFetch(async () => {
         const res = await apiMethods.get(`/admin/orders/${id}/invoice`, {
