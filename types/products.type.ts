@@ -24,6 +24,9 @@ export interface ApiProduct {
   material?: string;
   size?: string;
   color?: string;
+  colors?: any[];
+  sizes?: any[];
+  prices?: any[];
   createdAt: string;
   updatedAt: string;
 }
