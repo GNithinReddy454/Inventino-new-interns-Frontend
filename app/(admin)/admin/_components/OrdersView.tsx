@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { Search, ShoppingCart, TrendingUp } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
@@ -27,50 +29,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreVertical } from "lucide-react";
 
-// ── Fallback mock data ────────────────────────────────────────────────────────
 const MOCK_ORDERS: any[] = [
-    {
-        _id: "order-1",
-        orderNumber: "ORD-001",
-        customer: "John Doe",
-        email: "john@example.com",
-        initials: "JD",
-        bg: "bg-purple-500",
-        products: [{ name: "Gold Necklace", quantity: 1, price: 1250 }],
-        totalAmount: 1250,
-        status: "delivered",
-        date: "2026-03-10T10:00:00.000Z",
-        trackingNumber: "FDX-8945632",
-    },
-    {
-        _id: "order-2",
-        orderNumber: "ORD-002",
-        customer: "Sarah Miller",
-        email: "sarah@example.com",
-        initials: "SM",
-        bg: "bg-blue-500",
-        products: [{ name: "Silver Earrings", quantity: 2, price: 350 }],
-        totalAmount: 700,
-        status: "shipped",
-        date: "2026-03-09T14:30:00.000Z",
-        trackingNumber: "UPS-7532641",
-    },
-    {
-        _id: "order-3",
-        orderNumber: "ORD-003",
-        customer: "Emily Brown",
-        email: "emily@example.com",
-        initials: "EB",
-        bg: "bg-green-500",
-        products: [
-            { name: "Diamond Ring", quantity: 1, price: 1500 },
-            { name: "Pearl Bracelet", quantity: 1, price: 450 },
-        ],
-        totalAmount: 1950,
-        status: "confirmed",
-        date: "2026-03-08T09:15:00.000Z",
-        trackingNumber: "",
-    },
+    { _id: "order-1", orderNumber: "ORD-001", customer: "John Doe", email: "john@example.com", initials: "JD", bg: "bg-purple-500", products: [{ name: "Gold Necklace", quantity: 1, price: 1250 }], totalAmount: 1250, status: "delivered", date: "2026-03-10T10:00:00.000Z", trackingNumber: "FDX-8945632" },
+    { _id: "order-2", orderNumber: "ORD-002", customer: "Sarah Miller", email: "sarah@example.com", initials: "SM", bg: "bg-blue-500", products: [{ name: "Silver Earrings", quantity: 2, price: 350 }], totalAmount: 700, status: "shipped", date: "2026-03-09T14:30:00.000Z", trackingNumber: "UPS-7532641" },
+    { _id: "order-3", orderNumber: "ORD-003", customer: "Emily Brown", email: "emily@example.com", initials: "EB", bg: "bg-green-500", products: [{ name: "Diamond Ring", quantity: 1, price: 1500 }, { name: "Pearl Bracelet", quantity: 1, price: 450 }], totalAmount: 1950, status: "confirmed", date: "2026-03-08T09:15:00.000Z", trackingNumber: "" },
 ];
 
 const MOCK_STATS: OrderStats = {
@@ -101,7 +63,6 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
-    // Debounce search input by 400ms
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search), 400);
         return () => clearTimeout(timer);
@@ -213,7 +174,10 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         }
     };
 
-    // Lowercase to match API
+    const handleViewOrder = (orderId: string) => {
+        onViewOrder?.(orderId);
+    };
+
     const statuses = ["All Status", "created", "confirmed", "packed", "shipped", "delivered", "cancelled"];
     const dateOptions = ["All Dates", "Today", "Last 7 Days", "Last 30 Days"];
 
@@ -234,12 +198,30 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         );
     };
 
+    // Helper: get customer name from API response
+    // API returns customer as string (name) — no separate email field in list
+    const getCustomerName = (order: any): string =>
+        typeof order.customer === "string" ? order.customer : (order.customer?.name ?? "—");
+
+    const getCustomerEmail = (order: any): string =>
+        order.email ?? (typeof order.customer === "object" ? order.customer?.email : "") ?? "";
+
+    const getInitials = (name: string): string =>
+        name && name !== "—"
+            ? name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()
+            : "?";
+
+    const BG_COLORS = [
+        "bg-purple-500","bg-blue-500","bg-green-500",
+        "bg-pink-500","bg-yellow-500","bg-indigo-500",
+    ];
+
     const statsCards = [
-        { label: "Total Orders",  value: stats.total ?? 0,           color: "text-primary",      sub: "+8.3% vs last month", subColor: "text-green-500" },
+        { label: "Total Orders",  value: stats.total ?? 0,           color: "text-primary",     sub: "+8.3% vs last month", subColor: "text-green-500" },
         { label: "Pending",       value: (stats.created ?? 0) + (stats.confirmed ?? 0), color: "text-orange-500", sub: "Need attention", subColor: "text-muted-foreground" },
-        { label: "Processing",    value: stats.packed ?? 0,           color: "text-yellow-600",   sub: "", subColor: "" },
-        { label: "Shipped",       value: stats.shipped ?? 0,          color: "text-blue-500",     sub: "", subColor: "" },
-        { label: "Delivered",     value: stats.delivered ?? 0,        color: "text-foreground",   sub: "", subColor: "" },
+        { label: "Processing",    value: stats.packed ?? 0,           color: "text-yellow-600",  sub: "", subColor: "" },
+        { label: "Shipped",       value: stats.shipped ?? 0,          color: "text-blue-500",    sub: "", subColor: "" },
+        { label: "Delivered",     value: stats.delivered ?? 0,        color: "text-foreground",  sub: "", subColor: "" },
     ];
 
     return (
@@ -345,79 +327,94 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                         </td>
                                     </tr>
                                 ) : (
-                                    orders.map((order) => (
-                                        <tr key={order._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors">
-                                            <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground font-mono text-xs flex justify-between md:table-cell">
-                                                <span className="md:hidden text-muted-foreground uppercase tracking-wider">Order ID</span>
-                                                {order.orderNumber}
-                                            </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4">
-                                                <div className="flex md:block justify-between w-full md:w-auto items-center">
-                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Product</span>
-                                                    <button onClick={() => onViewOrder?.(order._id)} className="text-primary hover:underline font-medium text-sm text-left">
-                                                        {order.products?.[0]?.name || "View Details"}
-                                                        {order.products?.length > 1 && ` +${order.products.length - 1}`}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-9 h-9 rounded-full ${order.bg || "bg-purple-500"} text-white text-xs font-bold shrink-0 hidden md:flex md:items-center md:justify-center`}>
-                                                        {order.initials || (typeof order.customer === "string" ? order.customer.slice(0, 2) : "??").toUpperCase()}
-                                                    </div>
+                                    orders.map((order, idx) => {
+                                        const customerName  = getCustomerName(order);
+                                        const customerEmail = getCustomerEmail(order);
+                                        const initials      = order.initials ?? getInitials(customerName);
+                                        const bgColor       = order.bg ?? BG_COLORS[idx % BG_COLORS.length];
+                                        // API returns `total`, mapped layer stores as `totalAmount`
+                                        const amount        = order.totalAmount ?? order.total ?? 0;
+                                        // Product name: from mapped `products` array or fallback
+                                        const productName   = order.products?.[0]?.name ?? "—";
+                                        const extraProducts = (order.products?.length ?? 0) > 1
+                                            ? ` +${order.products.length - 1}` : "";
+
+                                        return (
+                                            <tr key={order._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors">
+                                                <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground font-mono text-xs flex justify-between md:table-cell">
+                                                    <span className="md:hidden text-muted-foreground uppercase tracking-wider">Order ID</span>
+                                                    {order.orderNumber}
+                                                </td>
+                                                <td className="px-0 py-2 md:px-6 md:py-4">
                                                     <div className="flex md:block justify-between w-full md:w-auto items-center">
-                                                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Customer</span>
-                                                        <div className="text-right md:text-left">
-                                                            <p className="font-semibold text-foreground text-sm leading-tight">{order.customer}</p>
-                                                            <p className="text-xs text-muted-foreground mt-0.5">{order.email}</p>
+                                                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Product</span>
+                                                        <button
+                                                            onClick={() => handleViewOrder(order._id)}
+                                                            className="text-primary hover:underline font-medium text-sm text-left"
+                                                        >
+                                                            {productName}{extraProducts}
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td className="px-0 py-2 md:px-6 md:py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-9 h-9 rounded-full ${bgColor} text-white text-xs font-bold shrink-0 hidden md:flex md:items-center md:justify-center`}>
+                                                            {initials}
+                                                        </div>
+                                                        <div className="flex md:block justify-between w-full md:w-auto items-center">
+                                                            <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Customer</span>
+                                                            <div className="text-right md:text-left">
+                                                                <p className="font-semibold text-foreground text-sm leading-tight">{customerName}</p>
+                                                                {customerEmail && <p className="text-xs text-muted-foreground mt-0.5">{customerEmail}</p>}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center">
-                                                <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Date</span>
-                                                {order.date ? new Date(order.date).toLocaleDateString() : "—"}
-                                            </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center">
-                                                <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Amount</span>
-                                                ₹{(order.totalAmount ?? order.total ?? 0).toLocaleString()}
-                                            </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
-                                                <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Status</span>
-                                                {statusBadge(order.status)}
-                                            </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
-                                                <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Tracking</span>
-                                                <span className="bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded-lg text-xs font-bold font-mono">
-                                                    {order.trackingNumber || "N/A"}
-                                                </span>
-                                            </td>
-                                            <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                                            <MoreVertical size={16} />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48">
-                                                        <DropdownMenuItem onClick={() => onViewOrder?.(order._id)} className="cursor-pointer">
-                                                            View Details
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleDownloadInvoice(order._id)} className="cursor-pointer">
-                                                            Download Invoice
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleCancelClick(order._id)}
-                                                            className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-50"
-                                                            disabled={order.status === "cancelled" || order.status === "delivered"}
-                                                        >
-                                                            Cancel Order
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                </td>
+                                                <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center">
+                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Date</span>
+                                                    {order.date ? new Date(order.date).toLocaleDateString() : "—"}
+                                                </td>
+                                                <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center">
+                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Amount</span>
+                                                    ₹{amount.toLocaleString()}
+                                                </td>
+                                                <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
+                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Status</span>
+                                                    {statusBadge(order.status)}
+                                                </td>
+                                                <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
+                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Tracking</span>
+                                                    <span className="bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded-lg text-xs font-bold font-mono">
+                                                        {order.trackingNumber || "N/A"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                                                <MoreVertical size={16} />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-48">
+                                                            <DropdownMenuItem onClick={() => handleViewOrder(order._id)} className="cursor-pointer">
+                                                                View Details
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleDownloadInvoice(order._id)} className="cursor-pointer">
+                                                                Download Invoice
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleCancelClick(order._id)}
+                                                                className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-50"
+                                                                disabled={order.status === "cancelled" || order.status === "delivered"}
+                                                            >
+                                                                Cancel Order
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
