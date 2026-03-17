@@ -137,6 +137,18 @@ export default function CheckoutFlow() {
         throw new Error(rzpOrderData.error || "Failed to create Razorpay order");
       }
 
+      // Capture current values in closure variables to prevent stale state
+      const capturedAddressId = addressId!;
+      const capturedItems = cartItems.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        color: item.color || undefined,
+        size: item.size || undefined,
+      }));
+      const capturedPaymentMethod = paymentMethod;
+      const capturedTotalAmount = totalAmount;
+      const capturedShippingAddress = shippingAddress;
+
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: amountInPaise,
@@ -146,37 +158,65 @@ export default function CheckoutFlow() {
         description: "Order Payment",
         handler: async function (response: any) {
           try {
+            console.log("Razorpay payment success, creating order...", {
+              addressId: capturedAddressId,
+              items: capturedItems,
+              paymentMethod: capturedPaymentMethod.toUpperCase(),
+              razorpay_payment_id: response.razorpay_payment_id,
+            });
+
             const resultAction = await dispatch(placeOrderAction({
-              addressId: addressId!,
-              items: cartItems.map(item => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                color: item.color || undefined,
-                size: item.size || undefined,
-              })),
-              paymentMethod: paymentMethod.toUpperCase()
+              addressId: capturedAddressId,
+              items: capturedItems,
+              paymentMethod: capturedPaymentMethod.toUpperCase()
             }));
+
+            console.log("placeOrderAction result:", resultAction);
 
             if (placeOrderAction.fulfilled.match(resultAction)) {
               const orderRes = resultAction.payload;
               setOrderResponse({
                 status: "success",
-                orderId: orderRes.data._id || response.razorpay_payment_id,
-                orderNumber: orderRes.data.orderNumber,
-                orderDate: orderRes.data.createdAt || new Date().toISOString(),
+                orderId: orderRes.data?._id || response.razorpay_payment_id,
+                orderNumber: orderRes.data?.orderNumber || "N/A",
+                orderDate: orderRes.data?.createdAt || new Date().toISOString(),
                 transactionId: response.razorpay_payment_id,
-                paymentMethod: paymentMethod,
-                totalAmount: orderRes.data.total || totalAmount,
-                shippingAddress: shippingAddress,
+                paymentMethod: capturedPaymentMethod,
+                totalAmount: orderRes.data?.total || capturedTotalAmount,
+                shippingAddress: capturedShippingAddress!,
                 trackingNumber: "TRK-" + Math.floor(Math.random() * 1000000),
                 estimatedDelivery: "3-5 Days",
               });
               setCurrentStep("success");
             } else {
-              throw new Error("Payment succeeded but order creation failed");
+              const errorMsg = (resultAction as any).payload || (resultAction as any).error?.message || "Order creation failed";
+              console.error("Order creation rejected:", errorMsg);
+              setOrderResponse({
+                status: "failed",
+                orderId: "",
+                orderNumber: "",
+                orderDate: new Date().toISOString(),
+                totalAmount: capturedTotalAmount,
+                paymentMethod: capturedPaymentMethod,
+                shippingAddress: capturedShippingAddress!,
+                transactionId: response.razorpay_payment_id,
+                errorMessage: String(errorMsg),
+              });
+              setCurrentStep("failed");
             }
-          } catch (err) {
+          } catch (err: any) {
             console.error("Post-payment order creation failed:", err);
+            setOrderResponse({
+              status: "failed",
+              orderId: "",
+              orderNumber: "",
+              orderDate: new Date().toISOString(),
+              totalAmount: capturedTotalAmount,
+              paymentMethod: capturedPaymentMethod,
+              shippingAddress: capturedShippingAddress!,
+              transactionId: response.razorpay_payment_id,
+              errorMessage: err?.message || "Unknown error during order creation",
+            });
             setCurrentStep("failed");
           } finally {
             setLocalIsProcessing(false);

@@ -44,7 +44,7 @@ function resolveUrl(url: string): string {
 }
 
 function normalizeProduct(p: Product) {
-  const resolvedImages = p.images
+  const resolvedImages = (p.images || [])
     .map((img) => resolveUrl(img.url))
     .filter(Boolean);
 

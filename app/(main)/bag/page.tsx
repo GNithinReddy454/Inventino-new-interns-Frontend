@@ -184,6 +184,7 @@ export default function BagPage() {
         if (applyPromoCode.fulfilled.match(action)) {
           setPromoApplied(true);
           setPromoError("");
+          triggerToast("Coupon Applied Successfully", "🎉 Coupon Applied!");
         } else {
           setPromoApplied(false);
           setPromoError((action.payload as string) || "Invalid promo code");
@@ -531,44 +532,58 @@ export default function BagPage() {
             </div>
 
             {/* Promo Code */}
-            <div className="bg-white rounded-4xl border border-dashed border-gray-200 shadow-sm p-6 md:p-8">
-              <div className="flex items-center gap-2 mb-4">
-                <Tag size={15} className="text-[#D94F7A]" />
-                <span className="text-sm font-bold text-gray-700 uppercase tracking-widest text-[10px]">
-                  Promo Code
-                </span>
+            {promoApplied ? (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-4xl border border-green-200 shadow-sm p-6 md:p-8 transition-all duration-500 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircle2 size={20} className="text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-green-700">Coupon Applied Successfully!</p>
+                      <p className="text-xs text-green-600 mt-0.5">10% discount has been applied to your order</p>
+                    </div>
+                  </div>
+                  <span className="bg-green-100 text-green-700 text-[10px] px-3 py-1.5 rounded-full font-black uppercase tracking-widest border border-green-200">
+                    Applied
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="text"
-                  placeholder="Enter Promo Code"
-                  value={promoCode}
-                  onChange={(e) => {
-                    setPromoCode(e.target.value);
-                    setPromoError("");
-                    setPromoApplied(false);
-                  }}
-                  className="w-full sm:flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
-                  aria-label="Promo code"
-                />
-                <button
-                  onClick={handleApplyPromo}
-                  className="w-full sm:w-auto bg-[#D94F7A] hover:bg-[#b83d63] text-white px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
-                >
-                  Apply Code
-                </button>
+            ) : (
+              <div className="bg-white rounded-4xl border border-dashed border-gray-200 shadow-sm p-6 md:p-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Tag size={15} className="text-[#D94F7A]" />
+                  <span className="text-sm font-bold text-gray-700 uppercase tracking-widest text-[10px]">
+                    Promo Code
+                  </span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    placeholder="Enter Promo Code"
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value);
+                      setPromoError("");
+                      setPromoApplied(false);
+                    }}
+                    className="w-full sm:flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
+                    aria-label="Promo code"
+                  />
+                  <button
+                    onClick={handleApplyPromo}
+                    className="w-full sm:w-auto bg-[#D94F7A] hover:bg-[#b83d63] text-white px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
+                  >
+                    Apply Code
+                  </button>
+                </div>
+                {promoError && (
+                  <p className="text-red-400 text-xs font-medium mt-2">
+                    {promoError}
+                  </p>
+                )}
               </div>
-              {promoApplied && (
-                <p className="text-green-500 text-xs font-bold mt-2 flex items-center gap-1">
-                  ✓ Promo applied! 10% discount added.
-                </p>
-              )}
-              {promoError && (
-                <p className="text-red-400 text-xs font-medium mt-2">
-                  {promoError}
-                </p>
-              )}
-            </div>
+            )}
           </div>
 
           {/* RIGHT: Order Summary */}
