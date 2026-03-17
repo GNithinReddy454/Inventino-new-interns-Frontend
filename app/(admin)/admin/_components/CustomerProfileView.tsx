@@ -156,9 +156,9 @@ export default function CustomerProfileView({ customerId, onBack, onViewOrder }:
             console.log("✅ Customer Orders API Response:", ordersData);
 
             // Handle customer data
-            if (customerData && customerData.data) {
-                // API returns { statusCode, message, data: { ... } }
-                const apiCustomer = customerData.data as ApiCustomerDetail;
+            if (customerData) {
+                // The service returns the data directly if successful
+                const apiCustomer = (customerData as any).data || (customerData as unknown as ApiCustomerDetail);
                 const transformedCustomer = transformApiCustomerDetail(apiCustomer, customerId);
                 setCustomer(transformedCustomer);
                 setNewType(transformedCustomer.customerType);

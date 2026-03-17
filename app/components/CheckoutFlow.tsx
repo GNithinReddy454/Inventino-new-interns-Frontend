@@ -123,13 +123,25 @@ export default function CheckoutFlow() {
         throw new Error("Razorpay SDK not loaded");
       }
 
-      const amountInPaise = Math.round(totalAmount * 100);
+      // const amountInPaise = Math.round(totalAmount * 1);
+      const amountInPaise = 100; // 1 Rupee in paise
+
+      const rzpOrderResp = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amountInPaise }),
+      });
+      const rzpOrderData = await rzpOrderResp.json();
+
+      if (!rzpOrderResp.ok) {
+        throw new Error(rzpOrderData.error || "Failed to create Razorpay order");
+      }
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: amountInPaise,
         currency: "INR",
-        order_id: "ORD-" + Math.floor(Math.random() * 1000000),
+        order_id: rzpOrderData.id,
         name: "Inventino Jewels",
         description: "Order Payment",
         handler: async function (response: any) {
