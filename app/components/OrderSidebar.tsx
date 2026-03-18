@@ -48,7 +48,6 @@ export function OrderSidebar({
   const [promoCode, setPromoCode] = useState("");
   const [applyingPromo, setApplyingPromo] = useState(false);
   const [promoError, setPromoError] = useState("");
-  const [promoApplied, setPromoApplied] = useState(false);
   const [toast, setToast] = useState({ title: "", message: "", show: false });
 
   const triggerToast = useCallback(
@@ -69,9 +68,8 @@ export function OrderSidebar({
       if (applyPromoAction.rejected.match(result)) {
         setPromoError(result.payload as string || "Invalid promo code");
       } else {
-        setPromoApplied(true);
         setPromoCode("");
-        triggerToast("Coupon Applied Successfully", "🎉 Coupon Applied!");
+        triggerToast("Coupon is Applied Successfully", "Success!");
       }
     } catch (error) {
       setPromoError("Something went wrong");
@@ -149,7 +147,7 @@ export function OrderSidebar({
 
       {/* Promo Code */}
       {currentStep !== "success" && currentStep !== "tracking" && (
-        promoApplied ? (
+        appliedCode ? (
           <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4 transition-all duration-500">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -157,7 +155,7 @@ export function OrderSidebar({
                   <CheckCircle2 className="w-4 h-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-green-700">Coupon Applied Successfully!</p>
+                  <p className="text-xs font-bold text-green-700">Coupon is Applied Successfully!</p>
                   <p className="text-[10px] text-green-600">Discount applied to your order</p>
                 </div>
               </div>
@@ -215,7 +213,7 @@ export function OrderSidebar({
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Discount</span>
             <span className="font-medium text-green-600">
-              -${summary?.discount?.toFixed(2)}
+              -₹{summary?.discount?.toFixed(2)}
             </span>
           </div>
         )}

@@ -178,7 +178,7 @@ export function OrderReview({
             variant="outline"
             onClick={onBack}
             disabled={isProcessing}
-            className="flex-1 py-6 border-pink-200 text-pink-600 hover:bg-pink-50 rounded-xl font-bold"
+            className="flex-1 py-6 border-pink-200 text-pink-600 hover:bg-pink-600 hover:text-white hover:border-pink-600 transition-all duration-300 rounded-xl font-bold"
           >
             Back to Payment
           </Button>

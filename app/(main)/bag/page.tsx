@@ -94,7 +94,6 @@ export default function BagPage() {
 
   const [animatingItem, setAnimatingItem] = useState<AnimatingItem | null>(null);
   const [promoCode, setPromoCode] = useState("");
-  const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
   const [toast, setToast] = useState<ToastState>({
     title: "Moved to Wishlist!",
@@ -182,11 +181,9 @@ export default function BagPage() {
     if (promoCode.trim().length > 0) {
       dispatch(applyPromoCode(promoCode.trim())).then((action) => {
         if (applyPromoCode.fulfilled.match(action)) {
-          setPromoApplied(true);
           setPromoError("");
-          triggerToast("Coupon Applied Successfully", "🎉 Coupon Applied!");
+          triggerToast("Coupon is Applied Successfully", "Success!");
         } else {
-          setPromoApplied(false);
           setPromoError((action.payload as string) || "Invalid promo code");
         }
       });
@@ -254,7 +251,7 @@ export default function BagPage() {
     triggerToast("Cart cleared", "Removed!");
   };
 
-  const discount = promoApplied ? storeDiscount : 0;
+  const discount = storePromoCode ? storeDiscount : 0;
   const discountedTotal = cartTotal - discount;
   const tax = discountedTotal * 0.08;
   const finalTotal = discountedTotal + tax;
@@ -532,7 +529,7 @@ export default function BagPage() {
             </div>
 
             {/* Promo Code */}
-            {promoApplied ? (
+            {storePromoCode ? (
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-4xl border border-green-200 shadow-sm p-6 md:p-8 transition-all duration-500 animate-in fade-in">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -540,7 +537,7 @@ export default function BagPage() {
                       <CheckCircle2 size={20} className="text-green-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-green-700">Coupon Applied Successfully!</p>
+                      <p className="text-sm font-bold text-green-700">Coupon is Applied Successfully!</p>
                       <p className="text-xs text-green-600 mt-0.5">10% discount has been applied to your order</p>
                     </div>
                   </div>
@@ -565,7 +562,6 @@ export default function BagPage() {
                     onChange={(e) => {
                       setPromoCode(e.target.value);
                       setPromoError("");
-                      setPromoApplied(false);
                     }}
                     className="w-full sm:flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
                     aria-label="Promo code"
@@ -599,7 +595,7 @@ export default function BagPage() {
                   ₹{cartTotal.toFixed(2)}
                 </span>
               </div>
-              {promoApplied && (
+              {storePromoCode && (
                 <div className="flex justify-between text-green-500">
                   <span>Discount (10%)</span>
                   <span className="font-bold">-₹{discount.toFixed(2)}</span>

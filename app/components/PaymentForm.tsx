@@ -377,7 +377,7 @@ export function PaymentForm({
             variant="outline"
             onClick={onBack}
             disabled={isProcessing}
-            className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50"
+            className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-600 hover:text-white hover:border-pink-600 transition-all duration-300"
           >
             Back to Shipping
           </Button>
