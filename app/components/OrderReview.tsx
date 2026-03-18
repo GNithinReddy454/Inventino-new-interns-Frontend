@@ -132,7 +132,6 @@ export function OrderReview({
                 <div key={id} className="flex items-center gap-4 p-3 bg-white border border-gray-100 rounded-xl hover:border-pink-100 transition-colors">
                   <div className="w-16 h-16 bg-pink-50 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
                     {item.image || item.product?.images?.[0]?.url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={item.image || item.product?.images?.[0]?.url} alt={name} className="w-full h-full object-cover" />
                     ) : (
                         <ShoppingCart className="w-6 h-6 text-pink-200" />
