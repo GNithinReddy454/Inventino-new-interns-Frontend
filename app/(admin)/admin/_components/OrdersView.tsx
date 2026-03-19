@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, ShoppingCart, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, ShoppingCart, TrendingUp, MoreVertical } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
 import Pagination from "./Pagination";
 import {
@@ -27,24 +27,21 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical } from "lucide-react";
-
-const MOCK_ORDERS: any[] = [
-    { _id: "order-1", orderNumber: "ORD-001", customer: "John Doe", email: "john@example.com", initials: "JD", bg: "bg-purple-500", products: [{ name: "Gold Necklace", quantity: 1, price: 1250 }], totalAmount: 1250, status: "delivered", date: "2026-03-10T10:00:00.000Z", trackingNumber: "FDX-8945632" },
-    { _id: "order-2", orderNumber: "ORD-002", customer: "Sarah Miller", email: "sarah@example.com", initials: "SM", bg: "bg-blue-500", products: [{ name: "Silver Earrings", quantity: 2, price: 350 }], totalAmount: 700, status: "shipped", date: "2026-03-09T14:30:00.000Z", trackingNumber: "UPS-7532641" },
-    { _id: "order-3", orderNumber: "ORD-003", customer: "Emily Brown", email: "emily@example.com", initials: "EB", bg: "bg-green-500", products: [{ name: "Diamond Ring", quantity: 1, price: 1500 }, { name: "Pearl Bracelet", quantity: 1, price: 450 }], totalAmount: 1950, status: "confirmed", date: "2026-03-08T09:15:00.000Z", trackingNumber: "" },
-];
-
-const MOCK_STATS: OrderStats = {
-    total: 32, created: 4, confirmed: 3, packed: 0,
-    shipped: 1, delivered: 4, cancelled: 19, returned: 0,
-    total_orders: 32, pending_orders: 7, processing_orders: 0,
-    shipped_orders: 1, delivered_orders: 4, returned_orders: 0,
-};
 
 interface OrdersViewProps {
     onViewOrder?: (orderId: string) => void;
 }
+
+const EMPTY_STATS: OrderStats = {
+    total: 0,
+    created: 0,
+    confirmed: 0,
+    packed: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0,
+    returned: 0,
+};
 
 export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     const [search, setSearch] = useState("");
@@ -57,7 +54,7 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     const [pageSize, setPageSize] = useState(10);
     const [orders, setOrders] = useState<any[]>([]);
     const [totalItems, setTotalItems] = useState(0);
-    const [stats, setStats] = useState<OrderStats>(MOCK_STATS);
+    const [stats, setStats] = useState<OrderStats>(EMPTY_STATS);
     const { showToast } = useToast();
 
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -74,17 +71,24 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
 
     const fetchData = async () => {
         setIsLoading(true);
+
         try {
             let from: string | undefined;
             let to: string | undefined;
+
             const now = new Date();
+
             if (dateFilter === "Today") {
                 from = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
                 to = new Date(new Date().setHours(23, 59, 59, 999)).toISOString();
             } else if (dateFilter === "Last 7 Days") {
-                from = new Date(now.setDate(now.getDate() - 7)).toISOString();
+                const d = new Date();
+                d.setDate(now.getDate() - 7);
+                from = d.toISOString();
             } else if (dateFilter === "Last 30 Days") {
-                from = new Date(now.setDate(now.getDate() - 30)).toISOString();
+                const d = new Date();
+                d.setDate(now.getDate() - 30);
+                from = d.toISOString();
             }
 
             const [ordersRes, statsRes] = await Promise.all([
@@ -98,23 +102,23 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                     sortBy: "createdAt",
                     sortOrder: sort === "Oldest" ? "asc" : "desc",
                 }),
-                getAdminOrderStats({ from, to }),
+                getAdminOrderStats(),
             ]);
 
-            if (ordersRes?.data?.length) {
-                setOrders(ordersRes.data);
-                setTotalItems(ordersRes.total);
-            } else {
-                setOrders(MOCK_ORDERS);
-                setTotalItems(MOCK_ORDERS.length);
-            }
+            const orderList = Array.isArray(ordersRes?.data) ? ordersRes.data : [];
 
-            setStats(statsRes ?? MOCK_STATS);
+            setOrders(orderList);
+            setTotalItems(Number(ordersRes?.total ?? orderList.length));
+
+            setStats({
+                ...EMPTY_STATS,
+                ...(statsRes || {}),
+            });
         } catch (err) {
             console.error("Failed to fetch orders:", err);
-            setOrders(MOCK_ORDERS);
-            setTotalItems(MOCK_ORDERS.length);
-            setStats(MOCK_STATS);
+            setOrders([]);
+            setTotalItems(0);
+            setStats(EMPTY_STATS);
             showToast("Error", "Could not load orders", "error");
         } finally {
             setIsLoading(false);
@@ -127,14 +131,17 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                 search: debouncedSearch || undefined,
                 status: statusFilter !== "All Status" ? statusFilter.toLowerCase() : undefined,
             });
-            if (blob) {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "orders.csv";
-                a.click();
-                window.URL.revokeObjectURL(url);
+
+            if (!blob) {
+                throw new Error("Invalid export response");
             }
+
+            const url = window.URL.createObjectURL(blob as Blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "orders.csv";
+            a.click();
+            window.URL.revokeObjectURL(url);
         } catch {
             showToast("Error", "Export failed", "error");
         }
@@ -144,7 +151,7 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         try {
             const blob = await downloadOrderInvoice(orderId);
             if (blob) {
-                const url = window.URL.createObjectURL(blob);
+                const url = window.URL.createObjectURL(blob as Blob);
                 window.open(url, "_blank");
                 window.URL.revokeObjectURL(url);
             }
@@ -160,10 +167,11 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
 
     const confirmCancel = async () => {
         if (!cancellingOrderId) return;
+
         try {
             await cancelOrder(cancellingOrderId, "Cancelled by admin");
             setOrders((prev) =>
-                prev.map((o) => o._id === cancellingOrderId ? { ...o, status: "cancelled" } : o)
+                prev.map((o) => (o._id === cancellingOrderId ? { ...o, status: "cancelled" } : o))
             );
             showToast("Success", "Order cancelled", "success");
         } catch {
@@ -175,6 +183,10 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     };
 
     const handleViewOrder = (orderId: string) => {
+        if (!orderId) {
+            showToast("Error", "Order ID not found", "error");
+            return;
+        }
         onViewOrder?.(orderId);
     };
 
@@ -190,7 +202,9 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
             created: "bg-purple-100 text-purple-700",
             cancelled: "bg-red-100 text-red-700",
         };
+
         const key = (status ?? "").toLowerCase();
+
         return (
             <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${map[key] || "bg-gray-100 text-gray-600"}`}>
                 {status}
@@ -198,59 +212,88 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         );
     };
 
-    // Helper: get customer name from API response
-    // API returns customer as string (name) — no separate email field in list
-    const getCustomerName = (order: any): string =>
-        typeof order.customer === "string" ? order.customer : (order.customer?.name ?? "—");
-
-    const getCustomerEmail = (order: any): string =>
-        order.email ?? (typeof order.customer === "object" ? order.customer?.email : "") ?? "";
-
+    const getCustomerName = (order: any): string => order.customer || "Unknown";
+    const getCustomerEmail = (order: any): string => order.email || "";
     const getInitials = (name: string): string =>
-        name && name !== "—"
-            ? name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()
-            : "?";
+        name ? name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase() : "NA";
 
     const BG_COLORS = [
-        "bg-purple-500","bg-blue-500","bg-green-500",
-        "bg-pink-500","bg-yellow-500","bg-indigo-500",
+        "bg-purple-500",
+        "bg-blue-500",
+        "bg-green-500",
+        "bg-pink-500",
+        "bg-yellow-500",
+        "bg-indigo-500",
     ];
 
     const statsCards = [
-        { label: "Total Orders",  value: stats.total ?? 0,           color: "text-primary",     sub: "+8.3% vs last month", subColor: "text-green-500" },
-        { label: "Pending",       value: (stats.created ?? 0) + (stats.confirmed ?? 0), color: "text-orange-500", sub: "Need attention", subColor: "text-muted-foreground" },
-        { label: "Processing",    value: stats.packed ?? 0,           color: "text-yellow-600",  sub: "", subColor: "" },
-        { label: "Shipped",       value: stats.shipped ?? 0,          color: "text-blue-500",    sub: "", subColor: "" },
-        { label: "Delivered",     value: stats.delivered ?? 0,        color: "text-foreground",  sub: "", subColor: "" },
+        {
+            label: "Total Orders",
+            value: Number(stats.total ?? 0),
+            color: "text-primary",
+            sub: "+8.3% vs last month",
+            subColor: "text-green-500",
+        },
+        {
+            label: "Pending",
+            value: Number((stats.created ?? 0) + (stats.confirmed ?? 0)),
+            color: "text-orange-500",
+            sub: "Need attention",
+            subColor: "text-muted-foreground",
+        },
+        {
+            label: "Processing",
+            value: Number(stats.packed ?? 0),
+            color: "text-yellow-600",
+            sub: "",
+            subColor: "",
+        },
+        {
+            label: "Shipped",
+            value: Number(stats.shipped ?? 0),
+            color: "text-blue-500",
+            sub: "",
+            subColor: "",
+        },
+        {
+            label: "Delivered",
+            value: Number(stats.delivered ?? 0),
+            color: "text-foreground",
+            sub: "",
+            subColor: "",
+        },
     ];
 
     return (
         <div className="space-y-6 w-full">
             <div>
                 <h2 className="text-2xl font-bold text-foreground">Orders and Shipping Management</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">Here&apos;s what&apos;s happening with your store today.</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                    Here&apos;s what&apos;s happening with your store today.
+                </p>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {isLoading
                     ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
                     : statsCards.map((card) => (
-                        <div key={card.label} className="bg-card rounded-2xl border border-border shadow-sm p-5">
-                            <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">{card.label}</p>
-                            <p className={`text-3xl font-bold ${card.color}`}>{card.value.toLocaleString()}</p>
-                            {card.sub && (
-                                <p className={`text-xs font-bold mt-2 flex items-center gap-1 ${card.subColor}`}>
-                                    {card.label === "Total Orders" && <TrendingUp size={11} />}
-                                    {card.sub}
-                                </p>
-                            )}
-                        </div>
-                    ))
-                }
+                          <div key={card.label} className="bg-card rounded-2xl border border-border shadow-sm p-5">
+                              <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">
+                                  {card.label}
+                              </p>
+                              <p className={`text-3xl font-bold ${card.color}`}>
+                                  {card.value.toLocaleString()}
+                              </p>
+                              {card.sub && (
+                                  <p className={`text-xs font-bold mt-2 flex items-center gap-1 ${card.subColor}`}>
+                                      {card.label === "Total Orders" && <TrendingUp size={11} />}
+                                      {card.sub}
+                                  </p>
+                              )}
+                          </div>
+                      ))}
             </div>
 
-            {/* Filters */}
             <div className="bg-card rounded-2xl border border-border shadow-sm p-4">
                 <div className="flex flex-col md:flex-row gap-3">
                     <div className="relative flex-1">
@@ -259,47 +302,64 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                             type="text"
                             placeholder="Search by order ID, customer name..."
                             value={search}
-                            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className="w-full pl-9 pr-4 py-2.5 bg-[#FDF2F5] border border-pink-200 rounded-xl text-sm focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all"
                         />
                     </div>
 
-                    <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}>
-                        <SelectTrigger className="w-full md:w-[160px] rounded-xl border-border bg-background text-sm capitalize">
+                    <Select value={statusFilter} onValueChange={(val) => {
+                        setStatusFilter(val);
+                        setCurrentPage(1);
+                    }}>
+                        <SelectTrigger className="w-full md:w-40 rounded-xl border-border bg-background text-sm capitalize">
                             <SelectValue placeholder="All Status" />
                         </SelectTrigger>
                         <SelectContent>
                             {statuses.map((s) => (
-                                <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                                <SelectItem key={s} value={s} className="capitalize">
+                                    {s}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
 
-                    <Select value={dateFilter} onValueChange={(val) => { setDateFilter(val); setCurrentPage(1); }}>
-                        <SelectTrigger className="w-full md:w-[150px] rounded-xl border-border bg-background text-sm">
+                    <Select value={dateFilter} onValueChange={(val) => {
+                        setDateFilter(val);
+                        setCurrentPage(1);
+                    }}>
+                        <SelectTrigger className="w-full md:w-36 rounded-xl border-border bg-background text-sm">
                             <SelectValue placeholder="All Dates" />
                         </SelectTrigger>
                         <SelectContent>
                             {dateOptions.map((d) => (
-                                <SelectItem key={d} value={d}>{d}</SelectItem>
+                                <SelectItem key={d} value={d}>
+                                    {d}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
 
-                    <Select value={sort} onValueChange={(val) => { setSort(val); setCurrentPage(1); }}>
-                        <SelectTrigger className="w-full md:w-[140px] rounded-xl border-border bg-background text-sm">
+                    <Select value={sort} onValueChange={(val) => {
+                        setSort(val);
+                        setCurrentPage(1);
+                    }}>
+                        <SelectTrigger className="w-full md:w-32 rounded-xl border-border bg-background text-sm">
                             <SelectValue placeholder="Sort: Newest" />
                         </SelectTrigger>
                         <SelectContent>
                             {["Newest", "Oldest"].map((s) => (
-                                <SelectItem key={s} value={s}>Sort: {s}</SelectItem>
+                                <SelectItem key={s} value={s}>
+                                    Sort: {s}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
             </div>
 
-            {/* Orders Table */}
             {isLoading ? (
                 <SkeletonTable rows={10} cols={8} />
             ) : (
@@ -328,66 +388,100 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                     </tr>
                                 ) : (
                                     orders.map((order, idx) => {
-                                        const customerName  = getCustomerName(order);
+                                        const customerName = getCustomerName(order);
                                         const customerEmail = getCustomerEmail(order);
-                                        const initials      = order.initials ?? getInitials(customerName);
-                                        const bgColor       = order.bg ?? BG_COLORS[idx % BG_COLORS.length];
-                                        // API returns `total`, mapped layer stores as `totalAmount`
-                                        const amount        = order.totalAmount ?? order.total ?? 0;
-                                        // Product name: from mapped `products` array or fallback
-                                        const productName   = order.products?.[0]?.name ?? "—";
-                                        const extraProducts = (order.products?.length ?? 0) > 1
-                                            ? ` +${order.products.length - 1}` : "";
+                                        const initials = getInitials(customerName);
+                                        const bgColor = BG_COLORS[idx % BG_COLORS.length];
+                                        const amount = order.total ?? 0;
+                                        const productName = order.products?.[0]?.name ?? "—";
+                                        const extraProducts =
+                                            (order.products?.length ?? 0) > 1
+                                                ? ` +${order.products.length - 1}`
+                                                : "";
+
+                                        // Use orderNumber as key if _id is empty, fallback to index
+                                        const uniqueKey = order._id && order._id.trim() ? order._id : (order.orderNumber || `order-${idx}`);
 
                                         return (
-                                            <tr key={order._id} className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors">
+                                            <tr
+                                                key={uniqueKey}
+                                                className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/30 transition-colors"
+                                            >
                                                 <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground font-mono text-xs flex justify-between md:table-cell">
-                                                    <span className="md:hidden text-muted-foreground uppercase tracking-wider">Order ID</span>
+                                                    <span className="md:hidden text-muted-foreground uppercase tracking-wider">
+                                                        Order ID
+                                                    </span>
                                                     {order.orderNumber}
                                                 </td>
+
                                                 <td className="px-0 py-2 md:px-6 md:py-4">
                                                     <div className="flex md:block justify-between w-full md:w-auto items-center">
-                                                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Product</span>
+                                                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                                                            Product
+                                                        </span>
                                                         <button
                                                             onClick={() => handleViewOrder(order._id)}
                                                             className="text-primary hover:underline font-medium text-sm text-left"
                                                         >
-                                                            {productName}{extraProducts}
+                                                            {productName}
+                                                            {extraProducts}
                                                         </button>
                                                     </div>
                                                 </td>
+
                                                 <td className="px-0 py-2 md:px-6 md:py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className={`w-9 h-9 rounded-full ${bgColor} text-white text-xs font-bold shrink-0 hidden md:flex md:items-center md:justify-center`}>
                                                             {initials}
                                                         </div>
                                                         <div className="flex md:block justify-between w-full md:w-auto items-center">
-                                                            <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Customer</span>
+                                                            <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                                                                Customer
+                                                            </span>
                                                             <div className="text-right md:text-left">
-                                                                <p className="font-semibold text-foreground text-sm leading-tight">{customerName}</p>
-                                                                {customerEmail && <p className="text-xs text-muted-foreground mt-0.5">{customerEmail}</p>}
+                                                                <p className="font-semibold text-foreground text-sm leading-tight">
+                                                                    {customerName}
+                                                                </p>
+                                                                {customerEmail && (
+                                                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                                                        {customerEmail}
+                                                                    </p>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </td>
+
                                                 <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground text-sm flex justify-between md:table-cell items-center">
-                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Date</span>
+                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                                                        Date
+                                                    </span>
                                                     {order.date ? new Date(order.date).toLocaleDateString() : "—"}
                                                 </td>
+
                                                 <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center">
-                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Amount</span>
-                                                    ₹{amount.toLocaleString()}
+                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                                                        Amount
+                                                    </span>
+                                                    ₹{Number(amount).toLocaleString()}
                                                 </td>
+
                                                 <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
-                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Status</span>
+                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                                                        Status
+                                                    </span>
                                                     {statusBadge(order.status)}
                                                 </td>
+
                                                 <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
-                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">Tracking</span>
+                                                    <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                                                        Tracking
+                                                    </span>
                                                     <span className="bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded-lg text-xs font-bold font-mono">
                                                         {order.trackingNumber || "N/A"}
                                                     </span>
                                                 </td>
+
                                                 <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
@@ -396,10 +490,16 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="w-48">
-                                                            <DropdownMenuItem onClick={() => handleViewOrder(order._id)} className="cursor-pointer">
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleViewOrder(order._id)}
+                                                                className="cursor-pointer"
+                                                            >
                                                                 View Details
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleDownloadInvoice(order._id)} className="cursor-pointer">
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleDownloadInvoice(order._id)}
+                                                                className="cursor-pointer"
+                                                            >
                                                                 Download Invoice
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
@@ -426,24 +526,35 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                             totalItems={totalItems}
                             pageSize={pageSize}
                             onPageChange={(p) => setCurrentPage(p)}
-                            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                            onPageSizeChange={(s) => {
+                                setPageSize(s);
+                                setCurrentPage(1);
+                            }}
                         />
-                        <button className="text-xs font-bold text-primary hover:text-primary-dark transition-colors shrink-0" onClick={handleExport}>
+                        <button
+                            className="text-xs font-bold text-primary hover:text-primary-dark transition-colors shrink-0"
+                            onClick={handleExport}
+                        >
                             Export CSV →
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Cancel Confirmation Modal */}
             {showCancelConfirm && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
                         <h3 className="text-lg font-bold mb-2">Cancel Order</h3>
-                        <p className="text-sm text-muted-foreground mb-6">Are you sure you want to cancel this order? This action cannot be undone.</p>
+                        <p className="text-sm text-muted-foreground mb-6">
+                            Are you sure you want to cancel this order? This action cannot be undone.
+                        </p>
                         <div className="flex gap-3 justify-end">
-                            <Button variant="outline" onClick={() => setShowCancelConfirm(false)}>No, Keep</Button>
-                            <Button variant="destructive" onClick={confirmCancel}>Yes, Cancel</Button>
+                            <Button variant="outline" onClick={() => setShowCancelConfirm(false)}>
+                                No, Keep
+                            </Button>
+                            <Button variant="destructive" onClick={confirmCancel}>
+                                Yes, Cancel
+                            </Button>
                         </div>
                     </div>
                 </div>
