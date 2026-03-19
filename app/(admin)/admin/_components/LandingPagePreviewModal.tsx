@@ -254,7 +254,7 @@ export default function LandingPagePreviewModal({ onClose, overrides }: LandingP
   }, [overrides]);
 
   return (
-    <div className="fixed inset-0 z-[120] bg-black/70">
+    <div className="fixed inset-0 z-120 bg-black/70">
       <button
         onClick={onClose}
         className="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-white text-gray-700 hover:text-black shadow-md flex items-center justify-center"

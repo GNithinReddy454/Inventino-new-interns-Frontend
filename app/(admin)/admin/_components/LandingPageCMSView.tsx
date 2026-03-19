@@ -6,9 +6,22 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Toggle from "./Toggle";
-import LandingPagePreviewModal, { type LandingPagePreviewOverrides } from "./LandingPagePreviewModal";
+import LandingPagePreviewModal, {
+    type LandingPagePreviewOverrides,
+} from "./LandingPagePreviewModal";
 import { useToast } from "@/app/components/GlobalToast";
-import { getCMSData, updateCMSData, getActiveBanners, createBanner, updateBanner, deleteBanner, getAdminCategories, createCategory, updateCategory, deleteCategory } from "@/services/admin.service";
+import {
+    getCMSData,
+    updateCMSData,
+    getActiveBanners,
+    createBanner,
+    updateBanner,
+    deleteBanner,
+    getAdminCategories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+} from "@/services/admin.service";
 import type { Banner, Category } from "@/services/admin.service";
 import axios from "axios";
 
@@ -61,16 +74,18 @@ export default function LandingPageCMSView() {
     const [bannerImage, setBannerImage] = useState<string | null>(null);
     const [bannerImageFile, setBannerImageFile] = useState<File | null>(null);
     const [activeBannerId, setActiveBannerId] = useState<string | null>(null);
-    const [features, setFeatures] = useState<Array<{ id: number; title: string; description: string; enabled: boolean; icon: string }>>(DEFAULT_FEATURES);
+    const [features, setFeatures] = useState<
+        Array<{ id: number; title: string; description: string; enabled: boolean; icon: string }>
+    >(DEFAULT_FEATURES);
     const [showAddModal, setShowAddModal] = useState(false);
     const { showToast } = useToast();
     const [savingOffer, setSavingOffer] = useState(false);
     const [savingBanner, setSavingBanner] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [showSectionPreview, setShowSectionPreview] = useState(false);
-    const [sectionPreviewOverrides, setSectionPreviewOverrides] = useState<LandingPagePreviewOverrides | undefined>(undefined);
+    const [sectionPreviewOverrides, setSectionPreviewOverrides] =
+        useState<LandingPagePreviewOverrides | undefined>(undefined);
 
-    // Category state
     const [categories, setCategories] = useState<Category[]>([]);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -79,20 +94,24 @@ export default function LandingPageCMSView() {
     const [categoryActive, setCategoryActive] = useState(true);
     const [savingCategory, setSavingCategory] = useState(false);
 
-    // Fetch CMS data on mount
     useEffect(() => {
         const fetchCMS = async () => {
             setIsLoading(true);
             try {
-                const [cms, fetchedBanners] = await Promise.all([getCMSData(), getActiveBanners()]);
-                if (cms) {
-                    setOfferText(cms.offerBar.text);
-                    setShowOfferBar(cms.offerBar.isActive);
+                const [cms, fetchedBanners] = await Promise.all([
+                    getCMSData(),
+                    getActiveBanners(),
+                ]);
+
+                if (cms?.offerBar) {
+                    setOfferText(cms.offerBar.text ?? "");
+                    setShowOfferBar(Boolean(cms.offerBar.isActive));
                 }
+
                 if (fetchedBanners && fetchedBanners.length > 0) {
                     setBanners(fetchedBanners);
                 }
-                // Fetch categories
+
                 const catResult = await getAdminCategories();
                 if (catResult?.items) {
                     setCategories(catResult.items);
@@ -103,6 +122,7 @@ export default function LandingPageCMSView() {
                 setIsLoading(false);
             }
         };
+
         fetchCMS();
     }, []);
 
@@ -117,7 +137,9 @@ export default function LandingPageCMSView() {
     });
 
     const triggerToggleFeature = (id: number) => {
-        setFeatures(prev => prev.map(f => f.id === id ? { ...f, enabled: !f.enabled } : f));
+        setFeatures((prev) =>
+            prev.map((f) => (f.id === id ? { ...f, enabled: !f.enabled } : f))
+        );
     };
 
     const openAddModal = () => {
@@ -126,7 +148,7 @@ export default function LandingPageCMSView() {
     };
 
     const onAddFeature = (data: FeatureFormData) => {
-        setFeatures(prev => [
+        setFeatures((prev) => [
             ...prev,
             {
                 id: Date.now(),
@@ -165,7 +187,7 @@ export default function LandingPageCMSView() {
         if (file) {
             setBannerImageFile(file);
             const reader = new FileReader();
-            reader.onload = (ev) => setBannerImage(ev.target?.result as string);
+            reader.onload = (ev) => setBannerImage((ev.target?.result as string) ?? null);
             reader.readAsDataURL(file);
         }
     };
@@ -180,7 +202,9 @@ export default function LandingPageCMSView() {
     const handleSaveOffer = async () => {
         setSavingOffer(true);
         try {
-            await updateCMSData({ offerBar: { text: offerText, isActive: showOfferBar } });
+            await updateCMSData({
+                offerBar: { text: offerText, isActive: showOfferBar },
+            });
             showToast("Success", "Offer bar settings saved!", "success");
         } catch (err) {
             console.error("Failed to save offer bar:", err);
@@ -210,8 +234,10 @@ export default function LandingPageCMSView() {
 
     const startEditBanner = (index: number) => {
         const b = banners[index];
+        if (!b) return;
+
         setEditingIndex(index);
-        setActiveBannerId(b._id);
+        setActiveBannerId(b._id ?? null);
         setBannerHeading(b.title ?? "");
         setBannerText(b.link ?? "");
         setBannerImage(resolveImageUrl(b.image) || null);
@@ -230,7 +256,7 @@ export default function LandingPageCMSView() {
     const handleDeleteBanner = async (id: string) => {
         try {
             await deleteBanner(id);
-            setBanners(prev => prev.filter(b => b._id !== id));
+            setBanners((prev) => prev.filter((b) => b._id !== id));
             if (activeBannerId === id) startNewBanner();
             showToast("Success", "Banner deleted successfully!", "success");
         } catch (err) {
@@ -249,6 +275,7 @@ export default function LandingPageCMSView() {
             showToast("Error", "Banner heading is required.", "error");
             return;
         }
+
         setSavingBanner(true);
         try {
             const formData = new FormData();
@@ -270,9 +297,14 @@ export default function LandingPageCMSView() {
                     showToast("Error", "Failed to create banner.", "error");
                     return;
                 }
-                setActiveBannerId(created._id);
-                showToast("Success", "New banner created! It will now appear on the homepage.", "success");
+                setActiveBannerId(created._id ?? null);
+                showToast(
+                    "Success",
+                    "New banner created! It will now appear on the homepage.",
+                    "success"
+                );
             }
+
             await refetchBanners();
         } catch (err) {
             console.error("Failed to save banner:", err);
@@ -292,8 +324,6 @@ export default function LandingPageCMSView() {
         });
         setShowSectionPreview(true);
     };
-
-    // ── Category Handlers ─────────────────────────────────────────────────────
 
     const openAddCategoryModal = () => {
         setEditingCategory(null);
@@ -333,10 +363,11 @@ export default function LandingPageCMSView() {
             showToast("Error", "Category name is required.", "error");
             return;
         }
+
         setSavingCategory(true);
         try {
             if (editingCategory) {
-                await updateCategory(editingCategory.categoryId, {
+                await updateCategory(editingCategory.categoryId || editingCategory._id || "", {
                     name: categoryName,
                     description: categoryDescription,
                     isActive: categoryActive,
@@ -354,7 +385,10 @@ export default function LandingPageCMSView() {
             closeCategoryModal();
         } catch (err) {
             console.error("Failed to save category:", err);
-            const msg = getErrorMessage(err, editingCategory ? "Failed to update category." : "Failed to create category.");
+            const msg = getErrorMessage(
+                err,
+                editingCategory ? "Failed to update category." : "Failed to create category."
+            );
             showToast("Error", msg, "error");
         } finally {
             setSavingCategory(false);
@@ -364,7 +398,9 @@ export default function LandingPageCMSView() {
     const handleDeleteCategory = async (categoryId: string) => {
         try {
             await deleteCategory(categoryId);
-            setCategories(prev => prev.filter(c => c.categoryId !== categoryId));
+            setCategories((prev) =>
+                prev.filter((c) => (c.categoryId || c._id || "") !== categoryId)
+            );
             showToast("Success", "Category deleted successfully!", "success");
         } catch (err) {
             console.error("Failed to delete category:", err);
@@ -374,7 +410,9 @@ export default function LandingPageCMSView() {
 
     const handleToggleCategoryActive = async (cat: Category) => {
         try {
-            await updateCategory(cat.categoryId, { isActive: !cat.isActive });
+            await updateCategory(cat.categoryId || cat._id || "", {
+                isActive: !cat.isActive,
+            });
             await refetchCategories();
         } catch (err) {
             console.error("Failed to toggle category:", err);
@@ -385,7 +423,7 @@ export default function LandingPageCMSView() {
     const handlePreviewCategories = () => {
         setSectionPreviewOverrides({
             categories: categories.map((category) => ({
-                categoryId: category.categoryId,
+                categoryId: category.categoryId || category._id || "",
                 name: category.name,
                 isActive: category.isActive,
                 imageUrl: category.image?.url,
@@ -435,7 +473,10 @@ export default function LandingPageCMSView() {
                 ) : (
                     <>
                         <div className="mt-5">
-                            <label htmlFor="offerText" className="block text-xs font-bold text-foreground mb-2">
+                            <label
+                                htmlFor="offerText"
+                                className="block text-xs font-bold text-foreground mb-2"
+                            >
                                 Offer Text
                             </label>
                             <input
@@ -453,7 +494,7 @@ export default function LandingPageCMSView() {
                             <button
                                 onClick={() =>
                                     setOfferText(
-                                        "Free Shipping on Orders Over $50! Limited Time Offer",
+                                        "Free Shipping on Orders Over $50! Limited Time Offer"
                                     )
                                 }
                                 className="py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
@@ -499,14 +540,15 @@ export default function LandingPageCMSView() {
                     )}
                 </div>
 
-                {/* Existing Banners List */}
                 {!isLoading && banners.length > 0 && (
                     <div className="mb-5">
-                        <p className="text-xs font-bold text-foreground mb-2">Existing Banners ({banners.length})</p>
+                        <p className="text-xs font-bold text-foreground mb-2">
+                            Existing Banners ({banners.length})
+                        </p>
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                             {banners.map((b, idx) => (
                                 <div
-                                    key={b._id}
+                                    key={b._id || idx}
                                     className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
                                         activeBannerId === b._id
                                             ? "border-[#DF4C77] bg-[#FDF2F5]"
@@ -527,11 +569,18 @@ export default function LandingPageCMSView() {
                                         </div>
                                     )}
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[13px] font-bold text-foreground truncate">{b.title || "Untitled Banner"}</p>
-                                        <p className="text-[11px] text-muted-foreground truncate">{b.link || "No description"}</p>
+                                        <p className="text-[13px] font-bold text-foreground truncate">
+                                            {b.title || "Untitled Banner"}
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground truncate">
+                                            {b.link || "No description"}
+                                        </p>
                                     </div>
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteBanner(b._id); }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (b._id) handleDeleteBanner(b._id);
+                                        }}
                                         className="text-xs text-red-400 hover:text-red-600 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-all shrink-0"
                                     >
                                         Delete
@@ -570,7 +619,10 @@ export default function LandingPageCMSView() {
                 ) : (
                     <>
                         <div className="mb-5">
-                            <label htmlFor="bannerImage" className="block text-xs font-bold text-foreground mb-2">
+                            <label
+                                htmlFor="bannerImage"
+                                className="block text-xs font-bold text-foreground mb-2"
+                            >
                                 Banner Image
                             </label>
                             <label
@@ -612,7 +664,10 @@ export default function LandingPageCMSView() {
                         </div>
 
                         <div className="mb-4">
-                            <label htmlFor="bannerHeading" className="block text-xs font-bold text-foreground mb-2">
+                            <label
+                                htmlFor="bannerHeading"
+                                className="block text-xs font-bold text-foreground mb-2"
+                            >
                                 Banner Heading
                             </label>
                             <input
@@ -627,7 +682,10 @@ export default function LandingPageCMSView() {
                         </div>
 
                         <div className="mb-5">
-                            <label htmlFor="bannerText" className="block text-xs font-bold text-foreground mb-2">
+                            <label
+                                htmlFor="bannerText"
+                                className="block text-xs font-bold text-foreground mb-2"
+                            >
                                 Banner Text
                             </label>
                             <textarea
@@ -716,12 +774,13 @@ export default function LandingPageCMSView() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                                 {categories.map((cat) => (
                                     <div
-                                        key={cat.categoryId}
+                                        key={cat.categoryId || cat._id || ""}
                                         className={`bg-white rounded-xl py-5 px-4 flex flex-col items-center justify-center shadow-sm border transition-all relative group ${
-                                            cat.isActive ? "border-transparent hover:border-pink-200" : "border-dashed border-gray-300 opacity-60"
+                                            cat.isActive
+                                                ? "border-transparent hover:border-pink-200"
+                                                : "border-dashed border-gray-300 opacity-60"
                                         }`}
                                     >
-                                        {/* Action buttons */}
                                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => openEditCategoryModal(cat)}
@@ -731,7 +790,9 @@ export default function LandingPageCMSView() {
                                                 <Pencil size={13} />
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteCategory(cat.categoryId)}
+                                                onClick={() =>
+                                                    handleDeleteCategory(cat.categoryId || cat._id || "")
+                                                }
                                                 className="p-1 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
                                                 title="Delete category"
                                             >
@@ -739,25 +800,38 @@ export default function LandingPageCMSView() {
                                             </button>
                                         </div>
 
-                                        {/* Active/Inactive indicator */}
                                         <div className="absolute top-2 left-2">
                                             <button
                                                 onClick={() => handleToggleCategoryActive(cat)}
-                                                className={`w-2 h-2 rounded-full ${cat.isActive ? "bg-green-400" : "bg-gray-300"}`}
-                                                title={cat.isActive ? "Active — click to deactivate" : "Inactive — click to activate"}
+                                                className={`w-2 h-2 rounded-full ${
+                                                    cat.isActive ? "bg-green-400" : "bg-gray-300"
+                                                }`}
+                                                title={
+                                                    cat.isActive
+                                                        ? "Active — click to deactivate"
+                                                        : "Inactive — click to activate"
+                                                }
                                             />
                                         </div>
 
                                         {cat.image?.url ? (
                                             <div className="w-10 h-10 rounded-lg overflow-hidden mb-2.5">
-                                                <img src={cat.image.url} alt={cat.name} className="w-full h-full object-cover" />
+                                                <img
+                                                    src={cat.image.url}
+                                                    alt={cat.name}
+                                                    className="w-full h-full object-cover"
+                                                />
                                             </div>
                                         ) : (
                                             <span className="text-2xl mb-2.5">📦</span>
                                         )}
-                                        <span className="text-[13px] font-bold text-foreground text-center">{cat.name}</span>
+                                        <span className="text-[13px] font-bold text-foreground text-center">
+                                            {cat.name}
+                                        </span>
                                         {cat.productCount !== undefined && (
-                                            <span className="text-[10px] text-muted-foreground mt-1">{cat.productCount} products</span>
+                                            <span className="text-[10px] text-muted-foreground mt-1">
+                                                {cat.productCount} products
+                                            </span>
                                         )}
                                     </div>
                                 ))}
@@ -779,7 +853,6 @@ export default function LandingPageCMSView() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-                    {/* Left side */}
                     <div className="flex flex-col">
                         <h4 className="text-xs font-bold text-foreground mb-3">Available Products</h4>
 
@@ -830,22 +903,22 @@ export default function LandingPageCMSView() {
                                     (typeof firstImage === "string" ? firstImage : firstImage?.url);
 
                                 return (
-                                <div key={prod.id} className={`flex items-center gap-4 p-3.5 rounded-xl border ${prod.selected ? 'border-[#DF4C77] bg-[#FDF2F5]' : 'border-border bg-white'} cursor-pointer hover:border-pink-200 transition-colors shadow-sm`}>
-                                    <div className={`w-14 h-14 rounded-lg shrink-0 overflow-hidden ${prod.color}`}>
-                                        {src ? (
-                                            <img
-                                                src={src}
-                                                alt={prod.name || "Product"}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : null}
+                                    <div key={prod.id} className={`flex items-center gap-4 p-3.5 rounded-xl border ${prod.selected ? "border-[#DF4C77] bg-[#FDF2F5]" : "border-border bg-white"} cursor-pointer hover:border-pink-200 transition-colors shadow-sm`}>
+                                        <div className={`w-14 h-14 rounded-lg shrink-0 overflow-hidden ${prod.color}`}>
+                                            {src ? (
+                                                <img
+                                                    src={src}
+                                                    alt={prod.name || "Product"}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : null}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[13px] font-bold text-foreground truncate">{prod.name}</p>
+                                            <p className="text-[13px] text-[#DF4C77] font-bold mt-1">{prod.price}</p>
+                                            <p className="text-[11px] text-muted-foreground mt-0.5">{prod.stock} in stock</p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[13px] font-bold text-foreground truncate">{prod.name}</p>
-                                        <p className="text-[13px] text-[#DF4C77] font-bold mt-1">{prod.price}</p>
-                                        <p className="text-[11px] text-muted-foreground mt-0.5">{prod.stock} in stock</p>
-                                    </div>
-                                </div>
                                 );
                             })}
                         </div>
@@ -860,7 +933,6 @@ export default function LandingPageCMSView() {
                         </div>
                     </div>
 
-                    {/* Right side - Live Preview */}
                     <div className="bg-[#f8f8f8] rounded-2xl p-6 relative flex flex-col items-center h-full border border-border">
                         <div className="flex justify-between items-center mb-8 w-full">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">LIVE PREVIEW</span>
@@ -868,10 +940,8 @@ export default function LandingPageCMSView() {
                         </div>
 
                         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mx-auto w-full max-w-[320px] mt-4">
-                            {/* Card Image Area */}
                             <div className="bg-[#f5e0cf] h-65 relative w-full p-4 flex items-center justify-center">
                                 <span className="absolute top-4 left-4 bg-[#DF4C77] text-white text-[11px] font-bold px-3 py-1 rounded-full z-10 shadow-sm shadow-[#DF4C77]/30">New</span>
-                                {/* Stylized Image Representation */}
                                 <div className="relative w-50 h-37.5 bg-[#fffcf9] rounded shadow-sm flex before:content-[''] before:absolute before:inset-0 before:border-[3px] before:border-dashed before:border-[#ebd5c1] before:m-2">
                                     <div className="w-1/2 h-full border-r border-[#e8d2bd] shadow-[inset_-5px_0_10px_rgba(0,0,0,0.02)] bg-[#fffcf9]"></div>
                                     <div className="w-1/2 h-full bg-[#fdfaf5]"></div>
@@ -881,12 +951,11 @@ export default function LandingPageCMSView() {
                                 </div>
                             </div>
 
-                            {/* Card Details */}
                             <div className="p-5 bg-white">
                                 <h4 className="font-bold text-[14px] text-foreground mb-2.5">Pearl Necklace Set</h4>
                                 <div className="flex items-center gap-1.5 mb-3">
                                     <div className="flex text-[#FFD700] text-[13px]">
-                                        {"★★★★★".split('').map((star, i) => <span key={i}>{star}</span>)}
+                                        {"★★★★★".split("").map((star, i) => <span key={i}>{star}</span>)}
                                     </div>
                                     <span className="text-[12px] text-muted-foreground font-medium pt-0.5">4.7 / 5.0</span>
                                 </div>
@@ -983,7 +1052,7 @@ export default function LandingPageCMSView() {
                 </div>
             </div>
 
-            {/* --- CATEGORY MODAL --- */}
+            {/* CATEGORY MODAL */}
             {showCategoryModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div
@@ -1063,10 +1132,9 @@ export default function LandingPageCMSView() {
                 </div>
             )}
 
-            {/* --- ADD FEATURE MODAL --- */}
+            {/* ADD FEATURE MODAL */}
             {showAddModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    {/* Backdrop (accessible) */}
                     <div
                         role="button"
                         tabIndex={0}
@@ -1075,14 +1143,12 @@ export default function LandingPageCMSView() {
                         onKeyDown={(e) => handleDivKeyDown(e, () => setShowAddModal(false))}
                         aria-label="Close modal"
                     />
-                    {/* Modal Card */}
                     <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8 z-10">
                         <h2 className="text-xl font-bold text-foreground text-center mb-6">
                             Add New Feature
                         </h2>
 
                         <form onSubmit={handleSubmit(onAddFeature)}>
-                            {/* Feature Name */}
                             <div className="mb-4">
                                 <label htmlFor="featureName" className="block text-xs font-bold text-foreground mb-1.5">
                                     Feature Name <span className="text-primary">*</span>
@@ -1092,8 +1158,9 @@ export default function LandingPageCMSView() {
                                     type="text"
                                     placeholder="Feature Name"
                                     {...register("title")}
-                                    className={`w-full px-4 py-3 bg-[#FDF2F5] border rounded-xl text-sm text-foreground placeholder:text-pink-300 focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all ${errors.title ? "border-red-500" : "border-pink-200"
-                                        }`}
+                                    className={`w-full px-4 py-3 bg-[#FDF2F5] border rounded-xl text-sm text-foreground placeholder:text-pink-300 focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all ${
+                                        errors.title ? "border-red-500" : "border-pink-200"
+                                    }`}
                                 />
                                 {errors.title && (
                                     <span className="text-red-500 text-xs mt-1 block">
@@ -1102,7 +1169,6 @@ export default function LandingPageCMSView() {
                                 )}
                             </div>
 
-                            {/* Feature Description */}
                             <div className="mb-4">
                                 <label htmlFor="featureDesc" className="block text-xs font-bold text-foreground mb-1.5">
                                     Feature Description <span className="text-primary">*</span>
@@ -1112,8 +1178,9 @@ export default function LandingPageCMSView() {
                                     rows={4}
                                     placeholder="Feature Description"
                                     {...register("description")}
-                                    className={`w-full px-4 py-3 bg-[#FDF2F5] border rounded-xl text-sm text-foreground placeholder:text-pink-300 focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all resize-none ${errors.description ? "border-red-500" : "border-pink-200"
-                                        }`}
+                                    className={`w-full px-4 py-3 bg-[#FDF2F5] border rounded-xl text-sm text-foreground placeholder:text-pink-300 focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all resize-none ${
+                                        errors.description ? "border-red-500" : "border-pink-200"
+                                    }`}
                                 />
                                 {errors.description && (
                                     <span className="text-red-500 text-xs mt-1 block">
@@ -1122,7 +1189,6 @@ export default function LandingPageCMSView() {
                                 )}
                             </div>
 
-                            {/* Status Dropdown */}
                             <div className="mb-6">
                                 <label htmlFor="featureStatus" className="block text-xs font-bold text-foreground mb-1.5">
                                     Status
@@ -1143,7 +1209,6 @@ export default function LandingPageCMSView() {
                                 </div>
                             </div>
 
-                            {/* Action Buttons */}
                             <div className="flex gap-3">
                                 <button
                                     type="button"
@@ -1163,6 +1228,7 @@ export default function LandingPageCMSView() {
                     </div>
                 </div>
             )}
+
             {showSectionPreview && (
                 <LandingPagePreviewModal
                     overrides={sectionPreviewOverrides}

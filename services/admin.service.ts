@@ -139,9 +139,14 @@ export interface Banner {
 
 export interface Category {
     _id?: string;
+    categoryId?: string;
     name: string;
     description?: string;
     icon?: string;
+    image?: {
+        url?: string;
+    };
+    productCount?: number;
     isActive: boolean;
     displayOrder?: number;
     createdAt?: string;
@@ -378,7 +383,11 @@ export const getAdminOrderById = (id: string) =>
             _id: getSafeOrderId(order, id),
             orderNumber: String(order?.orderNumber ?? ""),
             customer: {
-                name: order?.user?.name ?? order?.customer?.name ?? order?.customer ?? "",
+                name:
+                    order?.user?.name ??
+                    order?.customer?.name ??
+                    order?.customer ??
+                    "",
                 email: order?.user?.email ?? order?.customer?.email ?? "",
                 phone:
                     order?.shippingAddress?.phone ??
@@ -406,10 +415,15 @@ export const getAdminOrderById = (id: string) =>
                       image: item?.imageUrl ?? item?.image ?? "",
                   }))
                 : [],
-            total: Number(order?.pricing?.total ?? order?.total ?? order?.totalAmount ?? 0),
+            total: Number(
+                order?.pricing?.total ?? order?.total ?? order?.totalAmount ?? 0
+            ),
             status: String(order?.status ?? "").toLowerCase(),
             paymentMethod:
-                order?.payment?.method ?? order?.paymentMethod ?? order?.payment ?? "",
+                order?.payment?.method ??
+                order?.paymentMethod ??
+                order?.payment ??
+                "",
             trackingNumber: order?.trackingNumber ?? "",
             notes: Array.isArray(order?.notes) ? order.notes : [],
             allowedNextStatuses: Array.isArray(order?.allowedNextStatuses)
@@ -620,14 +634,32 @@ export const getActiveBanners = () =>
         return unwrapResponse<Banner[]>(raw) ?? [];
     });
 
-export const createBanner = (banner: Banner) =>
+export const createBanner = (banner: Banner | FormData) =>
     gracefulFetch(async () => {
-        return await apiMethods.post<Banner>("/admin/banners", banner);
+        const isFormData =
+            typeof FormData !== "undefined" && banner instanceof FormData;
+
+        const raw = await apiMethods.post<any>("/admin/banners", banner, {
+            headers: isFormData
+                ? { "Content-Type": "multipart/form-data" }
+                : undefined,
+        });
+
+        return unwrapResponse<Banner>(raw);
     });
 
-export const updateBanner = (id: string, banner: Partial<Banner>) =>
+export const updateBanner = (id: string, banner: Partial<Banner> | FormData) =>
     gracefulFetch(async () => {
-        return await apiMethods.put<Banner>(`/admin/banners/${id}`, banner);
+        const isFormData =
+            typeof FormData !== "undefined" && banner instanceof FormData;
+
+        const raw = await apiMethods.put<any>(`/admin/banners/${id}`, banner, {
+            headers: isFormData
+                ? { "Content-Type": "multipart/form-data" }
+                : undefined,
+        });
+
+        return unwrapResponse<Banner>(raw);
     });
 
 export const deleteBanner = (id: string) =>
@@ -638,12 +670,34 @@ export const deleteBanner = (id: string) =>
 export const getAdminCategories = () =>
     gracefulFetch(async () => {
         const raw = await apiMethods.get<any>("/admin/categories");
-        return unwrapResponse<Category[]>(raw) ?? [];
+        const data = unwrapResponse<any>(raw);
+
+        const list = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.items)
+            ? data.items
+            : [];
+
+        return {
+            items: list.map((c: any) => ({
+                _id: c?._id ?? c?.categoryId ?? "",
+                categoryId: c?.categoryId ?? c?._id ?? "",
+                name: c?.name ?? "",
+                description: c?.description ?? "",
+                icon: c?.icon ?? "",
+                image: c?.image ?? (c?.icon ? { url: c.icon } : undefined),
+                productCount: Number(c?.productCount ?? 0),
+                isActive: Boolean(c?.isActive),
+                displayOrder: c?.displayOrder,
+                createdAt: c?.createdAt,
+                updatedAt: c?.updatedAt,
+            })) as Category[],
+        };
     });
 
 export const getCategories = getAdminCategories;
 
-export const createCategory = (category: Category) =>
+export const createCategory = (category: Partial<Category>) =>
     gracefulFetch(async () => {
         return await apiMethods.post<Category>("/admin/categories", category);
     });

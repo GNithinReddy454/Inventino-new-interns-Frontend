@@ -293,7 +293,7 @@ export default function OrderDetailView({
                 {allowedNextStatuses.length > 0 && (
                     <div className="flex flex-col md:flex-row gap-3 md:items-center">
                         <Select value={pendingStatus} onValueChange={setPendingStatus}>
-                            <SelectTrigger className="w-full md:w-[220px]">
+                            <SelectTrigger className="w-full md:w-55">
                                 <SelectValue placeholder="Change status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -326,7 +326,7 @@ export default function OrderDetailView({
                         value={pendingTracking}
                         onChange={(e) => setPendingTracking(e.target.value)}
                         placeholder="Enter tracking number"
-                        className="border rounded-lg px-3 py-2 w-full md:w-[280px]"
+                        className="border rounded-lg px-3 py-2 w-full md:w-70"
                     />
                     <button
                         type="button"
@@ -384,7 +384,7 @@ export default function OrderDetailView({
                         value={newNote}
                         onChange={(e) => setNewNote(e.target.value)}
                         placeholder="Add note"
-                        className="border rounded-lg px-3 py-2 min-h-[100px]"
+                        className="border rounded-lg px-3 py-2 min-h-25"
                     />
                     <button
                         type="button"
