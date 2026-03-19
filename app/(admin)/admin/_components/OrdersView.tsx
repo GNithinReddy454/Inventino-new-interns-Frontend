@@ -75,7 +75,6 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         try {
             let from: string | undefined;
             let to: string | undefined;
-
             const now = new Date();
 
             if (dateFilter === "Today") {
@@ -96,7 +95,10 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                     page: currentPage,
                     limit: pageSize,
                     search: debouncedSearch || undefined,
-                    status: statusFilter !== "All Status" ? statusFilter.toLowerCase() : undefined,
+                    status:
+                        statusFilter !== "All Status"
+                            ? statusFilter.toLowerCase()
+                            : undefined,
                     from,
                     to,
                     sortBy: "createdAt",
@@ -129,7 +131,10 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         try {
             const blob = await exportAdminOrders({
                 search: debouncedSearch || undefined,
-                status: statusFilter !== "All Status" ? statusFilter.toLowerCase() : undefined,
+                status:
+                    statusFilter !== "All Status"
+                        ? statusFilter.toLowerCase()
+                        : undefined,
             });
 
             if (!blob) {
@@ -142,25 +147,39 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
             a.download = "orders.csv";
             a.click();
             window.URL.revokeObjectURL(url);
-        } catch {
+        } catch (err) {
+            console.error("Export failed:", err);
             showToast("Error", "Export failed", "error");
         }
     };
 
     const handleDownloadInvoice = async (orderId: string) => {
+        if (!orderId) {
+            showToast("Error", "Order ID not found", "error");
+            return;
+        }
+
         try {
             const blob = await downloadOrderInvoice(orderId);
-            if (blob) {
-                const url = window.URL.createObjectURL(blob as Blob);
-                window.open(url, "_blank");
-                window.URL.revokeObjectURL(url);
+            if (!blob) {
+                throw new Error("Invoice response invalid");
             }
-        } catch {
+
+            const url = window.URL.createObjectURL(blob as Blob);
+            window.open(url, "_blank");
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Invoice download failed:", err);
             showToast("Error", "Could not download invoice", "error");
         }
     };
 
     const handleCancelClick = (orderId: string) => {
+        if (!orderId) {
+            showToast("Error", "Order ID not found", "error");
+            return;
+        }
+
         setCancellingOrderId(orderId);
         setShowCancelConfirm(true);
     };
@@ -170,11 +189,19 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
 
         try {
             await cancelOrder(cancellingOrderId, "Cancelled by admin");
+
             setOrders((prev) =>
-                prev.map((o) => (o._id === cancellingOrderId ? { ...o, status: "cancelled" } : o))
+                prev.map((o) => {
+                    const currentId = getOrderId(o);
+                    return currentId === cancellingOrderId
+                        ? { ...o, status: "cancelled" }
+                        : o;
+                })
             );
+
             showToast("Success", "Order cancelled", "success");
-        } catch {
+        } catch (err) {
+            console.error("Cancel failed:", err);
             showToast("Error", "Failed to cancel order", "error");
         } finally {
             setShowCancelConfirm(false);
@@ -183,14 +210,26 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     };
 
     const handleViewOrder = (orderId: string) => {
-        if (!orderId) {
+        console.log("Clicked order id:", orderId);
+
+        if (!orderId || orderId === "undefined" || orderId === "null") {
             showToast("Error", "Order ID not found", "error");
             return;
         }
+
         onViewOrder?.(orderId);
     };
 
-    const statuses = ["All Status", "created", "confirmed", "packed", "shipped", "delivered", "cancelled"];
+    const statuses = [
+        "All Status",
+        "created",
+        "confirmed",
+        "packed",
+        "shipped",
+        "delivered",
+        "cancelled",
+    ];
+
     const dateOptions = ["All Dates", "Today", "Last 7 Days", "Last 30 Days"];
 
     const statusBadge = (status: string) => {
@@ -206,16 +245,41 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         const key = (status ?? "").toLowerCase();
 
         return (
-            <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${map[key] || "bg-gray-100 text-gray-600"}`}>
-                {status}
+            <span
+                className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${
+                    map[key] || "bg-gray-100 text-gray-600"
+                }`}
+            >
+                {status || "unknown"}
             </span>
         );
     };
 
-    const getCustomerName = (order: any): string => order.customer || "Unknown";
-    const getCustomerEmail = (order: any): string => order.email || "";
+    const getOrderId = (order: any): string => {
+        return order?._id || order?.orderId || order?.orderNumber || "";
+    };
+
+    const getCustomerName = (order: any): string => {
+        if (typeof order?.customer === "string") return order.customer;
+        if (typeof order?.customer?.name === "string") return order.customer.name;
+        return "Unknown";
+    };
+
+    const getCustomerEmail = (order: any): string => {
+        if (typeof order?.email === "string") return order.email;
+        if (typeof order?.customer?.email === "string") return order.customer.email;
+        return "";
+    };
+
     const getInitials = (name: string): string =>
-        name ? name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase() : "NA";
+        name
+            ? name
+                  .split(" ")
+                  .map((w: string) => w[0])
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase()
+            : "NA";
 
     const BG_COLORS = [
         "bg-purple-500",
@@ -267,7 +331,9 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     return (
         <div className="space-y-6 w-full">
             <div>
-                <h2 className="text-2xl font-bold text-foreground">Orders and Shipping Management</h2>
+                <h2 className="text-2xl font-bold text-foreground">
+                    Orders and Shipping Management
+                </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
                     Here&apos;s what&apos;s happening with your store today.
                 </p>
@@ -277,7 +343,10 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                 {isLoading
                     ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
                     : statsCards.map((card) => (
-                          <div key={card.label} className="bg-card rounded-2xl border border-border shadow-sm p-5">
+                          <div
+                              key={card.label}
+                              className="bg-card rounded-2xl border border-border shadow-sm p-5"
+                          >
                               <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">
                                   {card.label}
                               </p>
@@ -285,7 +354,9 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                   {card.value.toLocaleString()}
                               </p>
                               {card.sub && (
-                                  <p className={`text-xs font-bold mt-2 flex items-center gap-1 ${card.subColor}`}>
+                                  <p
+                                      className={`text-xs font-bold mt-2 flex items-center gap-1 ${card.subColor}`}
+                                  >
                                       {card.label === "Total Orders" && <TrendingUp size={11} />}
                                       {card.sub}
                                   </p>
@@ -297,7 +368,10 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
             <div className="bg-card rounded-2xl border border-border shadow-sm p-4">
                 <div className="flex flex-col md:flex-row gap-3">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
+                        <Search
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            size={15}
+                        />
                         <input
                             type="text"
                             placeholder="Search by order ID, customer name..."
@@ -310,10 +384,13 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                         />
                     </div>
 
-                    <Select value={statusFilter} onValueChange={(val) => {
-                        setStatusFilter(val);
-                        setCurrentPage(1);
-                    }}>
+                    <Select
+                        value={statusFilter}
+                        onValueChange={(val) => {
+                            setStatusFilter(val);
+                            setCurrentPage(1);
+                        }}
+                    >
                         <SelectTrigger className="w-full md:w-40 rounded-xl border-border bg-background text-sm capitalize">
                             <SelectValue placeholder="All Status" />
                         </SelectTrigger>
@@ -326,10 +403,13 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                         </SelectContent>
                     </Select>
 
-                    <Select value={dateFilter} onValueChange={(val) => {
-                        setDateFilter(val);
-                        setCurrentPage(1);
-                    }}>
+                    <Select
+                        value={dateFilter}
+                        onValueChange={(val) => {
+                            setDateFilter(val);
+                            setCurrentPage(1);
+                        }}
+                    >
                         <SelectTrigger className="w-full md:w-36 rounded-xl border-border bg-background text-sm">
                             <SelectValue placeholder="All Dates" />
                         </SelectTrigger>
@@ -342,10 +422,13 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                         </SelectContent>
                     </Select>
 
-                    <Select value={sort} onValueChange={(val) => {
-                        setSort(val);
-                        setCurrentPage(1);
-                    }}>
+                    <Select
+                        value={sort}
+                        onValueChange={(val) => {
+                            setSort(val);
+                            setCurrentPage(1);
+                        }}
+                    >
                         <SelectTrigger className="w-full md:w-32 rounded-xl border-border bg-background text-sm">
                             <SelectValue placeholder="Sort: Newest" />
                         </SelectTrigger>
@@ -378,29 +461,53 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                     <th className="px-6 py-4">Actions</th>
                                 </tr>
                             </thead>
+
                             <tbody className="divide-y divide-border">
                                 {orders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="text-center py-16 text-muted-foreground">
-                                            <ShoppingCart size={36} className="mx-auto mb-3 opacity-20" />
+                                        <td
+                                            colSpan={8}
+                                            className="text-center py-16 text-muted-foreground"
+                                        >
+                                            <ShoppingCart
+                                                size={36}
+                                                className="mx-auto mb-3 opacity-20"
+                                            />
                                             <p className="text-sm">No orders found</p>
                                         </td>
                                     </tr>
                                 ) : (
                                     orders.map((order, idx) => {
+                                        const safeOrderId = getOrderId(order);
                                         const customerName = getCustomerName(order);
                                         const customerEmail = getCustomerEmail(order);
                                         const initials = getInitials(customerName);
                                         const bgColor = BG_COLORS[idx % BG_COLORS.length];
                                         const amount = order.total ?? 0;
-                                        const productName = order.products?.[0]?.name ?? "—";
+
+                                        const firstProduct =
+                                            order.products?.[0] || order.items?.[0] || null;
+
+                                        const productName =
+                                            firstProduct?.name ||
+                                            firstProduct?.productName ||
+                                            firstProduct?.title ||
+                                            "—";
+
+                                        const totalProducts =
+                                            order.products?.length ??
+                                            order.items?.length ??
+                                            0;
+
                                         const extraProducts =
-                                            (order.products?.length ?? 0) > 1
-                                                ? ` +${order.products.length - 1}`
+                                            totalProducts > 1
+                                                ? ` +${totalProducts - 1}`
                                                 : "";
 
-                                        // Use orderNumber as key if _id is empty, fallback to index
-                                        const uniqueKey = order._id && order._id.trim() ? order._id : (order.orderNumber || `order-${idx}`);
+                                        const uniqueKey =
+                                            safeOrderId ||
+                                            order.orderNumber ||
+                                            `order-${idx}`;
 
                                         return (
                                             <tr
@@ -411,7 +518,7 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                                     <span className="md:hidden text-muted-foreground uppercase tracking-wider">
                                                         Order ID
                                                     </span>
-                                                    {order.orderNumber}
+                                                    {order.orderNumber || safeOrderId || "—"}
                                                 </td>
 
                                                 <td className="px-0 py-2 md:px-6 md:py-4">
@@ -420,8 +527,12 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                                             Product
                                                         </span>
                                                         <button
-                                                            onClick={() => handleViewOrder(order._id)}
+                                                            onClick={() =>
+                                                                handleViewOrder(safeOrderId)
+                                                            }
                                                             className="text-primary hover:underline font-medium text-sm text-left"
+                                                            disabled={!safeOrderId}
+                                                            type="button"
                                                         >
                                                             {productName}
                                                             {extraProducts}
@@ -431,7 +542,9 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
 
                                                 <td className="px-0 py-2 md:px-6 md:py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-9 h-9 rounded-full ${bgColor} text-white text-xs font-bold shrink-0 hidden md:flex md:items-center md:justify-center`}>
+                                                        <div
+                                                            className={`w-9 h-9 rounded-full ${bgColor} text-white text-xs font-bold shrink-0 hidden md:flex md:items-center md:justify-center`}
+                                                        >
                                                             {initials}
                                                         </div>
                                                         <div className="flex md:block justify-between w-full md:w-auto items-center">
@@ -456,7 +569,15 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                                     <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
                                                         Date
                                                     </span>
-                                                    {order.date ? new Date(order.date).toLocaleDateString() : "—"}
+                                                    {order.date
+                                                        ? new Date(
+                                                              order.date
+                                                          ).toLocaleDateString()
+                                                        : order.createdAt
+                                                        ? new Date(
+                                                              order.createdAt
+                                                          ).toLocaleDateString()
+                                                        : "—"}
                                                 </td>
 
                                                 <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-foreground flex justify-between md:table-cell items-center">
@@ -485,27 +606,51 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                                 <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                            >
                                                                 <MoreVertical size={16} />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="w-48">
+
+                                                        <DropdownMenuContent
+                                                            align="end"
+                                                            className="w-48"
+                                                        >
                                                             <DropdownMenuItem
-                                                                onClick={() => handleViewOrder(order._id)}
+                                                                onClick={() =>
+                                                                    handleViewOrder(safeOrderId)
+                                                                }
                                                                 className="cursor-pointer"
+                                                                disabled={!safeOrderId}
                                                             >
                                                                 View Details
                                                             </DropdownMenuItem>
+
                                                             <DropdownMenuItem
-                                                                onClick={() => handleDownloadInvoice(order._id)}
+                                                                onClick={() =>
+                                                                    handleDownloadInvoice(
+                                                                        safeOrderId
+                                                                    )
+                                                                }
                                                                 className="cursor-pointer"
+                                                                disabled={!safeOrderId}
                                                             >
                                                                 Download Invoice
                                                             </DropdownMenuItem>
+
                                                             <DropdownMenuItem
-                                                                onClick={() => handleCancelClick(order._id)}
+                                                                onClick={() =>
+                                                                    handleCancelClick(safeOrderId)
+                                                                }
                                                                 className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-50"
-                                                                disabled={order.status === "cancelled" || order.status === "delivered"}
+                                                                disabled={
+                                                                    !safeOrderId ||
+                                                                    order.status === "cancelled" ||
+                                                                    order.status === "delivered"
+                                                                }
                                                             >
                                                                 Cancel Order
                                                             </DropdownMenuItem>
@@ -531,9 +676,11 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                                 setCurrentPage(1);
                             }}
                         />
+
                         <button
                             className="text-xs font-bold text-primary hover:text-primary-dark transition-colors shrink-0"
                             onClick={handleExport}
+                            type="button"
                         >
                             Export CSV →
                         </button>
@@ -546,10 +693,14 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                     <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
                         <h3 className="text-lg font-bold mb-2">Cancel Order</h3>
                         <p className="text-sm text-muted-foreground mb-6">
-                            Are you sure you want to cancel this order? This action cannot be undone.
+                            Are you sure you want to cancel this order? This action
+                            cannot be undone.
                         </p>
                         <div className="flex gap-3 justify-end">
-                            <Button variant="outline" onClick={() => setShowCancelConfirm(false)}>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowCancelConfirm(false)}
+                            >
                                 No, Keep
                             </Button>
                             <Button variant="destructive" onClick={confirmCancel}>

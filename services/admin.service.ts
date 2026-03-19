@@ -26,10 +26,8 @@ async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
 function unwrapResponse<T = any>(raw: any): T {
     if (!raw) return raw as T;
 
-    // axios full response -> { data: ... }
     const first = raw?.data ?? raw;
 
-    // backend wrapped response -> { statusCode, message, data }
     if (
         first &&
         typeof first === "object" &&
@@ -72,6 +70,16 @@ function extractBlob(response: any): Blob | null {
     if (response instanceof Blob) return response;
     if (response?.data instanceof Blob) return response.data;
     return null;
+}
+
+function getSafeOrderId(order: any, fallback = ""): string {
+    return String(
+        order?._id ??
+            order?.id ??
+            order?.orderId ??
+            order?.orderNumber ??
+            fallback
+    );
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -150,11 +158,11 @@ export interface AdminSettings {
 }
 
 export interface AdminCustomer {
-    _id: string; // Mongo ObjectId - use this for detail APIs
+    _id: string;
     name: string;
     email: string;
     phone: string;
-    userId: string; // display ID like USR-129
+    userId: string;
     isActive?: boolean;
     createdAt?: string;
 }
@@ -207,8 +215,8 @@ export interface CustomerOrder {
 }
 
 export interface AdminOrderListItem {
-    _id: string; // Mongo ObjectId - use this for detail APIs
-    orderNumber: string; // display only
+    _id: string;
+    orderNumber: string;
     customer: string;
     email?: string;
     total: number;
@@ -225,7 +233,6 @@ export interface AdminOrderListItem {
 }
 
 export interface AdminOrderDetail {
-    orderId(orderId: any, pendingStatus: string): unknown;
     _id?: string;
     orderNumber: string;
     customer: {
@@ -246,9 +253,19 @@ export interface AdminOrderDetail {
     total: number;
     status: string;
     paymentMethod: string;
-    notes?: { text: string; createdAt?: string; timestamp?: string; author?: string }[];
+    notes?: {
+        text: string;
+        createdAt?: string;
+        timestamp?: string;
+        author?: string;
+    }[];
     allowedNextStatuses?: string[];
-    trackingUpdates?: { status: string; timestamp: string; location?: string; note?: string }[];
+    trackingUpdates?: {
+        status: string;
+        timestamp: string;
+        location?: string;
+        note?: string;
+    }[];
     trackingNumber?: string;
     createdAt?: string;
 }
@@ -289,24 +306,39 @@ export const getAdminOrders = (params?: any) =>
         const safeList = Array.isArray(list) ? list : [];
 
         return {
-            data: safeList.map((o: any, idx: number) => {
-                // Ensure _id is not empty - use orderNumber as fallback
-                const orderId = o?._id || o?.id || o?.orderId || `order-${idx}`;
-                
+            data: safeList.map((o: any) => {
+                const orderId = getSafeOrderId(o, "");
+
                 return {
                     _id: orderId,
-                    orderNumber: o?.orderNumber ?? "",
-                    customer: o?.user?.name ?? o?.customer?.name ?? o?.customer ?? "Unknown",
+                    orderNumber: String(o?.orderNumber ?? ""),
+                    customer:
+                        o?.user?.name ??
+                        o?.customer?.name ??
+                        o?.customer ??
+                        "Unknown",
                     email: o?.user?.email ?? o?.customer?.email ?? "",
-                    total: Number(o?.pricing?.total ?? o?.total ?? o?.totalAmount ?? 0),
+                    total: Number(
+                        o?.pricing?.total ?? o?.total ?? o?.totalAmount ?? 0
+                    ),
                     status: String(o?.status ?? "created").toLowerCase(),
-                    payment: o?.payment?.method ?? o?.paymentMethod ?? o?.payment ?? "",
+                    payment:
+                        o?.payment?.method ??
+                        o?.paymentMethod ??
+                        o?.payment ??
+                        "",
                     trackingNumber: o?.trackingNumber ?? "",
                     createdAt: o?.createdAt ?? "",
                     date: o?.createdAt ?? o?.date ?? "",
                     products: Array.isArray(o?.items)
                         ? o.items.map((item: any) => ({
-                              name: item?.name ?? "",
+                              name: item?.name ?? item?.productName ?? "",
+                              quantity: Number(item?.quantity ?? 0),
+                              price: Number(item?.price ?? 0),
+                          }))
+                        : Array.isArray(o?.products)
+                        ? o.products.map((item: any) => ({
+                              name: item?.name ?? item?.productName ?? "",
                               quantity: Number(item?.quantity ?? 0),
                               price: Number(item?.price ?? 0),
                           }))
@@ -343,21 +375,27 @@ export const getAdminOrderById = (id: string) =>
         const order = unwrapResponse<any>(raw) ?? {};
 
         return {
-            _id: order?._id ?? id,
-            orderNumber: order?.orderNumber ?? "",
+            _id: getSafeOrderId(order, id),
+            orderNumber: String(order?.orderNumber ?? ""),
             customer: {
-                name: order?.user?.name ?? order?.customer?.name ?? "",
+                name: order?.user?.name ?? order?.customer?.name ?? order?.customer ?? "",
                 email: order?.user?.email ?? order?.customer?.email ?? "",
                 phone:
                     order?.shippingAddress?.phone ??
                     order?.customer?.phone ??
                     "",
-                billingAddress: order?.billingAddress ?? null,
-                shippingAddress: order?.shippingAddress ?? null,
+                billingAddress:
+                    order?.billingAddress ??
+                    order?.customer?.billingAddress ??
+                    null,
+                shippingAddress:
+                    order?.shippingAddress ??
+                    order?.customer?.shippingAddress ??
+                    null,
             },
             items: Array.isArray(order?.items)
                 ? order.items.map((item: any) => ({
-                      name: item?.name ?? "",
+                      name: item?.name ?? item?.productName ?? "",
                       sku: item?.sku ?? item?.productId ?? "",
                       quantity: Number(item?.quantity ?? 0),
                       price: Number(item?.price ?? 0),
@@ -368,9 +406,10 @@ export const getAdminOrderById = (id: string) =>
                       image: item?.imageUrl ?? item?.image ?? "",
                   }))
                 : [],
-            total: Number(order?.pricing?.total ?? order?.total ?? 0),
+            total: Number(order?.pricing?.total ?? order?.total ?? order?.totalAmount ?? 0),
             status: String(order?.status ?? "").toLowerCase(),
-            paymentMethod: order?.payment?.method ?? order?.paymentMethod ?? "",
+            paymentMethod:
+                order?.payment?.method ?? order?.paymentMethod ?? order?.payment ?? "",
             trackingNumber: order?.trackingNumber ?? "",
             notes: Array.isArray(order?.notes) ? order.notes : [],
             allowedNextStatuses: Array.isArray(order?.allowedNextStatuses)
@@ -509,7 +548,7 @@ export const getAdminCustomerOrders = (id: string, params?: any) =>
 
         return {
             data: safeList.map((o: any) => ({
-                _id: o?._id || o?.id || o?.orderId || "",
+                _id: getSafeOrderId(o, ""),
                 orderNumber: o?.orderNumber ?? "",
                 status: String(o?.status ?? "").toLowerCase(),
                 total: Number(o?.pricing?.total ?? o?.total ?? 0),
