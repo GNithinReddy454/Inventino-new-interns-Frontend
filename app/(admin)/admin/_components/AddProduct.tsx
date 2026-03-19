@@ -550,13 +550,13 @@ export default function AddProduct() {
         )}
 
         <div
-          className={`fixed bottom-5 left-1/2 z-[100] -translate-x-1/2 transition-all duration-300 sm:left-auto sm:right-6 sm:translate-x-0 ${
+          className={`fixed bottom-5 left-1/2 z-100 -translate-x-1/2 transition-all duration-300 sm:left-auto sm:right-6 sm:translate-x-0 ${
             toast.show
               ? "translate-y-0 opacity-100"
               : "pointer-events-none translate-y-4 opacity-0"
           }`}
         >
-          <div className="flex min-w-[260px] max-w-[88vw] items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)]">
+          <div className="flex min-w-65 max-w-[88vw] items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)]">
             <div
               className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
                 toast.type === "success" ? "bg-green-500" : "bg-red-500"
@@ -671,7 +671,7 @@ export default function AddProduct() {
                   <label className="mb-2 block text-xs font-bold text-gray-900">
                     Tags
                   </label>
-                  <div className="flex min-h-[52px] flex-wrap items-center gap-2 rounded-xl border border-pink-200 bg-[#FDF2F5] p-3 focus-within:border-[#E91E63] focus-within:ring-1 focus-within:ring-[#E91E63]">
+                  <div className="flex min-h-13 flex-wrap items-center gap-2 rounded-xl border border-pink-200 bg-[#FDF2F5] p-3 focus-within:border-[#E91E63] focus-within:ring-1 focus-within:ring-[#E91E63]">
                     {tags.map((tag) => (
                       <span
                         key={tag}
@@ -693,7 +693,7 @@ export default function AddProduct() {
                       onKeyDown={handleAddTag}
                       type="text"
                       placeholder="Add a tag..."
-                      className="min-w-[120px] flex-1 bg-transparent px-1 text-sm focus:outline-none"
+                      className="min-w-30 flex-1 bg-transparent px-1 text-sm focus:outline-none"
                     />
                   </div>
                 </div>
@@ -872,7 +872,7 @@ export default function AddProduct() {
                     key={index}
                     className="relative rounded-xl border border-[#F1E3E8] bg-[#FCF8FA] p-5"
                   >
-                    <div className="absolute left-4 top-[-12px] rounded-full bg-[#E91E63] px-2 py-1 text-[10px] font-bold text-white">
+                    <div className="absolute left-4 -top-3 rounded-full bg-[#E91E63] px-2 py-1 text-[10px] font-bold text-white">
                       {String(index + 1).padStart(2, "0")}
                     </div>
 
