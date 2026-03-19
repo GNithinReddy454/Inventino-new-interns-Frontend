@@ -2,30 +2,84 @@ import apiClient from "@/lib/api";
 import axios from "axios";
 import {
   GetAllProductsParams,
-  ProductListResponse,
   ProductDetailResponse,
 } from "@/types/products.type";
 
 /** Proxy-aware client for PATCH requests (routes through Next.js rewrite to bypass CORS) */
 const patchClient = axios.create({ baseURL: "/api" });
+
 patchClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
 
+/**
+ * Real backend list response shape from Postman:
+ * {
+ *   statusCode: 200,
+ *   message: "Products fetched",
+ *   data: {
+ *     items: [...]
+ *   }
+ * }
+ */
+export interface ProductApiItem {
+  _id: string;
+  productId?: string;
+  productName?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  originalPrice?: number;
+  discountPrice?: number;
+  category?: string;
+  stock?: number;
+  material?: string;
+  isActive?: boolean;
+  trendy?: boolean;
+  bestSeller?: boolean;
+  hashtags?: string[];
+  story?: string;
+  sku?: string;
+  mainImage?: string;
+  imageUrl?: string;
+  galleryImages?: { _id?: string; id?: string; url?: string }[];
+  images?: any[];
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: any;
+}
+
+export interface ProductListApiResponse {
+  statusCode: number;
+  message: string;
+  data: {
+    items: ProductApiItem[];
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+    [key: string]: any;
+  };
+}
+
 export const productService = {
   // GET /products — category + sort + pagination
   async getAll(params?: GetAllProductsParams) {
-    const response = await apiClient.get<ProductListResponse>("/products", { params });
+    const response = await apiClient.get<ProductListApiResponse>("/products", {
+      params,
+    });
     return response;
   },
 
   // GET /products/search?q=
   async searchProducts(query: string, page = 1, limit = 9) {
-    const response = await apiClient.get<ProductListResponse>("/products/search", {
+    const response = await apiClient.get<ProductListApiResponse>("/products/search", {
       params: { q: query, page, limit },
     });
     return response;
@@ -33,7 +87,7 @@ export const productService = {
 
   // GET /products/featured
   async getFeatured(page = 1, limit = 9) {
-    const response = await apiClient.get("/products/featured", {
+    const response = await apiClient.get<ProductListApiResponse>("/products/featured", {
       params: { page, limit },
     });
     return response;
@@ -41,7 +95,7 @@ export const productService = {
 
   // GET /products/best-sellers
   async getBestSellers(page = 1, limit = 9) {
-    const response = await apiClient.get("/products/best-sellers", {
+    const response = await apiClient.get<ProductListApiResponse>("/products/best-sellers", {
       params: { page, limit },
     });
     return response;
@@ -58,7 +112,7 @@ export const productService = {
   },
 
   async getByCategory(category: string, page = 1, limit = 9) {
-    const response = await apiClient.get<ProductListResponse>("/products", {
+    const response = await apiClient.get<ProductListApiResponse>("/products", {
       params: { category, page, limit },
     });
     return response;
@@ -66,25 +120,37 @@ export const productService = {
 
   async create(data: any) {
     const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+
     const response = await apiClient.post("/products", data, {
-      headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+      headers: isFormData
+        ? { "Content-Type": "multipart/form-data" }
+        : undefined,
     });
+
     return response.data;
   },
 
   async update(id: string | number, data: any) {
     const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+
     const response = await patchClient.patch(`/products/${id}`, data, {
-      headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+      headers: isFormData
+        ? { "Content-Type": "multipart/form-data" }
+        : undefined,
     });
+
     return response.data;
   },
 
   async addImages(id: string | number, data: any) {
     const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+
     const response = await apiClient.post(`/products/${id}/images`, data, {
-      headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+      headers: isFormData
+        ? { "Content-Type": "multipart/form-data" }
+        : undefined,
     });
+
     return response.data;
   },
 
@@ -114,16 +180,14 @@ export const productService = {
   async getStory(productId: string) {
     try {
       const response = await apiClient.get(`/products/${productId}/story`, {
-        headers: { 'Cache-Control': 'no-cache' }
+        headers: { "Cache-Control": "no-cache" },
       });
       return response.data;
     } catch (error) {
-      // If 404 occurs, return null instead of throwing
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         console.warn(`Story not found for product ID: ${productId}`);
         return null;
       }
-      // Re-throw other errors
       throw error;
     }
   },
@@ -131,7 +195,7 @@ export const productService = {
   // GET /reviews/product/:productId
   async getReviews(productId: string, page = 1, limit = 10) {
     const response = await apiClient.get(`/reviews/product/${productId}`, {
-      params: { page, limit }
+      params: { page, limit },
     });
     return response.data;
   },

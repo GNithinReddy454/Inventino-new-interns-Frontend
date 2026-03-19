@@ -8,17 +8,28 @@ import { apiMethods } from "@/lib/api";
 async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
     try {
         return await fn();
-    } catch (err) {
+    } catch (err: unknown) {
         if (axios.isAxiosError(err)) {
-            console.error("API ERROR:", {
-                url: err.config?.url,
-                status: err.response?.status,
-                message: err.response?.data?.message,
-                data: err.response?.data,
-            });
+            const details = {
+                code: err.code || "UNKNOWN_AXIOS_ERROR",
+                method: err.config?.method?.toUpperCase() || "UNKNOWN_METHOD",
+                baseURL: err.config?.baseURL || "",
+                url: err.config?.url || "UNKNOWN_URL",
+                fullUrl: `${err.config?.baseURL || ""}${err.config?.url || ""}`,
+                status: err.response?.status ?? "NO_RESPONSE",
+                statusText: err.response?.statusText ?? "NO_STATUS_TEXT",
+                message:
+                    (err.response?.data as any)?.message ||
+                    err.message ||
+                    "Axios request failed",
+                data: err.response?.data ?? null,
+            };
+
+            console.error("API ERROR:", details);
         } else {
             console.error("UNKNOWN ERROR:", err);
         }
+
         return null;
     }
 }
