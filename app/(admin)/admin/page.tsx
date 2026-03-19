@@ -30,7 +30,7 @@ import LandingPagePreviewModal from "./_components/LandingPagePreviewModal";
 import ReviewsView from "./_components/ReviewsView";
 import CustomerProfileView from "./_components/CustomerProfileView";
 import AddProduct from "./AddProduct";
-import OrderDetailView from "./_components/OrderDetailView"; // Note: file is OrderDetailView.tsx
+import OrderDetailView from "./_components/OrderDetailView";
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -61,9 +61,13 @@ function NavItem({ icon: Icon, label, active, onClick, collapsed }: NavItemProps
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [showLandingPreview, setShowLandingPreview] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  
+  // Single state for selected item (order or customer)
+  const [selectedItem, setSelectedItem] = useState<{
+    type: "order" | "customer";
+    id: string;
+  } | null>(null);
 
   const navigationGroups = [
     { title: "MAIN", items: [{ label: "Dashboard", icon: LayoutDashboard }, { label: "CMS", icon: LayoutTemplate }] },
@@ -73,10 +77,38 @@ export default function AdminDashboard() {
   ];
 
   const handleNavigate = (label: string) => {
-    if (label !== "Customer Profile") setSelectedCustomerId(null);
-    if (label !== "Order Details") setSelectedOrderId(null);
-    if (label === "CMS") setActiveTab("Landing Page CMS");
-    else setActiveTab(label);
+    if (label === "Orders") {
+      setSelectedItem(null);
+      setActiveTab("Orders");
+    } else if (label === "Customers") {
+      setSelectedItem(null);
+      setActiveTab("Customers");
+    } else if (label === "CMS") {
+      setActiveTab("Landing Page CMS");
+    } else {
+      setActiveTab(label);
+    }
+  };
+
+  const handleViewOrder = (orderId: string) => {
+    console.log("AdminDashboard: view order", orderId);
+    setSelectedItem({ type: "order", id: orderId });
+    setActiveTab("Order Details");
+  };
+
+  const handleViewCustomer = (customerId: string) => {
+    console.log("AdminDashboard: view customer", customerId);
+    setSelectedItem({ type: "customer", id: customerId });
+    setActiveTab("Customer Profile");
+  };
+
+  const handleBack = () => {
+    if (selectedItem?.type === "order") {
+      setActiveTab("Orders");
+    } else if (selectedItem?.type === "customer") {
+      setActiveTab("Customers");
+    }
+    setSelectedItem(null);
   };
 
   return (
@@ -102,8 +134,8 @@ export default function AdminDashboard() {
                     active={
                       activeTab === item.label ||
                       (activeTab === "Landing Page CMS" && item.label === "CMS") ||
-                      (activeTab === "Customer Profile" && item.label === "Customers") ||
-                      (activeTab === "Order Details" && item.label === "Orders")
+                      (activeTab === "Order Details" && item.label === "Orders") ||
+                      (activeTab === "Customer Profile" && item.label === "Customers")
                     }
                     onClick={() => handleNavigate(item.label)}
                     collapsed={isSidebarCollapsed}
@@ -178,15 +210,18 @@ export default function AdminDashboard() {
             {activeTab === "All Products" && <AllProductsView onAddProduct={() => setActiveTab("Add Product")} />}
             {activeTab === "Add Product" && <AddProduct />}
             {activeTab === "Reviews" && <ReviewsView />}
-            {activeTab === "Orders" && <OrdersView onViewOrder={(orderId) => { setSelectedOrderId(orderId); setActiveTab("Order Details"); }} />}
+            {activeTab === "Orders" && <OrdersView onViewOrder={handleViewOrder} />}
             {activeTab === "Reports & Analytics" && <ReportsAnalyticsView />}
-            {activeTab === "Customers" && <CustomersView onViewProfile={(id) => { setSelectedCustomerId(id); setActiveTab("Customer Profile"); }} />}
-            {activeTab === "Customer Profile" && selectedCustomerId && (
-              <CustomerProfileView customerId={selectedCustomerId} onBack={() => { setActiveTab("Customers"); setSelectedCustomerId(null); }} onViewOrder={(orderId) => { setSelectedOrderId(orderId); setActiveTab("Order Details"); }} />
+            {activeTab === "Customers" && <CustomersView onViewProfile={handleViewCustomer} />}
+            {activeTab === "Customer Profile" && selectedItem?.type === "customer" && (
+              <CustomerProfileView 
+                customerId={selectedItem.id} 
+                onBack={handleBack} 
+                onViewOrder={handleViewOrder}
+              />
             )}
-            {/* ✅ Added missing Order Details block */}
-            {activeTab === "Order Details" && selectedOrderId && (
-              <OrderDetailView orderId={selectedOrderId} onBack={() => { setActiveTab("Orders"); setSelectedOrderId(null); }} />
+            {activeTab === "Order Details" && selectedItem?.type === "order" && (
+              <OrderDetailView orderId={selectedItem.id} onBack={handleBack} />
             )}
             {activeTab === "Settings" && <SettingsView />}
           </div>
