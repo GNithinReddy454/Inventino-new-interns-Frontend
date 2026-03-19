@@ -1,7 +1,10 @@
 ﻿import axios from "axios";
 import { apiMethods } from "@/lib/api";
 
-// ─── Helper: Graceful fetch ───────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ───────────────────────────────────────────────────────────────────────────────
+
 async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
     try {
         return await fn();
@@ -20,7 +23,60 @@ async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
     }
 }
 
-// ─── Response Types ──────────────────────────────────────────────────────────
+function unwrapResponse<T = any>(raw: any): T {
+    if (!raw) return raw as T;
+
+    // axios full response -> { data: ... }
+    const first = raw?.data ?? raw;
+
+    // backend wrapped response -> { statusCode, message, data }
+    if (
+        first &&
+        typeof first === "object" &&
+        !Array.isArray(first) &&
+        "data" in first
+    ) {
+        return first.data as T;
+    }
+
+    return first as T;
+}
+
+function unwrapMeta(raw: any) {
+    const first = raw?.data ?? raw;
+
+    if (
+        first &&
+        typeof first === "object" &&
+        !Array.isArray(first) &&
+        "data" in first
+    ) {
+        return {
+            total: Number(first.total ?? 0),
+            page: Number(first.page ?? 1),
+            limit: Number(first.limit ?? 10),
+            totalPages: Number(first.totalPages ?? 1),
+        };
+    }
+
+    return {
+        total: Number(raw?.total ?? 0),
+        page: Number(raw?.page ?? 1),
+        limit: Number(raw?.limit ?? 10),
+        totalPages: Number(raw?.totalPages ?? 1),
+    };
+}
+
+function extractBlob(response: any): Blob | null {
+    if (!response) return null;
+    if (response instanceof Blob) return response;
+    if (response?.data instanceof Blob) return response.data;
+    return null;
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Types
+// ───────────────────────────────────────────────────────────────────────────────
 
 export interface DashboardData {
     totalRevenue: number;
@@ -85,22 +141,20 @@ export interface Category {
 }
 
 export interface AdminSettings {
-    storeName: string;
-    storeEmail: string;
-    storePhone: string;
-    storeCurrency: string;
-    storeAddress: string;
+    storeName?: string;
+    storeEmail?: string;
+    storePhone?: string;
+    storeCurrency?: string;
+    storeAddress?: string;
     [key: string]: any;
 }
 
-// ─── Customers ───────────────────────────────────────────────────────────────
-
 export interface AdminCustomer {
-    _id: string;
+    _id: string; // Mongo ObjectId - use this for detail APIs
     name: string;
     email: string;
     phone: string;
-    userId: string;
+    userId: string; // display ID like USR-129
     isActive?: boolean;
     createdAt?: string;
 }
@@ -110,11 +164,30 @@ export interface AdminCustomerDetail {
     name: string;
     email: string;
     phone: string;
-    role: string;
-    isEmailVerified: boolean;
+    role?: string;
+    isEmailVerified?: boolean;
     totalOrders: number;
     totalSpent: number;
     customerType?: string;
+    active?: boolean;
+    registeredAt?: string;
+    customerId?: string;
+    addresses?: {
+        billing?: {
+            line1?: string;
+            city?: string;
+            state?: string;
+            postalCode?: string;
+            country?: string;
+        };
+        shipping?: {
+            line1?: string;
+            city?: string;
+            state?: string;
+            postalCode?: string;
+            country?: string;
+        };
+    };
 }
 
 export interface CustomerStats {
@@ -133,11 +206,9 @@ export interface CustomerOrder {
     createdAt?: string;
 }
 
-// ─── Orders ──────────────────────────────────────────────────────────────────
-
 export interface AdminOrderListItem {
-    _id: string;
-    orderNumber: string;
+    _id: string; // Mongo ObjectId - use this for detail APIs
+    orderNumber: string; // display only
     customer: string;
     email?: string;
     total: number;
@@ -154,24 +225,32 @@ export interface AdminOrderListItem {
 }
 
 export interface AdminOrderDetail {
+    orderId(orderId: any, pendingStatus: string): unknown;
     _id?: string;
     orderNumber: string;
     customer: {
         name: string;
         email: string;
+        phone?: string;
+        billingAddress?: any;
+        shippingAddress?: any;
     };
     items: {
         name: string;
-        price: number;
+        sku?: string;
         quantity: number;
+        price: number;
+        total?: number;
+        image?: string;
     }[];
     total: number;
     status: string;
     paymentMethod: string;
-    notes?: { text: string; createdAt: string }[];
+    notes?: { text: string; createdAt?: string; timestamp?: string; author?: string }[];
     allowedNextStatuses?: string[];
-    trackingUpdates?: { status: string; timestamp: string }[];
+    trackingUpdates?: { status: string; timestamp: string; location?: string; note?: string }[];
     trackingNumber?: string;
+    createdAt?: string;
 }
 
 export interface OrderStats {
@@ -185,79 +264,66 @@ export interface OrderStats {
     returned: number;
 }
 
-// ─── Reviews ──────────────────────────────────────────────────────────────────
-
 export interface AdminReview {
     _id: string;
-    productId: string;
+    productId?: string;
     productName: string;
-    customerId: string;
+    customerId?: string;
     customerName: string;
     rating: number;
     comment: string;
     status: "pending" | "approved" | "rejected";
-    createdAt: string;
+    createdAt?: string;
     updatedAt?: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
+// Orders
+// ───────────────────────────────────────────────────────────────────────────────
 
-function extractBlob(response: any): Blob | null {
-    if (!response) return null;
-    if (response instanceof Blob) return response;
-    if (response?.data instanceof Blob) return response.data;
-    return null;
-}
-
-function normalizeTopLevelResponse(res: any) {
-    return res?.data && !Array.isArray(res?.data) && typeof res?.data === "object" && "data" in res.data
-        ? res.data
-        : res;
-}
-
-// ─── Orders APIs ──────────────────────────────────────────────────────────────
-
-// GET ORDERS LIST - /api/admin/orders-manage
 export const getAdminOrders = (params?: any) =>
     gracefulFetch(async () => {
         const raw = await apiMethods.get<any>("/admin/orders-manage", { params });
-        const res = normalizeTopLevelResponse(raw);
-
-        const list: any[] = Array.isArray(res?.data) ? res.data : [];
+        const list = unwrapResponse<any[]>(raw);
+        const meta = unwrapMeta(raw);
+        const safeList = Array.isArray(list) ? list : [];
 
         return {
-            data: list.map((o: any) => ({
-                _id: o?._id ?? o?.id ?? o?.orderId ?? "",
-                orderNumber: o?.orderNumber ?? "",
-                customer: o?.user?.name ?? o?.customer?.name ?? o?.customer ?? "Unknown",
-                email: o?.user?.email ?? o?.customer?.email ?? "",
-                total: Number(o?.pricing?.total ?? o?.total ?? o?.totalAmount ?? 0),
-                status: String(o?.status ?? "created").toLowerCase(),
-                payment: o?.payment?.method ?? o?.paymentMethod ?? o?.payment ?? "",
-                trackingNumber: o?.trackingNumber ?? "",
-                createdAt: o?.createdAt ?? "",
-                date: o?.createdAt ?? o?.date ?? "",
-                products: Array.isArray(o?.items)
-                    ? o.items.map((item: any) => ({
-                          name: item?.name ?? "",
-                          quantity: Number(item?.quantity ?? 0),
-                          price: Number(item?.price ?? 0),
-                      }))
-                    : [],
-            })) as AdminOrderListItem[],
-            total: Number(res?.total ?? list.length),
-            page: Number(res?.page ?? 1),
-            limit: Number(res?.limit ?? params?.limit ?? 10),
-            totalPages: Number(res?.totalPages ?? 1),
+            data: safeList.map((o: any, idx: number) => {
+                // Ensure _id is not empty - use orderNumber as fallback
+                const orderId = o?._id || o?.id || o?.orderId || `order-${idx}`;
+                
+                return {
+                    _id: orderId,
+                    orderNumber: o?.orderNumber ?? "",
+                    customer: o?.user?.name ?? o?.customer?.name ?? o?.customer ?? "Unknown",
+                    email: o?.user?.email ?? o?.customer?.email ?? "",
+                    total: Number(o?.pricing?.total ?? o?.total ?? o?.totalAmount ?? 0),
+                    status: String(o?.status ?? "created").toLowerCase(),
+                    payment: o?.payment?.method ?? o?.paymentMethod ?? o?.payment ?? "",
+                    trackingNumber: o?.trackingNumber ?? "",
+                    createdAt: o?.createdAt ?? "",
+                    date: o?.createdAt ?? o?.date ?? "",
+                    products: Array.isArray(o?.items)
+                        ? o.items.map((item: any) => ({
+                              name: item?.name ?? "",
+                              quantity: Number(item?.quantity ?? 0),
+                              price: Number(item?.price ?? 0),
+                          }))
+                        : [],
+                } as AdminOrderListItem;
+            }),
+            total: meta.total || safeList.length,
+            page: meta.page,
+            limit: meta.limit,
+            totalPages: meta.totalPages || 1,
         };
     });
 
-// GET ORDER STATS - /api/admin/orders-manage/stats
 export const getAdminOrderStats = () =>
     gracefulFetch(async () => {
         const raw = await apiMethods.get<any>("/admin/orders-manage/stats");
-        const res = normalizeTopLevelResponse(raw);
-        const stats = res?.data && !Array.isArray(res?.data) ? res.data : res ?? {};
+        const stats = unwrapResponse<any>(raw) ?? {};
 
         return {
             total: Number(stats?.total ?? 0),
@@ -271,12 +337,10 @@ export const getAdminOrderStats = () =>
         } as OrderStats;
     });
 
-// GET ORDER DETAIL - /api/admin/orders-manage/:id
 export const getAdminOrderById = (id: string) =>
     gracefulFetch(async () => {
-        const raw = await apiMethods.get<any>(/admin/orders-manage/);
-        const res = normalizeTopLevelResponse(raw);
-        const order = res?.data && !Array.isArray(res?.data) ? res.data : res ?? {};
+        const raw = await apiMethods.get<any>(`/admin/orders-manage/${id}`);
+        const order = unwrapResponse<any>(raw) ?? {};
 
         return {
             _id: order?._id ?? id,
@@ -284,12 +348,24 @@ export const getAdminOrderById = (id: string) =>
             customer: {
                 name: order?.user?.name ?? order?.customer?.name ?? "",
                 email: order?.user?.email ?? order?.customer?.email ?? "",
+                phone:
+                    order?.shippingAddress?.phone ??
+                    order?.customer?.phone ??
+                    "",
+                billingAddress: order?.billingAddress ?? null,
+                shippingAddress: order?.shippingAddress ?? null,
             },
             items: Array.isArray(order?.items)
                 ? order.items.map((item: any) => ({
                       name: item?.name ?? "",
-                      price: Number(item?.price ?? 0),
+                      sku: item?.sku ?? item?.productId ?? "",
                       quantity: Number(item?.quantity ?? 0),
+                      price: Number(item?.price ?? 0),
+                      total: Number(
+                          item?.total ??
+                              Number(item?.price ?? 0) * Number(item?.quantity ?? 0)
+                      ),
+                      image: item?.imageUrl ?? item?.image ?? "",
                   }))
                 : [],
             total: Number(order?.pricing?.total ?? order?.total ?? 0),
@@ -297,88 +373,88 @@ export const getAdminOrderById = (id: string) =>
             paymentMethod: order?.payment?.method ?? order?.paymentMethod ?? "",
             trackingNumber: order?.trackingNumber ?? "",
             notes: Array.isArray(order?.notes) ? order.notes : [],
-            allowedNextStatuses: Array.isArray(order?.allowedNextStatuses) ? order.allowedNextStatuses : [],
-            trackingUpdates: Array.isArray(order?.trackingUpdates) ? order.trackingUpdates : [],
+            allowedNextStatuses: Array.isArray(order?.allowedNextStatuses)
+                ? order.allowedNextStatuses
+                : [],
+            trackingUpdates: Array.isArray(order?.trackingUpdates)
+                ? order.trackingUpdates
+                : [],
+            createdAt: order?.createdAt ?? "",
         } as AdminOrderDetail;
     });
 
-// UPDATE ORDER STATUS - /api/admin/orders-manage/:id/status
 export const updateOrderStatus = (id: string, status: string) =>
     gracefulFetch(async () => {
-        return await apiMethods.put(/admin/orders-manage//status, { status });
+        return await apiMethods.put(`/admin/orders-manage/${id}/status`, { status });
     });
 
-// UPDATE TRACKING - /api/admin/orders-manage/:id/tracking
 export const updateOrderTracking = (id: string, trackingNumber: string) =>
     gracefulFetch(async () => {
-        return await apiMethods.put(/admin/orders-manage//tracking, { trackingNumber });
+        return await apiMethods.put(`/admin/orders-manage/${id}/tracking`, {
+            trackingNumber,
+        });
     });
 
-// CANCEL ORDER - /api/admin/orders-manage/:id/cancel
 export const cancelOrder = (id: string, reason?: string) =>
     gracefulFetch(async () => {
-        return await apiMethods.patch(/admin/orders-manage//cancel, {
-            reason: reason ?? "",
+        return await apiMethods.patch(`/admin/orders-manage/${id}/cancel`, {
+            reason: reason ?? "Cancelled by admin",
         });
     });
 
-// ADD ORDER NOTE - /api/admin/orders-manage/:id/notes
 export const addOrderNote = (id: string, note: string) =>
     gracefulFetch(async () => {
-        return await apiMethods.post(/admin/orders-manage//notes, { note });
+        return await apiMethods.post(`/admin/orders-manage/${id}/notes`, { note });
     });
 
-// DOWNLOAD INVOICE - /api/admin/orders-manage/:id/invoice
 export const downloadOrderInvoice = (id: string) =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get(/admin/orders-manage//invoice, {
+        const res = await apiMethods.get(`/admin/orders-manage/${id}/invoice`, {
             responseType: "blob",
         });
         return extractBlob(res);
     });
 
-// EXPORT ORDERS - /api/admin/orders-manage/export
 export const exportAdminOrders = (filters: any = {}) =>
     gracefulFetch(async () => {
-        const res = await apiMethods.post(/admin/orders-manage/export, filters, {
+        const res = await apiMethods.post(`/admin/orders-manage/export`, filters, {
             responseType: "blob",
         });
         return extractBlob(res);
     });
 
-// ─── Customer APIs ───────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
+// Customers
+// ───────────────────────────────────────────────────────────────────────────────
 
-// GET ALL CUSTOMERS - /api/admin/customers
 export const getAdminCustomers = (params?: any) =>
     gracefulFetch(async () => {
         const raw = await apiMethods.get<any>("/admin/customers", { params });
-        const res = normalizeTopLevelResponse(raw);
-
-        const list: any[] = Array.isArray(res?.data) ? res.data : [];
+        const list = unwrapResponse<any[]>(raw);
+        const meta = unwrapMeta(raw);
+        const safeList = Array.isArray(list) ? list : [];
 
         return {
-            data: list.map((c: any, idx: number) => ({
+            data: safeList.map((c: any, idx: number) => ({
                 _id: c?._id ?? c?.id ?? "",
                 name: c?.name ?? "",
                 email: c?.email ?? "",
                 phone: c?.phone ?? "",
-                userId: c?.userId ?? USR-,
+                userId: c?.userId ?? `USR-${idx + 1}`,
                 isActive: c?.isActive,
                 createdAt: c?.createdAt,
             })) as AdminCustomer[],
-            total: Number(res?.total ?? list.length),
-            page: Number(res?.page ?? 1),
-            limit: Number(res?.limit ?? params?.limit ?? 10),
-            totalPages: Number(res?.totalPages ?? 1),
+            total: meta.total || safeList.length,
+            page: meta.page,
+            limit: meta.limit,
+            totalPages: meta.totalPages || 1,
         };
     });
 
-// GET CUSTOMER STATS - /api/admin/customers/stats
 export const getAdminCustomerStats = () =>
     gracefulFetch(async () => {
         const raw = await apiMethods.get<any>("/admin/customers/stats");
-        const res = normalizeTopLevelResponse(raw);
-        const stats = res?.data && !Array.isArray(res?.data) ? res.data : res ?? {};
+        const stats = unwrapResponse<any>(raw) ?? {};
 
         return {
             total: Number(stats?.total ?? 0),
@@ -387,21 +463,23 @@ export const getAdminCustomerStats = () =>
         } as CustomerStats;
     });
 
-// EXPORT CUSTOMERS - /api/admin/customers/export
 export const exportAdminCustomers = (filters: any = { format: "csv" }) =>
     gracefulFetch(async () => {
-        const res = await apiMethods.post(/admin/customers/export, filters, {
+        const res = await apiMethods.post(`/admin/customers/export`, filters, {
             responseType: "blob",
         });
         return extractBlob(res);
     });
 
-// GET SINGLE CUSTOMER - /api/admin/customers/:id
+export const updateAdminCustomer = (id: string, data: any) =>
+    gracefulFetch(async () => {
+        return await apiMethods.put(`/admin/customers/${id}`, data);
+    });
+
 export const getAdminCustomerById = (id: string) =>
     gracefulFetch(async () => {
-        const raw = await apiMethods.get<any>(/admin/customers/);
-        const res = normalizeTopLevelResponse(raw);
-        const customer = res?.data && !Array.isArray(res?.data) ? res.data : res ?? {};
+        const raw = await apiMethods.get<any>(`/admin/customers/${id}`);
+        const customer = unwrapResponse<any>(raw) ?? {};
 
         return {
             _id: customer?._id ?? id,
@@ -412,19 +490,26 @@ export const getAdminCustomerById = (id: string) =>
             isEmailVerified: Boolean(customer?.isEmailVerified),
             totalOrders: Number(customer?.totalOrders ?? 0),
             totalSpent: Number(customer?.totalSpent ?? 0),
+            customerType: customer?.customerType,
+            active: customer?.isActive ?? customer?.active ?? true,
+            registeredAt: customer?.createdAt ?? customer?.registeredAt ?? "",
+            customerId: customer?.userId ?? customer?.customerId ?? "",
+            addresses: customer?.addresses ?? undefined,
         } as AdminCustomerDetail;
     });
 
-// GET CUSTOMER ORDERS - /api/admin/customers/:id/orders
 export const getAdminCustomerOrders = (id: string, params?: any) =>
     gracefulFetch(async () => {
-        const raw = await apiMethods.get<any>(/admin/customers//orders, { params });
-        const res = normalizeTopLevelResponse(raw);
-        const list: any[] = Array.isArray(res?.data) ? res.data : [];
+        const raw = await apiMethods.get<any>(`/admin/customers/${id}/orders`, {
+            params,
+        });
+        const list = unwrapResponse<any[]>(raw);
+        const meta = unwrapMeta(raw);
+        const safeList = Array.isArray(list) ? list : [];
 
         return {
-            data: list.map((o: any) => ({
-                _id: o?._id ?? o?.orderId ?? o?.id ?? "",
+            data: safeList.map((o: any) => ({
+                _id: o?._id || o?.id || o?.orderId || "",
                 orderNumber: o?.orderNumber ?? "",
                 status: String(o?.status ?? "").toLowerCase(),
                 total: Number(o?.pricing?.total ?? o?.total ?? 0),
@@ -432,93 +517,32 @@ export const getAdminCustomerOrders = (id: string, params?: any) =>
                 date: o?.createdAt ?? o?.date ?? "",
                 createdAt: o?.createdAt ?? "",
             })) as CustomerOrder[],
-            total: Number(res?.total ?? list.length),
+            total: meta.total || safeList.length,
+            page: meta.page,
+            limit: meta.limit,
+            totalPages: meta.totalPages || 1,
         };
     });
 
-// UPDATE CUSTOMER - /api/admin/customers/:id
-export const updateAdminCustomer = (id: string, data: any) =>
-    gracefulFetch(async () => {
-        return await apiMethods.put(/admin/customers/, data);
-    });
-
-// ─── Banners ──────────────────────────────────────────────────────────────────
-
-export const getActiveBanners = () =>
-    gracefulFetch(async () => {
-        return await apiMethods.get<Banner[]>(/admin/banners);
-    });
-
-export const createBanner = (banner: Banner) =>
-    gracefulFetch(async () => {
-        return await apiMethods.post<Banner>(/admin/banners, banner);
-    });
-
-export const updateBanner = (id: string, banner: Partial<Banner>) =>
-    gracefulFetch(async () => {
-        return await apiMethods.put<Banner>(/admin/banners/, banner);
-    });
-
-export const deleteBanner = (id: string) =>
-    gracefulFetch(async () => {
-        return await apiMethods.delete(/admin/banners/);
-    });
-
-// ─── Categories ───────────────────────────────────────────────────────────────
-
-export const getAdminCategories = () =>
-    gracefulFetch(async () => {
-        return await apiMethods.get<Category[]>(/admin/categories);
-    });
-
-export const getCategories = getAdminCategories;
-
-export const createCategory = (category: Category) =>
-    gracefulFetch(async () => {
-        return await apiMethods.post<Category>(/admin/categories, category);
-    });
-
-export const updateCategory = (id: string, category: Partial<Category>) =>
-    gracefulFetch(async () => {
-        return await apiMethods.put<Category>(/admin/categories/, category);
-    });
-
-export const deleteCategory = (id: string) =>
-    gracefulFetch(async () => {
-        return await apiMethods.delete(/admin/categories/);
-    });
-
-// ─── Reviews ──────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
+// Reviews
+// ───────────────────────────────────────────────────────────────────────────────
 
 export const getAdminReviews = (params?: any) =>
     gracefulFetch(async () => {
         const raw = await apiMethods.get<any>("/admin/reviews", { params });
-        const res = normalizeTopLevelResponse(raw);
-        const list: AdminReview[] = Array.isArray(res?.data) ? res.data : [];
-        return list;
+        const list = unwrapResponse<any[]>(raw);
+        return (Array.isArray(list) ? list : []) as AdminReview[];
     });
 
-// ─── Settings ──────────────────────────────────────────────────────────────────
-
-export const getAdminSettings = () =>
-    gracefulFetch(async () => {
-        const raw = await apiMethods.get<any>("/admin/settings");
-        const res = normalizeTopLevelResponse(raw);
-        return res?.data ?? res ?? {};
-    });
-
-export const updateAdminSettings = (settings: any) =>
-    gracefulFetch(async () => {
-        return await apiMethods.put("/admin/settings", settings);
-    });
-
-// ─── Dashboard & Analytics ────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
+// Dashboard / Analytics / Settings / CMS / Categories / Banners
+// ───────────────────────────────────────────────────────────────────────────────
 
 export const getDashboard = () =>
     gracefulFetch(async () => {
         const raw = await apiMethods.get<any>("/admin/dashboard");
-        const res = normalizeTopLevelResponse(raw);
-        return res?.data ?? res ?? {};
+        return unwrapResponse<any>(raw) ?? {};
     });
 
 export const getAnalytics = (period: string = "30d") =>
@@ -526,20 +550,71 @@ export const getAnalytics = (period: string = "30d") =>
         const raw = await apiMethods.get<any>("/admin/analytics", {
             params: { period },
         });
-        const res = normalizeTopLevelResponse(raw);
-        return res?.data ?? res ?? {};
+        return unwrapResponse<any>(raw) ?? {};
     });
 
-// ─── CMS Data ──────────────────────────────────────────────────────────────────
+export const getAdminSettings = () =>
+    gracefulFetch(async () => {
+        const raw = await apiMethods.get<any>("/admin/settings");
+        return unwrapResponse<any>(raw) ?? {};
+    });
+
+export const updateAdminSettings = (settings: any) =>
+    gracefulFetch(async () => {
+        return await apiMethods.put("/admin/settings", settings);
+    });
 
 export const getCMSData = () =>
     gracefulFetch(async () => {
         const raw = await apiMethods.get<any>("/admin/cms");
-        const res = normalizeTopLevelResponse(raw);
-        return res?.data ?? res ?? {};
+        return unwrapResponse<any>(raw) ?? {};
     });
 
 export const updateCMSData = (data: CMSData) =>
     gracefulFetch(async () => {
         return await apiMethods.put("/admin/cms", data);
+    });
+
+export const getActiveBanners = () =>
+    gracefulFetch(async () => {
+        const raw = await apiMethods.get<any>("/admin/banners");
+        return unwrapResponse<Banner[]>(raw) ?? [];
+    });
+
+export const createBanner = (banner: Banner) =>
+    gracefulFetch(async () => {
+        return await apiMethods.post<Banner>("/admin/banners", banner);
+    });
+
+export const updateBanner = (id: string, banner: Partial<Banner>) =>
+    gracefulFetch(async () => {
+        return await apiMethods.put<Banner>(`/admin/banners/${id}`, banner);
+    });
+
+export const deleteBanner = (id: string) =>
+    gracefulFetch(async () => {
+        return await apiMethods.delete(`/admin/banners/${id}`);
+    });
+
+export const getAdminCategories = () =>
+    gracefulFetch(async () => {
+        const raw = await apiMethods.get<any>("/admin/categories");
+        return unwrapResponse<Category[]>(raw) ?? [];
+    });
+
+export const getCategories = getAdminCategories;
+
+export const createCategory = (category: Category) =>
+    gracefulFetch(async () => {
+        return await apiMethods.post<Category>("/admin/categories", category);
+    });
+
+export const updateCategory = (id: string, category: Partial<Category>) =>
+    gracefulFetch(async () => {
+        return await apiMethods.put<Category>(`/admin/categories/${id}`, category);
+    });
+
+export const deleteCategory = (id: string) =>
+    gracefulFetch(async () => {
+        return await apiMethods.delete(`/admin/categories/${id}`);
     });

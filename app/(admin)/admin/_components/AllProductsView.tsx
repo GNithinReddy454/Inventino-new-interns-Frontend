@@ -108,8 +108,8 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
     const fetchCategories = useCallback(async () => {
         try {
             const data = await getCategories();
-            if (data?.items && data.items.length > 0) {
-                const names = data.items.filter((c: any) => c.isActive).map((c: any) => c.name);
+            if (Array.isArray(data) && data.length > 0) {
+                const names = data.filter((c: any) => c.isActive).map((c: any) => c.name);
                 setCategoryOptions(["All Categories", ...names]);
             }
         } catch {
@@ -519,7 +519,7 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                                             </td>
                                             <td className="px-0 py-2 md:px-6 md:py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-lg flex-shrink-0 hidden md:flex overflow-hidden bg-[#f3f4f6] items-center justify-center">
+                                                    <div className="w-12 h-12 rounded-lg shrink-0 hidden md:flex overflow-hidden bg-[#f3f4f6] items-center justify-center">
                                                         {prod.imageUrl ? (
                                                             <img
                                                                 src={prod.imageUrl}
