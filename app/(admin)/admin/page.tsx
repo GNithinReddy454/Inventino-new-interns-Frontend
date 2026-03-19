@@ -29,7 +29,7 @@ import LandingPageCMSView from "./_components/LandingPageCMSView";
 import LandingPagePreviewModal from "./_components/LandingPagePreviewModal";
 import ReviewsView from "./_components/ReviewsView";
 import CustomerProfileView from "./_components/CustomerProfileView";
-import AddProduct from "./AddProduct";
+import AddProduct from "./_components/AddProduct";
 import OrderDetailView from "./_components/OrderDetailView";
 
 interface NavItemProps {
