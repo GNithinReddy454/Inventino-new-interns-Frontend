@@ -21,7 +21,7 @@ function StatCard({ title, value, trend }: StatCardProps) {
     const isPositive = trend >= 0;
     return (
         <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 relative overflow-hidden flex flex-col justify-center h-32">
-            <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-[#E91E63]"></div>
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#E91E63]"></div>
             <p className="text-[13px] text-gray-500 font-medium mb-1 pl-2">{title}</p>
             <h3 className="text-[32px] font-bold text-gray-900 mb-2 pl-2 tracking-tight leading-none">{value}</h3>
             <div className="flex items-center text-[11px] pl-2 font-bold mt-1">
@@ -126,7 +126,7 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Revenue Overview */}
                 <div className="lg:col-span-2">
-                    <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8 flex flex-col min-h-[400px] h-full">
+                    <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8 flex flex-col min-h-100 h-full">
                         <div className="flex justify-between items-center mb-10 w-full relative z-10">
                             <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Revenue Overview</h3>
                             <div className="flex gap-1.5 p-1 bg-white shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] rounded-full">
@@ -146,7 +146,7 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                         </div>
                         <div className="flex-1 w-full" style={{ minHeight: 280 }}>
                             {isLoading ? (
-                                <Skeleton className="w-full h-[280px]" />
+                                <Skeleton className="w-full h-70" />
                             ) : (
                                 <ResponsiveContainer width="100%" height={280}>
                                     <AreaChart data={activeChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
@@ -301,7 +301,7 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                             { name: "Crochet Pouch", category: "Accessories", sales: "142", color: "bg-[#F0DA79]" },
                         ].map((prod: any, i: number) => (
                             <div key={i} className="flex items-center gap-4">
-                                <div className={`w-[52px] h-[52px] rounded-xl flex shrink-0 overflow-hidden items-center justify-center ${prod.color}`}>
+                                <div className={`w-13 h-13 rounded-xl flex shrink-0 overflow-hidden items-center justify-center ${prod.color}`}>
                                     {prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0] ? (
                                         <img
                                             src={prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0]}
