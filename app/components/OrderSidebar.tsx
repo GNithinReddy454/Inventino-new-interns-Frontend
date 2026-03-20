@@ -123,7 +123,6 @@ export function OrderSidebar({
                 className={`w-16 h-16 bg-gradient-to-br ${getGradient(selectedColor)} rounded-xl flex-shrink-0 shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden`}
               >
                   {(product.image || product.images?.[0]?.url) && (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={product.image || product.images?.[0]?.url} alt={name} className="w-full h-full object-cover" />
                   )}
               </div>

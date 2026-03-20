@@ -58,14 +58,14 @@ function ToastItem({
 
   return (
     <div
-      className="flex items-center gap-3 bg-white rounded-2xl shadow-xl px-4 py-3.5 min-w-[280px] max-w-[340px] pointer-events-auto"
+      className="flex items-center gap-3 bg-white rounded-2xl shadow-xl px-4 py-3.5 min-w-70 max-w-85 pointer-events-auto"
       style={{
         boxShadow: "0 4px 24px rgba(0,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.07)",
         animation: `${position === "bottom-left" ? "toastSlideInLeft" : "toastSlideInRight"} 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)`,
       }}
     >
       <div
-        className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+        className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
         style={{ backgroundColor: iconBg }}
       >
         {checkmark}
@@ -80,7 +80,7 @@ function ToastItem({
 
       <button
         onClick={() => onDismiss(toast.id)}
-        className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+        className="shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
       >
         <X className="w-4 h-4" />
       </button>
