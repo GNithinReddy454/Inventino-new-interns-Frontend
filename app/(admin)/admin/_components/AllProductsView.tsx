@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ChevronDown,
@@ -9,13 +11,16 @@ import {
   ToggleLeft,
   ToggleRight,
   RefreshCw,
+  Eye,
 } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
 import Pagination from "./Pagination";
+import { productService } from "@/services/product.service";
 import { getCategories } from "@/services/admin.service";
 import { useAppSelector } from "@/redux/store";
 import EditProductModal, { EditableProduct } from "./EditProductModal";
 import { adminProductService } from "@/services/admin-product.service";
+import ProductPreviewModal from "./ProductPreviewModal";
 
 interface NormalizedAdminProduct {
   _id: string;
@@ -37,7 +42,11 @@ interface NormalizedAdminProduct {
   imageUrl: string;
   images?: any[];
   createdAt?: string;
+  color?: string;
+  size?: string;
 }
+
+type EditImage = { id: string; url: string };
 
 function deriveStatus(p: any): string {
   if (!p.isActive) return "Inactive";
@@ -47,8 +56,12 @@ function deriveStatus(p: any): string {
 }
 
 function extractItemsAndMeta(response: any) {
-  const root = response?.data ?? {};
-  const items = Array.isArray(root?.items) ? root.items : [];
+  const root = response?.data?.data ?? response?.data ?? response ?? {};
+  const items = Array.isArray(root?.items)
+    ? root.items
+    : Array.isArray(root)
+    ? root
+    : [];
   const meta = root?.meta ?? {};
 
   return {
@@ -69,8 +82,39 @@ function getSortParam(sort: string) {
     case "Price: Low to High":
       return "priceAsc";
     default:
-      return undefined;
+      return "";
   }
+}
+
+function getImageUrl(img: any): string {
+  if (!img) return "";
+  if (typeof img === "string") return img;
+  if (typeof img === "object" && typeof img.url === "string") return img.url;
+  return "";
+}
+
+function normalizeEditImages(images: any[]): EditImage[] {
+  if (!Array.isArray(images)) return [];
+
+  return images
+    .map((img, index) => {
+      if (typeof img === "string" && img.trim()) {
+        return {
+          id: `img-${index}`,
+          url: img,
+        };
+      }
+
+      if (img && typeof img === "object" && typeof img.url === "string") {
+        return {
+          id: img.id || img._id || `img-${index}`,
+          url: img.url,
+        };
+      }
+
+      return null;
+    })
+    .filter((img): img is EditImage => Boolean(img?.url));
 }
 
 export default function AllProductsView({
@@ -91,6 +135,7 @@ export default function AllProductsView({
     "All Categories",
   ]);
   const [editProduct, setEditProduct] = useState<EditableProduct | null>(null);
+  const [previewProductId, setPreviewProductId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [serverTotalItems, setServerTotalItems] = useState(0);
@@ -103,66 +148,76 @@ export default function AllProductsView({
     p.mainImage ||
     p.imageUrl ||
     p.image ||
-    p.galleryImages?.[0]?.url ||
-    p.images?.[0]?.url ||
-    p.images?.[0] ||
+    getImageUrl(p.galleryImages?.[0]) ||
+    getImageUrl(p.images?.[0]) ||
     "";
 
   const normalizeProduct = useCallback((p: any): NormalizedAdminProduct => {
     const name = p.productName || p.name || "";
 
-    const normalized: NormalizedAdminProduct = {
-      _id: p._id || "",
-      productId: p.productId || "",
+    const prod: NormalizedAdminProduct = {
+      _id: p._id || p.id || "",
+      productId: p.productId || p.id || "",
       name,
       description: p.description || "",
       price: Number(p.price) || 0,
-      originalPrice: p.originalPrice ?? p.discountPrice ?? null,
+      originalPrice:
+        p.originalPrice !== undefined && p.originalPrice !== null
+          ? p.originalPrice
+          : p.discountPrice !== undefined && p.discountPrice !== null
+          ? p.discountPrice
+          : null,
       category: p.category || "",
       stock: Number(p.stock) || 0,
       material: p.material || "",
       isActive: p.isActive !== false,
       trendy: p.trendy ?? false,
       bestSeller: p.bestSeller ?? false,
-      hashtags: p.hashtags || [],
+      hashtags: Array.isArray(p.hashtags) ? p.hashtags : [],
       story: p.story || "",
       status: "",
       sku: p.sku || p.productId || "",
       imageUrl: resolveThumbnail(p),
-      images: p.galleryImages || p.images || [],
+      images: Array.isArray(p.galleryImages)
+        ? p.galleryImages
+        : Array.isArray(p.images)
+        ? p.images
+        : [],
       createdAt: p.createdAt || "",
+      color: p.color || "",
+      size: p.size || "",
     };
 
-    normalized.status = deriveStatus(normalized);
-    return normalized;
+    prod.status = deriveStatus(prod);
+    return prod;
   }, []);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
 
     try {
+      const params: Record<string, any> = {
+        page: currentPage,
+        limit: pageSize,
+      };
+
+      if (categoryFilter === "All Categories") {
+        params.category = "all";
+      } else {
+        params.category = categoryFilter;
+      }
+
+      const backendSort = getSortParam(sort);
+      if (backendSort) {
+        params.sort = backendSort;
+      }
+
       let response: any;
 
       if (search.trim()) {
-        response = await adminProductService.search(search.trim());
+        response = await adminProductService.search(search.trim(), params);
       } else {
-        const params: Record<string, any> = {
-          page: currentPage,
-          limit: pageSize,
-        };
-
-        if (categoryFilter === "All Categories") {
-          params.category = "all";
-        } else {
-          params.category = categoryFilter;
-        }
-
-        const sortParam = getSortParam(sort);
-        if (sortParam) {
-          params.sort = sortParam;
-        }
-
-        response = await adminProductService.getAll(params);
+        response = await productService.getAll(params);
       }
 
       const { items, total } = extractItemsAndMeta(response);
@@ -177,7 +232,7 @@ export default function AllProductsView({
     } finally {
       setIsLoading(false);
     }
-  }, [search, currentPage, pageSize, categoryFilter, sort, normalizeProduct]);
+  }, [currentPage, pageSize, categoryFilter, sort, search, normalizeProduct]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -208,13 +263,14 @@ export default function AllProductsView({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [categoryFilter, sort, pageSize, search, statusFilter]);
+  }, [categoryFilter, sort, pageSize, search]);
 
   const mergedProducts = useMemo(() => {
     const isDefaultView =
       currentPage === 1 &&
       !search.trim() &&
       categoryFilter === "All Categories" &&
+      statusFilter === "All Status" &&
       sort === "Sort: Newest First";
 
     if (!isDefaultView) {
@@ -238,13 +294,19 @@ export default function AllProductsView({
           isActive: p.status !== "Draft" && p.status !== "Inactive",
           trendy: p.trendy ?? p.isFeatured ?? false,
           bestSeller: p.bestSeller ?? false,
-          hashtags: p.hashtags || [],
+          hashtags: Array.isArray(p.hashtags) ? p.hashtags : [],
           story: p.story || "",
           status: "",
           sku: p.sku || p.productId || "",
           imageUrl: resolveThumbnail(p),
-          images: p.galleryImages || p.images || [],
+          images: Array.isArray(p.galleryImages)
+            ? p.galleryImages
+            : Array.isArray(p.images)
+            ? p.images
+            : [],
           createdAt: p.createdAt || "",
+          color: p.color || "",
+          size: p.size || "",
         };
 
         localProd.status = deriveStatus(localProd);
@@ -253,13 +315,15 @@ export default function AllProductsView({
       .filter((p) => p._id && !existingIds.has(p._id));
 
     return [...normalizedLocal, ...products];
-  }, [localAddedProducts, products, currentPage, search, categoryFilter, sort]);
-
-  // current API doc has no GET status filter, so status remains frontend-side
-  const visibleProducts = useMemo(() => {
-    if (statusFilter === "All Status") return mergedProducts;
-    return mergedProducts.filter((p) => p.status === statusFilter);
-  }, [mergedProducts, statusFilter]);
+  }, [
+    localAddedProducts,
+    products,
+    currentPage,
+    search,
+    categoryFilter,
+    statusFilter,
+    sort,
+  ]);
 
   const statuses = [
     "All Status",
@@ -269,8 +333,24 @@ export default function AllProductsView({
     "Out of Stock",
   ];
 
+  const visibleProducts = useMemo(() => {
+    let result = [...mergedProducts];
+
+    if (statusFilter !== "All Status") {
+      result = result.filter((p) => p.status === statusFilter);
+    }
+
+    if (sort === "Stock: Low to High") {
+      result.sort((a, b) => a.stock - b.stock);
+    }
+
+    return result;
+  }, [mergedProducts, statusFilter, sort]);
+
   const totalItemsForPagination =
-    statusFilter === "All Status" ? serverTotalItems : visibleProducts.length;
+    statusFilter === "All Status" && sort !== "Stock: Low to High"
+      ? serverTotalItems
+      : visibleProducts.length;
 
   const statusColor = (status: string) => {
     switch (status) {
@@ -309,11 +389,11 @@ export default function AllProductsView({
 
   const handleToggleStatus = async (prod: NormalizedAdminProduct) => {
     const id = prod.productId || prod._id;
+    const newActive = !prod.isActive;
     setActionLoading(prod._id);
 
     try {
-      // your current working backend accepted { isActive: boolean }
-      await adminProductService.updateStatus(id, { isActive: !prod.isActive });
+      await adminProductService.updateStatus(id, { isActive: newActive });
       await fetchProducts();
     } catch (err) {
       console.error("Failed to toggle product status:", err);
@@ -334,14 +414,14 @@ export default function AllProductsView({
       category: prod.category,
       stock: prod.stock,
       material: prod.material,
-      color: (prod as any).color || "",
-      size: (prod as any).size || "",
+      color: prod.color || "",
+      size: prod.size || "",
       isActive: prod.isActive,
       trendy: prod.trendy,
       bestSeller: prod.bestSeller,
-      hashtags: prod.hashtags,
-      story: prod.story,
-      images: prod.images || [],
+      hashtags: prod.hashtags || [],
+      story: prod.story || "",
+      images: normalizeEditImages(prod.images || []),
     });
     setOpenMenu(null);
   };
@@ -351,7 +431,9 @@ export default function AllProductsView({
     await fetchProducts();
   };
 
-  const editCategories = categoryOptions.filter((c) => c !== "All Categories");
+  const editCategories = categoryOptions.filter(
+    (c) => c !== "All Categories"
+  );
 
   return (
     <div className="space-y-6 w-full">
@@ -369,10 +451,7 @@ export default function AllProductsView({
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-background border border-border text-sm font-bold rounded-xl hover:bg-muted transition-all shadow-sm shrink-0"
             title="Refresh products"
           >
-            <RefreshCw
-              size={16}
-              className={isLoading ? "animate-spin" : ""}
-            />
+            <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
           </button>
 
           <button
@@ -392,7 +471,7 @@ export default function AllProductsView({
           [
             {
               label: "Total Products",
-              value: totalItemsForPagination,
+              value: serverTotalItems,
               color: "text-foreground",
             },
             {
@@ -485,6 +564,7 @@ export default function AllProductsView({
                 "Sort: Newest First",
                 "Price: High to Low",
                 "Price: Low to High",
+                "Stock: Low to High",
               ].map((s) => (
                 <option key={s}>{s}</option>
               ))}
@@ -535,36 +615,43 @@ export default function AllProductsView({
                       className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/20 transition-colors"
                     >
                       <td className="px-0 py-2 md:px-6 md:py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-md shrink-0 hidden md:flex overflow-hidden bg-muted items-center justify-center">
-                            {prod.imageUrl ? (
-                              <img
-                                src={prod.imageUrl}
-                                alt={prod.name || "Product"}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <Package
-                                size={18}
-                                className="text-muted-foreground/50"
-                              />
-                            )}
-                          </div>
+                        <button
+                          onClick={() =>
+                            setPreviewProductId(prod.productId || prod._id)
+                          }
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-11 h-11 rounded-md shrink-0 hidden md:flex overflow-hidden bg-muted items-center justify-center">
+                              {prod.imageUrl ? (
+                                <img
+                                  src={prod.imageUrl}
+                                  alt={prod.name || "Product"}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Package
+                                  size={18}
+                                  className="text-muted-foreground/50"
+                                />
+                              )}
+                            </div>
 
-                          <div className="flex justify-between md:block w-full md:w-auto items-center">
-                            <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
-                              Product
-                            </span>
-                            <div className="text-right md:text-left">
-                              <p className="font-bold text-foreground text-sm line-clamp-1">
-                                {prod.name}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
-                                SKU: {prod.sku || "-"}
-                              </p>
+                            <div className="flex justify-between md:block w-full md:w-auto items-center">
+                              <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                                Product
+                              </span>
+                              <div className="text-right md:text-left">
+                                <p className="font-bold text-foreground text-sm line-clamp-1 hover:text-primary transition-colors">
+                                  {prod.name}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                  SKU: {prod.sku || "-"}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        </button>
                       </td>
 
                       <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground font-medium text-[13px] flex justify-between md:table-cell items-center">
@@ -651,6 +738,17 @@ export default function AllProductsView({
                             {openMenu === prod._id && (
                               <div className="absolute right-0 md:right-6 top-12 md:top-10 z-20 bg-background border border-border shadow-xl rounded-xl w-48 text-sm py-2">
                                 <button
+                                  onClick={() =>
+                                    setPreviewProductId(
+                                      prod.productId || prod._id
+                                    )
+                                  }
+                                  className="flex items-center gap-2 w-full px-4 py-2 text-foreground hover:bg-muted transition-colors text-left"
+                                >
+                                  <Eye size={14} /> Preview
+                                </button>
+
+                                <button
                                   onClick={() => handleEdit(prod)}
                                   className="flex items-center gap-2 w-full px-4 py-2 text-foreground hover:bg-muted transition-colors text-left"
                                 >
@@ -734,6 +832,40 @@ export default function AllProductsView({
           categories={editCategories}
           onClose={() => setEditProduct(null)}
           onSaved={handleProductSaved}
+        />
+      )}
+
+      {previewProductId && (
+        <ProductPreviewModal
+          productId={previewProductId}
+          onClose={() => setPreviewProductId(null)}
+          onEdit={(product: any) => {
+            setPreviewProductId(null);
+            setEditProduct({
+              _id: product?._id || "",
+              productId: product?.productId || "",
+              productName: product?.productName || product?.name || "",
+              description: product?.description || "",
+              price: Number(product?.price) || 0,
+              originalPrice:
+                product?.originalPrice ?? product?.discountPrice ?? null,
+              category: product?.category || "",
+              stock: Number(product?.stock) || 0,
+              material: product?.material || "",
+              color: product?.color || "",
+              size: product?.size || "",
+              isActive: product?.isActive !== false,
+              trendy: product?.trendy ?? false,
+              bestSeller: product?.bestSeller ?? false,
+              hashtags: Array.isArray(product?.hashtags)
+                ? product.hashtags
+                : [],
+              story: product?.story || "",
+              images: normalizeEditImages(
+                product?.galleryImages || product?.images || []
+              ),
+            });
+          }}
         />
       )}
     </div>
