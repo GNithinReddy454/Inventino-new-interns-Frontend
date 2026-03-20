@@ -197,21 +197,23 @@ function getAllSizes(product: PreviewProduct | null): string[] {
 function inferColorSwatch(color: string) {
   const c = color.toLowerCase();
 
-  if (c.includes("gold")) return "#D4AF37";
-  if (c.includes("rose")) return "#D9A5A5";
+  if (c.includes("rose gold")) return "#D9A6A0";
+  if (c.includes("gold")) return "#C9A227";
   if (c.includes("silver")) return "#98A2B3";
-  if (c.includes("black")) return "#1F2937";
-  if (c.includes("white")) return "#E5E7EB";
-  if (c.includes("pink")) return "#F4B6C2";
-  if (c.includes("red")) return "#EF4444";
-  if (c.includes("green")) return "#22C55E";
-  if (c.includes("blue")) return "#60A5FA";
-  if (c.includes("brown")) return "#A16207";
-  if (c.includes("yellow")) return "#FACC15";
-  if (c.includes("oxidized")) return "#6B7280";
-  if (c.includes("multi")) return "#C084FC";
+  if (c.includes("grey")) return "#98A2B3";
+  if (c.includes("gray")) return "#98A2B3";
+  if (c.includes("black")) return "#2F3441";
+  if (c.includes("white")) return "#EAEAEA";
+  if (c.includes("pink")) return "#E8B7C8";
+  if (c.includes("red")) return "#E4546B";
+  if (c.includes("green")) return "#7BAE7F";
+  if (c.includes("blue")) return "#8FA2C9";
+  if (c.includes("brown")) return "#9A715B";
+  if (c.includes("yellow")) return "#D4B04C";
+  if (c.includes("oxidized")) return "#7C8496";
+  if (c.includes("multi")) return "#C7A0D8";
 
-  return "#D1D5DB";
+  return "#D9A6A0";
 }
 
 function unwrapApiResponse(response: any): PreviewProduct | null {
@@ -221,6 +223,10 @@ function unwrapApiResponse(response: any): PreviewProduct | null {
   if (payload?.data) return payload.data as PreviewProduct;
 
   return payload as PreviewProduct;
+}
+
+function formatPrice(value: number) {
+  return `₹${value.toLocaleString("en-IN")}`;
 }
 
 export default function ProductPreviewModal({
@@ -304,40 +310,41 @@ export default function ProductPreviewModal({
   ].filter(isNonEmptyString);
 
   return (
-    <div className="fixed inset-0 z-100 bg-black/45 backdrop-blur-[1px] flex items-center justify-center p-4">
-      <div className="w-full max-w-300 rounded-3xl bg-white shadow-2xl border border-[#F1D7E2] overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F4E4EB]">
-          <h3 className="text-[20px] font-bold text-[#1F1728]">
+    <div className="fixed inset-0 z-[100] bg-[#211A1D]/45 backdrop-blur-[2px] flex items-center justify-center p-4">
+      <div className="w-full max-w-[820px] rounded-[16px] bg-[#FCFBFC] shadow-[0_20px_50px_rgba(30,20,30,0.16)] border border-[#E9DDE3] overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0E4E8]">
+          <h3 className="text-[14px] font-semibold text-[#201A24]">
             Product Preview
           </h3>
 
           <button
+            type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[#6B7280] hover:bg-[#F9EFF4] hover:text-[#111827] transition"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[#6D6776] hover:bg-[#F7EEF2] transition"
           >
-            <X size={18} />
+            <X size={15} strokeWidth={1.8} />
           </button>
         </div>
 
         {isLoading ? (
-          <div className="h-115 flex items-center justify-center">
+          <div className="h-[320px] flex items-center justify-center">
             <div className="flex items-center gap-3 text-[#6B7280]">
-              <Loader2 size={20} className="animate-spin" />
+              <Loader2 size={18} className="animate-spin" />
               <span className="text-sm font-medium">
                 Loading product preview...
               </span>
             </div>
           </div>
         ) : !product ? (
-          <div className="h-115 flex flex-col items-center justify-center text-[#6B7280]">
-            <Package size={34} className="mb-3 opacity-40" />
+          <div className="h-[320px] flex flex-col items-center justify-center text-[#6B7280]">
+            <Package size={30} className="mb-3 opacity-40" />
             <p className="text-sm">Unable to load product details.</p>
           </div>
         ) : (
-          <div className="p-5">
-            <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-5">
+          <div className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-[344px_1fr] gap-4 items-start">
               <div>
-                <div className="rounded-[20px] bg-[#FCF8FA] border border-[#F4E4EB] h-82.5 flex items-center justify-center overflow-hidden">
+                <div className="rounded-[10px] bg-[#F6F2F4] border border-[#F0E4E8] h-[184px] flex items-center justify-center overflow-hidden">
                   {images[activeImage] ? (
                     <img
                       src={images[activeImage]}
@@ -345,24 +352,24 @@ export default function ProductPreviewModal({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center text-[#9CA3AF]">
-                      <Package size={36} className="mb-2 opacity-50" />
-                      <span className="text-sm">No image available</span>
+                    <div className="flex flex-col items-center justify-center text-[#A1A1AA]">
+                      <Package size={28} className="mb-2 opacity-50" />
+                      <span className="text-xs">No image available</span>
                     </div>
                   )}
                 </div>
 
                 {images.length > 0 && (
-                  <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
+                  <div className="flex gap-2 mt-2.5 overflow-x-auto pb-1">
                     {images.map((img, index) => (
                       <button
                         key={`${img}-${index}`}
                         type="button"
                         onClick={() => setActiveImage(index)}
-                        className={`w-18 h-14.5 rounded-[12px] overflow-hidden border transition shrink-0 ${
+                        className={`w-[54px] h-[54px] rounded-[8px] overflow-hidden border shrink-0 transition ${
                           activeImage === index
-                            ? "border-[#E85D8E] ring-2 ring-[#F7C8D8]"
-                            : "border-[#E9DDE4] hover:border-[#E85D8E]"
+                            ? "border-[#EB6F96] ring-1 ring-[#EB6F96]"
+                            : "border-[#E7DADF] hover:border-[#EB6F96]"
                         }`}
                       >
                         <img
@@ -376,27 +383,27 @@ export default function ProductPreviewModal({
                 )}
               </div>
 
-              <div className="flex flex-col">
+              <div className="flex flex-col min-h-[246px]">
                 <div>
-                  <h2 className="text-[28px] leading-[1.15] font-bold text-[#1F1728]">
+                  <h2 className="text-[16px] leading-[1.25] font-semibold text-[#1F1728]">
                     {name}
                   </h2>
 
-                  <p className="text-[12px] text-[#98A2B3] mt-1">SKU: {sku}</p>
+                  <p className="text-[10px] text-[#A29AAD] mt-0.5">SKU: {sku}</p>
 
-                  <div className="flex items-center gap-3 mt-4 flex-wrap">
-                    <span className="text-[32px] font-extrabold text-[#E85D8E]">
-                      ₹{price.toLocaleString()}
+                  <div className="flex items-center gap-2.5 mt-2.5 flex-wrap">
+                    <span className="text-[15px] font-bold text-[#EB5C8A]">
+                      {formatPrice(price)}
                     </span>
 
                     {comparePrice > price ? (
-                      <span className="text-[16px] text-[#98A2B3] line-through">
-                        ₹{comparePrice.toLocaleString()}
+                      <span className="text-[10px] text-[#9F98A7] line-through">
+                        {formatPrice(comparePrice)}
                       </span>
                     ) : null}
 
                     {offerPercentage > 0 ? (
-                      <span className="px-3 py-1 rounded-full bg-[#D9FBE8] text-[#067647] text-[12px] font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-[#DFF4E8] text-[#3D8B5D] text-[9px] font-semibold">
                         {offerPercentage}% OFF
                       </span>
                     ) : null}
@@ -404,20 +411,20 @@ export default function ProductPreviewModal({
                 </div>
 
                 {colors.length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-[13px] font-semibold text-[#4B5563] mb-2">
+                  <div className="mt-3">
+                    <p className="text-[10px] font-medium text-[#6B6572] mb-1.5">
                       Colour
                     </p>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2">
                       {colors.map((color) => (
                         <button
                           key={color}
                           type="button"
                           title={color}
                           onClick={() => setSelectedColor(color)}
-                          className={`w-8 h-8 rounded-xl border-2 transition ${
+                          className={`w-6 h-6 rounded-full border transition ${
                             selectedColor === color
-                              ? "border-[#E85D8E]"
+                              ? "border-[#EB6F96] shadow-[0_0_0_1.5px_rgba(235,111,150,0.16)]"
                               : "border-transparent"
                           }`}
                           style={{ backgroundColor: inferColorSwatch(color) }}
@@ -428,8 +435,8 @@ export default function ProductPreviewModal({
                 )}
 
                 {sizes.length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-[13px] font-semibold text-[#4B5563] mb-2">
+                  <div className="mt-3">
+                    <p className="text-[10px] font-medium text-[#6B6572] mb-1.5">
                       Size
                     </p>
                     <div className="flex gap-2 flex-wrap">
@@ -438,10 +445,10 @@ export default function ProductPreviewModal({
                           key={size}
                           type="button"
                           onClick={() => setSelectedSize(size)}
-                          className={`min-w-15.5 px-3 h-9 rounded-[10px] border text-[13px] font-medium transition ${
+                          className={`min-w-[48px] px-2.5 h-7 rounded-[6px] border text-[10px] font-medium transition ${
                             selectedSize === size
-                              ? "border-[#E85D8E] text-[#E85D8E] bg-[#FFF5F8]"
-                              : "border-[#E5E7EB] text-[#374151] bg-white hover:border-[#E85D8E]"
+                              ? "border-[#EB6F96] text-[#EB6F96] bg-[#FFF7FA]"
+                              : "border-[#E6E0E5] text-[#47414E] bg-white hover:border-[#EB6F96]"
                           }`}
                         >
                           {size}
@@ -451,36 +458,36 @@ export default function ProductPreviewModal({
                   </div>
                 )}
 
-                <div className="mt-5 flex items-center gap-2 text-[14px]">
+                <div className="mt-3 flex items-center gap-2 text-[11px]">
                   <span
-                    className={`w-2 h-2 rounded-full ${
+                    className={`w-[6px] h-[6px] rounded-full ${
                       stock > 0 ? "bg-[#16A34A]" : "bg-[#DC2626]"
                     }`}
                   />
-                  <span className="text-[#1F1728] font-medium">
+                  <span className="text-[#2B2433] font-medium">
                     {stock > 0 ? `In Stock - ${stock} Units` : "Out of Stock"}
                   </span>
                 </div>
 
-                <div className="mt-5">
-                  <p className="text-[13px] font-semibold text-[#4B5563] mb-2">
+                <div className="mt-3">
+                  <p className="text-[10px] font-medium text-[#6B6572] mb-1">
                     Description
                   </p>
-                  <p className="text-[14px] leading-6 text-[#6B7280]">
+                  <p className="text-[10px] leading-4 text-[#7B7482]">
                     {description}
                   </p>
                 </div>
 
                 {tags.length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-[13px] font-semibold text-[#4B5563] mb-2">
+                  <div className="mt-3">
+                    <p className="text-[10px] font-medium text-[#6B6572] mb-1.5">
                       Tags
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {tags.map((tag, index) => (
                         <span
                           key={`${tag}-${index}`}
-                          className="px-3 py-1 rounded-full bg-[#F5F5F5] text-[#5B5B5B] text-[12px] font-medium"
+                          className="px-2 py-0.5 rounded-full bg-[#F1EEF0] text-[#625B66] text-[9px] font-medium"
                         >
                           {tag}
                         </span>
@@ -489,11 +496,11 @@ export default function ProductPreviewModal({
                   </div>
                 )}
 
-                <div className="mt-auto pt-6">
+                <div className="mt-auto pt-4">
                   <button
                     type="button"
                     onClick={() => product && onEdit?.(product)}
-                    className="w-full h-12 rounded-[12px] bg-[#E85D8E] hover:bg-[#D84E80] text-white font-bold text-[14px] transition shadow-sm"
+                    className="w-full h-[34px] rounded-[8px] bg-[#EB5C8A] hover:bg-[#E35182] text-white font-semibold text-[11px] transition"
                   >
                     Edit Product
                   </button>

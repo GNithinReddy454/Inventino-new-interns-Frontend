@@ -1,11 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ChevronDown, X, CheckCircle2, Eye } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ChevronDown,
+  X,
+  CheckCircle2,
+  Eye,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch } from "@/redux/store";
 import { addProduct } from "@/redux/adminSlice";
 import { adminProductService } from "@/services/admin-product.service";
+import { getCategories } from "@/services/admin.service";
 import AddProductVariantCard, {
   ProductVariantGroup,
   VariantImageItem,
@@ -18,14 +26,17 @@ type ArtisanStep = {
   description: string;
 };
 
-type BackendVariant = {
-  color: string;
-  size: string;
-  price: number;
-  stock: number;
-  images: string[];
-  sku: string | null;
-  isActive: boolean;
+type CategoryItem = {
+  _id?: string;
+  categoryId?: string;
+  name: string;
+  isActive?: boolean;
+};
+
+type UploadedImage = {
+  id?: string;
+  url?: string;
+  _id?: string;
 };
 
 const COLOR_OPTIONS = [
@@ -62,30 +73,141 @@ const DEFAULT_SIZE_OPTIONS = [
 
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-const normalizeColor = (value: string) => value.trim().toLowerCase();
-
 const toNumber = (value: string) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
 };
 
-const buildFlatVariants = (
-  groupedVariants: ProductVariantGroup[],
-  regularPrice: string,
-  salePrice: string,
-): BackendVariant[] => {
-  return groupedVariants.flatMap((variant: ProductVariantGroup) =>
-    variant.sizes.map((sizeItem: VariantSizeStock) => ({
-      color: normalizeColor(variant.color),
-      size: sizeItem.size,
-      price: salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice),
-      stock: Number(sizeItem.stock) || 0,
-      images: [],
-      sku: null,
-      isActive: true,
-    })),
+function Toggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className={`flex h-5 w-8 items-center rounded-full p-[2px] transition ${
+        checked ? "bg-[#EB5C8A]" : "bg-[#D7D5D9]"
+      }`}
+    >
+      <div
+        className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+          checked ? "translate-x-3" : "translate-x-0"
+        }`}
+      />
+    </button>
   );
-};
+}
+
+function SectionCard({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[18px] border border-[#F0E3E7] bg-white px-6 py-5 shadow-[0_2px_10px_rgba(31,23,40,0.04)]">
+      <h3 className="text-[14px] font-semibold text-[#1C1630]">{title}</h3>
+      {subtitle ? (
+        <p className="mt-1 text-[10px] text-[#9A93A3]">{subtitle}</p>
+      ) : null}
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function Label({
+  children,
+  required = false,
+}: {
+  children: React.ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <label className="mb-1.5 block text-[10px] font-semibold text-[#4B4453]">
+      {children}
+      {required ? <span className="text-[#EB5C8A]"> *</span> : null}
+    </label>
+  );
+}
+
+function Input(
+  props: React.InputHTMLAttributes<HTMLInputElement> & {
+    prefix?: string;
+    suffix?: string;
+  }
+) {
+  const { prefix, suffix, className = "", ...rest } = props;
+  return (
+    <div className="relative">
+      {prefix ? (
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-[#A199A7]">
+          {prefix}
+        </span>
+      ) : null}
+      <input
+        {...rest}
+        className={`h-[38px] w-full rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] text-[#1C1630] placeholder:text-[#B5AEB8] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A] ${
+          prefix ? "pl-7" : ""
+        } ${suffix ? "pr-8" : ""} ${className}`}
+      />
+      {suffix ? (
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#A199A7]">
+          {suffix}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const { className = "", ...rest } = props;
+  return (
+    <textarea
+      {...rest}
+      className={`w-full resize-none rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 py-2.5 text-[12px] text-[#1C1630] placeholder:text-[#B5AEB8] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A] ${className}`}
+    />
+  );
+}
+
+function Select({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder: string;
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-[38px] w-full appearance-none rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 pr-9 text-[12px] text-[#1C1630] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
+      >
+        <option value="">{placeholder}</option>
+        {options.map((item) => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={14}
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#A199A7]"
+      />
+    </div>
+  );
+}
 
 export default function AddProduct() {
   const router = useRouter();
@@ -94,6 +216,7 @@ export default function AddProduct() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState("");
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
 
   const [toast, setToast] = useState<{
     message: string;
@@ -109,7 +232,11 @@ export default function AddProduct() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
-  const [tags, setTags] = useState<string[]>(["Handmade", "Rose Gold", "Bracelet"]);
+  const [tags, setTags] = useState<string[]>([
+    "Handmade",
+    "Rose Gold",
+    "Bracelet",
+  ]);
   const [newTag, setNewTag] = useState("");
 
   const [status, setStatus] = useState("Published");
@@ -119,7 +246,6 @@ export default function AddProduct() {
 
   const [regularPrice, setRegularPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
-  const [discountPercent, setDiscountPercent] = useState("");
   const [material, setMaterial] = useState("");
   const [stockStatus, setStockStatus] = useState("In Stock");
 
@@ -134,7 +260,6 @@ export default function AddProduct() {
 
   const [storyTitle, setStoryTitle] = useState("");
   const [storyContent, setStoryContent] = useState("");
-  const [storyMedia, setStoryMedia] = useState("");
   const [quoteText, setQuoteText] = useState("");
   const [quoteAuthor, setQuoteAuthor] = useState("");
   const [storyTags, setStoryTags] = useState("");
@@ -144,7 +269,7 @@ export default function AddProduct() {
     {
       title: "Design & Concept",
       description:
-        "Each design begins with sketches inspired by nature, art, and emotion. Sarah carefully plans every curve and detail.",
+        "Each design begins with sketches inspired by nature, art, and emotion.",
     },
   ]);
 
@@ -157,11 +282,32 @@ export default function AddProduct() {
 
   const [variants, setVariants] = useState<ProductVariantGroup[]>([]);
   const [customColorName, setCustomColorName] = useState("");
-  const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>({});
+  const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>(
+    {}
+  );
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await getCategories();
+        const items = (response?.items || []) as CategoryItem[];
+        const names = items
+          .filter((item) => item?.isActive !== false)
+          .map((item) => item.name)
+          .filter(Boolean);
+
+        setCategoryOptions(Array.from(new Set(names)));
+      } catch (err) {
+        console.error("Failed to load categories:", err);
+      }
+    };
+
+    loadCategories();
+  }, []);
 
   const triggerToast = (
     message: string,
-    type: "success" | "error" = "success",
+    type: "success" | "error" = "success"
   ) => {
     setToast({ message, type, show: true });
     setTimeout(() => {
@@ -195,7 +341,7 @@ export default function AddProduct() {
 
     setVariants((prev) => {
       const exists = prev.some(
-        (variant) => variant.color.toLowerCase() === normalized.toLowerCase(),
+        (variant) => variant.color.toLowerCase() === normalized.toLowerCase()
       );
       if (exists) return prev;
 
@@ -236,8 +382,8 @@ export default function AddProduct() {
       prev.map((variant) =>
         variant.id === variantId
           ? { ...variant, expanded: !variant.expanded }
-          : { ...variant, expanded: false },
-      ),
+          : { ...variant, expanded: false }
+      )
     );
   };
 
@@ -257,9 +403,9 @@ export default function AddProduct() {
 
         return {
           ...variant,
-          sizes: [...variant.sizes, { size, stock: 0 }],
+          sizes: [...variant.sizes, { size, stock: 0, sku: "" }],
         };
-      }),
+      })
     );
   };
 
@@ -272,16 +418,16 @@ export default function AddProduct() {
         if (variant.id !== variantId) return variant;
 
         const exists = variant.sizes.some(
-          (entry) => entry.size.toLowerCase() === sizeValue.toLowerCase(),
+          (entry) => entry.size.toLowerCase() === sizeValue.toLowerCase()
         );
 
         if (exists) return variant;
 
         return {
           ...variant,
-          sizes: [...variant.sizes, { size: sizeValue, stock: 0 }],
+          sizes: [...variant.sizes, { size: sizeValue, stock: 0, sku: "" }],
         };
-      }),
+      })
     );
 
     setCustomSizeInputs((prev) => ({
@@ -298,16 +444,31 @@ export default function AddProduct() {
         return {
           ...variant,
           sizes: variant.sizes.map((entry) =>
-            entry.size === size ? { ...entry, stock } : entry,
+            entry.size === size ? { ...entry, stock } : entry
           ),
         };
-      }),
+      })
+    );
+  };
+
+  const updateVariantSku = (variantId: string, size: string, sku: string) => {
+    setVariants((prev) =>
+      prev.map((variant) => {
+        if (variant.id !== variantId) return variant;
+
+        return {
+          ...variant,
+          sizes: variant.sizes.map((entry) =>
+            entry.size === size ? { ...entry, sku } : entry
+          ),
+        };
+      })
     );
   };
 
   const handleVariantImagesChange = (
     variantId: string,
-    e: React.ChangeEvent<HTMLInputElement>,
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
     if (!files.length) return;
@@ -326,7 +487,7 @@ export default function AddProduct() {
           ...variant,
           images: [...variant.images, ...newImages].slice(0, 8),
         };
-      }),
+      })
     );
 
     e.target.value = "";
@@ -346,7 +507,7 @@ export default function AddProduct() {
           ...variant,
           images: variant.images.filter((img) => img.id !== imageId),
         };
-      }),
+      })
     );
   };
 
@@ -357,21 +518,21 @@ export default function AddProduct() {
   const updateArtisanStep = (
     index: number,
     field: keyof ArtisanStep,
-    value: string,
+    value: string
   ) => {
     setArtisanSteps((prev) =>
-      prev.map((step, idx) => (idx === index ? { ...step, [field]: value } : step)),
+      prev.map((step, idx) => (idx === index ? { ...step, [field]: value } : step))
     );
   };
 
   const summary = useMemo(() => {
     const totalImages = variants.reduce(
       (sum, variant) => sum + variant.images.length,
-      0,
+      0
     );
     const totalSkus = variants.reduce(
       (sum, variant) => sum + variant.sizes.length,
-      0,
+      0
     );
 
     return {
@@ -381,12 +542,34 @@ export default function AddProduct() {
     };
   }, [variants]);
 
+  const totalStock = useMemo(() => {
+    return variants.reduce(
+      (sum, variant) =>
+        sum +
+        variant.sizes.reduce(
+          (inner, sizeItem) => inner + (Number(sizeItem.stock) || 0),
+          0
+        ),
+      0
+    );
+  }, [variants]);
+
+  const computedDiscountPercent = useMemo(() => {
+    const reg = toNumber(regularPrice);
+    const sale = toNumber(salePrice);
+    if (reg > 0 && sale > 0 && sale < reg) {
+      return Math.round(((reg - sale) / reg) * 100).toString();
+    }
+    return "";
+  }, [regularPrice, salePrice]);
+
+  const finalDiscountPercent = salePrice.trim() ? computedDiscountPercent : "";
+
   const validateForm = () => {
     if (!name.trim()) return "Product name is required";
     if (!description.trim()) return "Description is required";
     if (!category.trim()) return "Category is required";
     if (!regularPrice.trim()) return "Regular price is required";
-    if (!material.trim()) return "Material is required";
     if (variants.length === 0) return "Please add at least one color";
 
     const emptyVariant = variants.find((variant) => variant.sizes.length === 0);
@@ -395,6 +578,91 @@ export default function AddProduct() {
     }
 
     return "";
+  };
+
+  const buildPayload = (uploadedUrls: string[] = []) => {
+    let imageCursor = 0;
+
+    const mappedVariants = variants.map((variant) => {
+      const imageCount = variant.images.length;
+      const variantUrls = uploadedUrls.slice(imageCursor, imageCursor + imageCount);
+      imageCursor += imageCount;
+
+      return {
+        color: variant.color,
+        colorCode:
+          COLOR_SWATCH_MAP[variant.color.toLowerCase()] || "#E5E7EB",
+        images: variantUrls,
+        sizes: variant.sizes.map((sizeItem) => ({
+          size: sizeItem.size,
+          price: salePrice.trim()
+            ? toNumber(salePrice)
+            : toNumber(regularPrice),
+          stock: Number(sizeItem.stock) || 0,
+          sku: sizeItem.sku?.trim() || `${variant.color}-${sizeItem.size}`,
+        })),
+      };
+    });
+
+    return {
+      productName: name.trim(),
+      category: category.trim(),
+      description: description.trim(),
+
+      pricing: {
+        price: salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice),
+        originalPrice: toNumber(regularPrice),
+        offerPercentage: finalDiscountPercent ? Number(finalDiscountPercent) : 0,
+        taxIncluded: false,
+      },
+
+      media: {
+        mainImage: uploadedUrls[0] || "",
+        galleryImages: uploadedUrls.slice(1),
+      },
+
+      variants: mappedVariants,
+
+      totalStock,
+
+      rating: 0,
+      reviewCount: 0,
+
+      story: {
+        title: storyTitle.trim(),
+        content: storyContent.trim(),
+        isDisplayed: storySettings.displayStory,
+        featured: featuredStory === "Yes",
+      },
+
+      material: material.trim(),
+      stockStatus,
+      hashtags: tags,
+      isActive: status === "Published",
+      trendy: isFeatured,
+      bestSeller: false,
+      visibility,
+      reviewsEnabled,
+
+      shipping: {
+        weight: weight.trim() || "",
+        length: length.trim() || "",
+        width: width.trim() || "",
+        height: height.trim() || "",
+        freeShipping,
+      },
+
+      metaTitle: metaTitle.trim(),
+      metaDescription: metaDescription.trim(),
+      subCategory: subCategory.trim(),
+      quoteText: quoteText.trim(),
+      quoteAuthor: quoteAuthor.trim(),
+      storyTags: storyTags.trim(),
+      artisanSteps,
+      showArtisanBadge: storySettings.showArtisanBadge,
+      showTimeline: storySettings.showTimeline,
+      showQuote: storySettings.showQuote,
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -413,94 +681,57 @@ export default function AddProduct() {
     try {
       setIsLoading(true);
 
-      const flatVariants = buildFlatVariants(variants, regularPrice, salePrice);
-      const totalStock = flatVariants.reduce(
-        (sum, item) => sum + Number(item.stock || 0),
-        0,
-      );
+      const createPayload = buildPayload([]);
+      const created = await adminProductService.create(createPayload);
+      const createdData = created?.data ?? created;
+      const normalizedCreated = createdData?.data ?? createdData;
+      const productId = normalizedCreated?.productId;
+
+      if (!productId) {
+        throw new Error("Product created but productId was not returned");
+      }
 
       const allVariantImages = variants.flatMap((variant) => variant.images);
-      const mainImage = allVariantImages[0]?.preview || null;
-      const galleryImages = allVariantImages.slice(1).map((image) => image.preview);
+      let uploadedUrls: string[] = [];
 
-      const minVariantPrice =
-        flatVariants.length > 0
-          ? Math.min(...flatVariants.map((variant) => variant.price))
-          : toNumber(salePrice || regularPrice);
+      if (allVariantImages.length > 0) {
+        const imagesFormData = new FormData();
+        allVariantImages.forEach((image) => {
+          imagesFormData.append("images", image.file);
+        });
 
-      const payload = {
-        productName: name.trim(),
-        category: category.trim(),
-        subCategory: subCategory.trim() || null,
-        description: description.trim(),
+        const imageResponse = await adminProductService.addImages(
+          productId,
+          imagesFormData
+        );
 
-        price: minVariantPrice,
-        originalPrice: regularPrice.trim() ? toNumber(regularPrice) : null,
-        offerPercentage: discountPercent.trim() ? toNumber(discountPercent) : null,
-        taxIncluded: false,
+        const imageData = imageResponse?.data ?? imageResponse;
+        const normalizedImageData = imageData?.data ?? imageData;
+        const uploadedImages = Array.isArray(normalizedImageData?.images)
+          ? (normalizedImageData.images as UploadedImage[])
+          : [];
 
-        mainImage,
-        galleryImages,
+        uploadedUrls = uploadedImages
+          .map((img) => img?.url || "")
+          .filter(Boolean);
+      }
 
-        variants: flatVariants,
-
-        stock: totalStock,
-        rating: 0,
-        reviewCount: 0,
-        isActive: status === "Published",
-        isDeleted: false,
-
-        story: storyContent.trim(),
-        storyMedia: storyTitle.trim() || null,
-
-        metaTitle: metaTitle.trim() || null,
-        metaDescription: metaDescription.trim() || null,
-
-        material: material.trim(),
-        stockStatus,
-        shipping: {
-          weight: weight.trim() || null,
-          length: length.trim() || null,
-          width: width.trim() || null,
-          height: height.trim() || null,
-          freeShipping,
-        },
-        publishSettings: {
-          status,
-          visibility,
-          featuredProduct: isFeatured,
-          enableReviews: reviewsEnabled,
-        },
-        storySettings,
-        artisanSteps,
-        quoteText: quoteText.trim(),
-        quoteAuthor: quoteAuthor.trim(),
-        storyTags: storyTags.trim(),
-        featuredStory,
-        tags,
-      };
-
-      const created = await adminProductService.create(payload);
-      const createdData = created?.data ?? created;
+      const finalPayload = buildPayload(uploadedUrls);
+      await adminProductService.update(productId, finalPayload);
 
       dispatch(
         addProduct({
           _id:
-            createdData?._id ||
-            createdData?.id ||
+            normalizedCreated?._id ||
             `local-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          id:
-            createdData?.productId ||
-            `#PRD-${Math.floor(Math.random() * 1000)
-              .toString()
-              .padStart(3, "0")}`,
+          id: normalizedCreated?.productId || "PRD-000",
           name,
-          price: minVariantPrice,
+          price: salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice),
           category,
           subCategory,
           material,
           tags,
-          variants: createdData?.variants || flatVariants,
+          variants,
           colors: variants.map((variant) => variant.color),
           isFeatured,
           reviewsEnabled,
@@ -508,11 +739,8 @@ export default function AddProduct() {
           status: status === "Draft" ? "Draft" : "Active",
           totalSales: 0,
           totalRevenue: 0,
-          imageUrl:
-            createdData?.mainImage ||
-            createdData?.images?.[0]?.url ||
-            mainImage,
-        }),
+          imageUrl: uploadedUrls[0] || allVariantImages[0]?.preview || "",
+        })
       );
 
       triggerToast("Product added successfully", "success");
@@ -539,27 +767,43 @@ export default function AddProduct() {
 
   return (
     <>
-      <form
-        onSubmit={handleSubmit}
-        className="mx-auto max-w-7xl pb-20 font-sans"
-      >
-        {error && (
-          <div className="mb-6 rounded-xl bg-red-100 p-3 text-sm text-red-700">
+      <form onSubmit={handleSubmit} className="mx-auto max-w-[1280px] pb-20">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[22px] font-semibold text-[#1C1630]">
+              Add Product
+            </h1>
+            <p className="mt-1 text-[12px] text-[#8E8794]">
+              Here&apos;s what&apos;s happening with your store today.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => router.push("/admin")}
+            className="inline-flex h-[38px] items-center justify-center rounded-[10px] border border-[#EADDE3] bg-white px-4 text-[12px] font-medium text-[#6D6776] hover:bg-[#FAF6F8]"
+          >
+            Cancel
+          </button>
+        </div>
+
+        {error ? (
+          <div className="mb-4 rounded-[12px] bg-[#FDE8E8] px-4 py-3 text-[12px] text-[#D92D20]">
             {error}
           </div>
-        )}
+        ) : null}
 
         <div
-          className={`fixed bottom-5 left-1/2 z-100 -translate-x-1/2 transition-all duration-300 sm:left-auto sm:right-6 sm:translate-x-0 ${
+          className={`fixed bottom-5 left-1/2 z-[100] -translate-x-1/2 transition-all duration-300 sm:left-auto sm:right-6 sm:translate-x-0 ${
             toast.show
               ? "translate-y-0 opacity-100"
               : "pointer-events-none translate-y-4 opacity-0"
           }`}
         >
-          <div className="flex min-w-65 max-w-[88vw] items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)]">
+          <div className="flex min-w-[260px] max-w-[88vw] items-center gap-3 rounded-[16px] border border-[#F0E4E8] bg-white px-4 py-3 shadow-[0_10px_28px_rgba(31,23,40,0.12)]">
             <div
               className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                toast.type === "success" ? "bg-green-500" : "bg-red-500"
+                toast.type === "success" ? "bg-[#16A34A]" : "bg-[#E74C3C]"
               }`}
             >
               {toast.type === "success" ? (
@@ -569,121 +813,84 @@ export default function AddProduct() {
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="mb-0.5 text-sm font-bold text-gray-900">
+              <p className="mb-0.5 text-[13px] font-semibold text-[#1C1630]">
                 {toast.type === "success" ? "Success" : "Error"}
               </p>
-              <p className="truncate text-xs text-gray-500">{toast.message}</p>
+              <p className="truncate text-[11px] text-[#8E8794]">{toast.message}</p>
             </div>
             <button
               type="button"
               onClick={() => setToast((prev) => ({ ...prev, show: false }))}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-[#A8A1AD] hover:text-[#6D6776]"
             >
               <X size={12} />
             </button>
           </div>
         </div>
 
-        <div className="mb-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-8 shadow-sm">
-              <h3 className="mb-1 text-lg font-bold text-gray-900">Basic Information</h3>
-              <p className="mb-6 text-xs text-gray-500">
-                Fill in the basic details of your product
-              </p>
-
-              <div className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr_0.85fr]">
+          <div className="space-y-4">
+            <SectionCard
+              title="Basic Information"
+              subtitle="Fill in the basic details of your product"
+            >
+              <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Product Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
+                  <Label required>Product Name</Label>
+                  <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     type="text"
-                    placeholder="e.g., Delicate Rose Bracelet"
-                    className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
+                    placeholder="e.g. Delicate Rose Bracelet"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
+                  <Label required>Description</Label>
+                  <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    rows={6}
+                    rows={4}
                     placeholder="Write a detailed description of your product..."
-                    className="w-full resize-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-xs font-bold text-gray-900">
-                      Category <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="w-full appearance-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                      >
-                        <option value="">Select Category</option>
-                        <option value="Bracelets">Bracelets</option>
-                        <option value="Necklaces">Necklaces</option>
-                        <option value="Rings">Rings</option>
-                        <option value="Earrings">Earrings</option>
-                      </select>
-                      <ChevronDown
-                        size={16}
-                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-                      />
-                    </div>
+                    <Label required>Category</Label>
+                    <Select
+                      value={category}
+                      onChange={setCategory}
+                      options={categoryOptions}
+                      placeholder="Select Category"
+                    />
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-xs font-bold text-gray-900">
-                      Sub-Category
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={subCategory}
-                        onChange={(e) => setSubCategory(e.target.value)}
-                        className="w-full appearance-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                      >
-                        <option value="">Select Sub-Category</option>
-                        <option value="Bracelets">Bracelets</option>
-                        <option value="Necklaces">Necklaces</option>
-                        <option value="Rings">Rings</option>
-                        <option value="Earrings">Earrings</option>
-                      </select>
-                      <ChevronDown
-                        size={16}
-                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-                      />
-                    </div>
+                    <Label>Sub-Category</Label>
+                    <Input
+                      value={subCategory}
+                      onChange={(e) => setSubCategory(e.target.value)}
+                      placeholder="Select Sub-Category"
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Tags
-                  </label>
-                  <div className="flex min-h-13 flex-wrap items-center gap-2 rounded-xl border border-pink-200 bg-[#FDF2F5] p-3 focus-within:border-[#E91E63] focus-within:ring-1 focus-within:ring-[#E91E63]">
+                  <Label>Tags</Label>
+                  <div className="flex min-h-[42px] flex-wrap items-center gap-2 rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 py-2">
                     {tags.map((tag) => (
                       <span
                         key={tag}
-                        className="flex items-center gap-1 rounded-full bg-[#E91E63] px-3 py-1.5 text-xs font-bold text-white"
+                        className="inline-flex items-center gap-1 rounded-full bg-[#EB5C8A] px-2 py-1 text-[10px] font-medium text-white"
                       >
                         {tag}
                         <button
                           type="button"
                           onClick={() => removeTag(tag)}
-                          className="ml-1 hover:opacity-80"
+                          className="opacity-90 hover:opacity-100"
                         >
-                          <X size={12} strokeWidth={3} />
+                          <X size={10} strokeWidth={2.5} />
                         </button>
                       </span>
                     ))}
@@ -693,215 +900,158 @@ export default function AddProduct() {
                       onKeyDown={handleAddTag}
                       type="text"
                       placeholder="Add a tag..."
-                      className="min-w-30 flex-1 bg-transparent px-1 text-sm focus:outline-none"
+                      className="min-w-[120px] flex-1 bg-transparent text-[12px] focus:outline-none"
                     />
                   </div>
                 </div>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-8 shadow-sm">
-              <h3 className="mb-1 text-lg font-bold text-gray-900">Pricing & Inventory</h3>
-              <p className="mb-6 text-xs text-gray-500">
-                Set your product pricing and stock details
-              </p>
-
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
+            <SectionCard
+              title="Pricing & Inventory"
+              subtitle="Set your product pricing and stock details"
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-xs font-bold text-gray-900">
-                      Regular Price <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                        ₹
-                      </span>
-                      <input
-                        value={regularPrice}
-                        onChange={(e) => setRegularPrice(e.target.value)}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] py-3 pl-8 pr-4 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-xs font-bold text-gray-900">
-                      Sale Price
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                        ₹
-                      </span>
-                      <input
-                        value={salePrice}
-                        onChange={(e) => setSalePrice(e.target.value)}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] py-3 pl-8 pr-4 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Discount Percentage
-                  </label>
-                  <div className="relative">
-                    <input
-                      value={discountPercent}
-                      onChange={(e) => setDiscountPercent(e.target.value)}
+                    <Label required>Regular Price</Label>
+                    <Input
+                      value={regularPrice}
+                      onChange={(e) => setRegularPrice(e.target.value)}
                       type="number"
                       min="0"
-                      max="100"
-                      step="1"
-                      placeholder="e.g., 15"
-                      className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
+                      step="0.01"
+                      placeholder="0.00"
+                      prefix="₹"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                      %
-                    </span>
+                  </div>
+
+                  <div>
+                    <Label>Sale Price</Label>
+                    <Input
+                      value={salePrice}
+                      onChange={(e) => setSalePrice(e.target.value)}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      prefix="₹"
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Material <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    value={material}
-                    onChange={(e) => setMaterial(e.target.value)}
+                  <Label>Offer Percentage</Label>
+                  <Input
+                    value={finalDiscountPercent}
+                    readOnly
                     type="text"
-                    placeholder="e.g. beads"
-                    className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
+                    placeholder="0"
+                    suffix="%"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Stock Status <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={stockStatus}
-                      onChange={(e) => setStockStatus(e.target.value)}
-                      className="w-full appearance-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                    >
-                      <option value="In Stock">In Stock</option>
-                      <option value="Out of Stock">Out of Stock</option>
-                    </select>
-                    <ChevronDown
-                      size={16}
-                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                  </div>
+                  <Label>Material</Label>
+                  <Input
+                    value={material}
+                    onChange={(e) => setMaterial(e.target.value)}
+                    type="text"
+                    placeholder="e.g. Gold plated brass"
+                  />
+                </div>
+
+                <div>
+                  <Label>Stock Status</Label>
+                  <Select
+                    value={stockStatus}
+                    onChange={setStockStatus}
+                    options={["In Stock", "Out of Stock"]}
+                    placeholder="Select Stock Status"
+                  />
                 </div>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-8 shadow-sm">
-              <h3 className="mb-1 text-lg font-bold text-gray-900">Story Header</h3>
-              <p className="mb-6 text-xs text-gray-500">
-                Main title for the story section
-              </p>
-
-              <div className="space-y-6">
+            <SectionCard
+              title="Story Header"
+              subtitle="Main title for the story section"
+            >
+              <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Story Title
-                  </label>
-                  <input
+                  <Label>Story Title</Label>
+                  <Input
                     value={storyTitle}
                     onChange={(e) => setStoryTitle(e.target.value)}
                     type="text"
                     placeholder="The Story Behind This Treasure"
-                    className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Story Content
-                  </label>
-                  <textarea
+                  <Label>Story Content</Label>
+                  <Textarea
                     value={storyContent}
                     onChange={(e) => setStoryContent(e.target.value)}
-                    rows={5}
-                    className="w-full resize-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
+                    rows={4}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Quote Text
-                  </label>
-                  <textarea
+                  <Label>Quote Text</Label>
+                  <Textarea
                     value={quoteText}
                     onChange={(e) => setQuoteText(e.target.value)}
                     rows={3}
-                    className="w-full resize-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Quote Author
-                  </label>
-                  <input
+                  <Label>Quote Author</Label>
+                  <Input
                     value={quoteAuthor}
                     onChange={(e) => setQuoteAuthor(e.target.value)}
                     type="text"
-                    className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
+                    placeholder="Sarah Anderson, Master Artisan"
                   />
                 </div>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-8 shadow-sm">
-              <h3 className="mb-1 text-lg font-bold text-gray-900">Artisan Information</h3>
-
+            <SectionCard
+              title="Artisan Information"
+              subtitle="Details about the maker of this product"
+            >
               <div className="space-y-4">
                 {artisanSteps.map((step, index) => (
                   <div
                     key={index}
-                    className="relative rounded-xl border border-[#F1E3E8] bg-[#FCF8FA] p-5"
+                    className="relative rounded-[12px] border border-[#F1E3E8] bg-[#FFFCFD] p-4"
                   >
-                    <div className="absolute left-4 -top-3 rounded-full bg-[#E91E63] px-2 py-1 text-[10px] font-bold text-white">
-                      {String(index + 1).padStart(2, "0")}
+                    <div className="mb-3 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#EB5C8A] px-1.5 text-[9px] font-semibold text-white">
+                      {index + 1}
                     </div>
 
-                    <div className="mt-2 space-y-4">
+                    <div className="space-y-3">
                       <div>
-                        <label className="mb-2 block text-xs font-bold text-gray-900">
-                          Step Title
-                        </label>
-                        <input
+                        <Label>Step Title</Label>
+                        <Input
                           value={step.title}
                           onChange={(e) =>
                             updateArtisanStep(index, "title", e.target.value)
                           }
                           type="text"
-                          className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-xs font-bold text-gray-900">
-                          Step Description
-                        </label>
-                        <textarea
+                        <Label>Step Description</Label>
+                        <Textarea
                           value={step.description}
                           onChange={(e) =>
                             updateArtisanStep(index, "description", e.target.value)
                           }
                           rows={2}
-                          className="w-full resize-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
                         />
                       </div>
                     </div>
@@ -911,27 +1061,28 @@ export default function AddProduct() {
                 <button
                   type="button"
                   onClick={handleAddArtisanStep}
-                  className="w-full rounded-xl border-2 border-dashed border-pink-300 bg-[#FDF2F5] py-3 text-xs font-bold text-[#E91E63] hover:bg-pink-100"
+                  className="flex h-[38px] w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]"
                 >
-                  + Add Another Step
+                  <Plus size={13} />
+                  Add Another Step
                 </button>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-8 shadow-sm">
-              <h3 className="mb-1 text-lg font-bold text-gray-900">Product Variants</h3>
-              <p className="mb-6 text-xs text-gray-500">
-                Add color and size options for your product
-              </p>
+            <SectionCard
+              title="Product Variants"
+              subtitle="Add color and size options for your product"
+            >
+              <div className="border-b border-[#F1E3E8] pb-5">
+                <p className="mb-3 text-[12px] font-semibold text-[#1C1630]">
+                  Add Color
+                </p>
 
-              <div className="mb-6 border-b border-[#F1E3E8] pb-6">
-                <p className="mb-3 text-sm font-semibold text-gray-900">Add Color</p>
-
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2.5">
                   {COLOR_OPTIONS.map((colorName) => {
                     const isSelected = variants.some(
                       (variant) =>
-                        variant.color.toLowerCase() === colorName.toLowerCase(),
+                        variant.color.toLowerCase() === colorName.toLowerCase()
                     );
 
                     return (
@@ -940,82 +1091,50 @@ export default function AddProduct() {
                         type="button"
                         onClick={() => addVariantColor(colorName)}
                         title={colorName}
-                        className={`relative h-11 w-11 rounded-xl border-2 transition-all ${
+                        className={`relative h-8 w-8 rounded-[8px] border transition ${
                           isSelected
-                            ? "border-[#E91E63] scale-105"
-                            : "border-gray-200 hover:border-pink-300"
+                            ? "border-[#EB5C8A] ring-1 ring-[#EB5C8A]"
+                            : "border-[#E6E0E5] hover:border-[#F1A6BC]"
                         }`}
                       >
                         <div
-                          className={`h-full w-full rounded-lg ${
-                            colorName === "White" ? "border border-gray-200" : ""
+                          className={`h-full w-full rounded-[6px] ${
+                            colorName === "White" ? "border border-[#E6E0E5]" : ""
                           }`}
                           style={{
                             backgroundColor:
                               COLOR_SWATCH_MAP[colorName.toLowerCase()] || "#E5E7EB",
                           }}
                         />
-                        {isSelected && (
-                          <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#E91E63] text-[10px] text-white">
-                            ✓
-                          </div>
-                        )}
                       </button>
                     );
                   })}
 
                   <div className="flex items-center gap-2">
-                    <input
-                      type="text"
+                    <Input
                       value={customColorName}
                       onChange={(e) => setCustomColorName(e.target.value)}
+                      type="text"
                       placeholder="Add Color Name"
-                      className="w-40 rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
+                      className="w-[150px]"
                     />
                     <button
                       type="button"
                       onClick={addCustomColor}
-                      className="rounded-xl border border-dashed border-pink-300 bg-pink-50 px-4 py-3 text-xs font-bold text-[#E91E63] hover:bg-pink-100"
+                      className="h-[38px] rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] px-4 text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]"
                     >
                       Add
                     </button>
                   </div>
                 </div>
-
-                {variants.length > 0 && (
-                  <div className="mt-5">
-                    <p className="mb-2 text-xs font-bold text-gray-900">Selected Colors</p>
-                    <div className="flex flex-wrap gap-3">
-                      {variants.map((variant) => (
-                        <div
-                          key={variant.id}
-                          className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2"
-                        >
-                          <div
-                            className="h-6 w-6 rounded-md border border-gray-200"
-                            style={{
-                              backgroundColor:
-                                COLOR_SWATCH_MAP[variant.color.toLowerCase()] || "#E5E7EB",
-                            }}
-                          />
-                          <p className="text-xs font-semibold text-gray-900">
-                            {variant.color}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-8 shadow-sm">
-              <h3 className="mb-1 text-lg font-bold text-gray-900">Size Per Color</h3>
-              <p className="mb-6 text-xs text-gray-500">
-                Each color can have different sizes — click a color to expand and choose its sizes
-              </p>
-
-              <div className="space-y-5">
+            <SectionCard
+              title="Size Per Color"
+              subtitle="Each color can have different sizes — click a color to expand and choose its sizes"
+            >
+              <div className="space-y-4">
                 {variants.map((variant) => (
                   <AddProductVariantCard
                     key={variant.id}
@@ -1035,209 +1154,180 @@ export default function AddProduct() {
                     onUpdateStock={(size, stock) =>
                       updateVariantStock(variant.id, size, stock)
                     }
+                    onUpdateSku={(size, sku) =>
+                      updateVariantSku(variant.id, size, sku)
+                    }
                     onVariantImagesChange={(e) => handleVariantImagesChange(variant.id, e)}
                     onRemoveVariantImage={(imageId) =>
                       removeVariantImage(variant.id, imageId)
                     }
                     colorSwatchMap={COLOR_SWATCH_MAP}
+                    inheritedPrice={salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice)}
                   />
                 ))}
               </div>
 
-              {variants.length === 0 && (
-                <div className="rounded-xl border border-dashed border-pink-300 bg-pink-50 p-5 text-sm text-[#E91E63]">
+              {variants.length === 0 ? (
+                <div className="mt-4 rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] p-4 text-[12px] text-[#EB5C8A]">
                   Add at least one color to start creating product variants.
                 </div>
-              )}
+              ) : null}
 
-              <div className="mt-6 flex gap-4">
+              <div className="mt-5 flex gap-3">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 rounded-xl border border-[#E91E63] bg-white py-3.5 text-sm font-bold text-[#E91E63] hover:bg-pink-50 disabled:opacity-50"
+                  className="flex h-[40px] flex-1 items-center justify-center rounded-[10px] border border-[#EB5C8A] bg-white text-[12px] font-semibold text-[#EB5C8A] hover:bg-[#FFF7FA] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isLoading ? "Saving..." : "Save Product"}
+                  {isLoading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <RefreshCw size={14} className="animate-spin" />
+                      Saving...
+                    </span>
+                  ) : (
+                    "Save Product"
+                  )}
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setShowPreview(true)}
-                  className="flex-1 rounded-xl bg-[#E91E63] py-3.5 text-sm font-bold text-white hover:bg-[#C83B61]"
+                  className="flex h-[40px] flex-1 items-center justify-center rounded-[10px] bg-[#EB5C8A] text-[12px] font-semibold text-white hover:bg-[#E35182]"
                 >
                   Preview Product
                 </button>
               </div>
-            </div>
+            </SectionCard>
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-sm font-bold text-gray-900">Publish Settings</h3>
-
+            <SectionCard title="Publish Settings">
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Status
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className="w-full appearance-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                    >
-                      <option value="Published">Published</option>
-                      <option value="Draft">Draft</option>
-                    </select>
-                    <ChevronDown
-                      size={16}
-                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                  </div>
+                  <Label>Status</Label>
+                  <Select
+                    value={status}
+                    onChange={setStatus}
+                    options={["Published", "Draft"]}
+                    placeholder="Select Status"
+                  />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-gray-900">
-                    Visibility
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={visibility}
-                      onChange={(e) => setVisibility(e.target.value)}
-                      className="w-full appearance-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                    >
-                      <option value="Public">Public</option>
-                      <option value="Private">Private</option>
-                    </select>
-                    <ChevronDown
-                      size={16}
-                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                  </div>
+                  <Label>Visibility</Label>
+                  <Select
+                    value={visibility}
+                    onChange={setVisibility}
+                    options={["Public", "Private"]}
+                    placeholder="Select Visibility"
+                  />
                 </div>
 
-                <div className="space-y-4 pt-2">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsFeatured((prev) => !prev)}
-                      className={`flex h-7 w-12 items-center rounded-full p-1 ${
-                        isFeatured ? "bg-[#E91E63]" : "bg-gray-200"
-                      }`}
-                    >
-                      <div
-                        className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                          isFeatured ? "translate-x-5" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm font-medium text-gray-900">
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center gap-2.5">
+                    <Toggle
+                      checked={isFeatured}
+                      onChange={() => setIsFeatured((prev) => !prev)}
+                    />
+                    <span className="text-[11px] font-medium text-[#1C1630]">
                       Featured Product
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setReviewsEnabled((prev) => !prev)}
-                      className={`flex h-7 w-12 items-center rounded-full p-1 ${
-                        reviewsEnabled ? "bg-[#E91E63]" : "bg-gray-200"
-                      }`}
-                    >
-                      <div
-                        className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                          reviewsEnabled ? "translate-x-5" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm font-medium text-gray-900">
+                  <div className="flex items-center gap-2.5">
+                    <Toggle
+                      checked={reviewsEnabled}
+                      onChange={() => setReviewsEnabled((prev) => !prev)}
+                    />
+                    <span className="text-[11px] font-medium text-[#1C1630]">
                       Enable Reviews
                     </span>
                   </div>
                 </div>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-sm font-bold text-gray-900">Shipping</h3>
+            <SectionCard title="Shipping">
+              <div className="space-y-3">
+                <div>
+                  <Label>Weight (kg)</Label>
+                  <Input
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                    type="text"
+                    placeholder="0.00"
+                  />
+                </div>
 
-              <div className="space-y-4">
-                <input
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  type="text"
-                  placeholder="Weight"
-                  className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                />
-
-                <input
-                  value={length}
-                  onChange={(e) => setLength(e.target.value)}
-                  type="text"
-                  placeholder="Length"
-                  className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                />
-
-                <input
-                  value={width}
-                  onChange={(e) => setWidth(e.target.value)}
-                  type="text"
-                  placeholder="Width"
-                  className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                />
-
-                <input
-                  value={height}
-                  onChange={(e) => setHeight(e.target.value)}
-                  type="text"
-                  placeholder="Height"
-                  className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                />
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setFreeShipping((prev) => !prev)}
-                    className={`flex h-7 w-12 items-center rounded-full p-1 ${
-                      freeShipping ? "bg-[#E91E63]" : "bg-gray-200"
-                    }`}
-                  >
-                    <div
-                      className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                        freeShipping ? "translate-x-5" : "translate-x-0"
-                      }`}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Length (cm)</Label>
+                    <Input
+                      value={length}
+                      onChange={(e) => setLength(e.target.value)}
+                      type="text"
+                      placeholder="0"
                     />
-                  </button>
-                  <span className="text-sm font-medium text-gray-900">
+                  </div>
+                  <div>
+                    <Label>Width (cm)</Label>
+                    <Input
+                      value={width}
+                      onChange={(e) => setWidth(e.target.value)}
+                      type="text"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Height (cm)</Label>
+                  <Input
+                    value={height}
+                    onChange={(e) => setHeight(e.target.value)}
+                    type="text"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2.5 pt-1">
+                  <Toggle
+                    checked={freeShipping}
+                    onChange={() => setFreeShipping((prev) => !prev)}
+                  />
+                  <span className="text-[11px] font-medium text-[#1C1630]">
                     Free Shipping
                   </span>
                 </div>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-sm font-bold text-gray-900">SEO</h3>
+            <SectionCard title="SEO">
+              <div className="space-y-3">
+                <div>
+                  <Label>Meta Title</Label>
+                  <Input
+                    value={metaTitle}
+                    onChange={(e) => setMetaTitle(e.target.value)}
+                    type="text"
+                    placeholder="Product meta title"
+                  />
+                </div>
 
-              <div className="space-y-4">
-                <input
-                  value={metaTitle}
-                  onChange={(e) => setMetaTitle(e.target.value)}
-                  type="text"
-                  placeholder="Meta Title"
-                  className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                />
-                <textarea
-                  value={metaDescription}
-                  onChange={(e) => setMetaDescription(e.target.value)}
-                  rows={3}
-                  placeholder="Meta Description"
-                  className="w-full resize-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                />
+                <div>
+                  <Label>Meta Description</Label>
+                  <Textarea
+                    value={metaDescription}
+                    onChange={(e) => setMetaDescription(e.target.value)}
+                    rows={3}
+                    placeholder="Product meta description"
+                  />
+                </div>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-sm font-bold text-gray-900">Story Settings</h3>
-
-              <div className="space-y-4">
+            <SectionCard title="Story Settings">
+              <div className="space-y-3">
                 {(
                   [
                     { key: "displayStory", label: "Display Story on Product Page" },
@@ -1249,83 +1339,67 @@ export default function AddProduct() {
                     label: string;
                   }[]
                 ).map((item) => (
-                  <div key={item.key} className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() =>
+                  <div key={item.key} className="flex items-center gap-2.5">
+                    <Toggle
+                      checked={storySettings[item.key]}
+                      onChange={() =>
                         setStorySettings((prev) => ({
                           ...prev,
                           [item.key]: !prev[item.key],
                         }))
                       }
-                      className={`flex h-7 w-12 items-center rounded-full p-1 ${
-                        storySettings[item.key] ? "bg-[#E91E63]" : "bg-gray-200"
-                      }`}
-                    >
-                      <div
-                        className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                          storySettings[item.key] ? "translate-x-5" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-xs font-bold text-gray-900">
+                    />
+                    <span className="text-[11px] font-medium text-[#1C1630]">
                       {item.label}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-sm font-bold text-gray-900">Tags & Keywords</h3>
+            <SectionCard title="Tags & Keywords">
+              <div className="space-y-3">
+                <div>
+                  <Label>Story Tags</Label>
+                  <Input
+                    value={storyTags}
+                    onChange={(e) => setStoryTags(e.target.value)}
+                    type="text"
+                    placeholder="handmade, artisan, jewelry"
+                  />
+                </div>
 
-              <div className="space-y-4">
-                <input
-                  value={storyTags}
-                  onChange={(e) => setStoryTags(e.target.value)}
-                  type="text"
-                  placeholder="handmade, artisan, jewelry"
-                  className="w-full rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                />
-
-                <div className="relative">
-                  <select
+                <div>
+                  <Label>Featured Story</Label>
+                  <Select
                     value={featuredStory}
-                    onChange={(e) => setFeaturedStory(e.target.value)}
-                    className="w-full appearance-none rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-2.5 text-sm focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
-                  >
-                    <option value="No">No</option>
-                    <option value="Yes">Yes</option>
-                  </select>
-                  <ChevronDown
-                    size={16}
-                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                    onChange={setFeaturedStory}
+                    options={["No", "Yes"]}
+                    placeholder="Select"
                   />
                 </div>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="rounded-2xl border border-[#F1E3E8] bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-sm font-bold text-gray-900">Summary</h3>
-
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <span className="text-gray-500">Colours</span>
-                  <span className="font-semibold text-[#E91E63]">
+            <SectionCard title="Summary">
+              <div className="space-y-3 text-[12px]">
+                <div className="flex items-center justify-between border-b border-[#F3E9ED] pb-2">
+                  <span className="text-[#8E8794]">Colours</span>
+                  <span className="font-semibold text-[#EB5C8A]">
                     {summary.colors} Selected
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between border-b pb-2">
-                  <span className="text-gray-500">Total SKUs</span>
-                  <span className="font-semibold text-[#E91E63]">
+                <div className="flex items-center justify-between border-b border-[#F3E9ED] pb-2">
+                  <span className="text-[#8E8794]">Total SKUs</span>
+                  <span className="font-semibold text-[#EB5C8A]">
                     {summary.totalSkus} Size pairs
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Images</span>
-                  <span className="font-semibold text-[#E91E63]">
+                  <span className="text-[#8E8794]">Images</span>
+                  <span className="font-semibold text-[#EB5C8A]">
                     {summary.totalImages}/8
                   </span>
                 </div>
@@ -1334,12 +1408,12 @@ export default function AddProduct() {
               <button
                 type="button"
                 onClick={() => setShowPreview(true)}
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-pink-300 bg-[#FDF2F5] py-3 text-xs font-bold text-[#E91E63] hover:bg-pink-100"
+                className="mt-4 flex h-[38px] w-full items-center justify-center gap-2 rounded-[10px] border border-[#F2B8C8] bg-[#FFF4F7] text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDECF2]"
               >
                 <Eye size={14} />
                 Preview Product
               </button>
-            </div>
+            </SectionCard>
           </div>
         </div>
       </form>
@@ -1353,7 +1427,7 @@ export default function AddProduct() {
         tags={tags}
         regularPrice={regularPrice}
         salePrice={salePrice}
-        discountPercent={discountPercent}
+        discountPercent={finalDiscountPercent}
         status={status}
         story={storyContent}
         storyTitle={storyTitle}

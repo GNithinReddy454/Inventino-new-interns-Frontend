@@ -355,20 +355,20 @@ export default function AllProductsView({
   const statusColor = (status: string) => {
     switch (status) {
       case "Active":
-        return "bg-green-100 text-green-700";
+        return "bg-[#DFF5E7] text-[#159A55]";
       case "Inactive":
-        return "bg-gray-100 text-gray-700";
+        return "bg-[#F2F2F3] text-[#666B74]";
       case "Low Stock":
-        return "bg-orange-100 text-orange-700";
+        return "bg-[#FFF1DE] text-[#F39C12]";
       case "Out of Stock":
-        return "bg-red-100 text-red-700";
+        return "bg-[#FDE8E8] text-[#E74C3C]";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-[#F2F2F3] text-[#666B74]";
     }
   };
 
   const categoryColor = (_category: string) => {
-    return "bg-pink-50 text-pink-500";
+    return "bg-[#F9ECF2] text-[#EB5C8A]";
   };
 
   const handleDelete = async (prod: NormalizedAdminProduct) => {
@@ -436,11 +436,13 @@ export default function AllProductsView({
   );
 
   return (
-    <div className="space-y-6 w-full">
+    <div className="space-y-6 w-full text-[#1F1728]">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">All Products</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h2 className="text-[20px] md:text-[22px] font-semibold text-[#1C1630]">
+            All Products
+          </h2>
+          <p className="text-[13px] text-[#817889] mt-1">
             Complete product inventory and management
           </p>
         </div>
@@ -448,7 +450,7 @@ export default function AllProductsView({
         <div className="flex items-center gap-3">
           <button
             onClick={() => fetchProducts()}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-background border border-border text-sm font-bold rounded-xl hover:bg-muted transition-all shadow-sm shrink-0"
+            className="flex items-center justify-center gap-2 w-[52px] h-[42px] bg-white border border-[#E9DDE3] text-[#6D6776] rounded-[14px] hover:bg-[#FAF6F8] transition shadow-sm shrink-0"
             title="Refresh products"
           >
             <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
@@ -456,9 +458,9 @@ export default function AllProductsView({
 
           <button
             onClick={onAddProduct}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-sm shrink-0"
+            className="flex items-center justify-center gap-2 px-5 h-[42px] bg-[#EB5C8A] text-white text-[14px] font-semibold rounded-[14px] hover:bg-[#E35182] transition shadow-sm shrink-0"
           >
-            <Package size={18} />
+            <Package size={16} />
             Add New Product
           </button>
         </div>
@@ -470,35 +472,35 @@ export default function AllProductsView({
         ) : (
           [
             {
-              label: "Total Products",
+              label: "TOTAL PRODUCTS",
               value: serverTotalItems,
-              color: "text-foreground",
+              color: "text-[#101828]",
             },
             {
-              label: "Active Products",
+              label: "ACTIVE PRODUCTS",
               value: visibleProducts.filter((p) => p.isActive).length,
-              color: "text-primary",
+              color: "text-[#EB5C8A]",
             },
             {
-              label: "Low Stock Items",
+              label: "LOW STOCK ITEMS",
               value: visibleProducts.filter((p) => p.stock > 0 && p.stock < 5)
                 .length,
-              color: "text-orange-500",
+              color: "text-[#F97316]",
             },
             {
-              label: "Out of Stock",
+              label: "OUT OF STOCK",
               value: visibleProducts.filter((p) => p.stock === 0).length,
-              color: "text-red-500",
+              color: "text-[#EF4444]",
             },
           ].map((stat, i) => (
             <div
               key={i}
-              className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-center min-h-22"
+              className="bg-white p-5 rounded-[18px] border border-[#F0E4E8] shadow-[0_2px_8px_rgba(31,23,40,0.04)] flex flex-col justify-center min-h-[96px]"
             >
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#7E7786] mb-2">
                 {stat.label}
               </span>
-              <span className={`text-2xl font-bold ${stat.color}`}>
+              <span className={`text-[22px] font-bold ${stat.color}`}>
                 {stat.value}
               </span>
             </div>
@@ -506,11 +508,11 @@ export default function AllProductsView({
         )}
       </div>
 
-      <div className="bg-card rounded-2xl border border-border shadow-sm p-4">
+      <div className="bg-white rounded-[22px] border border-[#F0E4E8] shadow-[0_2px_10px_rgba(31,23,40,0.04)] p-4">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A93A3]"
               size={15}
             />
             <input
@@ -518,7 +520,7 @@ export default function AllProductsView({
               placeholder="Search products by name, ID, or SKU..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all"
+              className="w-full pl-9 pr-4 h-[44px] bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] placeholder:text-[#9A93A3] focus:outline-none focus:border-[#EB5C8A] transition-all"
             />
           </div>
 
@@ -526,7 +528,7 @@ export default function AllProductsView({
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="appearance-none min-w-40 pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all cursor-pointer"
+              className="appearance-none min-w-[170px] pl-4 pr-10 h-[44px] bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] focus:outline-none focus:border-[#EB5C8A] transition-all cursor-pointer"
             >
               {categoryOptions.map((c) => (
                 <option key={c}>{c}</option>
@@ -534,7 +536,7 @@ export default function AllProductsView({
             </select>
             <ChevronDown
               size={14}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9A93A3] pointer-events-none"
             />
           </div>
 
@@ -542,7 +544,7 @@ export default function AllProductsView({
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="appearance-none min-w-35 pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all cursor-pointer"
+              className="appearance-none min-w-[150px] pl-4 pr-10 h-[44px] bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] focus:outline-none focus:border-[#EB5C8A] transition-all cursor-pointer"
             >
               {statuses.map((s) => (
                 <option key={s}>{s}</option>
@@ -550,7 +552,7 @@ export default function AllProductsView({
             </select>
             <ChevronDown
               size={14}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9A93A3] pointer-events-none"
             />
           </div>
 
@@ -558,7 +560,7 @@ export default function AllProductsView({
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="appearance-none min-w-45 pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all cursor-pointer"
+              className="appearance-none min-w-[190px] pl-4 pr-10 h-[44px] bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] focus:outline-none focus:border-[#EB5C8A] transition-all cursor-pointer"
             >
               {[
                 "Sort: Newest First",
@@ -571,7 +573,7 @@ export default function AllProductsView({
             </select>
             <ChevronDown
               size={14}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9A93A3] pointer-events-none"
             />
           </div>
         </div>
@@ -580,41 +582,39 @@ export default function AllProductsView({
       {isLoading ? (
         <SkeletonTable rows={10} cols={7} />
       ) : (
-        <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-[#F0E4E8] rounded-[24px] shadow-[0_4px_14px_rgba(31,23,40,0.04)] overflow-hidden">
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-muted/50 text-muted-foreground font-bold text-[11px] uppercase tracking-wider hidden md:table-header-group">
+              <thead className="bg-[#FAF8F9] text-[#7E7786] font-semibold text-[11px] uppercase tracking-[0.06em] hidden md:table-header-group">
                 <tr>
-                  <th className="px-6 py-4">Product</th>
-                  <th className="px-6 py-4">Product ID</th>
-                  <th className="px-6 py-4">Price</th>
-                  <th className="px-6 py-4">Stock</th>
-                  <th className="px-6 py-4">Category</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-center">Action</th>
+                  <th className="px-6 py-5">Product</th>
+                  <th className="px-6 py-5">Product ID</th>
+                  <th className="px-6 py-5">Price</th>
+                  <th className="px-6 py-5">Stock</th>
+                  <th className="px-6 py-5">Category</th>
+                  <th className="px-6 py-5">Status</th>
+                  <th className="px-6 py-5 text-center">Action</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-[#F3E9ED]">
                 {visibleProducts.length === 0 ? (
                   <tr>
                     <td
                       colSpan={7}
-                      className="text-center py-16 text-muted-foreground"
+                      className="text-center py-16 text-[#8B8492]"
                     >
                       <Package size={36} className="mx-auto mb-3 opacity-20" />
-                      <p className="text-sm">
-                        No products found matching criteria
-                      </p>
+                      <p className="text-sm">No products found matching criteria</p>
                     </td>
                   </tr>
                 ) : (
                   visibleProducts.map((prod) => (
                     <tr
                       key={prod._id}
-                      className="flex flex-col md:table-row border-b md:border-b-0 border-border p-4 md:p-0 hover:bg-muted/20 transition-colors"
+                      className="flex flex-col md:table-row border-b md:border-b-0 border-[#F3E9ED] p-4 md:p-0 hover:bg-[#FFFDFE] transition-colors"
                     >
-                      <td className="px-0 py-2 md:px-6 md:py-4">
+                      <td className="px-0 py-2 md:px-6 md:py-5">
                         <button
                           onClick={() =>
                             setPreviewProductId(prod.productId || prod._id)
@@ -622,7 +622,7 @@ export default function AllProductsView({
                           className="w-full text-left"
                         >
                           <div className="flex items-center gap-4">
-                            <div className="w-11 h-11 rounded-md shrink-0 hidden md:flex overflow-hidden bg-muted items-center justify-center">
+                            <div className="w-12 h-12 rounded-[12px] shrink-0 hidden md:flex overflow-hidden bg-[#F4F4F5] items-center justify-center border border-[#F0E8EC]">
                               {prod.imageUrl ? (
                                 <img
                                   src={prod.imageUrl}
@@ -632,20 +632,20 @@ export default function AllProductsView({
                               ) : (
                                 <Package
                                   size={18}
-                                  className="text-muted-foreground/50"
+                                  className="text-[#B0A8B3]"
                                 />
                               )}
                             </div>
 
                             <div className="flex justify-between md:block w-full md:w-auto items-center">
-                              <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                              <span className="md:hidden text-[#8B8492] text-xs uppercase font-semibold tracking-wider">
                                 Product
                               </span>
                               <div className="text-right md:text-left">
-                                <p className="font-bold text-foreground text-sm line-clamp-1 hover:text-primary transition-colors">
+                                <p className="font-semibold text-[#1C1630] text-[14px] line-clamp-1 hover:text-[#EB5C8A] transition-colors">
                                   {prod.name}
                                 </p>
-                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                <p className="text-[11px] text-[#8B8492] mt-0.5">
                                   SKU: {prod.sku || "-"}
                                 </p>
                               </div>
@@ -654,46 +654,44 @@ export default function AllProductsView({
                         </button>
                       </td>
 
-                      <td className="px-0 py-2 md:px-6 md:py-4 text-muted-foreground font-medium text-[13px] flex justify-between md:table-cell items-center">
-                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                      <td className="px-0 py-2 md:px-6 md:py-5 text-[#6F6877] font-medium text-[13px] flex justify-between md:table-cell items-center">
+                        <span className="md:hidden text-[#8B8492] text-xs uppercase font-semibold tracking-wider">
                           Product ID
                         </span>
                         {prod.productId || "-"}
                       </td>
 
-                      <td className="px-0 py-2 md:px-6 md:py-4 font-bold text-[#E85D8E] flex justify-between md:table-cell items-center">
-                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                      <td className="px-0 py-2 md:px-6 md:py-5 font-semibold text-[#EB5C8A] flex justify-between md:table-cell items-center">
+                        <span className="md:hidden text-[#8B8492] text-xs uppercase font-semibold tracking-wider">
                           Price
                         </span>
                         ₹{prod.price.toLocaleString()}
                       </td>
 
-                      <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
-                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                      <td className="px-0 py-2 md:px-6 md:py-5 flex justify-between md:table-cell items-center">
+                        <span className="md:hidden text-[#8B8492] text-xs uppercase font-semibold tracking-wider">
                           Stock
                         </span>
                         <div className="text-right md:text-left">
                           <span
-                            className={`font-bold ${
-                              prod.stock < 10
-                                ? "text-orange-500"
-                                : "text-foreground"
+                            className={`font-semibold ${
+                              prod.stock < 10 ? "text-[#F97316]" : "text-[#1C1630]"
                             }`}
                           >
                             {prod.stock}
                           </span>
-                          <p className="hidden md:block text-[10px] text-muted-foreground mt-0.5">
+                          <p className="hidden md:block text-[10px] text-[#8B8492] mt-0.5">
                             units
                           </p>
                         </div>
                       </td>
 
-                      <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
-                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                      <td className="px-0 py-2 md:px-6 md:py-5 flex justify-between md:table-cell items-center">
+                        <span className="md:hidden text-[#8B8492] text-xs uppercase font-semibold tracking-wider">
                           Category
                         </span>
                         <span
-                          className={`px-2.5 py-1 text-[11px] font-bold rounded-full ${categoryColor(
+                          className={`px-3 py-1 text-[11px] font-semibold rounded-full ${categoryColor(
                             prod.category
                           )}`}
                         >
@@ -701,12 +699,12 @@ export default function AllProductsView({
                         </span>
                       </td>
 
-                      <td className="px-0 py-2 md:px-6 md:py-4 flex justify-between md:table-cell items-center">
-                        <span className="md:hidden text-muted-foreground text-xs uppercase font-bold tracking-wider">
+                      <td className="px-0 py-2 md:px-6 md:py-5 flex justify-between md:table-cell items-center">
+                        <span className="md:hidden text-[#8B8492] text-xs uppercase font-semibold tracking-wider">
                           Status
                         </span>
                         <span
-                          className={`px-2.5 py-1 text-[11px] font-bold rounded-full ${statusColor(
+                          className={`px-3 py-1 text-[11px] font-semibold rounded-full ${statusColor(
                             prod.status
                           )}`}
                         >
@@ -714,12 +712,12 @@ export default function AllProductsView({
                         </span>
                       </td>
 
-                      <td className="px-0 py-2 md:px-6 md:py-4 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-border pt-3 md:pt-4">
+                      <td className="px-0 py-2 md:px-6 md:py-5 relative flex justify-end md:table-cell mt-2 md:mt-0 border-t md:border-0 border-[#F3E9ED] pt-3 md:pt-5">
                         {actionLoading === prod._id ? (
                           <div className="flex items-center justify-center p-2">
                             <RefreshCw
                               size={16}
-                              className="animate-spin text-muted-foreground"
+                              className="animate-spin text-[#8B8492]"
                             />
                           </div>
                         ) : (
@@ -730,34 +728,34 @@ export default function AllProductsView({
                                   openMenu === prod._id ? null : prod._id
                                 )
                               }
-                              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                              className="p-2 text-[#8B8492] hover:text-[#1C1630] hover:bg-[#F8F3F6] rounded-lg transition-colors"
                             >
                               <MoreVertical size={16} />
                             </button>
 
                             {openMenu === prod._id && (
-                              <div className="absolute right-0 md:right-6 top-12 md:top-10 z-20 bg-background border border-border shadow-xl rounded-xl w-48 text-sm py-2">
+                              <div className="absolute right-0 md:right-6 top-12 md:top-11 z-20 bg-white border border-[#F0E4E8] shadow-[0_12px_30px_rgba(31,23,40,0.1)] rounded-[14px] w-48 text-sm py-2">
                                 <button
                                   onClick={() =>
                                     setPreviewProductId(
                                       prod.productId || prod._id
                                     )
                                   }
-                                  className="flex items-center gap-2 w-full px-4 py-2 text-foreground hover:bg-muted transition-colors text-left"
+                                  className="flex items-center gap-2 w-full px-4 py-2.5 text-[#1C1630] hover:bg-[#FAF6F8] transition-colors text-left"
                                 >
                                   <Eye size={14} /> Preview
                                 </button>
 
                                 <button
                                   onClick={() => handleEdit(prod)}
-                                  className="flex items-center gap-2 w-full px-4 py-2 text-foreground hover:bg-muted transition-colors text-left"
+                                  className="flex items-center gap-2 w-full px-4 py-2.5 text-[#1C1630] hover:bg-[#FAF6F8] transition-colors text-left"
                                 >
                                   <Edit size={14} /> Edit
                                 </button>
 
                                 <button
                                   onClick={() => handleToggleStatus(prod)}
-                                  className="flex items-center gap-2 w-full px-4 py-2 text-foreground hover:bg-muted transition-colors text-left"
+                                  className="flex items-center gap-2 w-full px-4 py-2.5 text-[#1C1630] hover:bg-[#FAF6F8] transition-colors text-left"
                                 >
                                   {prod.isActive ? (
                                     <ToggleRight size={14} />
@@ -768,14 +766,14 @@ export default function AllProductsView({
                                 </button>
 
                                 {deleteConfirm === prod._id ? (
-                                  <div className="px-4 py-2 border-t border-border/50 mt-1">
-                                    <p className="text-xs text-red-500 font-medium mb-2">
+                                  <div className="px-4 py-2 border-t border-[#F3E9ED] mt-1">
+                                    <p className="text-xs text-[#E74C3C] font-medium mb-2">
                                       Confirm delete?
                                     </p>
                                     <div className="flex gap-2">
                                       <button
                                         onClick={() => handleDelete(prod)}
-                                        className="flex-1 px-3 py-1.5 text-xs font-bold text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                                        className="flex-1 px-3 py-1.5 text-xs font-semibold text-white bg-[#E74C3C] rounded-lg hover:bg-[#D63C2D] transition-colors"
                                       >
                                         Yes
                                       </button>
@@ -784,7 +782,7 @@ export default function AllProductsView({
                                           setDeleteConfirm(null);
                                           setOpenMenu(null);
                                         }}
-                                        className="flex-1 px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                        className="flex-1 px-3 py-1.5 text-xs font-semibold text-[#666B74] bg-[#F4F4F5] rounded-lg hover:bg-[#ECECEF] transition-colors"
                                       >
                                         No
                                       </button>
@@ -793,7 +791,7 @@ export default function AllProductsView({
                                 ) : (
                                   <button
                                     onClick={() => setDeleteConfirm(prod._id)}
-                                    className="flex items-center gap-2 w-full px-4 py-2 text-red-500 hover:bg-red-50 transition-colors text-left mt-1 border-t border-border/50"
+                                    className="flex items-center gap-2 w-full px-4 py-2.5 text-[#E74C3C] hover:bg-[#FFF3F2] transition-colors text-left mt-1 border-t border-[#F3E9ED]"
                                   >
                                     <Trash2 size={14} /> Delete
                                   </button>
