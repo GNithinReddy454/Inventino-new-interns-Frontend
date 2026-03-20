@@ -16,7 +16,7 @@ interface AddProductPreviewModalProps {
   discountPercent: string;
   status: string;
   story: string;
-  storyMedia: string;
+  storyTitle: string;
   variants: ProductVariantGroup[];
   colorSwatchMap: Record<string, string>;
 }
@@ -45,7 +45,7 @@ export default function AddProductPreviewModal({
   discountPercent,
   status,
   story,
-  storyMedia,
+  storyTitle,
   variants,
   colorSwatchMap,
 }: AddProductPreviewModalProps) {
@@ -59,6 +59,7 @@ export default function AddProductPreviewModal({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
+
       <div className="relative z-10 max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
         <button
           type="button"
@@ -109,7 +110,7 @@ export default function AddProductPreviewModal({
             <div className="rounded-xl border p-4">
               <p className="mb-2 text-xs font-bold text-gray-500">Story</p>
               <p className="text-sm font-medium text-gray-800">
-                {storyMedia || "No story title"}
+                {storyTitle || "No story title"}
               </p>
               <p className="mt-2 whitespace-pre-wrap text-sm text-gray-600">
                 {story || "No story content added"}
@@ -129,6 +130,7 @@ export default function AddProductPreviewModal({
                         src={image.preview}
                         alt={image.file.name}
                         fill
+                        unoptimized
                         className="object-cover"
                       />
                     </div>
@@ -195,6 +197,7 @@ export default function AddProductPreviewModal({
                                   src={image.preview}
                                   alt={image.file.name}
                                   fill
+                                  unoptimized
                                   className="object-cover"
                                 />
                               </div>

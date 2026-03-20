@@ -119,9 +119,9 @@ export default function AddProductVariantCard({
             </p>
 
             <div className="flex flex-wrap gap-2">
-              {defaultSizeOptions.map((size: string) => {
+              {defaultSizeOptions.map((size) => {
                 const selected = variant.sizes.some(
-                  (entry: VariantSizeStock) => entry.size === size,
+                  (entry) => entry.size === size
                 );
 
                 return (
@@ -145,9 +145,7 @@ export default function AddProductVariantCard({
               <input
                 type="text"
                 value={customSizeValue}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setCustomSizeValue(e.target.value)
-                }
+                onChange={(e) => setCustomSizeValue(e.target.value)}
                 placeholder="Add Custom Size (e.g., 16.5 cm or 30)"
                 className="flex-1 rounded-xl border border-pink-200 bg-[#FDF2F5] px-4 py-3 text-sm transition-all focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"
               />
@@ -179,7 +177,7 @@ export default function AddProductVariantCard({
 
             {variant.images.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-3">
-                {variant.images.map((image: VariantImageItem) => (
+                {variant.images.map((image) => (
                   <div
                     key={image.id}
                     className="group relative h-20 w-20 overflow-hidden rounded-xl border border-gray-200"
@@ -188,6 +186,7 @@ export default function AddProductVariantCard({
                       src={image.preview}
                       alt={image.file.name}
                       fill
+                      unoptimized
                       className="object-cover"
                     />
                     <button
@@ -208,7 +207,7 @@ export default function AddProductVariantCard({
               <h4 className="mb-3 text-sm font-bold text-gray-900">Stock Quantity</h4>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {variant.sizes.map((entry: VariantSizeStock) => (
+                {variant.sizes.map((entry) => (
                   <div
                     key={`${variant.id}-${entry.size}`}
                     className="rounded-xl border border-[#F1E3E8] bg-white p-3"
@@ -221,7 +220,7 @@ export default function AddProductVariantCard({
                       type="number"
                       min="0"
                       value={entry.stock}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      onChange={(e) =>
                         onUpdateStock(entry.size, Number(e.target.value) || 0)
                       }
                       className="w-full rounded-lg border border-pink-200 bg-[#FDF2F5] px-3 py-2 text-sm transition-all focus:border-[#E91E63] focus:outline-none focus:ring-1 focus:ring-[#E91E63]"

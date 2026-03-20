@@ -1,34 +1,46 @@
 export interface ProductImage {
-  id: string;
-  url: string;
+  id?: string;
+  _id?: string;
+  url?: string;
 }
+
+export type ProductImageInput = string | ProductImage;
 
 export interface ApiProduct {
   _id: string;
-  name: string;
-  description: string;
+  productId?: string;
+  productName?: string;
+  name?: string;
+  description?: string;
   price: number;
+  originalPrice?: number;
   discountPrice?: number;
-  category: string;
-  stock: number;
-  slug: string;
-  images: ProductImage[];
-  isActive: boolean;
-  isDeleted: boolean;
-  bestSeller: boolean;
-  trendy: boolean;
-  ratingsAverage: number;
-  ratingsCount: number;
-  productId: string;
-  hashtags: string[];
+  category?: string;
+  stock?: number;
+  slug?: string;
+  images?: ProductImageInput[];
+  galleryImages?: ProductImageInput[];
+  mainImage?: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  isDeleted?: boolean;
+  bestSeller?: boolean;
+  trendy?: boolean;
+  ratingsAverage?: number;
+  ratingsCount?: number;
+  hashtags?: string[] | string;
   material?: string;
   size?: string;
   color?: string;
   colors?: any[];
   sizes?: any[];
   prices?: any[];
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  story?: string;
+  sku?: string;
+  variants?: any[];
+  [key: string]: any;
 }
 
 export interface ProductListMeta {
@@ -56,7 +68,7 @@ export interface ProductDetailResponse {
 export interface GetAllProductsParams {
   page?: number;
   limit?: number;
-  sort?: "featured" | "price_asc" | "price_desc" | "newest";
+  sort?: "featured" | "priceAsc" | "priceDesc" | "newest";
   category?: string;
   search?: string;
   minPrice?: number;

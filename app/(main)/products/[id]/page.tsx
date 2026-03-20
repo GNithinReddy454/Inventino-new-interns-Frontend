@@ -33,7 +33,6 @@ import { useToast } from "@/app/components/GlobalToast";
 // TYPES
 // ============================================================================
 
-// New color-based image structure
 interface ProductColor {
   color_id: string;
   color_name: string;
@@ -41,13 +40,11 @@ interface ProductColor {
   images: string[];
 }
 
-// New size structure
 interface ProductSize {
   size_id: string;
   size: string;
 }
 
-// New price/stock matrix entry
 interface ProductPrice {
   color_id: string;
   size_id: string;
@@ -55,8 +52,10 @@ interface ProductPrice {
   stock: number;
 }
 
+type ImageType = string | { url?: string; id?: string; _id?: string };
+
 interface Product {
-  id: number;
+  id: string;
   category: string;
   slug?: string;
   mongoId?: string;
@@ -73,10 +72,8 @@ interface Product {
   color?: string;
   material?: string;
   stock?: number;
-  // Legacy flat arrays (kept for backward compat)
   colors?: string[];
   sizes?: string[];
-  // NEW: structured color/size/price data
   colorVariants?: ProductColor[];
   sizeVariants?: ProductSize[];
   priceMatrix?: ProductPrice[];
@@ -84,27 +81,26 @@ interface Product {
 
 interface SimilarProduct {
   _id: string;
-  name: string;
-  description: string;
+  name?: string;
+  description?: string;
   price: number;
-  category: string;
-  images: { id: string; url: string }[];
-  productId: string;
-  slug: string;
-  ratingsAverage: number;
-  ratingsCount: number;
+  category?: string;
+  images?: Array<string | { id?: string; url?: string }>;
+  productId?: string;
+  slug?: string;
+  ratingsAverage?: number;
+  ratingsCount?: number;
+  originalPrice?: number;
+  bestSeller?: boolean;
+  trendy?: boolean;
+  discountPrice?: number;
 }
 
 interface ProductStory {
-  story: string;
-  storyMedia: string;
-  productId: string;
-  name: string;
-}
-
-interface ImageType {
-  url: string;
-  id?: string;
+  story?: string;
+  storyMedia?: string;
+  productId?: string;
+  name?: string;
 }
 
 interface ReviewData {
@@ -115,7 +111,7 @@ interface ReviewData {
     };
     rating: number;
     comment: string;
-    images?: Array<{ url: string }>;
+    images?: Array<{ url?: string }>;
     createdAt?: string;
   }>;
   pagination: {
@@ -138,11 +134,11 @@ interface ProductVariant {
   price: number;
   stock: number;
   attributes: VariantAttribute[];
-  images?: Array<{ url: string }>;
+  images?: Array<{ url?: string }>;
 }
 
 // ============================================================================
-// CONSTANTS & CONFIGURATION
+// CONSTANTS
 // ============================================================================
 
 const FALLBACK_IMAGE =
@@ -186,7 +182,7 @@ const SIZES = ["Small", "Medium", "Large"];
 const resolveColorHex = (colorVal: string): string => {
   const key = colorVal.toLowerCase().trim();
   if (COLOR_NAME_TO_HEX[key]) return COLOR_NAME_TO_HEX[key];
-  const match = FALLBACK_COLORS.find(c => c.label.toLowerCase() === key);
+  const match = FALLBACK_COLORS.find((c) => c.label.toLowerCase() === key);
   if (match) return match.value;
   if (colorVal.startsWith("#") || colorVal.startsWith("rgb")) return colorVal;
   return "#B0B0B0";
@@ -195,6 +191,17 @@ const resolveColorHex = (colorVal: string): string => {
 const calculateDiscount = (original: number | null, current: number): number | null => {
   if (!original || original <= current) return null;
   return Math.round(((original - current) / original) * 100);
+};
+
+const getImageUrl = (img?: ImageType): string => {
+  if (!img) return "";
+  if (typeof img === "string") return img;
+  return img.url || "";
+};
+
+const normalizeImages = (images?: ImageType[]): string[] => {
+  const urls = (images ?? []).map(getImageUrl).filter(Boolean);
+  return urls.length > 0 ? urls : [FALLBACK_IMAGE];
 };
 
 // ============================================================================
@@ -213,14 +220,12 @@ export default function ProductDetailsPage() {
 
   const wishlistFromRedux = useAppSelector((state: any) => state.wishlist?.items || []);
 
-  // State
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState(0);
   const [selectedSize, setSelectedSize] = useState("Medium");
-  // NEW: track selected color_id and size_id for the price matrix
   const [selectedColorId, setSelectedColorId] = useState<string>("");
   const [selectedSizeId, setSelectedSizeId] = useState<string>("");
   const [isAdded, setIsAdded] = useState(false);
@@ -239,7 +244,6 @@ export default function ProductDetailsPage() {
   const [variantsLoading, setVariantsLoading] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
-  // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const mainImageScrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -250,7 +254,6 @@ export default function ProductDetailsPage() {
   const hasFetchedProduct = useRef(false);
   const hasFetchedReviews = useRef(false);
 
-  // Derived state
   const isAuthenticated = useMemo(
     () => !!user || (typeof window !== "undefined" && !!localStorage.getItem("token")),
     [user]
@@ -261,8 +264,6 @@ export default function ProductDetailsPage() {
     [product, productId]
   );
 
-  // ── NEW: resolve which images to show based on selected color ──────────────
-  // If colorVariants exist, use the selected color's images; else fall back to product.images
   const activeImages = useMemo(() => {
     if (product?.colorVariants && product.colorVariants.length > 0) {
       const colorImages = product.colorVariants[selectedColor]?.images;
@@ -271,7 +272,6 @@ export default function ProductDetailsPage() {
     return product?.images || [FALLBACK_IMAGE];
   }, [product, selectedColor]);
 
-  // ── NEW: resolve price & stock from the price matrix ─────────────────────
   const activePriceEntry = useMemo(() => {
     if (!product?.priceMatrix || !selectedColorId || !selectedSizeId) return null;
     return (
@@ -281,7 +281,6 @@ export default function ProductDetailsPage() {
     );
   }, [product, selectedColorId, selectedSizeId]);
 
-  // Legacy flat color/size arrays (used when colorVariants is absent)
   const variantColors = useMemo(
     () =>
       product
@@ -304,7 +303,6 @@ export default function ProductDetailsPage() {
     [product]
   );
 
-  // ── NEW: determine whether we're using the new structured data ─────────────
   const hasColorVariants = useMemo(
     () => !!(product?.colorVariants && product.colorVariants.length > 0),
     [product]
@@ -315,14 +313,12 @@ export default function ProductDetailsPage() {
     [product]
   );
 
-  // ── NEW: dynamic price — from price matrix if available, else legacy logic ─
   const displayPrice = useMemo(() => {
     if (activePriceEntry) return activePriceEntry.price;
     if (selectedVariant) return selectedVariant.price;
     return product?.price || 0;
   }, [activePriceEntry, selectedVariant, product]);
 
-  // ── NEW: dynamic stock — from price matrix if available, else product.stock ─
   const displayStock = useMemo(() => {
     if (activePriceEntry) return activePriceEntry.stock;
     return product?.stock ?? 0;
@@ -333,16 +329,12 @@ export default function ProductDetailsPage() {
     [product, displayPrice]
   );
 
-  // ============================================================================
-  // WISHLIST CHECK
-  // ============================================================================
-
   const isInWishlist = useCallback((): boolean => {
     if (!product) return false;
 
     const productIdStr = String(backendProductId);
     const currentColor = hasColorVariants
-      ? product.colorVariants![selectedColor]?.color_name || null
+      ? product.colorVariants?.[selectedColor]?.color_name || null
       : variantColors[selectedColor] || null;
     const currentSize = selectedSize;
 
@@ -365,22 +357,26 @@ export default function ProductDetailsPage() {
         item.size === currentSize
       );
     });
-  }, [product, backendProductId, hasColorVariants, variantColors, selectedColor, selectedSize, user, wishlistFromRedux, savedItems]);
+  }, [
+    product,
+    backendProductId,
+    hasColorVariants,
+    variantColors,
+    selectedColor,
+    selectedSize,
+    user,
+    wishlistFromRedux,
+    savedItems,
+  ]);
 
   const isSaved = useMemo(isInWishlist, [isInWishlist]);
 
-  // ============================================================================
-  // EFFECTS
-  // ============================================================================
-
-  // Fetch wishlist on login
   useEffect(() => {
     if (user) {
       dispatch(fetchWishlist());
     }
   }, [dispatch, user]);
 
-  // Image scroll handling
   useEffect(() => {
     if (mainImageScrollRef.current && window.innerWidth >= 768) {
       mainImageScrollRef.current.scrollTo({
@@ -401,13 +397,10 @@ export default function ProductDetailsPage() {
     }
   }, [selectedImage]);
 
-  // Reset selectedImage to 0 when color changes so we always show the first
-  // image of the newly selected color
   useEffect(() => {
     setSelectedImage(0);
   }, [selectedColor]);
 
-  // Mobile scroll listener
   useEffect(() => {
     const container = mainImageScrollRef.current;
     if (!container) return;
@@ -420,10 +413,6 @@ export default function ProductDetailsPage() {
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
-
-  // ============================================================================
-  // API FUNCTIONS
-  // ============================================================================
 
   const fetchSimilarProducts = useCallback(async (id: string) => {
     if (!id || hasFetchedSimilar.current) return;
@@ -451,7 +440,8 @@ export default function ProductDetailsPage() {
 
     try {
       const response = await productService.getReviews(prdId);
-      const reviewData: ReviewData = response?.data?.data ?? response?.data ?? response;
+      const reviewData: ReviewData =
+        response?.data?.data ?? response?.data ?? response;
 
       if (reviewData?.reviews) {
         setReviewsData(reviewData);
@@ -470,19 +460,16 @@ export default function ProductDetailsPage() {
     setVariantsLoading(false);
   }, []);
 
-  // Fetch product details
   useEffect(() => {
     if (!productId || hasFetchedProduct.current) return;
     hasFetchedProduct.current = true;
 
     const fetchProduct = async () => {
       try {
-        console.log(`[Product Details] Fetching product with ID: ${productId}`);
         const res = await productService.getById(productId);
         const data = res?.data ?? res;
 
         if (!data) {
-          console.error("[Product Details] No product data found");
           setLoading(false);
           return;
         }
@@ -491,7 +478,6 @@ export default function ProductDetailsPage() {
         const slug: string = data?.slug ?? "";
         const mongoId: string = String(data?._id ?? productId);
 
-        // Fetch reviews
         let liveRating = data.ratingsAverage || 4.8;
         let liveReviewCount = 0;
         const reviewId = prdId || mongoId;
@@ -499,15 +485,20 @@ export default function ProductDetailsPage() {
         if (reviewId) {
           try {
             const reviewRes = await productService.getReviews(reviewId);
-            const reviewData: ReviewData = reviewRes?.data?.data ?? reviewRes?.data ?? reviewRes;
+            const reviewData: ReviewData =
+              reviewRes?.data?.data ?? reviewRes?.data ?? reviewRes;
 
             if (reviewData?.reviews) {
               setReviewsData(reviewData);
               hasFetchedReviews.current = true;
-              liveReviewCount = reviewData.pagination?.totalReviews ?? reviewData.reviews.length;
+              liveReviewCount =
+                reviewData.pagination?.totalReviews ?? reviewData.reviews.length;
 
               if (reviewData.reviews.length > 0) {
-                const total = reviewData.reviews.reduce((sum: number, r: any) => sum + r.rating, 0);
+                const total = reviewData.reviews.reduce(
+                  (sum: number, r: any) => sum + r.rating,
+                  0
+                );
                 liveRating = Number((total / reviewData.reviews.length).toFixed(1));
               }
             }
@@ -516,7 +507,6 @@ export default function ProductDetailsPage() {
           }
         }
 
-        // ── NEW: parse colorVariants, sizeVariants, priceMatrix if present ──
         const colorVariants: ProductColor[] = Array.isArray(data.colors)
           ? data.colors
               .filter((c: any) => c && typeof c === "object" && c.color_id)
@@ -524,7 +514,7 @@ export default function ProductDetailsPage() {
                 color_id: c.color_id,
                 color_name: c.color_name || "",
                 color_code: c.color_code || "#B0B0B0",
-                images: Array.isArray(c.images) ? c.images : [],
+                images: Array.isArray(c.images) ? c.images.filter(Boolean) : [],
               }))
           : [];
 
@@ -546,7 +536,6 @@ export default function ProductDetailsPage() {
             }))
           : [];
 
-        // Set initial selectedColorId & selectedSizeId
         if (colorVariants.length > 0) {
           setSelectedColorId(colorVariants[0].color_id);
         }
@@ -555,7 +544,6 @@ export default function ProductDetailsPage() {
           setSelectedSize(sizeVariants[0].size);
         }
 
-        // Fallback flat colors (for legacy products without color_id structure)
         const flatColors =
           colorVariants.length === 0
             ? Array.isArray(data.colors) && data.colors.every((c: any) => typeof c === "string")
@@ -565,7 +553,6 @@ export default function ProductDetailsPage() {
               : []
             : [];
 
-        // Fallback flat sizes (for legacy products without size_id structure)
         const flatSizes =
           sizeVariants.length === 0
             ? Array.isArray(data.sizes) && data.sizes.every((s: any) => typeof s === "string")
@@ -573,33 +560,26 @@ export default function ProductDetailsPage() {
               : []
             : [];
 
-        // Derive a base price for display before matrix is used
-        const basePrice =
-          priceMatrix.length > 0
-            ? priceMatrix[0].price
-            : data.price;
+        const basePrice = priceMatrix.length > 0 ? priceMatrix[0].price : data.price;
 
-        // Set product
         setProduct({
-          id: 0,
+          id: mongoId,
           mongoId,
-          name: data.name,
+          name: data.name || data.productName || "Untitled Product",
           price: basePrice,
-          originalPrice: (data as any).originalPrice || basePrice + 150,
-          description: data.description,
-          category: data.category,
+          originalPrice: data.originalPrice ?? basePrice + 150,
+          description: data.description || "",
+          category: data.category || "",
           image:
             colorVariants.length > 0
               ? colorVariants[0].images[0] || FALLBACK_IMAGE
-              : data.images?.[0]?.url || FALLBACK_IMAGE,
+              : normalizeImages(data.images)[0] || FALLBACK_IMAGE,
           images:
             colorVariants.length > 0
               ? colorVariants[0].images.length > 0
                 ? colorVariants[0].images
                 : [FALLBACK_IMAGE]
-              : data.images?.length
-              ? data.images.map((img: ImageType) => img.url)
-              : [FALLBACK_IMAGE],
+              : normalizeImages(data.images),
           slug,
           prdId,
           rating: liveRating,
@@ -607,10 +587,8 @@ export default function ProductDetailsPage() {
           color: data.color ?? "",
           material: data.material ?? "",
           stock: data.stock ?? 0,
-          // Legacy flat
           colors: flatColors,
           sizes: flatSizes,
-          // NEW structured
           colorVariants: colorVariants.length > 0 ? colorVariants : undefined,
           sizeVariants: sizeVariants.length > 0 ? sizeVariants : undefined,
           priceMatrix: priceMatrix.length > 0 ? priceMatrix : undefined,
@@ -633,7 +611,6 @@ export default function ProductDetailsPage() {
     fetchProduct();
   }, [productId, loadVariantsFromProduct, fetchSimilarProducts, fetchProductReviews]);
 
-  // Fetch product story
   useEffect(() => {
     if (!productId || hasFetchedStory.current) return;
     hasFetchedStory.current = true;
@@ -659,10 +636,6 @@ export default function ProductDetailsPage() {
     fetchStory();
   }, [productId]);
 
-  // ============================================================================
-  // EVENT HANDLERS
-  // ============================================================================
-
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!isZoomMode) return;
@@ -682,7 +655,7 @@ export default function ProductDetailsPage() {
       setIsZoomMode(false);
       setSelectedImage((prev) => (prev - 1 + activeImages.length) % activeImages.length);
     },
-    [activeImages]
+    [activeImages.length]
   );
 
   const handleNextImage = useCallback(
@@ -691,11 +664,9 @@ export default function ProductDetailsPage() {
       setIsZoomMode(false);
       setSelectedImage((prev) => (prev + 1) % activeImages.length);
     },
-    [activeImages]
+    [activeImages.length]
   );
 
-  // ── NEW: handle color click — update selectedColor index, selectedColorId,
-  //         reset image index to 0
   const handleColorSelect = useCallback(
     (idx: number) => {
       setSelectedColor(idx);
@@ -709,19 +680,14 @@ export default function ProductDetailsPage() {
     [product]
   );
 
-  // ── NEW: handle size click — update selectedSize name and selectedSizeId
-  const handleSizeSelect = useCallback(
-    (sizeObj: ProductSize | string) => {
-      if (typeof sizeObj === "string") {
-        // Legacy flat size
-        setSelectedSize(sizeObj);
-      } else {
-        setSelectedSize(sizeObj.size);
-        setSelectedSizeId(sizeObj.size_id);
-      }
-    },
-    []
-  );
+  const handleSizeSelect = useCallback((sizeObj: ProductSize | string) => {
+    if (typeof sizeObj === "string") {
+      setSelectedSize(sizeObj);
+    } else {
+      setSelectedSize(sizeObj.size);
+      setSelectedSizeId(sizeObj.size_id);
+    }
+  }, []);
 
   const buildCartItem = useCallback(
     () => ({
@@ -752,7 +718,7 @@ export default function ProductDetailsPage() {
 
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       const currentColor = hasColorVariants
-        ? product.colorVariants![selectedColor]?.color_name || null
+        ? product.colorVariants?.[selectedColor]?.color_name || null
         : variantColors[selectedColor] || null;
       const currentSize = selectedSize;
 
@@ -809,18 +775,9 @@ export default function ProductDetailsPage() {
 
     try {
       const currentColor = hasColorVariants
-        ? product.colorVariants![selectedColor]?.color_name || null
+        ? product.colorVariants?.[selectedColor]?.color_name || null
         : variantColors[selectedColor] || null;
       const currentSize = selectedSize;
-
-      console.log("[Buy Now] Saving to Redux:", {
-        productId: backendProductId,
-        color: currentColor,
-        size: currentSize,
-        quantity,
-        price: displayPrice,
-        name: product.name,
-      });
 
       dispatch(
         setBuyNowProduct({
@@ -860,7 +817,6 @@ export default function ProductDetailsPage() {
     selectedSize,
     backendProductId,
     quantity,
-    displayPrice,
     isAuthenticated,
     dispatch,
     router,
@@ -872,7 +828,7 @@ export default function ProductDetailsPage() {
 
     const willBeSaved = !isSaved;
     const currentColor = hasColorVariants
-      ? product.colorVariants![selectedColor]?.color_name || null
+      ? product.colorVariants?.[selectedColor]?.color_name || null
       : variantColors[selectedColor] || null;
     const currentSize = selectedSize;
 
@@ -883,7 +839,17 @@ export default function ProductDetailsPage() {
       willBeSaved ? "Added to wishlist" : "Removed from wishlist",
       willBeSaved ? "success" : "info"
     );
-  }, [product, isSaved, hasColorVariants, variantColors, selectedColor, selectedSize, quantity, handleSaved, showToast]);
+  }, [
+    product,
+    isSaved,
+    hasColorVariants,
+    variantColors,
+    selectedColor,
+    selectedSize,
+    quantity,
+    handleSaved,
+    showToast,
+  ]);
 
   const handleScrollSimilar = useCallback((direction: "left" | "right") => {
     if (!similarProductsRef.current) return;
@@ -910,10 +876,6 @@ export default function ProductDetailsPage() {
     }, 100);
   }, []);
 
-  // ============================================================================
-  // MEMOIZED VALUES
-  // ============================================================================
-
   const storyImageSrc = useMemo(
     () => (productStory?.storyMedia?.trim() ? productStory.storyMedia : product?.image || FALLBACK_IMAGE),
     [productStory, product]
@@ -929,28 +891,30 @@ export default function ProductDetailsPage() {
   const displaySimilarProducts = useMemo(
     () =>
       !similarLoading && similarProducts.length > 0
-        ? similarProducts.map((p) => ({
-            id: p._id,
-            _id: p._id,
-            name: p.name,
-            price: p.price,
-            originalPrice: p.price + 150,
-            category: p.category,
-            image: p.images?.[0]?.url || FALLBACK_IMAGE,
-            images: p.images?.length ? p.images.map((img) => img.url) : [FALLBACK_IMAGE],
-            rating: p.ratingsAverage || 4.5,
-            reviews: p.ratingsCount || 0,
-            description: p.description,
-            slug: p.slug,
-            productId: p.productId,
-          }))
+        ? similarProducts.map((p) => {
+            const images = normalizeImages(p.images);
+
+            return {
+              id: p._id,
+              _id: p._id,
+              name: p.name || "Untitled Product",
+              price: p.discountPrice ?? p.price,
+              originalPrice: p.originalPrice ?? p.price + 150,
+              category: p.category || "",
+              image: images[0] || FALLBACK_IMAGE,
+              images,
+              rating: p.ratingsAverage || 4.5,
+              reviews: p.ratingsCount || 0,
+              description: p.description || "",
+              slug: p.slug,
+              productId: p.productId || p._id,
+              bestSeller: p.bestSeller ?? false,
+              trendy: p.trendy ?? false,
+            };
+          })
         : [],
     [similarLoading, similarProducts]
   );
-
-  // ============================================================================
-  // LOADING STATE
-  // ============================================================================
 
   if (loading) {
     return (
@@ -960,10 +924,6 @@ export default function ProductDetailsPage() {
     );
   }
 
-  // ============================================================================
-  // NOT FOUND STATE
-  // ============================================================================
-
   if (!product) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4 px-4">
@@ -971,23 +931,15 @@ export default function ProductDetailsPage() {
         <p className="text-gray-600 text-center mb-4">
           The product you&apos;re looking for doesn&apos;t exist or has been removed.
         </p>
-        <Link
-          href="/products"
-          className="text-[#D94F7A] hover:underline font-medium"
-        >
+        <Link href="/products" className="text-[#D94F7A] hover:underline font-medium">
           Return to Products
         </Link>
       </div>
     );
   }
 
-  // ============================================================================
-  // RENDER
-  // ============================================================================
-
   return (
     <div className="bg-white font-sans overflow-x-clip min-h-screen relative pb-4 md:pb-0">
-      {/* Back Button */}
       <div className="max-w-7xl mx-auto px-4 pt-4 md:pt-6">
         <Link
           href="/products"
@@ -998,16 +950,13 @@ export default function ProductDetailsPage() {
         </Link>
       </div>
 
-      {/* Main Product Section */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-8 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 border-b border-gray-100">
-        {/* Left: Images */}
         <div className="flex flex-col gap-3 md:gap-6">
           <div className="flex flex-col gap-3 md:gap-4">
             <div
               ref={containerRef}
               className="relative w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden border border-gray-100 group"
             >
-              {/* Badge */}
               <div className="absolute top-3 left-3 md:top-6 md:left-6 flex flex-col gap-1.5 md:gap-2 z-30 pointer-events-none">
                 {product.badge && (
                   <div className="w-fit bg-[#E05C7E] text-white text-[9px] md:text-[13px] font-bold px-2.5 py-1 md:px-5 md:py-2 rounded-full shadow-md">
@@ -1016,7 +965,6 @@ export default function ProductDetailsPage() {
                 )}
               </div>
 
-              {/* Navigation Buttons */}
               <button
                 onClick={handlePrevImage}
                 className="absolute left-0 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-xl border border-gray-100 text-gray-800 hover:bg-[#D94F7A] hover:text-white transition-all opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-4 hidden md:flex items-center justify-center"
@@ -1033,7 +981,6 @@ export default function ProductDetailsPage() {
                 <ChevronRight size={24} />
               </button>
 
-              {/* Action Buttons */}
               <div className="absolute top-3 right-3 md:top-4 md:right-4 flex flex-col gap-2 md:gap-3 z-20">
                 <button
                   onClick={handleWishlist}
@@ -1055,7 +1002,6 @@ export default function ProductDetailsPage() {
                 </button>
               </div>
 
-              {/* Main Image — uses activeImages */}
               <div
                 ref={mainImageScrollRef}
                 className="flex w-full overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar md:overflow-x-hidden aspect-square"
@@ -1098,7 +1044,6 @@ export default function ProductDetailsPage() {
             </div>
           </div>
 
-          {/* Thumbnails — uses activeImages */}
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={handlePrevImage}
@@ -1145,7 +1090,6 @@ export default function ProductDetailsPage() {
           </div>
         </div>
 
-        {/* Right: Product Info */}
         <div className="flex flex-col gap-4 md:gap-5">
           <span className="text-[#D94F7A] text-xs font-bold uppercase tracking-widest">
             {product.category}
@@ -1155,7 +1099,6 @@ export default function ProductDetailsPage() {
             {product.name}
           </h1>
 
-          {/* Rating */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex gap-0.5 text-yellow-400">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -1180,7 +1123,6 @@ export default function ProductDetailsPage() {
             </button>
           </div>
 
-          {/* Price — now driven by activePriceEntry */}
           <div className="bg-[#F7F0EE] rounded-xl md:rounded-2xl px-4 md:px-5 py-3 md:py-4">
             <div className="flex items-center gap-2 md:gap-3 flex-wrap">
               <span className="text-2xl md:text-3xl font-bold text-[#D94F7A]">
@@ -1205,24 +1147,20 @@ export default function ProductDetailsPage() {
             </p>
           </div>
 
-          {/* Description */}
           <p className="text-sm md:text-base text-gray-600 leading-6 md:leading-7">
             {product.description}
           </p>
 
-          {/* ── Color Selector ─────────────────────────────────────────────────
-               NEW: if colorVariants exist use them (with color_code); else
-               fall back to the legacy flat colors array                       */}
           {hasColorVariants ? (
             <div className="flex flex-col gap-2 md:gap-3">
               <span className="text-sm md:text-[15px] font-semibold text-gray-900">
                 Color:{" "}
                 <span className="font-normal text-gray-600">
-                  {product.colorVariants![selectedColor]?.color_name}
+                  {product.colorVariants?.[selectedColor]?.color_name}
                 </span>
               </span>
               <div className="flex gap-3 md:gap-4">
-                {product.colorVariants!.map((colorObj, idx) => {
+                {product.colorVariants?.map((colorObj, idx) => {
                   const isSelected = selectedColor === idx;
                   return (
                     <button
@@ -1261,7 +1199,6 @@ export default function ProductDetailsPage() {
               </div>
             </div>
           ) : variantColors.length > 0 ? (
-            /* Legacy flat color selector */
             <div className="flex flex-col gap-2 md:gap-3">
               <span className="text-sm md:text-[15px] font-semibold text-gray-900">Choose Color</span>
               <div className="flex gap-3 md:gap-4">
@@ -1307,9 +1244,6 @@ export default function ProductDetailsPage() {
             </div>
           ) : null}
 
-          {/* ── Size Selector ──────────────────────────────────────────────────
-               NEW: if sizeVariants exist use them (with size_id); else
-               fall back to the legacy flat sizes array                        */}
           {hasSizeVariants ? (
             <div className="flex flex-col gap-2 md:gap-3">
               <span className="text-sm md:text-[15px] font-semibold text-gray-900">
@@ -1317,8 +1251,7 @@ export default function ProductDetailsPage() {
                 <span className="font-normal text-gray-600">{selectedSize}</span>
               </span>
               <div className="flex gap-2 md:gap-3 flex-wrap">
-                {product.sizeVariants!.map((sizeObj) => {
-                  // Check availability: does this size have stock for the selected color?
+                {product.sizeVariants?.map((sizeObj) => {
                   const priceEntry = product.priceMatrix?.find(
                     (p) => p.color_id === selectedColorId && p.size_id === sizeObj.size_id
                   );
@@ -1345,7 +1278,6 @@ export default function ProductDetailsPage() {
               </div>
             </div>
           ) : variantSizes.length > 0 ? (
-            /* Legacy flat size selector */
             <div className="flex flex-col gap-2 md:gap-3">
               <span className="text-sm md:text-[15px] font-semibold text-gray-900">Choose Size</span>
               <div className="flex gap-2 md:gap-3 flex-wrap">
@@ -1366,7 +1298,6 @@ export default function ProductDetailsPage() {
             </div>
           ) : null}
 
-          {/* Stock & Material — now driven by displayStock */}
           <div className="flex items-center gap-2">
             <span
               className={`text-xs font-semibold px-3 py-1 rounded-full ${
@@ -1383,7 +1314,6 @@ export default function ProductDetailsPage() {
             )}
           </div>
 
-          {/* Quantity */}
           <div className="flex items-center">
             <div className="inline-flex items-center gap-3 md:gap-4 bg-[#FAF0F0] rounded-full px-3 py-2.5 md:px-4 md:py-3">
               <button
@@ -1409,12 +1339,11 @@ export default function ProductDetailsPage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-3 md:gap-4 w-full">
             <button
               onClick={handleAddToCart}
               disabled={isAdded || displayStock === 0}
-              className={`flex-[3] font-semibold rounded-full flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${
+              className={`flex-3 font-semibold rounded-full flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${
                 isAdded
                   ? "bg-emerald-500 text-white"
                   : "bg-[#D94F7A] hover:bg-[#c2436d] text-white disabled:opacity-60 disabled:cursor-not-allowed"
@@ -1437,7 +1366,7 @@ export default function ProductDetailsPage() {
               <button
                 onClick={handleBuyNow}
                 disabled={isBuyNowLoading}
-                className={`flex-[2] font-semibold rounded-full border-2 flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${
+                className={`flex-2 font-semibold rounded-full border-2 flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${
                   isBuyNowLoading
                     ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
                     : !isAuthenticated
@@ -1462,7 +1391,7 @@ export default function ProductDetailsPage() {
             ) : (
               <button
                 onClick={handleWishlist}
-                className={`flex-[2] font-semibold rounded-full border-2 flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${
+                className={`flex-2 font-semibold rounded-full border-2 flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-3.5 text-xs md:text-sm transition-all ${
                   isSaved
                     ? "bg-[#D94F7A] border-[#D94F7A] text-white"
                     : "border-gray-200 bg-white text-gray-800 hover:border-gray-300"
@@ -1474,7 +1403,6 @@ export default function ProductDetailsPage() {
             )}
           </div>
 
-          {/* Login Prompt */}
           {!isAuthenticated && (
             <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
               <p className="text-xs text-blue-700 flex items-center gap-2">
@@ -1482,16 +1410,14 @@ export default function ProductDetailsPage() {
                 <span>
                   <Link href="/login" className="font-semibold underline hover:text-blue-800">
                     Login
-                  </Link>
-                  {" "}to buy products and track your orders
+                  </Link>{" "}
+                  to buy products and track your orders
                 </span>
               </p>
             </div>
           )}
 
-          {/* Accordions */}
           <div className="border border-gray-200 rounded-xl md:rounded-2xl overflow-hidden">
-            {/* Reviews Accordion */}
             <div className="border-b border-gray-100">
               <button
                 onClick={() => setActiveAccordion(activeAccordion === "reviews" ? null : "reviews")}
@@ -1514,7 +1440,7 @@ export default function ProductDetailsPage() {
                     activeAccordion === "reviews" ? "rotate-180" : ""
                   }`}
                 >
-                  <ChevronDown size={16} className="md:w-[18px] md:h-[18px] text-gray-600" />
+                  <ChevronDown size={16} className="text-gray-600" />
                 </div>
               </button>
 
@@ -1574,7 +1500,6 @@ export default function ProductDetailsPage() {
               )}
             </div>
 
-            {/* Product Detail Accordion */}
             <div>
               <button
                 onClick={() => setActiveAccordion(activeAccordion === "detail" ? null : "detail")}
@@ -1592,7 +1517,7 @@ export default function ProductDetailsPage() {
                     activeAccordion === "detail" ? "rotate-180" : ""
                   }`}
                 >
-                  <ChevronDown size={16} className="md:w-[18px] md:h-[18px] text-gray-600" />
+                  <ChevronDown size={16} className="text-gray-600" />
                 </div>
               </button>
 
@@ -1607,11 +1532,9 @@ export default function ProductDetailsPage() {
         </div>
       </div>
 
-      {/* Artisan Story */}
       {!storyLoading && productStory && (
         <div className="bg-[#050505] py-10 md:py-16 lg:py-32 px-4 relative">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-10">
-            {/* Story Image */}
             <div className="w-full md:flex-1 relative aspect-video rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl group/story">
               <Image
                 src={storyImageSrc}
@@ -1636,7 +1559,6 @@ export default function ProductDetailsPage() {
               </div>
             </div>
 
-            {/* Story Text */}
             <div className="w-full md:flex-1 bg-[#0F0F0F] rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-14 relative border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-10">
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 md:w-1.5 h-[55%] md:h-[65%] bg-[#D94F7A] rounded-r-full" />
 
@@ -1657,7 +1579,6 @@ export default function ProductDetailsPage() {
         </div>
       )}
 
-      {/* Similar Products */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-12 md:pt-16 md:pb-8 group/similar">
         <h3 className="text-xl md:text-2xl font-serif text-gray-900 mb-4 md:mb-8">Similar Products</h3>
 
@@ -1676,7 +1597,6 @@ export default function ProductDetailsPage() {
             className="flex overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory scroll-smooth gap-4 md:gap-6 w-full"
           >
             {similarLoading ? (
-              // Loading skeletons
               [1, 2, 3, 4].map((i) => (
                 <div
                   key={`skeleton-${i}`}
@@ -1686,7 +1606,6 @@ export default function ProductDetailsPage() {
                 </div>
               ))
             ) : displaySimilarProducts.length > 0 ? (
-              // Similar products
               displaySimilarProducts.map((p) => (
                 <div
                   key={p.id}
@@ -1699,7 +1618,6 @@ export default function ProductDetailsPage() {
                 </div>
               ))
             ) : (
-              // Fallback products
               [1, 2, 3, 4].map((i) => (
                 <div
                   key={`fallback-${i}`}
@@ -1714,13 +1632,13 @@ export default function ProductDetailsPage() {
                         id: `fallback-${i}`,
                         name: `${product.name} Style ${i}`,
                         price: product.price,
-                        originalPrice: product.originalPrice,
+                        originalPrice: product.originalPrice ?? undefined,
                         category: product.category,
                         image: product.image,
                         images: [product.image],
                         rating: product.rating,
                         reviews: product.reviews,
-                        description: product.description,
+                        description: product.description || "",
                       }}
                     />
                   </div>
@@ -1740,7 +1658,6 @@ export default function ProductDetailsPage() {
         </div>
       </div>
 
-      {/* Reviews Section */}
       {showBottomReviews && (
         <div
           ref={reviewsSectionRef}
@@ -1755,7 +1672,6 @@ export default function ProductDetailsPage() {
         </div>
       )}
 
-      {/* Global Styles */}
       <style>{`
         .no-scrollbar::-webkit-scrollbar {
           display: none;

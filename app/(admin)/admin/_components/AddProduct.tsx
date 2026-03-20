@@ -5,7 +5,7 @@ import { ChevronDown, X, CheckCircle2, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch } from "@/redux/store";
 import { addProduct } from "@/redux/adminSlice";
-import { productService } from "@/services/product.service";
+import { adminProductService } from "@/services/admin-product.service";
 import AddProductVariantCard, {
   ProductVariantGroup,
   VariantImageItem,
@@ -480,7 +480,7 @@ export default function AddProduct() {
         tags,
       };
 
-      const created = await productService.create(payload);
+      const created = await adminProductService.create(payload);
       const createdData = created?.data ?? created;
 
       dispatch(
@@ -1356,7 +1356,7 @@ export default function AddProduct() {
         discountPercent={discountPercent}
         status={status}
         story={storyContent}
-        storyMedia={storyMedia}
+        storyTitle={storyTitle}
         variants={variants}
         colorSwatchMap={COLOR_SWATCH_MAP}
       />

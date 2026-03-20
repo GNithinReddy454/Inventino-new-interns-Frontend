@@ -16,6 +16,7 @@ import { productService } from "@/services/product.service";
 import { getCategories } from "@/services/admin.service";
 import { useAppSelector } from "@/redux/store";
 import EditProductModal, { EditableProduct } from "./EditProductModal";
+import { adminProductService } from "@/services/admin-product.service";
 
 interface NormalizedAdminProduct {
     _id: string;
@@ -233,7 +234,7 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
         setActionLoading(prod._id);
 
         try {
-            await productService.delete(id);
+            await adminProductService.delete(id);
             setProducts((prev) => prev.filter((p) => p._id !== prod._id));
         } catch (err) {
             console.error("Failed to delete product:", err);
@@ -250,7 +251,7 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
         setActionLoading(prod._id);
 
         try {
-            await productService.updateStatus(id, { isActive: newActive });
+            await adminProductService.updateStatus(id, { isActive: newActive });
             setProducts((prev) =>
                 prev.map((p) => {
                     if (p._id !== prod._id) return p;
@@ -365,7 +366,7 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                     ].map((stat, i) => (
                         <div
                             key={i}
-                            className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-center min-h-[88px]"
+                            className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-center min-h-22"
                         >
                             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                                 {stat.label}
@@ -398,7 +399,7 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                         <select
                             value={categoryFilter}
                             onChange={(e) => setCategoryFilter(e.target.value)}
-                            className="appearance-none min-w-[160px] pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all cursor-pointer"
+                            className="appearance-none min-w-40 pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all cursor-pointer"
                         >
                             {categoryOptions.map((c) => (
                                 <option key={c}>{c}</option>
@@ -414,7 +415,7 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="appearance-none min-w-[140px] pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all cursor-pointer"
+                            className="appearance-none min-w-35 pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all cursor-pointer"
                         >
                             {statuses.map((s) => (
                                 <option key={s}>{s}</option>
@@ -430,7 +431,7 @@ export default function AllProductsView({ onAddProduct }: { onAddProduct: () => 
                         <select
                             value={sort}
                             onChange={(e) => setSort(e.target.value)}
-                            className="appearance-none min-w-[180px] pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all cursor-pointer"
+                            className="appearance-none min-w-45 pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-all cursor-pointer"
                         >
                             {[
                                 "Sort: Newest First",
