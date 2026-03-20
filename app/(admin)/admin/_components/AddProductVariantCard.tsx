@@ -103,7 +103,9 @@ export default function AddProductVariantCard({
           >
             <ChevronDown
               size={15}
-              className={`transition-transform ${variant.expanded ? "rotate-180" : ""}`}
+              className={`transition-transform ${
+                variant.expanded ? "rotate-180" : ""
+              }`}
             />
           </button>
         </div>

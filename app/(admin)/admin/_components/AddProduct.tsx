@@ -17,7 +17,6 @@ import { getCategories } from "@/services/admin.service";
 import AddProductVariantCard, {
   ProductVariantGroup,
   VariantImageItem,
-  VariantSizeStock,
 } from "./AddProductVariantCard";
 import AddProductPreviewModal from "./AddProductPreviewModal";
 
@@ -73,7 +72,7 @@ const DEFAULT_SIZE_OPTIONS = [
 
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-const toNumber = (value: string) => {
+const toNumber = (value: string | number | undefined | null) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
 };
@@ -232,11 +231,7 @@ export default function AddProduct() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
-  const [tags, setTags] = useState<string[]>([
-    "Handmade",
-    "Rose Gold",
-    "Bracelet",
-  ]);
+  const [tags, setTags] = useState<string[]>(["Handmade", "Rose Gold", "Bracelet"]);
   const [newTag, setNewTag] = useState("");
 
   const [status, setStatus] = useState("Published");
@@ -282,9 +277,7 @@ export default function AddProduct() {
 
   const [variants, setVariants] = useState<ProductVariantGroup[]>([]);
   const [customColorName, setCustomColorName] = useState("");
-  const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>(
-    {}
-  );
+  const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -403,7 +396,14 @@ export default function AddProduct() {
 
         return {
           ...variant,
-          sizes: [...variant.sizes, { size, stock: 0, sku: "" }],
+          sizes: [
+            ...variant.sizes,
+            {
+              size,
+              stock: 0,
+              sku: `${variant.color}-${size}`.replace(/\s+/g, "-"),
+            },
+          ],
         };
       })
     );
@@ -425,7 +425,14 @@ export default function AddProduct() {
 
         return {
           ...variant,
-          sizes: [...variant.sizes, { size: sizeValue, stock: 0, sku: "" }],
+          sizes: [
+            ...variant.sizes,
+            {
+              size: sizeValue,
+              stock: 0,
+              sku: `${variant.color}-${sizeValue}`.replace(/\s+/g, "-"),
+            },
+          ],
         };
       })
     );
@@ -580,30 +587,7 @@ export default function AddProduct() {
     return "";
   };
 
-  const buildPayload = (uploadedUrls: string[] = []) => {
-    let imageCursor = 0;
-
-    const mappedVariants = variants.map((variant) => {
-      const imageCount = variant.images.length;
-      const variantUrls = uploadedUrls.slice(imageCursor, imageCursor + imageCount);
-      imageCursor += imageCount;
-
-      return {
-        color: variant.color,
-        colorCode:
-          COLOR_SWATCH_MAP[variant.color.toLowerCase()] || "#E5E7EB",
-        images: variantUrls,
-        sizes: variant.sizes.map((sizeItem) => ({
-          size: sizeItem.size,
-          price: salePrice.trim()
-            ? toNumber(salePrice)
-            : toNumber(regularPrice),
-          stock: Number(sizeItem.stock) || 0,
-          sku: sizeItem.sku?.trim() || `${variant.color}-${sizeItem.size}`,
-        })),
-      };
-    });
-
+  const buildNestedPayload = (uploadedUrlsByVariant: Record<string, string[]>) => {
     return {
       productName: name.trim(),
       category: category.trim(),
@@ -617,14 +601,28 @@ export default function AddProduct() {
       },
 
       media: {
-        mainImage: uploadedUrls[0] || "",
-        galleryImages: uploadedUrls.slice(1),
+        mainImage:
+          variants.length > 0
+            ? (uploadedUrlsByVariant[variants[0].id] || [])[0] || ""
+            : "",
+        galleryImages: Object.values(uploadedUrlsByVariant).flat().slice(1),
       },
 
-      variants: mappedVariants,
+      variants: variants.map((variant) => ({
+        color: variant.color,
+        colorCode: COLOR_SWATCH_MAP[variant.color.toLowerCase()] || "#E5E7EB",
+        images: uploadedUrlsByVariant[variant.id] || [],
+        sizes: variant.sizes.map((sizeItem) => ({
+          size: sizeItem.size,
+          price: salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice),
+          stock: Number(sizeItem.stock) || 0,
+          sku:
+            sizeItem.sku?.trim() ||
+            `${variant.color}-${sizeItem.size}`.replace(/\s+/g, "-"),
+        })),
+      })),
 
       totalStock,
-
       rating: 0,
       reviewCount: 0,
 
@@ -681,7 +679,17 @@ export default function AddProduct() {
     try {
       setIsLoading(true);
 
-      const createPayload = buildPayload([]);
+      // Step 1: create minimum valid product first
+      const createPayload = {
+        name: name.trim(),
+        description: description.trim(),
+        price: salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice),
+        discountPrice: salePrice.trim() ? toNumber(salePrice) : undefined,
+        category: category.trim(),
+        material: material.trim() || "Material",
+        stock: totalStock || 0,
+      };
+
       const created = await adminProductService.create(createPayload);
       const createdData = created?.data ?? created;
       const normalizedCreated = createdData?.data ?? createdData;
@@ -691,32 +699,37 @@ export default function AddProduct() {
         throw new Error("Product created but productId was not returned");
       }
 
-      const allVariantImages = variants.flatMap((variant) => variant.images);
-      let uploadedUrls: string[] = [];
+      // Step 2: upload images per variant and keep nested mapping
+      const uploadedUrlsByVariant: Record<string, string[]> = {};
 
-      if (allVariantImages.length > 0) {
-        const imagesFormData = new FormData();
-        allVariantImages.forEach((image) => {
-          imagesFormData.append("images", image.file);
+      for (const variant of variants) {
+        if (!variant.images.length) {
+          uploadedUrlsByVariant[variant.id] = [];
+          continue;
+        }
+
+        const formData = new FormData();
+        variant.images.forEach((image) => {
+          formData.append("images", image.file);
         });
 
-        const imageResponse = await adminProductService.addImages(
-          productId,
-          imagesFormData
-        );
-
+        const imageResponse = await adminProductService.addImages(productId, formData);
         const imageData = imageResponse?.data ?? imageResponse;
         const normalizedImageData = imageData?.data ?? imageData;
+
         const uploadedImages = Array.isArray(normalizedImageData?.images)
           ? (normalizedImageData.images as UploadedImage[])
           : [];
 
-        uploadedUrls = uploadedImages
+        const urls = uploadedImages
           .map((img) => img?.url || "")
           .filter(Boolean);
+
+        uploadedUrlsByVariant[variant.id] = urls.slice(-variant.images.length);
       }
 
-      const finalPayload = buildPayload(uploadedUrls);
+      // Step 3: patch full nested payload
+      const finalPayload = buildNestedPayload(uploadedUrlsByVariant);
       await adminProductService.update(productId, finalPayload);
 
       dispatch(
@@ -739,7 +752,10 @@ export default function AddProduct() {
           status: status === "Draft" ? "Draft" : "Active",
           totalSales: 0,
           totalRevenue: 0,
-          imageUrl: uploadedUrls[0] || allVariantImages[0]?.preview || "",
+          imageUrl:
+            Object.values(uploadedUrlsByVariant).flat()[0] ||
+            variants[0]?.images[0]?.preview ||
+            "",
         })
       );
 
@@ -1162,7 +1178,9 @@ export default function AddProduct() {
                       removeVariantImage(variant.id, imageId)
                     }
                     colorSwatchMap={COLOR_SWATCH_MAP}
-                    inheritedPrice={salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice)}
+                    inheritedPrice={
+                      salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice)
+                    }
                   />
                 ))}
               </div>
