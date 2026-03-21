@@ -131,6 +131,10 @@ export default function AddProductPreviewModal({
                   Status: {status || "-"}
                 </p>
 
+                <p className="mt-0.5 text-[10px] text-[#A29AAD]">
+                  Category: {category || "-"}
+                </p>
+
                 <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
                   <span className="text-[15px] font-bold text-[#EB5C8A]">
                     ₹{Number(effectivePrice || 0).toLocaleString()}
