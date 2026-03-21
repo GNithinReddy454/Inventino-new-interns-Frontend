@@ -149,7 +149,7 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Transaction ID</span>
             <span className="font-mono text-xs text-gray-700">
-              {/* {order.transactionId} */}
+              {order.transactionId}
             </span>
           </div>
         )}
@@ -158,7 +158,7 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
             {isCOD ? "Amount (Pay on Delivery)" : "Amount Paid"}
           </span>
           <span className="text-xl font-bold text-pink-600">
-            ₹{order.totalAmount.toFixed(2)}
+            ₹{(order.totalAmount || 0).toFixed(2)}
           </span>
         </div>
       </div>
@@ -176,7 +176,7 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
               <ul className="text-sm text-amber-800 space-y-1">
                 <li>
                   • Please keep exact cash ready: ₹
-                  {order.totalAmount.toFixed(2)}
+                  {(order.totalAmount || 0).toFixed(2)}
                 </li>
                 <li>• Payment accepted in cash only at the time of delivery</li>
                 <li>• You can inspect the product before payment</li>

@@ -13,27 +13,43 @@ interface ProductImage {
 
 interface Product {
   _id: string;
-  name: string;
+  name?: string;
+  productName?: string;
   slug: string;
   description: string;
-  price: number;
+  price?: number;
   discountPrice?: number;
+  pricing?: {
+    price: number;
+    originalPrice?: number | null;
+  };
   category: string;
   material: string;
   size?: string;
   color?: string;
-  stock: number;
-  images: ProductImage[];
+  stock?: number;
+  totalStock?: number;
+  images?: ProductImage[];
+  media?: {
+    mainImage?: string | null;
+    galleryImages?: ProductImage[];
+  };
   isActive: boolean;
   isDeleted: boolean;
   ratingsAverage?: number;
   ratingsCount?: number;
+  rating?: number;
+  reviewCount?: number;
   trendy?: boolean;
   bestSeller?: boolean;
   hashtags?: string[];
   productId?: string;
   createdAt: string;
   updatedAt: string;
+  story?: {
+    title?: string;
+    featured?: boolean;
+  }
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
@@ -44,27 +60,31 @@ function resolveUrl(url: string): string {
 }
 
 function normalizeProduct(p: Product) {
-  const resolvedImages = (p.images || [])
+  const name = p.productName || p.name || p.story?.title || "Unnamed Product";
+  const mainImage = p.media?.mainImage || (p.images && p.images[0]?.url) || "";
+  const resolvedImages = (p.media?.galleryImages || p.images || [])
     .map((img) => resolveUrl(img.url))
     .filter(Boolean);
+  
+  const finalImages = mainImage ? [resolveUrl(mainImage), ...resolvedImages] : resolvedImages;
 
   return {
-    id: p._id,
-    name: p.name,
-    slug: p.slug,
-    description: p.description,
-    price: p.price,
-    originalPrice: p.discountPrice ? p.price : undefined,
-    category: p.category,
-    material: p.material,
+    id: p._id || p.productId || Math.random().toString(36).substr(2, 9),
+    name: name,
+    slug: p.slug || "",
+    description: p.description || "",
+    price: p.pricing?.price ?? p.discountPrice ?? p.price ?? 0,
+    originalPrice: p.pricing?.originalPrice ?? p.price ?? undefined,
+    category: p.category || "General",
+    material: p.material || "",
     size: p.size,
     color: p.color,
-    stock: p.stock,
-    image: resolvedImages[0] ?? "",
-    images: resolvedImages,
-    rating: p.ratingsAverage ?? 0,
-    reviews: p.ratingsCount ?? 0,
-    badge: p.trendy ? "TRENDY" : p.bestSeller ? "BEST SELLER" : undefined,
+    stock: p.totalStock ?? p.stock ?? 0,
+    image: finalImages[0] ?? "",
+    images: finalImages,
+    rating: p.rating ?? p.ratingsAverage ?? 0,
+    reviews: p.reviewCount ?? p.ratingsCount ?? 0,
+    badge: p.trendy ? "TRENDY" : (p.bestSeller || p.story?.featured) ? "BEST SELLER" : undefined,
     tags: p.hashtags ?? [p.category, "Adjustable"].filter(Boolean),
   };
 }
@@ -174,9 +194,9 @@ export default function FeaturedCollection() {
                 className="flex gap-4 overflow-x-auto pb-4 py-2 px-1"
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
               >
-                {products.map((product) => (
+                {products.map((product, index) => (
                   <div
-                    key={product._id}
+                    key={product._id || product.productId || index}
                     className="flex-shrink-0 w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
                   >
                     <ProductCard product={normalizeProduct(product)} />

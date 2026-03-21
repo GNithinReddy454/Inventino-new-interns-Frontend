@@ -136,7 +136,7 @@ export function OrderSidebar({
                   Qty: {quantity} {item.color ? `• ${item.color}` : ""} {item.size ? `• ${item.size}` : ""}
                 </p>
                 <p className="text-sm font-bold text-pink-600">
-                  ₹{price.toFixed(2)}
+                  ₹{(price || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -212,7 +212,7 @@ export function OrderSidebar({
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Discount</span>
             <span className="font-medium text-green-600">
-              -₹{summary?.discount?.toFixed(2)}
+              -₹{(summary?.discount || 0).toFixed(2)}
             </span>
           </div>
         )}

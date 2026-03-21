@@ -158,26 +158,33 @@ export default function CheckoutFlow() {
         description: "Order Payment",
         handler: async function (response: any) {
           try {
-            console.log("Razorpay payment success, creating order...", {
-              addressId: capturedAddressId,
-              items: capturedItems,
-              paymentMethod: capturedPaymentMethod.toUpperCase(),
-              razorpay_payment_id: response.razorpay_payment_id,
-            });
-
+            console.log("Creating order in database...");
             const resultAction = await dispatch(placeOrderAction({
               addressId: capturedAddressId,
               items: capturedItems,
-              paymentMethod: capturedPaymentMethod.toUpperCase()
+              paymentMethod: capturedPaymentMethod.toUpperCase(),
+              razorpay_order_id: rzpOrderData.id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
             }));
 
             console.log("placeOrderAction result:", resultAction);
 
             if (placeOrderAction.fulfilled.match(resultAction)) {
               const orderRes = resultAction.payload;
+              const dbOrderId = orderRes.data?._id;
+
+              console.log("Order created, verifying payment signature with order ID:", dbOrderId);
+              await orderService.verifyPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                orderId: dbOrderId,
+              });
+
               setOrderResponse({
                 status: "success",
-                orderId: orderRes.data?._id || response.razorpay_payment_id,
+                orderId: dbOrderId || response.razorpay_payment_id,
                 orderNumber: orderRes.data?.orderNumber || "N/A",
                 orderDate: orderRes.data?.createdAt || new Date().toISOString(),
                 transactionId: response.razorpay_payment_id,

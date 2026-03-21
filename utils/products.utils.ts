@@ -31,8 +31,10 @@ function parseHashtags(raw: any): string[] {
 function resolveBadge(p: ApiProduct): { text: string; color: string } | undefined {
   if (p.bestSeller) return { text: "Best Seller", color: "gold" };
   if (p.trendy) return { text: "Trending", color: "pink" };
-  if (p.discountPrice && p.discountPrice < p.price) {
-    const pct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
+  const basePrice = p.pricing?.price ?? p.price;
+  const original = p.pricing?.originalPrice ?? p.price;
+  if (basePrice && original && basePrice < original) {
+    const pct = Math.round(((original - basePrice) / original) * 100);
     return { text: `${pct}% OFF`, color: "green" };
   }
   return undefined;
@@ -41,23 +43,33 @@ function resolveBadge(p: ApiProduct): { text: string; color: string } | undefine
 export function normalize(p: ApiProduct): NormalizedProduct {
   const tags = parseHashtags(p.hashtags);
 
+  const name = p.productName || p.name || p.story?.title || "Unnamed Product";
+  const desc = p.description || p.story?.content || "";
+  const priceVal = p.pricing?.price ?? p.discountPrice ?? p.price ?? 0;
+  const originalPrice = p.pricing?.originalPrice ?? p.price ?? 0;
+  const stock = p.totalStock ?? p.stock ?? 0;
+  const rating = p.rating ?? p.ratingsAverage ?? 0;
+  const reviews = p.reviewCount ?? p.ratingsCount ?? 0;
+  const mainImage = p.media?.mainImage || p.images?.[0]?.url || PLACEHOLDER_IMAGE;
+  const gallery = p.media?.galleryImages?.map(img => img.url) || p.images?.map(img => img.url) || [];
+
   return {
-    id:            p._id,
-    name:          p.name,
-    description:   p.description,
-    price:         p.discountPrice ?? p.price,
-    originalPrice: p.price,
+    id:            p._id || p.productId || Math.random().toString(36).substr(2, 9),
+    name:          name,
+    description:   desc,
+    price:         priceVal,
+    originalPrice: originalPrice,
     discountPrice: p.discountPrice,
-    image:         p.images?.[0]?.url ?? PLACEHOLDER_IMAGE,
-    images:        p.images?.map((img) => img.url) ?? [],
-    category:      p.category,
-    stock:         p.stock,
-    slug:          p.slug,
-    rating:        p.ratingsAverage,
-    reviews:       p.ratingsCount,
+    image:         mainImage,
+    images:        gallery.length > 0 ? gallery : [mainImage],
+    category:      p.category || "General",
+    stock:         stock,
+    slug:          p.slug || "",
+    rating:        rating,
+    reviews:       reviews,
     badge:         resolveBadge(p),
     tags:          tags.length > 0 ? tags : [p.category].filter(Boolean) as string[],
-    bestSeller:    p.bestSeller,
-    trendy:        p.trendy,
+    bestSeller:    p.bestSeller || p.story?.featured || false,
+    trendy:        p.trendy || false,
   };
 }
