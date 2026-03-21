@@ -8,10 +8,10 @@ export type ProductImageInput = string | ProductImage;
 
 export interface ApiProduct {
   _id: string;
-  productId: string;
+  productId?: string;
   productName?: string;
   name?: string;
-  description: string;
+  description?: string;
   price?: number;
   originalPrice?: number | null;
   discountPrice?: number;
@@ -21,19 +21,19 @@ export interface ApiProduct {
     offerPercentage?: number | null;
     taxIncluded?: boolean;
   };
-  category: string;
+  category?: string;
   stock?: number;
   totalStock?: number;
-  slug: string;
-  images?: ProductImage[];
+  slug?: string;
+  images?: ProductImageInput[];
   media?: {
     mainImage?: string | null;
-    galleryImages?: ProductImage[];
+    galleryImages?: ProductImageInput[];
   };
-  isActive: boolean;
-  isDeleted: boolean;
-  bestSeller: boolean;
-  trendy: boolean;
+  isActive?: boolean;
+  isDeleted?: boolean;
+  bestSeller?: boolean;
+  trendy?: boolean;
   ratingsAverage?: number;
   ratingsCount?: number;
   rating?: number;
@@ -47,9 +47,9 @@ export interface ApiProduct {
   colors?: any[];
   sizes?: any[];
   prices?: any[];
-  createdAt: string;
-  updatedAt: string;
-  story?: {
+  createdAt?: string;
+  updatedAt?: string;
+  story?: string | {
     title?: string;
     content?: string;
     isDisplayed?: boolean;

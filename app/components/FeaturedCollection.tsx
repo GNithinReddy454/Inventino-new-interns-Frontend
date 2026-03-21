@@ -29,10 +29,10 @@ interface Product {
   color?: string;
   stock?: number;
   totalStock?: number;
-  images?: ProductImage[];
+  images?: (ProductImage | string)[];
   media?: {
     mainImage?: string | null;
-    galleryImages?: ProductImage[];
+    galleryImages?: (ProductImage | string)[];
   };
   isActive: boolean;
   isDeleted: boolean;
@@ -46,7 +46,7 @@ interface Product {
   productId?: string;
   createdAt: string;
   updatedAt: string;
-  story?: {
+  story?: string | {
     title?: string;
     featured?: boolean;
   }
@@ -59,11 +59,17 @@ function resolveUrl(url?: string): string {
   return url.startsWith("http") ? url : `${BASE_URL}${url}`;
 }
 
+function getImageUrl(img?: string | ProductImage): string {
+  if (!img) return "";
+  const url = typeof img === "string" ? img : img.url;
+  return resolveUrl(url);
+}
+
 function normalizeProduct(p: Product) {
-  const name = p.productName || p.name || p.story?.title || "Unnamed Product";
-  const mainImage = p.media?.mainImage || (p.images && p.images[0]?.url) || "";
+  const name = p.productName || p.name || (typeof p.story === 'object' ? p.story?.title : undefined) || "Unnamed Product";
+  const mainImage = p.media?.mainImage || (p.images && getImageUrl(p.images[0])) || "";
   const resolvedImages = (p.media?.galleryImages || p.images || [])
-    .map((img) => resolveUrl(img.url))
+    .map((img) => getImageUrl(img))
     .filter(Boolean) as string[];
   
   const finalImages = mainImage ? [resolveUrl(mainImage), ...resolvedImages] : resolvedImages;
@@ -84,7 +90,7 @@ function normalizeProduct(p: Product) {
     images: finalImages,
     rating: p.rating ?? p.ratingsAverage ?? 0,
     reviews: p.reviewCount ?? p.ratingsCount ?? 0,
-    badge: p.trendy ? "TRENDY" : (p.bestSeller || p.story?.featured) ? "BEST SELLER" : undefined,
+    badge: p.trendy ? "TRENDY" : (p.bestSeller || (typeof p.story === 'object' && p.story?.featured)) ? "BEST SELLER" : undefined,
     tags: p.hashtags ?? [p.category, "Adjustable"].filter(Boolean),
   };
 }

@@ -569,16 +569,16 @@ export default function ProductDetailsPage() {
             ? priceMatrix[0].price
             : data.pricing?.price ?? data.price ?? 0;
 
-        const mainImage = data.media?.mainImage || data.images?.[0]?.url || FALLBACK_IMAGE;
-        const gallery = data.media?.galleryImages?.map((img: any) => img.url).filter(Boolean) || data.images?.map((img: any) => img.url).filter(Boolean) || [];
+        const mainImage = data.media?.mainImage || getImageUrl(data.images?.[0]) || FALLBACK_IMAGE;
+        const gallery = data.media?.galleryImages?.map((img: any) => getImageUrl(img)).filter(Boolean) || data.images?.map((img: any) => getImageUrl(img)).filter(Boolean) || [];
 
         setProduct({
           id: mongoId,
           mongoId,
-          name: data.productName || data.name || data.story?.title || "Unnamed Product",
+          name: data.productName || data.name || (typeof data.story === 'object' ? data.story?.title : undefined) || "Unnamed Product",
           price: basePrice,
           originalPrice: data.pricing?.originalPrice ?? data.originalPrice ?? (basePrice > 0 ? basePrice + 150 : 0),
-          description: data.description || data.story?.content || "",
+          description: data.description || (typeof data.story === 'object' ? data.story?.content : undefined) || "",
           category: data.category || "General",
           image:
             colorVariants.length > 0

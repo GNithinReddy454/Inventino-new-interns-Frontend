@@ -96,16 +96,16 @@ function resolveBadge(p: ApiProduct): { text: string; color: string } | undefine
 export function normalize(p: ApiProduct): NormalizedProduct {
   const tags = parseHashtags(p.hashtags);
 
-  const name = p.productName || p.name || p.story?.title || "Unnamed Product";
-  const desc = p.description || p.story?.content || "";
+  const name = p.productName || p.name || (typeof p.story === 'object' ? p.story?.title : undefined) || "Unnamed Product";
+  const desc = p.description || (typeof p.story === 'object' ? p.story?.content : undefined) || "";
   const priceVal = p.pricing?.price ?? p.discountPrice ?? p.price ?? 0;
   const originalPrice = p.pricing?.originalPrice ?? p.price ?? 0;
   const stock = p.totalStock ?? p.stock ?? 0;
   const rating = p.rating ?? p.ratingsAverage ?? 0;
   const reviews = p.reviewCount ?? p.ratingsCount ?? 0;
   
-  const mainImage = p.media?.mainImage || p.mainImage || p.imageUrl || (p.images && p.images[0]?.url) || PLACEHOLDER_IMAGE;
-  const gallery = p.media?.galleryImages?.map(img => img.url).filter((url): url is string => !!url) || p.images?.map(img => img.url).filter((url): url is string => !!url) || [];
+  const mainImage = p.media?.mainImage || p.mainImage || p.imageUrl || getImageUrl(p.images?.[0]) || PLACEHOLDER_IMAGE;
+  const gallery = p.media?.galleryImages?.map(img => getImageUrl(img)).filter((url): url is string => !!url) || p.images?.map(img => getImageUrl(img)).filter((url): url is string => !!url) || [];
 
   return {
     id:            p._id || p.productId || Math.random().toString(36).substr(2, 9),
@@ -123,7 +123,7 @@ export function normalize(p: ApiProduct): NormalizedProduct {
     reviews:       reviews,
     badge:         resolveBadge(p),
     tags:          tags.length > 0 ? tags : [p.category].filter(Boolean) as string[],
-    bestSeller:    p.bestSeller || p.story?.featured || false,
+    bestSeller:    p.bestSeller || (typeof p.story === 'object' ? p.story?.featured : undefined) || false,
     trendy:        p.trendy || false,
   };
 }

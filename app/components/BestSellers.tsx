@@ -27,7 +27,6 @@ interface Product {
   material: string;
   size?: string;
   color?: string;
-<<<<<<< HEAD
   stock?: number;
   totalStock?: number;
   images?: ProductImage[];
@@ -35,10 +34,6 @@ interface Product {
     mainImage?: string | null;
     galleryImages?: ProductImage[];
   };
-=======
-  stock: number;
-  images?: ProductImage[];
->>>>>>> fb687642c7599b39108771e463fe5d69d1cbcf39
   isActive: boolean;
   isDeleted: boolean;
   ratingsAverage?: number;
@@ -64,17 +59,18 @@ function resolveUrl(url?: string): string {
   return url.startsWith("http") ? url : `${BASE_URL}${url}`;
 }
 
+function getImageUrl(img?: string | ProductImage): string {
+  if (!img) return "";
+  const url = typeof img === "string" ? img : img.url;
+  return resolveUrl(url);
+}
+
 function normalizeProduct(p: Product) {
-<<<<<<< HEAD
-  const name = p.productName || p.name || p.story?.title || "Unnamed Product";
-  const mainImage = p.media?.mainImage || (p.images && p.images[0]?.url) || "";
+  const name = p.productName || p.name || (typeof p.story === 'object' ? p.story?.title : undefined) || "Unnamed Product";
+  const mainImage = p.media?.mainImage || (p.images && getImageUrl(p.images[0])) || "";
   const resolvedImages = (p.media?.galleryImages || p.images || [])
-    .map((img) => resolveUrl(img.url))
-=======
-  const resolvedImages = (Array.isArray(p.images) ? p.images : [])
-    .map((img) => resolveUrl(img?.url))
->>>>>>> fb687642c7599b39108771e463fe5d69d1cbcf39
-    .filter(Boolean);
+    .map((img) => getImageUrl(img))
+    .filter(Boolean) as string[];
   
   const finalImages = mainImage ? [resolveUrl(mainImage), ...resolvedImages] : resolvedImages;
 
@@ -94,7 +90,7 @@ function normalizeProduct(p: Product) {
     images: finalImages,
     rating: p.rating ?? p.ratingsAverage ?? 0,
     reviews: p.reviewCount ?? p.ratingsCount ?? 0,
-    badge: (p.bestSeller || p.story?.featured) ? "BEST SELLER" : p.trendy ? "TRENDY" : undefined,
+    badge: (p.bestSeller || (typeof p.story === 'object' ? p.story?.featured : false)) ? "BEST SELLER" : p.trendy ? "TRENDY" : undefined,
     tags: p.hashtags ?? [p.category, "Adjustable"].filter(Boolean),
   };
 }
@@ -225,13 +221,8 @@ export default function BestSellers() {
               >
                 {products.map((product, index) => (
                   <div
-<<<<<<< HEAD
                     key={product._id || product.productId || index}
                     className="flex-shrink-0 w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
-=======
-                    key={product._id}
-                    className="w-full shrink-0 sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
->>>>>>> fb687642c7599b39108771e463fe5d69d1cbcf39
                   >
                     <ProductCard product={normalizeProduct(product)} />
                   </div>
