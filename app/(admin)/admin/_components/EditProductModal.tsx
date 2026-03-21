@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, Save, Loader2, Upload } from "lucide-react";
-import { productService } from "@/services/product.service";
+import { adminProductService} from "@/services/admin-product.service";
 
 export interface EditableProduct {
     _id: string;
@@ -109,13 +109,13 @@ export default function EditProductModal({ product, categories, onClose, onSaved
                 payload.originalPrice = Number(form.originalPrice);
             }
 
-            const updated = await productService.update(product.productId, payload);
+            const updated = await adminProductService.update(product.productId, payload);
 
             // Upload new images if any
             if (newFiles.length > 0) {
                 const imageFormData = new FormData();
                 newFiles.forEach((file) => imageFormData.append("images", file));
-                await productService.addImages(product.productId, imageFormData);
+                await adminProductService.addImages(product.productId, imageFormData);
             }
 
             onSaved(updated?.data ?? updated);
@@ -129,7 +129,7 @@ export default function EditProductModal({ product, categories, onClose, onSaved
 
     const handleDeleteImage = async (imageId: string) => {
         try {
-            await productService.deleteImage(product!.productId, imageId);
+            await adminProductService.deleteImage(product!.productId, imageId);
             setExistingImages((prev) => prev.filter((img) => img.id !== imageId));
         } catch (err: any) {
             setError(err?.response?.data?.message || "Failed to delete image");

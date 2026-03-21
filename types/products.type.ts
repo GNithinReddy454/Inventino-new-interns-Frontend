@@ -1,17 +1,21 @@
 export interface ProductImage {
-  id: string;
-  url: string;
+  id?: string;
+  _id?: string;
+  url?: string;
 }
+
+export type ProductImageInput = string | ProductImage;
 
 export interface ApiProduct {
   _id: string;
+  productId: string;
+  productName?: string;
   name?: string;
-  productName?: string; // New field
   description: string;
   price?: number;
-  originalPrice?: number | null; // Added for legacy support
+  originalPrice?: number | null;
   discountPrice?: number;
-  pricing?: { // New structure
+  pricing?: {
     price: number;
     originalPrice?: number | null;
     offerPercentage?: number | null;
@@ -19,10 +23,10 @@ export interface ApiProduct {
   };
   category: string;
   stock?: number;
-  totalStock?: number; // New field
+  totalStock?: number;
   slug: string;
   images?: ProductImage[];
-  media?: { // New structure
+  media?: {
     mainImage?: string | null;
     galleryImages?: ProductImage[];
   };
@@ -32,10 +36,11 @@ export interface ApiProduct {
   trendy: boolean;
   ratingsAverage?: number;
   ratingsCount?: number;
-  rating?: number; // New field
-  reviewCount?: number; // New field
-  productId: string;
+  rating?: number;
+  reviewCount?: number;
   hashtags?: string[];
+  imageUrl?: string;
+  mainImage?: string;
   material?: string;
   size?: string;
   color?: string;
@@ -50,6 +55,9 @@ export interface ApiProduct {
     isDisplayed?: boolean;
     featured?: boolean;
   };
+  sku?: string;
+  variants?: any[];
+  [key: string]: any;
 }
 
 export interface ProductListMeta {
@@ -77,7 +85,7 @@ export interface ProductDetailResponse {
 export interface GetAllProductsParams {
   page?: number;
   limit?: number;
-  sort?: "featured" | "price_asc" | "price_desc" | "newest";
+  sort?: "featured" | "priceAsc" | "priceDesc" | "newest";
   category?: string;
   search?: string;
   minPrice?: number;
