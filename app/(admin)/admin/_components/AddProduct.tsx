@@ -32,12 +32,6 @@ type CategoryItem = {
   isActive?: boolean;
 };
 
-type UploadedImage = {
-  id?: string;
-  url?: string;
-  _id?: string;
-};
-
 const COLOR_OPTIONS = [
   "Rose Gold",
   "Silver",
@@ -277,13 +271,16 @@ export default function AddProduct() {
 
   const [variants, setVariants] = useState<ProductVariantGroup[]>([]);
   const [customColorName, setCustomColorName] = useState("");
-  const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>({});
+  const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>(
+    {}
+  );
 
   useEffect(() => {
     const loadCategories = async () => {
       try {
         const response = await getCategories();
         const items = (response?.items || []) as CategoryItem[];
+
         const names = items
           .filter((item) => item?.isActive !== false)
           .map((item) => item.name)
@@ -298,6 +295,16 @@ export default function AddProduct() {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      variants.forEach((variant) => {
+        variant.images.forEach((image) => {
+          if (image.preview) URL.revokeObjectURL(image.preview);
+        });
+      });
+    };
+  }, [variants]);
+
   const triggerToast = (
     message: string,
     type: "success" | "error" = "success"
@@ -306,6 +313,47 @@ export default function AddProduct() {
     setTimeout(() => {
       setToast((prev) => ({ ...prev, show: false }));
     }, 3000);
+  };
+
+  const unwrapApiData = <T = any,>(raw: any): T => {
+    if (!raw) return raw as T;
+    const level1 = raw?.data ?? raw;
+    const level2 = level1?.data ?? level1;
+    return level2 as T;
+  };
+
+  const extractProductResourceId = (raw: any): string => {
+    const product = unwrapApiData<any>(raw);
+    return String(product?.productId || product?.id || product?._id || "");
+  };
+
+  const extractBatchUploadedUrls = (raw: any): string[] => {
+    const product = unwrapApiData<any>(raw);
+
+    const mainImage =
+      typeof product?.media?.mainImage === "string" ? product.media.mainImage : "";
+
+    const galleryImages = Array.isArray(product?.media?.galleryImages)
+      ? product.media.galleryImages
+          .map((img: any) => {
+            if (typeof img === "string") return img;
+            return img?.url || "";
+          })
+          .filter(Boolean)
+      : [];
+
+    const legacyImages = Array.isArray(product?.images)
+      ? product.images
+          .map((img: any) => {
+            if (typeof img === "string") return img;
+            return img?.url || "";
+          })
+          .filter(Boolean)
+      : [];
+
+    return Array.from(
+      new Set([mainImage, ...galleryImages, ...legacyImages].filter(Boolean))
+    );
   };
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -362,7 +410,19 @@ export default function AddProduct() {
   };
 
   const removeVariant = (variantId: string) => {
-    setVariants((prev) => prev.filter((variant) => variant.id !== variantId));
+    setVariants((prev) => {
+      const next = prev.filter((variant) => {
+        if (variant.id === variantId) {
+          variant.images.forEach((img) => {
+            if (img.preview) URL.revokeObjectURL(img.preview);
+          });
+          return false;
+        }
+        return true;
+      });
+      return next;
+    });
+
     setCustomSizeInputs((prev) => {
       const next = { ...prev };
       delete next[variantId];
@@ -401,7 +461,7 @@ export default function AddProduct() {
             {
               size,
               stock: 0,
-              sku: `${variant.color}-${size}`.replace(/\s+/g, "-"),
+              sku: `${variant.color}-${size}`.replace(/\s+/g, "-").toUpperCase(),
             },
           ],
         };
@@ -430,7 +490,9 @@ export default function AddProduct() {
             {
               size: sizeValue,
               stock: 0,
-              sku: `${variant.color}-${sizeValue}`.replace(/\s+/g, "-"),
+              sku: `${variant.color}-${sizeValue}`
+                .replace(/\s+/g, "-")
+                .toUpperCase(),
             },
           ],
         };
@@ -584,41 +646,67 @@ export default function AddProduct() {
       return `Please select at least one size for ${emptyVariant.color}`;
     }
 
+    const invalidStockVariant = variants.find((variant) =>
+      variant.sizes.some((size) => Number.isNaN(Number(size.stock)))
+    );
+
+    if (invalidStockVariant) {
+      return `Invalid stock value found in ${invalidStockVariant.color}`;
+    }
+
     return "";
   };
 
-  const buildNestedPayload = (uploadedUrlsByVariant: Record<string, string[]>) => {
+  const buildPayloadForBackend = (uploadedUrlsByVariant: Record<string, string[]>) => {
+    const effectivePrice = salePrice.trim()
+      ? toNumber(salePrice)
+      : toNumber(regularPrice);
+
+    const originalPrice = regularPrice.trim() ? toNumber(regularPrice) : null;
+
+    const flatUploadedImages = Object.values(uploadedUrlsByVariant)
+      .flat()
+      .filter(Boolean);
+
+    const mainImage = flatUploadedImages[0] || null;
+
+    const galleryImages = flatUploadedImages.slice(1).map((url) => ({
+      id: makeId(),
+      url,
+    }));
+
     return {
       productName: name.trim(),
       category: category.trim(),
       description: description.trim(),
 
       pricing: {
-        price: salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice),
-        originalPrice: toNumber(regularPrice),
-        offerPercentage: finalDiscountPercent ? Number(finalDiscountPercent) : 0,
+        price: effectivePrice,
+        originalPrice,
+        offerPercentage: finalDiscountPercent
+          ? Number(finalDiscountPercent)
+          : null,
         taxIncluded: false,
       },
 
       media: {
-        mainImage:
-          variants.length > 0
-            ? (uploadedUrlsByVariant[variants[0].id] || [])[0] || ""
-            : "",
-        galleryImages: Object.values(uploadedUrlsByVariant).flat().slice(1),
+        mainImage,
+        galleryImages,
       },
 
       variants: variants.map((variant) => ({
         color: variant.color,
         colorCode: COLOR_SWATCH_MAP[variant.color.toLowerCase()] || "#E5E7EB",
-        images: uploadedUrlsByVariant[variant.id] || [],
+        price: effectivePrice,
+        images: (uploadedUrlsByVariant[variant.id] || []).filter(Boolean),
         sizes: variant.sizes.map((sizeItem) => ({
-          size: sizeItem.size,
-          price: salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice),
+          size: sizeItem.size?.trim() || null,
           stock: Number(sizeItem.stock) || 0,
           sku:
             sizeItem.sku?.trim() ||
-            `${variant.color}-${sizeItem.size}`.replace(/\s+/g, "-"),
+            `${variant.color}-${sizeItem.size || "default"}`
+              .replace(/\s+/g, "-")
+              .toUpperCase(),
         })),
       })),
 
@@ -626,14 +714,9 @@ export default function AddProduct() {
       rating: 0,
       reviewCount: 0,
 
-      story: {
-        title: storyTitle.trim(),
-        content: storyContent.trim(),
-        isDisplayed: storySettings.displayStory,
-        featured: featuredStory === "Yes",
-      },
+      story: storyContent.trim() || storyTitle.trim() || "",
 
-      material: material.trim(),
+      material: material.trim() || "",
       stockStatus,
       hashtags: tags,
       isActive: status === "Published",
@@ -656,7 +739,12 @@ export default function AddProduct() {
       quoteText: quoteText.trim(),
       quoteAuthor: quoteAuthor.trim(),
       storyTags: storyTags.trim(),
-      artisanSteps,
+      artisanSteps: artisanSteps
+        .filter((step) => step.title.trim() || step.description.trim())
+        .map((step) => ({
+          title: step.title.trim(),
+          description: step.description.trim(),
+        })),
       showArtisanBadge: storySettings.showArtisanBadge,
       showTimeline: storySettings.showTimeline,
       showQuote: storySettings.showQuote,
@@ -679,101 +767,118 @@ export default function AddProduct() {
     try {
       setIsLoading(true);
 
-      // Step 1: create minimum valid product first
+      const effectivePrice = salePrice.trim()
+        ? toNumber(salePrice)
+        : toNumber(regularPrice);
+
       const createPayload = {
         name: name.trim(),
         description: description.trim(),
-        price: salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice),
-        discountPrice: salePrice.trim() ? toNumber(salePrice) : undefined,
+        price: effectivePrice,
+        discountPrice: salePrice.trim() ? effectivePrice : undefined,
         category: category.trim(),
         material: material.trim() || "Material",
         stock: totalStock || 0,
       };
 
       const created = await adminProductService.create(createPayload);
-      const createdData = created?.data ?? created;
-      const normalizedCreated = createdData?.data ?? createdData;
-      const productId = normalizedCreated?.productId;
+      const productResourceId = extractProductResourceId(created);
 
-      if (!productId) {
-        throw new Error("Product created but productId was not returned");
+      if (!productResourceId) {
+        throw new Error("Product created but no product id was returned");
       }
 
-      // Step 2: upload images per variant and keep nested mapping
       const uploadedUrlsByVariant: Record<string, string[]> = {};
 
       for (const variant of variants) {
-        if (!variant.images.length) {
+        const validFiles = variant.images.filter((img) => img.file instanceof File);
+
+        if (!validFiles.length) {
           uploadedUrlsByVariant[variant.id] = [];
           continue;
         }
 
         const formData = new FormData();
-        variant.images.forEach((image) => {
+        validFiles.forEach((image) => {
           formData.append("images", image.file);
         });
 
-        const imageResponse = await adminProductService.addImages(productId, formData);
-        const imageData = imageResponse?.data ?? imageResponse;
-        const normalizedImageData = imageData?.data ?? imageData;
+        const imageResponse = await adminProductService.addImages(
+          productResourceId,
+          formData
+        );
 
-        const uploadedImages = Array.isArray(normalizedImageData?.images)
-          ? (normalizedImageData.images as UploadedImage[])
-          : [];
+        const batchUrls = extractBatchUploadedUrls(imageResponse);
 
-        const urls = uploadedImages
-          .map((img) => img?.url || "")
-          .filter(Boolean);
-
-        uploadedUrlsByVariant[variant.id] = urls.slice(-variant.images.length);
+        if (!batchUrls.length) {
+          uploadedUrlsByVariant[variant.id] = [];
+        } else if (batchUrls.length >= validFiles.length) {
+          uploadedUrlsByVariant[variant.id] = batchUrls.slice(-validFiles.length);
+        } else {
+          uploadedUrlsByVariant[variant.id] = batchUrls;
+        }
       }
 
-      // Step 3: patch full nested payload
-      const finalPayload = buildNestedPayload(uploadedUrlsByVariant);
-      await adminProductService.update(productId, finalPayload);
+      const finalPayload = buildPayloadForBackend(uploadedUrlsByVariant);
+      await adminProductService.update(productResourceId, finalPayload);
 
-      dispatch(
-        addProduct({
-          _id:
-            normalizedCreated?._id ||
-            `local-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          id: normalizedCreated?.productId || "PRD-000",
-          name,
-          price: salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice),
-          category,
-          subCategory,
-          material,
-          tags,
-          variants,
-          colors: variants.map((variant) => variant.color),
-          isFeatured,
-          reviewsEnabled,
-          freeShipping,
-          status: status === "Draft" ? "Draft" : "Active",
-          totalSales: 0,
-          totalRevenue: 0,
-          imageUrl:
-            Object.values(uploadedUrlsByVariant).flat()[0] ||
-            variants[0]?.images[0]?.preview ||
-            "",
-        })
-      );
+      const createdProduct = unwrapApiData<any>(created);
 
+const serializableVariants = variants.map((variant) => ({
+  id: variant.id,
+  color: variant.color,
+  expanded: variant.expanded,
+  sizes: variant.sizes.map((sizeItem) => ({
+    size: sizeItem.size,
+    stock: Number(sizeItem.stock) || 0,
+    sku: sizeItem.sku || "",
+  })),
+  images: variant.images.map((image, index) => ({
+    id: image.id,
+    preview:
+      uploadedUrlsByVariant[variant.id]?.[index] ||
+      image.preview ||
+      "",
+  })),
+}));
+
+dispatch(
+  addProduct({
+    _id:
+      createdProduct?._id ||
+      `local-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id:
+      createdProduct?.productId ||
+      createdProduct?._id ||
+      String(productResourceId),
+    name: name.trim(),
+    price: effectivePrice,
+    category: category.trim(),
+    subCategory: subCategory.trim(),
+    material: material.trim(),
+    tags,
+    variants: serializableVariants,
+    colors: serializableVariants.map((variant) => variant.color),
+    isFeatured,
+    reviewsEnabled,
+    freeShipping,
+    status: status === "Draft" ? "Draft" : "Active",
+    totalSales: 0,
+    totalRevenue: 0,
+    imageUrl:
+      Object.values(uploadedUrlsByVariant).flat()[0] ||
+      serializableVariants[0]?.images[0]?.preview ||
+      "",
+  })
+);
       triggerToast("Product added successfully", "success");
 
       setTimeout(() => {
         router.push("/admin");
       }, 700);
     } catch (err: unknown) {
-      const apiMessage =
-        typeof err === "object" && err !== null && "response" in err
-          ? (err as any).response?.data?.message
-          : undefined;
-
       const message =
-        apiMessage ||
-        (err instanceof Error ? err.message : "Something went wrong");
-
+        err instanceof Error ? err.message : "Something went wrong";
       setError(message);
       triggerToast(message, "error");
     } finally {

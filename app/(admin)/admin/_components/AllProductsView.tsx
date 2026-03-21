@@ -15,9 +15,7 @@ import {
 } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
 import Pagination from "./Pagination";
-import { productService } from "@/services/product.service";
 import { getCategories } from "@/services/admin.service";
-import { useAppSelector } from "@/redux/store";
 import EditProductModal, { EditableProduct } from "./EditProductModal";
 import { adminProductService } from "@/services/admin-product.service";
 import ProductPreviewModal from "./ProductPreviewModal";
@@ -48,11 +46,35 @@ interface NormalizedAdminProduct {
 
 type EditImage = { id: string; url: string };
 
-function deriveStatus(p: any): string {
-  if (!p.isActive) return "Inactive";
-  if (p.stock === 0) return "Out of Stock";
-  if (p.stock > 0 && p.stock < 5) return "Low Stock";
-  return "Active";
+function getImageUrl(img: any): string {
+  if (!img) return "";
+  if (typeof img === "string") return img;
+  if (typeof img === "object" && typeof img.url === "string") return img.url;
+  return "";
+}
+
+function normalizeEditImages(images: any[]): EditImage[] {
+  if (!Array.isArray(images)) return [];
+
+  return images
+    .map((img, index) => {
+      if (typeof img === "string" && img.trim()) {
+        return {
+          id: `img-${index}`,
+          url: img,
+        };
+      }
+
+      if (img && typeof img === "object" && typeof img.url === "string") {
+        return {
+          id: img.id || img._id || `img-${index}`,
+          url: img.url,
+        };
+      }
+
+      return null;
+    })
+    .filter((img): img is EditImage => Boolean(img?.url));
 }
 
 function extractItemsAndMeta(response: any) {
@@ -86,35 +108,159 @@ function getSortParam(sort: string) {
   }
 }
 
-function getImageUrl(img: any): string {
-  if (!img) return "";
-  if (typeof img === "string") return img;
-  if (typeof img === "object" && typeof img.url === "string") return img.url;
-  return "";
+function getVariantFirstColor(product: any): string {
+  if (!Array.isArray(product?.variants) || product.variants.length === 0) {
+    return product?.color || "";
+  }
+  return product.variants[0]?.color || "";
 }
 
-function normalizeEditImages(images: any[]): EditImage[] {
-  if (!Array.isArray(images)) return [];
+function getVariantSizesText(product: any): string {
+  if (!Array.isArray(product?.variants) || product.variants.length === 0) {
+    return product?.size || "";
+  }
 
-  return images
-    .map((img, index) => {
-      if (typeof img === "string" && img.trim()) {
-        return {
-          id: `img-${index}`,
-          url: img,
-        };
-      }
+  const sizes = product.variants.flatMap((variant: any) =>
+    Array.isArray(variant?.sizes)
+      ? variant.sizes.map((sizeItem: any) => sizeItem?.size).filter(Boolean)
+      : []
+  );
 
-      if (img && typeof img === "object" && typeof img.url === "string") {
-        return {
-          id: img.id || img._id || `img-${index}`,
-          url: img.url,
-        };
-      }
+  return Array.from(new Set(sizes)).join(", ");
+}
 
-      return null;
-    })
-    .filter((img): img is EditImage => Boolean(img?.url));
+function getVariantStock(product: any): number {
+  if (typeof product?.totalStock === "number") return product.totalStock;
+  if (typeof product?.stock === "number") return product.stock;
+
+  if (!Array.isArray(product?.variants)) return 0;
+
+  return product.variants.reduce((total: number, variant: any) => {
+    const variantStock = Array.isArray(variant?.sizes)
+      ? variant.sizes.reduce(
+          (sum: number, sizeItem: any) => sum + (Number(sizeItem?.stock) || 0),
+          0
+        )
+      : 0;
+
+    return total + variantStock;
+  }, 0);
+}
+
+function getPrimaryPrice(product: any): number {
+  if (typeof product?.pricing?.price === "number") return product.pricing.price;
+  if (typeof product?.price === "number") return product.price;
+
+  if (Array.isArray(product?.variants) && product.variants.length > 0) {
+    const firstVariantPrice = Number(product.variants[0]?.price);
+    if (Number.isFinite(firstVariantPrice)) return firstVariantPrice;
+  }
+
+  return 0;
+}
+
+function getOriginalPrice(product: any): number | null {
+  if (
+    product?.pricing?.originalPrice !== undefined &&
+    product?.pricing?.originalPrice !== null
+  ) {
+    return Number(product.pricing.originalPrice) || 0;
+  }
+
+  if (
+    product?.originalPrice !== undefined &&
+    product?.originalPrice !== null
+  ) {
+    return Number(product.originalPrice) || 0;
+  }
+
+  if (
+    product?.discountPrice !== undefined &&
+    product?.discountPrice !== null
+  ) {
+    return Number(product.discountPrice) || 0;
+  }
+
+  return null;
+}
+
+function getMainImage(product: any): string {
+  return (
+    product?.media?.mainImage ||
+    product?.mainImage ||
+    product?.imageUrl ||
+    product?.image ||
+    getImageUrl(product?.media?.galleryImages?.[0]) ||
+    getImageUrl(product?.galleryImages?.[0]) ||
+    getImageUrl(product?.images?.[0]) ||
+    ""
+  );
+}
+
+function getAllImages(product: any): any[] {
+  if (Array.isArray(product?.media?.galleryImages)) {
+    return product.media.galleryImages;
+  }
+
+  if (Array.isArray(product?.galleryImages)) {
+    return product.galleryImages;
+  }
+
+  if (Array.isArray(product?.images)) {
+    return product.images;
+  }
+
+  return [];
+}
+
+function deriveStatusFromProduct(product: {
+  isActive: boolean;
+  stock: number;
+}): string {
+  if (!product.isActive) return "Inactive";
+  if (product.stock === 0) return "Out of Stock";
+  if (product.stock > 0 && product.stock < 5) return "Low Stock";
+  return "Active";
+}
+
+function normalizeProduct(p: any): NormalizedAdminProduct {
+  const price = getPrimaryPrice(p);
+  const stock = getVariantStock(p);
+  const isActive = p?.isActive !== false;
+
+  const normalized: NormalizedAdminProduct = {
+    _id: p?._id || p?.id || "",
+    productId: p?.productId || p?.id || "",
+    name: p?.productName || p?.name || "",
+    description: p?.description || "",
+    price,
+    originalPrice: getOriginalPrice(p),
+    category: p?.category || "",
+    stock,
+    material: p?.material || "",
+    isActive,
+    trendy: p?.trendy ?? p?.isFeatured ?? false,
+    bestSeller: p?.bestSeller ?? false,
+    hashtags: Array.isArray(p?.hashtags)
+      ? p.hashtags
+      : Array.isArray(p?.tags)
+      ? p.tags
+      : [],
+    story:
+      typeof p?.story === "string"
+        ? p.story
+        : p?.story?.content || p?.storyTitle || "",
+    status: "",
+    sku: p?.sku || p?.productId || p?._id || "",
+    imageUrl: getMainImage(p),
+    images: getAllImages(p),
+    createdAt: p?.createdAt || "",
+    color: getVariantFirstColor(p),
+    size: getVariantSizesText(p),
+  };
+
+  normalized.status = deriveStatusFromProduct(normalized);
+  return normalized;
 }
 
 export default function AllProductsView({
@@ -139,58 +285,6 @@ export default function AllProductsView({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [serverTotalItems, setServerTotalItems] = useState(0);
-
-  const localAddedProducts = useAppSelector(
-    (state) => state.admin.localAddedProducts
-  );
-
-  const resolveThumbnail = (p: any) =>
-    p.mainImage ||
-    p.imageUrl ||
-    p.image ||
-    getImageUrl(p.galleryImages?.[0]) ||
-    getImageUrl(p.images?.[0]) ||
-    "";
-
-  const normalizeProduct = useCallback((p: any): NormalizedAdminProduct => {
-    const name = p.productName || p.name || "";
-
-    const prod: NormalizedAdminProduct = {
-      _id: p._id || p.id || "",
-      productId: p.productId || p.id || "",
-      name,
-      description: p.description || "",
-      price: Number(p.price) || 0,
-      originalPrice:
-        p.originalPrice !== undefined && p.originalPrice !== null
-          ? p.originalPrice
-          : p.discountPrice !== undefined && p.discountPrice !== null
-          ? p.discountPrice
-          : null,
-      category: p.category || "",
-      stock: Number(p.stock) || 0,
-      material: p.material || "",
-      isActive: p.isActive !== false,
-      trendy: p.trendy ?? false,
-      bestSeller: p.bestSeller ?? false,
-      hashtags: Array.isArray(p.hashtags) ? p.hashtags : [],
-      story: p.story || "",
-      status: "",
-      sku: p.sku || p.productId || "",
-      imageUrl: resolveThumbnail(p),
-      images: Array.isArray(p.galleryImages)
-        ? p.galleryImages
-        : Array.isArray(p.images)
-        ? p.images
-        : [],
-      createdAt: p.createdAt || "",
-      color: p.color || "",
-      size: p.size || "",
-    };
-
-    prod.status = deriveStatus(prod);
-    return prod;
-  }, []);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -217,7 +311,7 @@ export default function AllProductsView({
       if (search.trim()) {
         response = await adminProductService.search(search.trim(), params);
       } else {
-        response = await productService.getAll(params);
+        response = await adminProductService.getAll(params);
       }
 
       const { items, total } = extractItemsAndMeta(response);
@@ -232,7 +326,7 @@ export default function AllProductsView({
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, pageSize, categoryFilter, sort, search, normalizeProduct]);
+  }, [currentPage, pageSize, categoryFilter, sort, search]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -265,66 +359,6 @@ export default function AllProductsView({
     setCurrentPage(1);
   }, [categoryFilter, sort, pageSize, search]);
 
-  const mergedProducts = useMemo(() => {
-    const isDefaultView =
-      currentPage === 1 &&
-      !search.trim() &&
-      categoryFilter === "All Categories" &&
-      statusFilter === "All Status" &&
-      sort === "Sort: Newest First";
-
-    if (!isDefaultView) {
-      return products;
-    }
-
-    const existingIds = new Set(products.map((p) => p._id));
-
-    const normalizedLocal = (localAddedProducts || [])
-      .map((p: any) => {
-        const localProd: NormalizedAdminProduct = {
-          _id: p._id || p.id || "",
-          productId: p.productId || p.id || "",
-          name: p.productName || p.name || "",
-          description: p.description || "",
-          price: Number(p.price) || 0,
-          originalPrice: p.originalPrice ?? null,
-          category: p.category || "",
-          stock: Number(p.stock) || 0,
-          material: p.material || "",
-          isActive: p.status !== "Draft" && p.status !== "Inactive",
-          trendy: p.trendy ?? p.isFeatured ?? false,
-          bestSeller: p.bestSeller ?? false,
-          hashtags: Array.isArray(p.hashtags) ? p.hashtags : [],
-          story: p.story || "",
-          status: "",
-          sku: p.sku || p.productId || "",
-          imageUrl: resolveThumbnail(p),
-          images: Array.isArray(p.galleryImages)
-            ? p.galleryImages
-            : Array.isArray(p.images)
-            ? p.images
-            : [],
-          createdAt: p.createdAt || "",
-          color: p.color || "",
-          size: p.size || "",
-        };
-
-        localProd.status = deriveStatus(localProd);
-        return localProd;
-      })
-      .filter((p) => p._id && !existingIds.has(p._id));
-
-    return [...normalizedLocal, ...products];
-  }, [
-    localAddedProducts,
-    products,
-    currentPage,
-    search,
-    categoryFilter,
-    statusFilter,
-    sort,
-  ]);
-
   const statuses = [
     "All Status",
     "Active",
@@ -334,7 +368,7 @@ export default function AllProductsView({
   ];
 
   const visibleProducts = useMemo(() => {
-    let result = [...mergedProducts];
+    let result = [...products];
 
     if (statusFilter !== "All Status") {
       result = result.filter((p) => p.status === statusFilter);
@@ -345,7 +379,7 @@ export default function AllProductsView({
     }
 
     return result;
-  }, [mergedProducts, statusFilter, sort]);
+  }, [products, statusFilter, sort]);
 
   const totalItemsForPagination =
     statusFilter === "All Status" && sort !== "Stock: Low to High"
@@ -377,7 +411,9 @@ export default function AllProductsView({
 
     try {
       await adminProductService.delete(id);
-      await fetchProducts();
+
+      setProducts((prev) => prev.filter((p) => p._id !== prod._id));
+      setServerTotalItems((prev) => Math.max(0, prev - 1));
     } catch (err) {
       console.error("Failed to delete product:", err);
     } finally {
@@ -393,8 +429,26 @@ export default function AllProductsView({
     setActionLoading(prod._id);
 
     try {
-      await adminProductService.updateStatus(id, { isActive: newActive });
-      await fetchProducts();
+      await adminProductService.updateStatus(id, {
+        isActive: newActive,
+        status: newActive ? "Active" : "Inactive",
+      });
+
+      setProducts((prev) =>
+        prev.map((item) => {
+          if (item._id !== prod._id) return item;
+
+          const updated = {
+            ...item,
+            isActive: newActive,
+          };
+
+          return {
+            ...updated,
+            status: deriveStatusFromProduct(updated),
+          };
+        })
+      );
     } catch (err) {
       console.error("Failed to toggle product status:", err);
     } finally {
@@ -434,6 +488,10 @@ export default function AllProductsView({
   const editCategories = categoryOptions.filter(
     (c) => c !== "All Categories"
   );
+
+  const activeCount = products.filter((p) => p.isActive).length;
+  const lowStockCount = products.filter((p) => p.stock > 0 && p.stock < 5).length;
+  const outOfStockCount = products.filter((p) => p.stock === 0).length;
 
   return (
     <div className="space-y-6 w-full text-[#1F1728]">
@@ -478,18 +536,17 @@ export default function AllProductsView({
             },
             {
               label: "ACTIVE PRODUCTS",
-              value: visibleProducts.filter((p) => p.isActive).length,
+              value: activeCount,
               color: "text-[#EB5C8A]",
             },
             {
               label: "LOW STOCK ITEMS",
-              value: visibleProducts.filter((p) => p.stock > 0 && p.stock < 5)
-                .length,
+              value: lowStockCount,
               color: "text-[#F97316]",
             },
             {
               label: "OUT OF STOCK",
-              value: visibleProducts.filter((p) => p.stock === 0).length,
+              value: outOfStockCount,
               color: "text-[#EF4444]",
             },
           ].map((stat, i) => (
@@ -838,30 +895,27 @@ export default function AllProductsView({
           productId={previewProductId}
           onClose={() => setPreviewProductId(null)}
           onEdit={(product: any) => {
+            const normalized = normalizeProduct(product);
+
             setPreviewProductId(null);
             setEditProduct({
-              _id: product?._id || "",
-              productId: product?.productId || "",
-              productName: product?.productName || product?.name || "",
-              description: product?.description || "",
-              price: Number(product?.price) || 0,
-              originalPrice:
-                product?.originalPrice ?? product?.discountPrice ?? null,
-              category: product?.category || "",
-              stock: Number(product?.stock) || 0,
-              material: product?.material || "",
-              color: product?.color || "",
-              size: product?.size || "",
-              isActive: product?.isActive !== false,
-              trendy: product?.trendy ?? false,
-              bestSeller: product?.bestSeller ?? false,
-              hashtags: Array.isArray(product?.hashtags)
-                ? product.hashtags
-                : [],
-              story: product?.story || "",
-              images: normalizeEditImages(
-                product?.galleryImages || product?.images || []
-              ),
+              _id: normalized._id,
+              productId: normalized.productId,
+              productName: normalized.name,
+              description: normalized.description,
+              price: normalized.price,
+              originalPrice: normalized.originalPrice,
+              category: normalized.category,
+              stock: normalized.stock,
+              material: normalized.material,
+              color: normalized.color || "",
+              size: normalized.size || "",
+              isActive: normalized.isActive,
+              trendy: normalized.trendy,
+              bestSeller: normalized.bestSeller,
+              hashtags: normalized.hashtags || [],
+              story: normalized.story || "",
+              images: normalizeEditImages(normalized.images || []),
             });
           }}
         />

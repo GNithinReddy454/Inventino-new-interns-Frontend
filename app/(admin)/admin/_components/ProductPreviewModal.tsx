@@ -12,19 +12,24 @@ interface ProductPreviewModalProps {
 
 interface ProductImage {
   id?: string;
-  url?: string;
   _id?: string;
+  url?: string;
 }
 
 interface ProductVariantSize {
-  size?: string;
+  size?: string | null;
+  stock?: number;
+  sku?: string;
   images?: Array<string | ProductImage>;
   primaryImage?: string;
+  price?: number;
 }
 
 interface ProductVariant {
   color?: string;
-  size?: string;
+  colorCode?: string;
+  price?: number;
+  stock?: number;
   images?: Array<string | ProductImage>;
   primaryImage?: string;
   sizes?: ProductVariantSize[];
@@ -36,32 +41,43 @@ interface PreviewProduct {
   productName?: string;
   name?: string;
   description?: string;
+  category?: string;
+  material?: string;
+  hashtags?: string[];
+  sku?: string;
+
+  pricing?: {
+    price?: number;
+    originalPrice?: number | null;
+    offerPercentage?: number | null;
+    taxIncluded?: boolean;
+  };
+
   price?: number;
   originalPrice?: number | null;
   discountPrice?: number | null;
   offerPercentage?: number | null;
-  category?: string;
-  material?: string;
+
+  totalStock?: number;
   stock?: number;
-  isActive?: boolean;
-  trendy?: boolean;
-  bestSeller?: boolean;
-  hashtags?: string[];
-  story?: string;
-  storyMedia?: string;
+
+  media?: {
+    mainImage?: string | null;
+    galleryImages?: Array<string | ProductImage>;
+  };
+
   mainImage?: string | null;
-  galleryImages?: ProductImage[];
+  galleryImages?: Array<string | ProductImage>;
   images?: Array<string | ProductImage>;
+
   variants?: ProductVariant[];
-  createdAt?: string;
-  updatedAt?: string;
-  sku?: string;
-  slug?: string;
-  size?: string;
-  color?: string;
+
+  bestSeller?: boolean;
+  trendy?: boolean;
+  isActive?: boolean;
 }
 
-function toNumber(value: unknown, fallback = 0) {
+function toNumber(value: unknown, fallback = 0): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }
@@ -76,157 +92,205 @@ function getImageUrl(image: string | ProductImage | undefined | null): string {
   return typeof image.url === "string" ? image.url : "";
 }
 
-function normalizeImages(product: PreviewProduct | null): string[] {
-  if (!product) return [];
-
-  const urls: string[] = [];
-
-  if (isNonEmptyString(product.mainImage)) {
-    urls.push(product.mainImage);
-  }
-
-  if (Array.isArray(product.galleryImages)) {
-    for (const img of product.galleryImages) {
-      const url = getImageUrl(img);
-      if (isNonEmptyString(url)) urls.push(url);
-    }
-  }
-
-  if (Array.isArray(product.images)) {
-    for (const img of product.images) {
-      const url = getImageUrl(img);
-      if (isNonEmptyString(url)) urls.push(url);
-    }
-  }
-
-  if (Array.isArray(product.variants)) {
-    for (const variant of product.variants) {
-      if (Array.isArray(variant.images)) {
-        for (const img of variant.images) {
-          const url = getImageUrl(img);
-          if (isNonEmptyString(url)) urls.push(url);
-        }
-      }
-
-      if (isNonEmptyString(variant.primaryImage)) {
-        urls.push(variant.primaryImage);
-      }
-
-      if (Array.isArray(variant.sizes)) {
-        for (const size of variant.sizes) {
-          if (Array.isArray(size.images)) {
-            for (const img of size.images) {
-              const url = getImageUrl(img);
-              if (isNonEmptyString(url)) urls.push(url);
-            }
-          }
-
-          if (isNonEmptyString(size.primaryImage)) {
-            urls.push(size.primaryImage);
-          }
-        }
-      }
-    }
-  }
-
-  return Array.from(new Set(urls.filter(isNonEmptyString)));
+function unwrapApiResponse(response: any): PreviewProduct | null {
+  const level1 = response?.data ?? response;
+  const level2 = level1?.data ?? level1;
+  return level2 || null;
 }
 
-function deriveOfferPercentage(product: PreviewProduct | null) {
+function formatPrice(value: number): string {
+  return `₹${value.toLocaleString("en-IN")}`;
+}
+
+function inferColorSwatch(color: string) {
+  const c = color.toLowerCase();
+  if (c.includes("rose gold")) return "#D9A6A0";
+  if (c.includes("gold")) return "#C9A227";
+  if (c.includes("silver")) return "#98A2B3";
+  if (c.includes("black")) return "#2F3441";
+  if (c.includes("white")) return "#EAEAEA";
+  if (c.includes("pink")) return "#E8B7C8";
+  return "#D9A6A0";
+}
+
+function getProductName(product: PreviewProduct | null) {
+  return product?.productName || product?.name || "Product";
+}
+
+function getProductSku(product: PreviewProduct | null) {
+  return product?.sku || product?.productId || "-";
+}
+
+function getAllColors(product: PreviewProduct | null): string[] {
+  if (!Array.isArray(product?.variants)) return [];
+  return product.variants
+    .map((variant) => variant?.color || "")
+    .filter((color, index, arr) => color && arr.indexOf(color) === index);
+}
+
+function getVariantByColor(
+  product: PreviewProduct | null,
+  selectedColor: string
+): ProductVariant | null {
+  if (!Array.isArray(product?.variants)) return null;
+  return (
+    product.variants.find(
+      (variant) =>
+        (variant?.color || "").trim().toLowerCase() ===
+        selectedColor.trim().toLowerCase()
+    ) || null
+  );
+}
+
+function getSizeLabels(variant: ProductVariant | null): string[] {
+  if (!variant || !Array.isArray(variant.sizes)) return [];
+  return variant.sizes
+    .map((sizeItem) => (isNonEmptyString(sizeItem?.size) ? sizeItem.size.trim() : ""))
+    .filter((size, index, arr) => size && arr.indexOf(size) === index);
+}
+
+function getSizeObject(
+  variant: ProductVariant | null,
+  selectedSize: string
+): ProductVariantSize | null {
+  if (!variant || !Array.isArray(variant.sizes)) return null;
+  return (
+    variant.sizes.find(
+      (sizeItem) =>
+        (sizeItem?.size || "").trim().toLowerCase() ===
+        selectedSize.trim().toLowerCase()
+    ) || null
+  );
+}
+
+function getBasePrice(product: PreviewProduct | null): number {
+  if (!product) return 0;
+  if (toNumber(product?.pricing?.price, 0) > 0) return toNumber(product.pricing?.price, 0);
+  if (toNumber(product?.price, 0) > 0) return toNumber(product.price, 0);
+  return 0;
+}
+
+function getOriginalPrice(product: PreviewProduct | null): number {
+  if (!product) return 0;
+  if (toNumber(product?.pricing?.originalPrice, 0) > 0) {
+    return toNumber(product.pricing?.originalPrice, 0);
+  }
+  if (toNumber(product?.originalPrice, 0) > 0) {
+    return toNumber(product.originalPrice, 0);
+  }
+  if (toNumber(product?.discountPrice, 0) > 0) {
+    return toNumber(product.discountPrice, 0);
+  }
+  return 0;
+}
+
+function getDiscountPercent(product: PreviewProduct | null, currentPrice: number): number {
   if (!product) return 0;
 
-  if (toNumber(product.offerPercentage, 0) > 0) {
+  if (toNumber(product?.pricing?.offerPercentage, 0) > 0) {
+    return toNumber(product.pricing?.offerPercentage, 0);
+  }
+
+  if (toNumber(product?.offerPercentage, 0) > 0) {
     return toNumber(product.offerPercentage, 0);
   }
 
-  const price = toNumber(product.price, 0);
-  const compare =
-    toNumber(product.originalPrice, 0) || toNumber(product.discountPrice, 0);
-
-  if (compare > price && price > 0) {
-    return Math.round(((compare - price) / compare) * 100);
+  const originalPrice = getOriginalPrice(product);
+  if (originalPrice > currentPrice && currentPrice > 0) {
+    return Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
   }
 
   return 0;
 }
 
-function getAllColors(product: PreviewProduct | null): string[] {
-  const colorSet = new Set<string>();
+function getSelectedPrice(
+  product: PreviewProduct | null,
+  variant: ProductVariant | null,
+  sizeObj: ProductVariantSize | null
+): number {
+  if (toNumber(sizeObj?.price, 0) > 0) return toNumber(sizeObj?.price, 0);
+  if (toNumber(variant?.price, 0) > 0) return toNumber(variant?.price, 0);
+  return getBasePrice(product);
+}
 
-  if (isNonEmptyString(product?.color)) {
-    colorSet.add(product.color);
+function getSelectedStock(
+  product: PreviewProduct | null,
+  variant: ProductVariant | null,
+  sizeObj: ProductVariantSize | null
+): number {
+  if (sizeObj) return toNumber(sizeObj?.stock, 0);
+
+  if (variant && Array.isArray(variant.sizes) && variant.sizes.length > 0) {
+    return variant.sizes.reduce(
+      (sum, item) => sum + toNumber(item?.stock, 0),
+      0
+    );
   }
 
-  if (Array.isArray(product?.variants)) {
-    for (const variant of product.variants) {
-      if (isNonEmptyString(variant?.color)) {
-        colorSet.add(variant.color);
-      }
+  if (toNumber(variant?.stock, 0) > 0) return toNumber(variant?.stock, 0);
+  if (toNumber(product?.totalStock, 0) > 0) return toNumber(product?.totalStock, 0);
+  if (toNumber(product?.stock, 0) > 0) return toNumber(product?.stock, 0);
+
+  return 0;
+}
+
+function getSelectedImages(
+  product: PreviewProduct | null,
+  variant: ProductVariant | null,
+  sizeObj: ProductVariantSize | null
+): string[] {
+  const urls: string[] = [];
+
+  if (sizeObj) {
+    if (Array.isArray(sizeObj.images)) {
+      sizeObj.images.forEach((img) => {
+        const url = getImageUrl(img);
+        if (isNonEmptyString(url)) urls.push(url);
+      });
+    }
+    if (isNonEmptyString(sizeObj.primaryImage)) {
+      urls.push(sizeObj.primaryImage);
     }
   }
 
-  return Array.from(colorSet);
-}
-
-function getAllSizes(product: PreviewProduct | null): string[] {
-  const sizeSet = new Set<string>();
-
-  if (isNonEmptyString(product?.size)) {
-    sizeSet.add(product.size);
-  }
-
-  if (Array.isArray(product?.variants)) {
-    for (const variant of product.variants) {
-      if (isNonEmptyString(variant?.size)) {
-        sizeSet.add(variant.size);
-      }
-
-      if (Array.isArray(variant?.sizes)) {
-        for (const s of variant.sizes) {
-          if (isNonEmptyString(s?.size)) {
-            sizeSet.add(s.size);
-          }
-        }
-      }
+  if (variant) {
+    if (Array.isArray(variant.images)) {
+      variant.images.forEach((img) => {
+        const url = getImageUrl(img);
+        if (isNonEmptyString(url)) urls.push(url);
+      });
+    }
+    if (isNonEmptyString(variant.primaryImage)) {
+      urls.push(variant.primaryImage);
     }
   }
 
-  return Array.from(sizeSet);
-}
+  if (isNonEmptyString(product?.media?.mainImage)) {
+    urls.push(product.media!.mainImage!);
+  }
 
-function inferColorSwatch(color: string) {
-  const c = color.toLowerCase();
+  if (Array.isArray(product?.media?.galleryImages)) {
+    product.media.galleryImages.forEach((img) => {
+      const url = getImageUrl(img);
+      if (isNonEmptyString(url)) urls.push(url);
+    });
+  }
 
-  if (c.includes("rose gold")) return "#D9A6A0";
-  if (c.includes("gold")) return "#C9A227";
-  if (c.includes("silver")) return "#98A2B3";
-  if (c.includes("grey")) return "#98A2B3";
-  if (c.includes("gray")) return "#98A2B3";
-  if (c.includes("black")) return "#2F3441";
-  if (c.includes("white")) return "#EAEAEA";
-  if (c.includes("pink")) return "#E8B7C8";
-  if (c.includes("red")) return "#E4546B";
-  if (c.includes("green")) return "#7BAE7F";
-  if (c.includes("blue")) return "#8FA2C9";
-  if (c.includes("brown")) return "#9A715B";
-  if (c.includes("yellow")) return "#D4B04C";
-  if (c.includes("oxidized")) return "#7C8496";
-  if (c.includes("multi")) return "#C7A0D8";
+  if (Array.isArray(product?.galleryImages)) {
+    product.galleryImages.forEach((img) => {
+      const url = getImageUrl(img);
+      if (isNonEmptyString(url)) urls.push(url);
+    });
+  }
 
-  return "#D9A6A0";
-}
+  if (Array.isArray(product?.images)) {
+    product.images.forEach((img) => {
+      const url = getImageUrl(img);
+      if (isNonEmptyString(url)) urls.push(url);
+    });
+  }
 
-function unwrapApiResponse(response: any): PreviewProduct | null {
-  const payload = response?.data ?? response;
-
-  if (!payload) return null;
-  if (payload?.data) return payload.data as PreviewProduct;
-
-  return payload as PreviewProduct;
-}
-
-function formatPrice(value: number) {
-  return `₹${value.toLocaleString("en-IN")}`;
+  return Array.from(new Set(urls.filter(isNonEmptyString)));
 }
 
 export default function ProductPreviewModal({
@@ -236,20 +300,18 @@ export default function ProductPreviewModal({
 }: ProductPreviewModalProps) {
   const [product, setProduct] = useState<PreviewProduct | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeImage, setActiveImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
+  const [activeImage, setActiveImage] = useState(0);
 
   useEffect(() => {
     let mounted = true;
 
     const fetchProduct = async () => {
       setIsLoading(true);
-
       try {
         const response = await productService.getById(productId);
         const data = unwrapApiResponse(response);
-
         if (mounted) {
           setProduct(data);
         }
@@ -268,41 +330,57 @@ export default function ProductPreviewModal({
     };
   }, [productId]);
 
-  const images = useMemo(() => normalizeImages(product), [product]);
   const colors = useMemo(() => getAllColors(product), [product]);
-  const sizes = useMemo(() => getAllSizes(product), [product]);
 
   useEffect(() => {
-    if (!selectedColor && colors.length > 0) {
-      setSelectedColor(colors[0] ?? "");
+    if (colors.length > 0) {
+      setSelectedColor((prev) => (prev && colors.includes(prev) ? prev : colors[0]));
+    } else {
+      setSelectedColor("");
     }
-  }, [colors, selectedColor]);
+  }, [colors]);
+
+  const selectedVariant = useMemo(
+    () => getVariantByColor(product, selectedColor),
+    [product, selectedColor]
+  );
+
+  const sizeLabels = useMemo(
+    () => getSizeLabels(selectedVariant),
+    [selectedVariant]
+  );
 
   useEffect(() => {
-    if (!selectedSize && sizes.length > 0) {
-      setSelectedSize(sizes[0] ?? "");
+    if (sizeLabels.length > 0) {
+      setSelectedSize((prev) =>
+        prev && sizeLabels.includes(prev) ? prev : sizeLabels[0]
+      );
+    } else {
+      setSelectedSize("");
     }
-  }, [sizes, selectedSize]);
+  }, [sizeLabels]);
+
+  const selectedSizeObj = useMemo(
+    () => getSizeObject(selectedVariant, selectedSize),
+    [selectedVariant, selectedSize]
+  );
+
+  const selectedImages = useMemo(
+    () => getSelectedImages(product, selectedVariant, selectedSizeObj),
+    [product, selectedVariant, selectedSizeObj]
+  );
 
   useEffect(() => {
-    if (activeImage >= images.length) {
-      setActiveImage(0);
-    }
-  }, [images.length, activeImage]);
+    setActiveImage(0);
+  }, [selectedColor, selectedSize, productId]);
 
-  const name = product?.productName || product?.name || "Product";
-  const sku = product?.sku || product?.productId || "-";
-  const price = toNumber(product?.price, 0);
-  const comparePrice =
-    toNumber(product?.originalPrice, 0) || toNumber(product?.discountPrice, 0);
-  const offerPercentage = deriveOfferPercentage(product);
-  const stock = toNumber(product?.stock, 0);
-  const description = product?.description || "No description available.";
+  const currentPrice = getSelectedPrice(product, selectedVariant, selectedSizeObj);
+  const originalPrice = getOriginalPrice(product);
+  const discountPercent = getDiscountPercent(product, currentPrice);
+  const stock = getSelectedStock(product, selectedVariant, selectedSizeObj);
 
   const tags: string[] = [
-    ...(Array.isArray(product?.hashtags)
-      ? product.hashtags.filter(isNonEmptyString)
-      : []),
+    ...(Array.isArray(product?.hashtags) ? product.hashtags : []),
     product?.category,
     product?.material,
     product?.bestSeller ? "Best Seller" : undefined,
@@ -330,9 +408,7 @@ export default function ProductPreviewModal({
           <div className="h-[320px] flex items-center justify-center">
             <div className="flex items-center gap-3 text-[#6B7280]">
               <Loader2 size={18} className="animate-spin" />
-              <span className="text-sm font-medium">
-                Loading product preview...
-              </span>
+              <span className="text-sm font-medium">Loading product preview...</span>
             </div>
           </div>
         ) : !product ? (
@@ -345,10 +421,10 @@ export default function ProductPreviewModal({
             <div className="grid grid-cols-1 md:grid-cols-[344px_1fr] gap-4 items-start">
               <div>
                 <div className="rounded-[10px] bg-[#F6F2F4] border border-[#F0E4E8] h-[184px] flex items-center justify-center overflow-hidden">
-                  {images[activeImage] ? (
+                  {selectedImages[activeImage] ? (
                     <img
-                      src={images[activeImage]}
-                      alt={name}
+                      src={selectedImages[activeImage]}
+                      alt={getProductName(product)}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -359,9 +435,9 @@ export default function ProductPreviewModal({
                   )}
                 </div>
 
-                {images.length > 0 && (
+                {selectedImages.length > 0 && (
                   <div className="flex gap-2 mt-2.5 overflow-x-auto pb-1">
-                    {images.map((img, index) => (
+                    {selectedImages.map((img, index) => (
                       <button
                         key={`${img}-${index}`}
                         type="button"
@@ -374,7 +450,7 @@ export default function ProductPreviewModal({
                       >
                         <img
                           src={img}
-                          alt={`${name}-${index + 1}`}
+                          alt={`${getProductName(product)}-${index + 1}`}
                           className="w-full h-full object-cover"
                         />
                       </button>
@@ -386,25 +462,27 @@ export default function ProductPreviewModal({
               <div className="flex flex-col min-h-[246px]">
                 <div>
                   <h2 className="text-[16px] leading-[1.25] font-semibold text-[#1F1728]">
-                    {name}
+                    {getProductName(product)}
                   </h2>
 
-                  <p className="text-[10px] text-[#A29AAD] mt-0.5">SKU: {sku}</p>
+                  <p className="text-[10px] text-[#A29AAD] mt-0.5">
+                    SKU: {selectedSizeObj?.sku || getProductSku(product)}
+                  </p>
 
                   <div className="flex items-center gap-2.5 mt-2.5 flex-wrap">
                     <span className="text-[15px] font-bold text-[#EB5C8A]">
-                      {formatPrice(price)}
+                      {formatPrice(currentPrice)}
                     </span>
 
-                    {comparePrice > price ? (
+                    {originalPrice > currentPrice ? (
                       <span className="text-[10px] text-[#9F98A7] line-through">
-                        {formatPrice(comparePrice)}
+                        {formatPrice(originalPrice)}
                       </span>
                     ) : null}
 
-                    {offerPercentage > 0 ? (
+                    {discountPercent > 0 ? (
                       <span className="px-2 py-0.5 rounded-full bg-[#DFF4E8] text-[#3D8B5D] text-[9px] font-semibold">
-                        {offerPercentage}% OFF
+                        {discountPercent}% OFF
                       </span>
                     ) : null}
                   </div>
@@ -422,36 +500,41 @@ export default function ProductPreviewModal({
                           type="button"
                           title={color}
                           onClick={() => setSelectedColor(color)}
-                          className={`w-6 h-6 rounded-full border transition ${
+                          className={`w-6 h-6 rounded-[6px] border transition ${
                             selectedColor === color
                               ? "border-[#EB6F96] shadow-[0_0_0_1.5px_rgba(235,111,150,0.16)]"
                               : "border-transparent"
                           }`}
-                          style={{ backgroundColor: inferColorSwatch(color) }}
+                          style={{
+                            backgroundColor:
+                              selectedVariant?.colorCode && color === selectedColor
+                                ? selectedVariant.colorCode
+                                : inferColorSwatch(color),
+                          }}
                         />
                       ))}
                     </div>
                   </div>
                 )}
 
-                {sizes.length > 0 && (
+                {sizeLabels.length > 0 && (
                   <div className="mt-3">
                     <p className="text-[10px] font-medium text-[#6B6572] mb-1.5">
                       Size
                     </p>
                     <div className="flex gap-2 flex-wrap">
-                      {sizes.map((size) => (
+                      {sizeLabels.map((sizeLabel) => (
                         <button
-                          key={size}
+                          key={sizeLabel}
                           type="button"
-                          onClick={() => setSelectedSize(size)}
+                          onClick={() => setSelectedSize(sizeLabel)}
                           className={`min-w-[48px] px-2.5 h-7 rounded-[6px] border text-[10px] font-medium transition ${
-                            selectedSize === size
+                            selectedSize === sizeLabel
                               ? "border-[#EB6F96] text-[#EB6F96] bg-[#FFF7FA]"
                               : "border-[#E6E0E5] text-[#47414E] bg-white hover:border-[#EB6F96]"
                           }`}
                         >
-                          {size}
+                          {sizeLabel}
                         </button>
                       ))}
                     </div>
@@ -474,7 +557,7 @@ export default function ProductPreviewModal({
                     Description
                   </p>
                   <p className="text-[10px] leading-4 text-[#7B7482]">
-                    {description}
+                    {product.description || "No description available."}
                   </p>
                 </div>
 

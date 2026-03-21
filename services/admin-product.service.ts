@@ -1,8 +1,9 @@
 import apiClient from "@/lib/api";
 import axios, { AxiosRequestConfig } from "axios";
 
-/** For endpoints that must go through /api proxy with auth */
-const patchClient = axios.create({ baseURL: "/api" });
+const patchClient = axios.create({
+  baseURL: "/api",
+});
 
 patchClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
@@ -34,12 +35,15 @@ function handleAxiosError(error: unknown, label: string): never {
       baseURL: error.config?.baseURL,
       status: error.response?.status,
       statusText: error.response?.statusText,
-      message: (error.response?.data as any)?.message || error.message,
+      message:
+        (error.response?.data as { message?: string } | undefined)?.message ||
+        error.message,
       data: error.response?.data,
     });
 
     throw new Error(
-      (error.response?.data as any)?.message || `${label} failed`
+      (error.response?.data as { message?: string } | undefined)?.message ||
+        `${label} failed`
     );
   }
 
@@ -47,10 +51,10 @@ function handleAxiosError(error: unknown, label: string): never {
   throw error;
 }
 
-function cleanParams<T extends Record<string, any>>(params: T = {} as T) {
-  const cleaned: Record<string, any> = {};
+function cleanParams<T extends object>(params: T = {} as T) {
+  const cleaned: Record<string, unknown> = {};
 
-  Object.entries(params).forEach(([key, value]) => {
+  Object.entries(params as Record<string, unknown>).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
       cleaned[key] = value;
     }
@@ -60,7 +64,7 @@ function cleanParams<T extends Record<string, any>>(params: T = {} as T) {
 }
 
 export interface AdminProductListParams {
-  id?: string; // added so passing id from UI won't throw TS error
+  id?: string;
   page?: number;
   limit?: number;
   q?: string;
@@ -85,7 +89,6 @@ export interface ProductStatusPayload {
 }
 
 export const adminProductService = {
-  // LIST PRODUCTS
   async getAll(params: AdminProductListParams = {}) {
     try {
       const res = await apiClient.get("/products", {
@@ -97,7 +100,6 @@ export const adminProductService = {
     }
   },
 
-  // SEARCH PRODUCTS
   async search(query: string, params: Omit<AdminProductListParams, "q"> = {}) {
     try {
       const res = await apiClient.get("/products/search", {
@@ -112,7 +114,6 @@ export const adminProductService = {
     }
   },
 
-  // GET PRODUCT BY ID / PRODUCT ID
   async getById(id: string | number) {
     try {
       const res = await apiClient.get(`/products/${id}`);
@@ -122,8 +123,7 @@ export const adminProductService = {
     }
   },
 
-  // CREATE PRODUCT
-  async create(data: FormData | Record<string, any>) {
+  async create(data: FormData | Record<string, unknown>) {
     try {
       const config: AxiosRequestConfig = {
         headers: getMultipartHeaders(data),
@@ -136,8 +136,7 @@ export const adminProductService = {
     }
   },
 
-  // UPDATE PRODUCT
-  async update(id: string | number, data: FormData | Record<string, any>) {
+  async update(id: string | number, data: FormData | Record<string, unknown>) {
     try {
       const config: AxiosRequestConfig = {
         headers: getMultipartHeaders(data),
@@ -150,7 +149,6 @@ export const adminProductService = {
     }
   },
 
-  // DELETE PRODUCT
   async delete(id: string | number) {
     try {
       const res = await apiClient.delete(`/products/${id}`);
@@ -160,20 +158,38 @@ export const adminProductService = {
     }
   },
 
-  // TOGGLE ACTIVE STATUS
   async updateStatus(id: string | number, data: ProductStatusPayload) {
-    try {
-      const res = await patchClient.patch(`/products/${id}/status`, data);
-      return res.data;
-    } catch (error) {
-      handleAxiosError(error, "UPDATE PRODUCT STATUS ERROR");
+    const productId = String(id);
+    const isActive =
+      typeof data?.isActive === "boolean"
+        ? data.isActive
+        : String(data?.status || "").toLowerCase() === "active";
+
+    const attempts = [
+      { isActive },
+      { status: isActive ? "Active" : "Inactive" },
+      { isActive, status: isActive ? "Active" : "Inactive" },
+      { active: isActive },
+      { enabled: isActive },
+    ];
+
+    let lastError: unknown = null;
+
+    for (const body of attempts) {
+      try {
+        const res = await apiClient.patch(`/products/${productId}/status`, body);
+        return res.data;
+      } catch (error) {
+        lastError = error;
+      }
     }
+
+    handleAxiosError(lastError, "UPDATE PRODUCT STATUS ERROR");
   },
 
-  // ADD IMAGES
-  async addImages(id: string | number, data: FormData | Record<string, any>) {
+  async addImages(productId: string | number, data: FormData) {
     try {
-      const res = await apiClient.post(`/products/${id}`, data, {
+      const res = await patchClient.post(`/products/${productId}/images`, data, {
         headers: getMultipartHeaders(data),
       });
       return res.data;
@@ -182,10 +198,9 @@ export const adminProductService = {
     }
   },
 
-  // DELETE IMAGE
   async deleteImage(productId: string | number, imageId: string) {
     try {
-      const res = await apiClient.delete(
+      const res = await patchClient.delete(
         `/products/${productId}/images/${imageId}`
       );
       return res.data;
@@ -194,7 +209,6 @@ export const adminProductService = {
     }
   },
 
-  // FEATURED
   async getFeatured() {
     try {
       const res = await apiClient.get("/products/featured");
@@ -204,7 +218,6 @@ export const adminProductService = {
     }
   },
 
-  // BEST SELLERS
   async getBestSellers() {
     try {
       const res = await apiClient.get("/products/best-sellers");
@@ -214,7 +227,6 @@ export const adminProductService = {
     }
   },
 
-  // STORY
   async getStory(productId: string | number) {
     try {
       const res = await apiClient.get(`/products/${productId}/story`);
@@ -224,7 +236,6 @@ export const adminProductService = {
     }
   },
 
-  // SIMILAR PRODUCTS
   async getSimilar(productId: string | number) {
     try {
       const res = await apiClient.get(`/products/${productId}/similar`);
@@ -234,7 +245,6 @@ export const adminProductService = {
     }
   },
 
-  // SUBMIT RATING
   async submitRating(
     productId: string | number,
     data: ProductRatingPayload
