@@ -5,7 +5,7 @@ import React from "react";
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background font-sans text-foreground">
+    <div className="min-h-screen bg-[#FEF5F1] font-sans text-foreground">
       {children}
     </div>
   );
