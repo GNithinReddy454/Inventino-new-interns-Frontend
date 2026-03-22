@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, FormEvent } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -42,6 +42,20 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
 
+  // Memoize filtered unique addresses to use in both logic and render
+  const uniqueAddresses = useMemo(() => {
+    return savedAddresses.filter((addr, index, self) => 
+      index === self.findIndex((t) => (
+        t.fullName === addr.fullName &&
+        t.street === addr.street &&
+        t.city === addr.city &&
+        t.state === addr.state &&
+        t.pincode === addr.pincode &&
+        t.phone === addr.phone
+      ))
+    );
+  }, [savedAddresses]);
+
   // Form state for new address
   const [formData, setFormData] = useState<ShippingAddress>({
     firstName: "",
@@ -74,23 +88,21 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
 
   // Auto-select logic when addresses change
   useEffect(() => {
-    if (savedAddresses.length > 0) {
-      const defaultAddr = savedAddresses.find((a) => a.isDefault);
-      if (defaultAddr) {
-        setSelectedAddressId(defaultAddr._id);
-      } else if (!selectedAddressId) {
-        setSelectedAddressId(savedAddresses[0]._id);
+    if (uniqueAddresses.length > 0) {
+      if (!selectedAddressId) {
+        // ALWAYS select the first visible unique address by default
+        setSelectedAddressId(uniqueAddresses[0]._id);
       }
     } else if (!loadingAddresses) {
       setShowNewForm(true);
     }
-  }, [savedAddresses, loadingAddresses, selectedAddressId]);
+  }, [uniqueAddresses, loadingAddresses, selectedAddressId]);
 
   const handleChange = (field: keyof ShippingAddress, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmitNewAddress = (e: React.FormEvent) => {
+  const handleSubmitNewAddress = (e: FormEvent) => {
     e.preventDefault();
     
     // Mark all as touched on submit attempt
@@ -168,7 +180,7 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
           <>
             {/* Address Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              {savedAddresses.map((addr) => {
+              {uniqueAddresses.map((addr) => {
                 const isSelected = selectedAddressId === addr._id && !showNewForm;
                 return (
                   <button
@@ -212,9 +224,11 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
                         {addr.addressType}
                       </span>
                       {addr.isDefault && (
-                        <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
-                          Default
-                        </span>
+                        addr._id === savedAddresses.find(a => a.isDefault)?._id ? (
+                          <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
+                            Default
+                          </span>
+                        ) : null
                       )}
                     </div>
 

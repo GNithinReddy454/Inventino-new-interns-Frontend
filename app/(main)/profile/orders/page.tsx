@@ -21,6 +21,7 @@ type TabType = "all" | "delivered" | "cancelled";
 type OrderStatus = "Delivered" | "Shipped" | "Processing" | "Cancelled";
 
 interface OrderItem {
+  id: string;      // productId for linking
   name: string;
   variant: string;
   price: string;
@@ -78,14 +79,17 @@ function mapApiOrder(apiOrder: any): Order {
   return {
     id: apiOrder.orderNumber,
     backendId: apiOrder._id ?? apiOrder.id ?? apiOrder.orderNumber,
-    date: new Date(apiOrder.createdAt).toLocaleDateString("en-US", {
+    date: new Date(apiOrder.createdAt).toLocaleString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }),
     total: `₹${Number(apiOrder.pricing?.total ?? 0).toFixed(2)}`,
     status: mappedStatus,
     items: (apiOrder.items ?? []).map((item: any) => ({
+      id: item.productId ?? "",
       name: item.productName ?? item.name ?? "Product",
       variant: `Qty: ${item.quantity ?? 1}`,
       price: `₹${Number(item.price).toFixed(2)}`,
@@ -403,8 +407,9 @@ export default function OrdersPage() {
                       ]
                         .filter(Boolean)
                         .map((item, i) => (
-                          <div
+                          <Link
                             key={i}
+                            href={`/products/${item!.id}`}
                             style={{
                               display: "flex",
                               alignItems: "center",
@@ -414,6 +419,16 @@ export default function OrdersPage() {
                               padding: "10px 12px",
                               border: "1px solid #fce7f3",
                               position: "relative",
+                              textDecoration: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLElement).style.borderColor = "#D94F7A";
+                              (e.currentTarget as HTMLElement).style.background = "#fff";
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLElement).style.borderColor = "#fce7f3";
+                              (e.currentTarget as HTMLElement).style.background = "#fdf8fb";
                             }}
                           >
                             {i === 1 && (
@@ -493,7 +508,7 @@ export default function OrdersPage() {
                                 {item!.price}
                               </p>
                             </div>
-                          </div>
+                          </Link>
                         ))}
                     </div>
 
@@ -523,7 +538,7 @@ export default function OrdersPage() {
                           : order.status === "Shipped"
                             ? "repeat(3,1fr)"
                             : order.status === "Processing"
-                              ? "repeat(2,1fr)"
+                              ? "repeat(3,1fr)"
                               : "1fr",
                     }}
                   >
@@ -672,6 +687,24 @@ export default function OrdersPage() {
                     {/* ── Processing ── */}
                     {order.status === "Processing" && (
                       <>
+                        <Link
+                          href={`/profile/orders/${order.backendId}`}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 6,
+                            padding: "12px 8px",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            textDecoration: "none",
+                            background: "#D94F7A",
+                            color: "#fff",
+                            borderRight: "1px solid #fce7f3",
+                          }}
+                        >
+                          <Eye size={13} /> View Details
+                        </Link>
                         <button
                           onClick={() => setCancellingId(order.id)}
                           style={{

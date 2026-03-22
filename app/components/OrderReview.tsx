@@ -144,7 +144,7 @@ export function OrderReview({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-sm text-pink-600">₹{(price * quantity).toFixed(2)}</p>
+                    <p className="font-bold text-sm text-pink-600">₹{((price || 0) * (quantity || 1)).toFixed(2)}</p>
                   </div>
                 </div>
               );
@@ -157,7 +157,7 @@ export function OrderReview({
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Subtotal</span>
-              <span className="font-semibold">₹{summary.subtotal.toFixed(2)}</span>
+              <span className="font-semibold">₹{(summary.subtotal || 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Shipping</span>
@@ -165,7 +165,7 @@ export function OrderReview({
             </div>
             <div className="flex justify-between items-center pt-3 border-t border-pink-100 mt-3">
               <span className="text-base font-bold text-gray-900">Total Payable Amount</span>
-              <span className="text-2xl font-black text-pink-600">₹{summary.total.toFixed(2)}</span>
+              <span className="text-2xl font-black text-pink-600">₹{(summary.total || 0).toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -177,7 +177,7 @@ export function OrderReview({
             variant="outline"
             onClick={onBack}
             disabled={isProcessing}
-            className="flex-1 py-6 border-pink-200 text-pink-600 hover:bg-pink-50 rounded-xl font-bold"
+            className="flex-1 py-6 border-pink-200 text-pink-600 hover:bg-pink-600 hover:text-white hover:border-pink-600 transition-all duration-300 rounded-xl font-bold"
           >
             Back to Payment
           </Button>

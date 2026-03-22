@@ -28,12 +28,20 @@ export const placeOrderAction = createAsyncThunk(
         addressId: string;
         items: Array<{ productId: string; quantity: number; color?: string | null; size?: string }>;
         paymentMethod: string;
+        razorpay_order_id?: string;
+        razorpay_payment_id?: string;
+        razorpay_signature?: string;
     }, { rejectWithValue }) => {
         try {
             const response = await orderService.placeOrder({
                 addressId: payload.addressId,
                 items: payload.items,
-                payment: { method: payload.paymentMethod },
+                payment: { 
+                    method: payload.paymentMethod,
+                    razorpay_order_id: payload.razorpay_order_id,
+                    razorpay_payment_id: payload.razorpay_payment_id,
+                    razorpay_signature: payload.razorpay_signature,
+                },
             });
             return response;
         } catch (error: any) {

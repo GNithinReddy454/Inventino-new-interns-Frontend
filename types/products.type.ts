@@ -12,23 +12,35 @@ export interface ApiProduct {
   productName?: string;
   name?: string;
   description?: string;
-  price: number;
-  originalPrice?: number;
+  price?: number;
+  originalPrice?: number | null;
   discountPrice?: number;
+  pricing?: {
+    price: number;
+    originalPrice?: number | null;
+    offerPercentage?: number | null;
+    taxIncluded?: boolean;
+  };
   category?: string;
   stock?: number;
+  totalStock?: number;
   slug?: string;
   images?: ProductImageInput[];
-  galleryImages?: ProductImageInput[];
-  mainImage?: string;
-  imageUrl?: string;
+  media?: {
+    mainImage?: string | null;
+    galleryImages?: ProductImageInput[];
+  };
   isActive?: boolean;
   isDeleted?: boolean;
   bestSeller?: boolean;
   trendy?: boolean;
   ratingsAverage?: number;
   ratingsCount?: number;
-  hashtags?: string[] | string;
+  rating?: number;
+  reviewCount?: number;
+  hashtags?: string[];
+  imageUrl?: string;
+  mainImage?: string;
   material?: string;
   size?: string;
   color?: string;
@@ -37,7 +49,12 @@ export interface ApiProduct {
   prices?: any[];
   createdAt?: string;
   updatedAt?: string;
-  story?: string;
+  story?: string | {
+    title?: string;
+    content?: string;
+    isDisplayed?: boolean;
+    featured?: boolean;
+  };
   sku?: string;
   variants?: any[];
   [key: string]: any;

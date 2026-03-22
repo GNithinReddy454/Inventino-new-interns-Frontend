@@ -180,8 +180,15 @@ const cartSlice = createSlice({
                 }
             });
             state.items = merged;
-            state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            state.totalAmount = action.payload?.data?.total || action.payload?.cart?.totalAmount || action.payload?.data?.newTotal || action.payload?.newTotal || state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
+            state.promoCode = action.payload?.data?.promoCode || action.payload?.cart?.promoCode || action.payload?.data?.code || action.payload?.code || action.payload?.promoCode || state.promoCode;
+            state.discount = Number(action.payload?.data?.discount || action.payload?.cart?.discount || action.payload?.data?.discountAmount || action.payload?.discount || state.discount || 0);
+
+            // Recalculate totalAmount if a discount is applied but not factored into totalAmount
+            if (state.discount > 0 && state.totalAmount === state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0)) {
+                state.totalAmount = state.totalAmount - state.discount;
+            }
         });
         builder.addCase(fetchCart.rejected, (state, action: any) => {
             state.isLoading = false;
@@ -254,13 +261,13 @@ const cartSlice = createSlice({
             state.discount = 0;
         });
 
-        // applyPromoCode
         builder.addCase(applyPromoCode.fulfilled, (state, action: any) => {
-            if (action.payload?.data) {
-                state.promoCode = action.payload.data.code;
-                state.discount = action.payload.data.discount;
-                state.originalTotal = action.payload.data.originalTotal;
-                state.totalAmount = action.payload.data.newTotal;
+            const data = action.payload?.data || action.payload;
+            if (data) {
+                state.promoCode = data.code || data.promoCode || action.meta.arg;
+                state.discount = data.discount || data.discountAmount || 0;
+                state.originalTotal = data.originalTotal || state.totalAmount;
+                state.totalAmount = data.newTotal || data.total || (state.totalAmount - state.discount);
             }
         });
     },

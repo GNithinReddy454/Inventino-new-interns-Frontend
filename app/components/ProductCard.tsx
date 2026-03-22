@@ -235,17 +235,17 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
 
           <div style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 10 }}>
             <StarRating rating={rating} />
-            <span style={{ fontSize: 11, color: "#6b7280", marginLeft: 2 }}>{rating.toFixed(1)}</span>
+            <span style={{ fontSize: 11, color: "#6b7280", marginLeft: 2 }}>{(rating || 0).toFixed(1)}</span>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>
-                ₹{product.price.toFixed(0)}
+                ₹{(product.price || 0).toFixed(0)}
               </span>
               {hasDiscount && (
                 <span style={{ fontSize: 12, color: "#9ca3af", textDecoration: "line-through" }}>
-                  ₹{product.originalPrice!.toFixed(0)}
+                  ₹{(product.originalPrice || 0).toFixed(0)}
                 </span>
               )}
             </div>

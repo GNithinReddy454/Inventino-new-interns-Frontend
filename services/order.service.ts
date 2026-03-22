@@ -27,9 +27,22 @@ export const orderService = {
     }>;
     payment: {
       method: string;
+      razorpay_order_id?: string;
+      razorpay_payment_id?: string;
+      razorpay_signature?: string;
     };
   }) {
     const response = await apiClient.post("/orders", payload);
+    return response.data;
+  },
+
+  async verifyPayment(payload: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    orderId: string;
+  }) {
+    const response = await apiClient.post("/payments/verify", payload);
     return response.data;
   },
 

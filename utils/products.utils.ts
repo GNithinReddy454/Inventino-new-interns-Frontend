@@ -83,13 +83,10 @@ function resolveAllImages(p: ApiProduct): string[] {
 function resolveBadge(p: ApiProduct): { text: string; color: string } | undefined {
   if (p.bestSeller) return { text: "Best Seller", color: "gold" };
   if (p.trendy) return { text: "Trending", color: "pink" };
-
-  if (
-    typeof p.discountPrice === "number" &&
-    typeof p.price === "number" &&
-    p.discountPrice < p.price
-  ) {
-    const pct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
+  const basePrice = p.pricing?.price ?? p.discountPrice ?? p.price;
+  const original = p.pricing?.originalPrice ?? p.price;
+  if (basePrice && original && basePrice < original) {
+    const pct = Math.round(((original - basePrice) / original) * 100);
     return { text: `${pct}% OFF`, color: "green" };
   }
 
@@ -99,36 +96,34 @@ function resolveBadge(p: ApiProduct): { text: string; color: string } | undefine
 export function normalize(p: ApiProduct): NormalizedProduct {
   const tags = parseHashtags(p.hashtags);
 
-  const safeName = p.name || p.productName || "Untitled Product";
-  const safeDescription = p.description || "";
-  const safePrice = typeof p.price === "number" ? p.price : 0;
-  const safeDiscountPrice =
-    typeof p.discountPrice === "number" ? p.discountPrice : undefined;
-  const safeCategory = p.category || "";
-  const safeStock = typeof p.stock === "number" ? p.stock : 0;
-  const safeSlug = p.slug || "";
-  const safeRating =
-    typeof p.ratingsAverage === "number" ? p.ratingsAverage : 0;
-  const safeReviews =
-    typeof p.ratingsCount === "number" ? p.ratingsCount : 0;
+  const name = p.productName || p.name || (typeof p.story === 'object' ? p.story?.title : undefined) || "Unnamed Product";
+  const desc = p.description || (typeof p.story === 'object' ? p.story?.content : undefined) || "";
+  const priceVal = p.pricing?.price ?? p.discountPrice ?? p.price ?? 0;
+  const originalPrice = p.pricing?.originalPrice ?? p.price ?? 0;
+  const stock = p.totalStock ?? p.stock ?? 0;
+  const rating = p.rating ?? p.ratingsAverage ?? 0;
+  const reviews = p.reviewCount ?? p.ratingsCount ?? 0;
+  
+  const mainImage = p.media?.mainImage || p.mainImage || p.imageUrl || getImageUrl(p.images?.[0]) || PLACEHOLDER_IMAGE;
+  const gallery = p.media?.galleryImages?.map(img => getImageUrl(img)).filter((url): url is string => !!url) || p.images?.map(img => getImageUrl(img)).filter((url): url is string => !!url) || [];
 
   return {
-    id: p._id,
-    name: safeName,
-    description: safeDescription,
-    price: safeDiscountPrice ?? safePrice,
-    originalPrice: safePrice,
-    discountPrice: safeDiscountPrice,
-    image: resolvePrimaryImage(p),
-    images: resolveAllImages(p),
-    category: safeCategory,
-    stock: safeStock,
-    slug: safeSlug,
-    rating: safeRating,
-    reviews: safeReviews,
-    badge: resolveBadge(p),
-    tags: tags.length > 0 ? tags : [safeCategory].filter(Boolean),
-    bestSeller: !!p.bestSeller,
-    trendy: !!p.trendy,
+    id:            p._id || p.productId || Math.random().toString(36).substr(2, 9),
+    name:          name,
+    description:   desc,
+    price:         priceVal,
+    originalPrice: originalPrice,
+    discountPrice: p.discountPrice,
+    image:         mainImage,
+    images:        gallery.length > 0 ? gallery : [mainImage],
+    category:      p.category || "General",
+    stock:         stock,
+    slug:          p.slug || "",
+    rating:        rating,
+    reviews:       reviews,
+    badge:         resolveBadge(p),
+    tags:          tags.length > 0 ? tags : [p.category].filter(Boolean) as string[],
+    bestSeller:    p.bestSeller || (typeof p.story === 'object' ? p.story?.featured : undefined) || false,
+    trendy:        p.trendy || false,
   };
 }

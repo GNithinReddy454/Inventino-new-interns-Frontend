@@ -97,11 +97,14 @@ interface SimilarProduct {
 }
 
 interface ProductStory {
-  story?: string;
+  story?: string | { content?: string; title?: string };
+  content?: string;
   storyMedia?: string;
   productId?: string;
   name?: string;
 }
+
+// Merged ImageType definition at line 55
 
 interface ReviewData {
   reviews: Array<{
@@ -560,33 +563,40 @@ export default function ProductDetailsPage() {
               : []
             : [];
 
-        const basePrice = priceMatrix.length > 0 ? priceMatrix[0].price : data.price;
+        // Derive a base price for display before matrix is used
+        const basePrice =
+          priceMatrix.length > 0
+            ? priceMatrix[0].price
+            : data.pricing?.price ?? data.price ?? 0;
+
+        const mainImage = data.media?.mainImage || getImageUrl(data.images?.[0]) || FALLBACK_IMAGE;
+        const gallery = data.media?.galleryImages?.map((img: any) => getImageUrl(img)).filter(Boolean) || data.images?.map((img: any) => getImageUrl(img)).filter(Boolean) || [];
 
         setProduct({
           id: mongoId,
           mongoId,
-          name: data.name || data.productName || "Untitled Product",
+          name: data.productName || data.name || (typeof data.story === 'object' ? data.story?.title : undefined) || "Unnamed Product",
           price: basePrice,
-          originalPrice: data.originalPrice ?? basePrice + 150,
-          description: data.description || "",
-          category: data.category || "",
+          originalPrice: data.pricing?.originalPrice ?? data.originalPrice ?? (basePrice > 0 ? basePrice + 150 : 0),
+          description: data.description || (typeof data.story === 'object' ? data.story?.content : undefined) || "",
+          category: data.category || "General",
           image:
             colorVariants.length > 0
-              ? colorVariants[0].images[0] || FALLBACK_IMAGE
-              : normalizeImages(data.images)[0] || FALLBACK_IMAGE,
+              ? colorVariants[0].images[0] || mainImage
+              : mainImage,
           images:
             colorVariants.length > 0
               ? colorVariants[0].images.length > 0
                 ? colorVariants[0].images
-                : [FALLBACK_IMAGE]
-              : normalizeImages(data.images),
+                : gallery.length > 0 ? gallery : [mainImage]
+              : gallery.length > 0 ? gallery : [mainImage],
           slug,
           prdId,
-          rating: liveRating,
-          reviews: liveReviewCount,
+          rating: data.rating ?? liveRating,
+          reviews: data.reviewCount ?? liveReviewCount,
           color: data.color ?? "",
           material: data.material ?? "",
-          stock: data.stock ?? 0,
+          stock: data.totalStock ?? data.stock ?? 0,
           colors: flatColors,
           sizes: flatSizes,
           colorVariants: colorVariants.length > 0 ? colorVariants : undefined,
@@ -876,17 +886,22 @@ export default function ProductDetailsPage() {
     }, 100);
   }, []);
 
-  const storyImageSrc = useMemo(
-    () => (productStory?.storyMedia?.trim() ? productStory.storyMedia : product?.image || FALLBACK_IMAGE),
-    [productStory, product]
-  );
+  // ============================================================================
+  // MEMOIZED VALUES
+  // ============================================================================
 
-  const storyText = useMemo(
-    () =>
-      productStory?.story?.trim() ||
-      "Every piece I create is infused with love and intention. I want the wearer to feel special and confident.",
-    [productStory]
-  );
+  const storyImageSrc = useMemo(() => {
+    const media = productStory?.storyMedia;
+    return typeof media === "string" && media.trim() ? media : product?.image || FALLBACK_IMAGE;
+  }, [productStory, product]);
+
+  const storyText = useMemo(() => {
+    const s = productStory?.story;
+    if (typeof s === "string") return s.trim();
+    if (s && typeof s === "object" && typeof s.content === "string") return s.content.trim();
+    if (typeof productStory?.content === "string") return productStory.content.trim();
+    return "Every piece I create is infused with love and intention. I want the wearer to feel special and confident.";
+  }, [productStory]);
 
   const displaySimilarProducts = useMemo(
     () =>
@@ -1112,8 +1127,8 @@ export default function ProductDetailsPage() {
               ))}
             </div>
 
-            <span className="text-sm font-semibold text-gray-700">{product.rating.toFixed(1)}</span>
-            <span className="text-sm text-gray-500">({product.reviews} reviews)</span>
+            <span className="text-sm font-semibold text-gray-700">{(product.rating || 0).toFixed(1)}</span>
+            <span className="text-sm text-gray-500">({product.reviews || 0} reviews)</span>
 
             <button
               onClick={handleViewAllReviews}
@@ -1126,12 +1141,12 @@ export default function ProductDetailsPage() {
           <div className="bg-[#F7F0EE] rounded-xl md:rounded-2xl px-4 md:px-5 py-3 md:py-4">
             <div className="flex items-center gap-2 md:gap-3 flex-wrap">
               <span className="text-2xl md:text-3xl font-bold text-[#D94F7A]">
-                ₹{displayPrice.toFixed(2)}
+                ₹{(displayPrice || 0).toFixed(2)}
               </span>
 
               {product.originalPrice && (
                 <span className="text-sm md:text-base text-gray-400 line-through">
-                  ₹{product.originalPrice.toFixed(2)}
+                  ₹{(product.originalPrice || 0).toFixed(2)}
                 </span>
               )}
 
@@ -1454,7 +1469,7 @@ export default function ProductDetailsPage() {
                     ) : reviewsData && reviewsData.reviews.length > 0 ? (
                       <>
                         <p className="text-[10px] md:text-xs text-gray-500 mb-3">
-                          Live rating: {product.rating.toFixed(1)} stars from {product.reviews} reviews
+                          Live rating: {(product.rating || 0).toFixed(1)} stars from {product.reviews || 0} reviews
                         </p>
 
                         <div className="space-y-3 max-h-48 overflow-y-auto">

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { fetchCart, applyPromoCode as applyPromoAction } from "@/redux/cartslice";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { CheckoutStep, PaymentMethod } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2, X } from "lucide-react";
 
 type OrderSidebarProps = {
   currentStep: CheckoutStep;
@@ -48,6 +48,15 @@ export function OrderSidebar({
   const [promoCode, setPromoCode] = useState("");
   const [applyingPromo, setApplyingPromo] = useState(false);
   const [promoError, setPromoError] = useState("");
+  const [toast, setToast] = useState({ title: "", message: "", show: false });
+
+  const triggerToast = useCallback(
+    (message: string, title: string = "Success!") => {
+      setToast({ title, message, show: true });
+      setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+    },
+    [],
+  );
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -60,6 +69,7 @@ export function OrderSidebar({
         setPromoError(result.payload as string || "Invalid promo code");
       } else {
         setPromoCode("");
+        triggerToast("Coupon is Applied Successfully", "Success!");
       }
     } catch (error) {
       setPromoError("Something went wrong");
@@ -89,6 +99,7 @@ export function OrderSidebar({
   };
 
   return (
+    <>
     <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-6">
       <h2 className="text-xl font-semibold mb-6">Order Summary</h2>
 
@@ -125,7 +136,7 @@ export function OrderSidebar({
                   Qty: {quantity} {item.color ? `• ${item.color}` : ""} {item.size ? `• ${item.size}` : ""}
                 </p>
                 <p className="text-sm font-bold text-pink-600">
-                  ₹{price.toFixed(2)}
+                  ₹{(price || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -135,31 +146,50 @@ export function OrderSidebar({
 
       {/* Promo Code */}
       {currentStep !== "success" && currentStep !== "tracking" && (
-        <div className="mb-6">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter promo code"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-              className="text-sm bg-pink-50/50 border-pink-100"
-            />
-            <Button
-              onClick={handleApplyPromo}
-              disabled={applyingPromo || !promoCode.trim()}
-              size="sm"
-              className="bg-pink-500 hover:bg-pink-600 text-white whitespace-nowrap px-6"
-            >
-              {applyingPromo ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Apply"
-              )}
-            </Button>
+        appliedCode ? (
+          <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4 transition-all duration-500">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-green-700">Coupon is Applied Successfully!</p>
+                  <p className="text-[10px] text-green-600">Discount applied to your order</p>
+                </div>
+              </div>
+              <span className="bg-green-100 text-green-700 text-[9px] px-2 py-1 rounded-full font-black uppercase tracking-widest border border-green-200">
+                Applied
+              </span>
+            </div>
           </div>
-          {promoError && (
-            <p className="text-xs text-red-500 mt-1">{promoError}</p>
-          )}
-        </div>
+        ) : (
+          <div className="mb-6">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter promo code"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                className="text-sm bg-pink-50/50 border-pink-100"
+              />
+              <Button
+                onClick={handleApplyPromo}
+                disabled={applyingPromo || !promoCode.trim()}
+                size="sm"
+                className="bg-pink-500 hover:bg-pink-600 text-white whitespace-nowrap px-6"
+              >
+                {applyingPromo ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+            </div>
+            {promoError && (
+              <p className="text-xs text-red-500 mt-1">{promoError}</p>
+            )}
+          </div>
+        )
       )}
 
       {/* Pricing Breakdown */}
@@ -182,7 +212,7 @@ export function OrderSidebar({
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Discount</span>
             <span className="font-medium text-green-600">
-              -${summary?.discount?.toFixed(2)}
+              -₹{(summary?.discount || 0).toFixed(2)}
             </span>
           </div>
         )}
@@ -234,5 +264,33 @@ export function OrderSidebar({
         </div>
       )}
     </div>
+
+    {/* Toast Popup */}
+    <div
+      className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${
+        toast.show
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 translate-y-4 pointer-events-none"
+      }`}
+    >
+      <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-50 max-w-[88vw]">
+        <div className="bg-green-500 w-7 h-7 rounded-full flex items-center justify-center shrink-0">
+          <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">
+            {toast.title}
+          </p>
+          <p className="text-xs text-gray-400 truncate">{toast.message}</p>
+        </div>
+        <button
+          onClick={() => setToast((prev) => ({ ...prev, show: false }))}
+          className="text-gray-300 hover:text-gray-500 shrink-0 ml-1"
+        >
+          <X size={12} />
+        </button>
+      </div>
+    </div>
+    </>
   );
 }

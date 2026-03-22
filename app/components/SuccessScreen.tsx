@@ -158,7 +158,7 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
             {isCOD ? "Amount (Pay on Delivery)" : "Amount Paid"}
           </span>
           <span className="text-xl font-bold text-pink-600">
-            ₹{order.totalAmount.toFixed(2)}
+            ₹{(order.totalAmount || 0).toFixed(2)}
           </span>
         </div>
       </div>
@@ -176,7 +176,7 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
               <ul className="text-sm text-amber-800 space-y-1">
                 <li>
                   • Please keep exact cash ready: ₹
-                  {order.totalAmount.toFixed(2)}
+                  {(order.totalAmount || 0).toFixed(2)}
                 </li>
                 <li>• Payment accepted in cash only at the time of delivery</li>
                 <li>• You can inspect the product before payment</li>
@@ -233,11 +233,10 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
                 <div key={index} className="relative flex items-center gap-4">
                   {/* Icon */}
                   <div
-                    className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                      step.completed
+                    className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all ${step.completed
                         ? "bg-pink-500 text-white shadow-lg shadow-pink-500/30"
                         : "bg-gray-200 text-gray-400"
-                    }`}
+                      }`}
                   >
                     <Icon className="h-4 w-4" />
                   </div>
@@ -245,9 +244,8 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
                   {/* Content */}
                   <div className="flex-1">
                     <p
-                      className={`font-semibold text-sm ${
-                        step.completed ? "text-gray-900" : "text-gray-400"
-                      }`}
+                      className={`font-semibold text-sm ${step.completed ? "text-gray-900" : "text-gray-400"
+                        }`}
                     >
                       {step.status}
                     </p>
