@@ -36,7 +36,39 @@ export default function OrderDetailsPage({
         setLoading(true);
         setError(null);
         const response = await orderService.getOrderById(id);
-        setOrder(response.data);
+        const rawOrder = response.data;
+        
+        // Normalize pricing with fallbacks
+        if (rawOrder && rawOrder.pricing) {
+          const subtotal = Number(rawOrder.subtotal ?? rawOrder.pricing.subtotal ?? 0);
+          const total = Number(rawOrder.total_amount ?? rawOrder.total ?? rawOrder.pricing.total ?? 0);
+          
+          const localDiscounts = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("order_discounts") || "{}") : {};
+          const localDiscountPercent = localDiscounts[rawOrder.orderNumber] || localDiscounts[rawOrder?._id] || 0;
+
+          let discount = Number(rawOrder.discount ?? rawOrder.discountAmount ?? rawOrder.pricing.discount ?? 0);
+          
+          if (discount === 0 && subtotal > total && subtotal > 0) {
+            discount = subtotal - total;
+          }
+          
+          if (discount === 0 && localDiscountPercent > 0 && subtotal > 0) {
+            discount = subtotal * (localDiscountPercent / 100);
+          }
+          
+          rawOrder.pricing = {
+            ...rawOrder.pricing,
+            subtotal,
+            total: (discount > 0 && total === subtotal) ? subtotal - discount : total,
+            discount
+          };
+          
+          if (localDiscountPercent > 0) {
+            (rawOrder as any).promoCode = "SESSION_PROMO";
+          }
+        }
+        
+        setOrder(rawOrder);
       } catch (err: any) {
         setError(
           err?.response?.data?.message ||
@@ -243,19 +275,32 @@ export default function OrderDetailsPage({
                     borderBottom: i !== order.items.length - 1 ? "1px solid #fef3f7" : "none",
                   }}
                 >
-                  <Image
-                  width={70}
-                  height={70}
-                    src={item.imageUrl || item.product?.images[0]?.url}
-                    alt={item.name}
-                    style={{
-                      borderRadius: 10,
-                      background: "#fdf2f7",
-                      border: "1px solid #fce7f3",
-                      flexShrink: 0,
-                      objectFit: "cover",
-                    }}
-                  />
+                  <div style={{ flexShrink: 0 }}>
+                    {item.imageUrl || item.product?.images?.[0]?.url ? (
+                      <Image
+                        width={70}
+                        height={70}
+                        src={item.imageUrl || item.product?.images[0]?.url}
+                        alt={item.name}
+                        style={{
+                          borderRadius: 10,
+                          background: "#fdf2f7",
+                          border: "1px solid #fce7f3",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 70,
+                          height: 70,
+                          borderRadius: 10,
+                          background: "#fdf2f7",
+                          border: "1px solid #fce7f3",
+                        }}
+                      />
+                    )}
+                  </div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>
                       {item.name}
@@ -286,24 +331,34 @@ export default function OrderDetailsPage({
                   <p style={{ fontSize: 13, color: "#6b7280" }}>Subtotal</p>
                   <p style={{ fontSize: 13, color: "#111" }}>₹{order.pricing.subtotal.toLocaleString("en-IN")}</p>
                 </div>
-                {order.pricing.discount > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, alignItems: "flex-start" }}>
+                  <div>
                     <p style={{ fontSize: 13, color: "#6b7280" }}>Discount</p>
-                    <p style={{ fontSize: 13, color: "#059669" }}>-₹{order.pricing.discount.toLocaleString("en-IN")}</p>
+                    {(order.pricing.discount > 0 || (order as any).promoCode || (order as any).code) && (
+                      <p style={{ fontSize: 11, color: "#059669", fontWeight: 500 }}>
+                        ({(order.pricing.discount > 0 && order.pricing.subtotal > 0) ? Math.round((order.pricing.discount / order.pricing.subtotal) * 100) : 10}% Applied)
+                      </p>
+                    )}
                   </div>
-                )}
-                {order.pricing.shipping > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <p style={{ fontSize: 13, color: "#6b7280" }}>Shipping</p>
-                    <p style={{ fontSize: 13, color: "#111" }}>₹{order.pricing.shipping.toLocaleString("en-IN")}</p>
-                  </div>
-                )}
-                {order.pricing.tax > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <p style={{ fontSize: 13, color: "#6b7280" }}>Tax</p>
-                    <p style={{ fontSize: 13, color: "#111" }}>₹{order.pricing.tax.toLocaleString("en-IN")}</p>
-                  </div>
-                )}
+                  <p style={{ fontSize: 13, fontWeight: 600, color: order.pricing.discount > 0 ? "#059669" : "#111" }}>
+                    {order.pricing.discount > 0 
+                      ? `-₹${order.pricing.discount.toLocaleString("en-IN")}` 
+                      : "₹0"}
+                  </p>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <p style={{ fontSize: 13, color: "#6b7280" }}>Shipping</p>
+                  <p style={{ fontSize: 13, color: "#111" }}>
+                    {order.pricing.shipping > 0 ? `₹${order.pricing.shipping.toLocaleString("en-IN")}` : "Free"}
+                  </p>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <p style={{ fontSize: 13, color: "#6b7280" }}>GST</p>
+                  <p style={{ fontSize: 13, color: "#111" }}>
+                    ₹{order.pricing.tax.toLocaleString("en-IN")} 
+                    {order.pricing.tax > 0 && ` (${Math.round((order.pricing.tax / (order.pricing.subtotal || 1)) * 100)}%)`}
+                  </p>
+                </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTop: "1px dashed #fce7f3" }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Total</p>
                   <p style={{ fontSize: 16, fontWeight: 700, color: "#D94F7A" }}>
@@ -388,7 +443,7 @@ export default function OrderDetailsPage({
 
             {/* Actions */}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {order.items.length === 1 ? (
+              {order.items.length > 0 && (
                 <Link
                   href={`/products/${order.items[0].productId || order.items[0].product?._id}`}
                   style={{
@@ -406,27 +461,6 @@ export default function OrderDetailsPage({
                 >
                   <Truck size={14} /> ReOrder
                 </Link>
-              ) : (
-                order.items.map((item, i) => (
-                  <Link
-                    key={i}
-                    href={`/products/${item.productId || item.product?._id}`}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "10px 20px",
-                      borderRadius: 10,
-                      background: "#D94F7A",
-                      color: "#fff",
-                      textDecoration: "none",
-                      fontSize: 13,
-                      fontWeight: 600,
-                    }}
-                  >
-                    <Truck size={14} /> ReOrder: {item.name}
-                  </Link>
-                ))
               )}
               {order.status !== "cancelled" && order.status !== "delivered" && (
                 <Link
@@ -445,6 +479,28 @@ export default function OrderDetailsPage({
                   }}
                 >
                   <RotateCcw size={14} /> Cancel Order
+                </Link>
+              )}
+              {order.status === "delivered" && (
+                <Link
+                  onClick={() => {
+                    sessionStorage.setItem("returnExchangeOrder", JSON.stringify(order));
+                  }}
+                  href={`/profile/orders/return/${id}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 20px",
+                    borderRadius: 10,
+                    border: "1.5px solid #fce7f3",
+                    color: "#374151",
+                    textDecoration: "none",
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                >
+                  <RotateCcw size={14} /> Return/Exchange
                 </Link>
               )}
             </div>

@@ -25,6 +25,12 @@ export const orderService = {
       color?: string | null;
       size?: string;
     }>;
+    promoCode?: string | null;
+    code?: string | null;
+    promo_code?: string | null;
+    discount?: number;
+    subtotal?: number;
+    total?: number;
     payment: {
       method: string;
       razorpay_order_id?: string;

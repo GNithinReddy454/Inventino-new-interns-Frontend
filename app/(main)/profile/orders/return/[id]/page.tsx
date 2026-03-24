@@ -314,8 +314,8 @@ export default function ReturnExchangePage({
                   onClick={() => item.productObjectId && toggleItem(item.productObjectId)}
                   style={{ padding: 20, display: "flex", alignItems: "center", gap: 16, cursor: item.productObjectId ? "pointer" : "not-allowed", background: selectedIds.includes(item.productObjectId) ? "#fffafa" : "#f9fafb", borderTop: index > 0 ? "1px solid #f3f4f6" : "none", transition: "background 0.2s" }}>
                   <RadioDot selected={selectedIds.includes(item.productObjectId)} />
-                  {item.imageUrl
-                    ? <img src={item.imageUrl} alt={item.name} style={{ width: 72, height: 72, borderRadius: 12, objectFit: "cover", border: "1px solid #fce7f3", flexShrink: 0 }} />
+                  {item?.imageUrl?.trim()
+                    ? <img src={item.imageUrl.trim()} alt={item.name} style={{ width: 72, height: 72, borderRadius: 12, objectFit: "cover", border: "1px solid #fce7f3", flexShrink: 0 }} />
                     : <div style={{ width: 72, height: 72, borderRadius: 12, background: "#fdf2f7", border: "1px solid #fce7f3", flexShrink: 0 }} />}
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, color: "#111", marginBottom: 4 }}>{item.name}</div>

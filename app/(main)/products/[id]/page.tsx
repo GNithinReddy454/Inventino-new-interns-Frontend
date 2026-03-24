@@ -192,8 +192,9 @@ const resolveColorHex = (colorVal: string): string => {
 };
 
 const calculateDiscount = (original: number | null, current: number): number | null => {
-  if (!original || original <= current) return null;
-  return Math.round(((original - current) / original) * 100);
+  if (!original || !current || isNaN(original) || isNaN(current) || original <= current) return null;
+  const pct = Math.round(((original - current) / original) * 100);
+  return isNaN(pct) ? null : pct;
 };
 
 const getImageUrl = (img?: ImageType): string => {
@@ -317,14 +318,15 @@ export default function ProductDetailsPage() {
   );
 
   const displayPrice = useMemo(() => {
-    if (activePriceEntry) return activePriceEntry.price;
-    if (selectedVariant) return selectedVariant.price;
-    return product?.price || 0;
+    const rawPrice = activePriceEntry?.price ?? selectedVariant?.price ?? product?.price ?? 0;
+    const numPrice = Number(rawPrice);
+    return isNaN(numPrice) ? 0 : numPrice;
   }, [activePriceEntry, selectedVariant, product]);
 
   const displayStock = useMemo(() => {
-    if (activePriceEntry) return activePriceEntry.stock;
-    return product?.stock ?? 0;
+    const stock = activePriceEntry?.stock ?? product?.stock ?? 0;
+    const numStock = Number(stock);
+    return isNaN(numStock) ? 0 : numStock;
   }, [activePriceEntry, product]);
 
   const discountPct = useMemo(
@@ -403,6 +405,28 @@ export default function ProductDetailsPage() {
   useEffect(() => {
     setSelectedImage(0);
   }, [selectedColor]);
+
+  useEffect(() => {
+    if (!product || variants.length === 0) return;
+
+    const currentColor = hasColorVariants
+      ? product.colorVariants?.[selectedColor]?.color_name
+      : variantColors[selectedColor];
+    
+    const matchedVariant = variants.find((v) => {
+      const hasColorMatch = !currentColor || v.attributes?.some(
+        (a) => a.name?.toLowerCase() === "color" && a.value === currentColor
+      );
+      const hasSizeMatch = !selectedSize || v.attributes?.some(
+        (a) => a.name?.toLowerCase() === "size" && a.value === selectedSize
+      );
+      return hasColorMatch && hasSizeMatch;
+    });
+
+    if (matchedVariant) {
+      setSelectedVariant(matchedVariant);
+    }
+  }, [selectedColor, selectedSize, variants, product, hasColorVariants, variantColors]);
 
   useEffect(() => {
     const container = mainImageScrollRef.current;
@@ -532,10 +556,10 @@ export default function ProductDetailsPage() {
 
         const priceMatrix: ProductPrice[] = Array.isArray(data.prices)
           ? data.prices.map((p: any) => ({
-              color_id: p.color_id,
-              size_id: p.size_id,
-              price: p.price,
-              stock: p.stock,
+              color_id: String(p.color_id || ""),
+              size_id: String(p.size_id || ""),
+              price: Number(p.price || 0),
+              stock: Number(p.stock || 0),
             }))
           : [];
 
@@ -547,19 +571,45 @@ export default function ProductDetailsPage() {
           setSelectedSize(sizeVariants[0].size);
         }
 
-        const flatColors =
+        const derivedColorsFromVariants = data.variants
+          ? Array.from(new Set(
+              data.variants
+                .flatMap((v: any) => v.attributes || [])
+                .filter((a: any) => a.name?.toLowerCase() === "color")
+                .map((a: any) => a.value)
+            ))
+          : [];
+
+        const initialFlatColors =
           colorVariants.length === 0
-            ? Array.isArray(data.colors) && data.colors.every((c: any) => typeof c === "string")
+            ? Array.isArray(data.colors) && data.colors.length > 0 && typeof data.colors[0] === "string"
               ? data.colors
+              : derivedColorsFromVariants.length > 0
+              ? derivedColorsFromVariants
               : data.color
               ? data.color.split(",").map((c: string) => c.trim()).filter(Boolean)
               : []
             : [];
 
+        // Ensure Gold, Silver, Rose Gold are always available as per user request
+        const mandatoryColors = ["Gold", "Silver", "Rose Gold"];
+        const flatColors = Array.from(new Set([...initialFlatColors, ...mandatoryColors]));
+
+        const derivedSizesFromVariants = data.variants
+          ? Array.from(new Set(
+              data.variants
+                .flatMap((v: any) => v.attributes || [])
+                .filter((a: any) => a.name?.toLowerCase() === "size")
+                .map((a: any) => a.value)
+            ))
+          : [];
+
         const flatSizes =
           sizeVariants.length === 0
-            ? Array.isArray(data.sizes) && data.sizes.every((s: any) => typeof s === "string")
+            ? Array.isArray(data.sizes) && data.sizes.length > 0 && typeof data.sizes[0] === "string"
               ? data.sizes
+              : derivedSizesFromVariants.length > 0
+              ? derivedSizesFromVariants
               : []
             : [];
 
@@ -567,7 +617,7 @@ export default function ProductDetailsPage() {
         const basePrice =
           priceMatrix.length > 0
             ? priceMatrix[0].price
-            : data.pricing?.price ?? data.price ?? 0;
+            : data.pricing?.price ?? data.price ?? (variants.length > 0 ? variants[0].price : 0);
 
         const mainImage = data.media?.mainImage || getImageUrl(data.images?.[0]) || FALLBACK_IMAGE;
         const gallery = data.media?.galleryImages?.map((img: any) => getImageUrl(img)).filter(Boolean) || data.images?.map((img: any) => getImageUrl(img)).filter(Boolean) || [];
@@ -677,18 +727,22 @@ export default function ProductDetailsPage() {
     [activeImages.length]
   );
 
-  const handleColorSelect = useCallback(
-    (idx: number) => {
-      setSelectedColor(idx);
-      setSelectedImage(0);
-      setIsZoomMode(false);
-
-      if (product?.colorVariants && product.colorVariants[idx]) {
-        setSelectedColorId(product.colorVariants[idx].color_id);
-      }
-    },
-    [product]
-  );
+    const handleColorSelect = useCallback(
+      (idx: number) => {
+        setSelectedColor(idx);
+        setSelectedImage(0);
+        setIsZoomMode(false);
+  
+        if (product?.colorVariants && product.colorVariants[idx]) {
+          setSelectedColorId(product.colorVariants[idx].color_id);
+        } else if (variantColors[idx]) {
+          // If using flat colors, use the name as ID if no specific ID matching is available
+          // This helps activePriceEntry find the right row if IDs are values
+          setSelectedColorId(variantColors[idx]);
+        }
+      },
+      [product, variantColors]
+    );
 
   const handleSizeSelect = useCallback((sizeObj: ProductSize | string) => {
     if (typeof sizeObj === "string") {
@@ -1150,7 +1204,7 @@ export default function ProductDetailsPage() {
                 </span>
               )}
 
-              {discountPct && (
+              {typeof discountPct === 'number' && !isNaN(discountPct) && discountPct > 0 && (
                 <span className="bg-[#4CAF50] text-white text-[10px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1.5 rounded-full">
                   {discountPct}% OFF
                 </span>
@@ -1215,7 +1269,12 @@ export default function ProductDetailsPage() {
             </div>
           ) : variantColors.length > 0 ? (
             <div className="flex flex-col gap-2 md:gap-3">
-              <span className="text-sm md:text-[15px] font-semibold text-gray-900">Choose Color</span>
+              <span className="text-sm md:text-[15px] font-semibold text-gray-900">
+                Color:{" "}
+                <span className="font-normal text-gray-600">
+                  {variantColors[selectedColor]}
+                </span>
+              </span>
               <div className="flex gap-3 md:gap-4">
                 {variantColors.map((colorVal, idx) => {
                   const bgColor = resolveColorHex(colorVal);
