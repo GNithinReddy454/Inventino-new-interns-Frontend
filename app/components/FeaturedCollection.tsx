@@ -49,7 +49,8 @@ interface Product {
   story?: string | {
     title?: string;
     featured?: boolean;
-  }
+  };
+  variants?: any[];
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
@@ -92,6 +93,7 @@ function normalizeProduct(p: Product) {
     reviews: p.reviewCount ?? p.ratingsCount ?? 0,
     badge: p.trendy ? "TRENDY" : (p.bestSeller || (typeof p.story === 'object' && p.story?.featured)) ? "BEST SELLER" : undefined,
     tags: p.hashtags ?? [p.category, "Adjustable"].filter(Boolean),
+    variants: p.variants,
   };
 }
 

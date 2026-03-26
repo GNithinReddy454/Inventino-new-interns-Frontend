@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { Heart, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
@@ -15,6 +15,7 @@ export interface ProductCardProduct extends Product {
   tags?: string[];
   originalPrice?: number | null;
   stock?: number;
+  variants?: any[];
 }
 
 interface ProductCardProps {
@@ -54,6 +55,31 @@ const MOCK_IMAGES = [
   "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400",
 ];
 
+const COLOR_DUMMY_IMAGES: Record<string, string[]> = {
+  gold: [
+    "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400",
+    "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400"
+  ],
+  silver: [
+    "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=400",
+    "https://images.unsplash.com/photo-1627250645069-424a73e6d625?w=400"
+  ],
+  "rose gold": [
+    "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400",
+    "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400"
+  ],
+  pink: [
+    "https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?w=400",
+    "https://images.unsplash.com/photo-1601121141461-9d6647bca1ed?w=400"
+  ],
+};
+
+const getDummyImagesForColor = (colorName: string): string[] => {
+  const key = colorName.toLowerCase().trim();
+  if (COLOR_DUMMY_IMAGES[key]) return COLOR_DUMMY_IMAGES[key];
+  return [`https://placehold.co/400x400/f8f9fa/D94F7A?text=${encodeURIComponent(colorName)}`];
+};
+
 export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: ProductCardProps) {
   const dispatch = useAppDispatch();
   // const { items: wishlistItems = [] } = useAppSelector((state: any) => state.wishlist);
@@ -67,10 +93,21 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   // );
   const isSaved = false; // Wishlist disabled
 
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [activeVariant, setActiveVariant] = useState<any>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const getImageUrl = (imgData: any) => {
     if (!imgData) return "";
-    if (typeof imgData === "string") return imgData;
-    if (typeof imgData === "object" && imgData.url) return imgData.url;
+    if (typeof imgData === "string") {
+      // Resolve relative URLs if needed (consistent with BestSellers/FeaturedCollection)
+      const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
+      if (imgData.startsWith("/") && !imgData.startsWith("//")) {
+        return `${BASE_URL}${imgData}`;
+      }
+      return imgData;
+    }
+    if (typeof imgData === "object" && imgData.url) return getImageUrl(imgData.url);
     return "";
   };
 
@@ -81,15 +118,44 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
         ? [getImageUrl(product.image), ...MOCK_IMAGES.slice(1)]
         : MOCK_IMAGES;
 
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Derive active product data based on selected color variant
+  const activeProductData = useMemo(() => {
+    if (!activeVariant) return null;
+    
+    // Support either 'products' or 'sizes' array from backend
+    const variantsList = activeVariant.products || activeVariant.sizes || [];
+    const firstVariant = variantsList.length > 0 ? variantsList[0] : null;
+
+    return {
+      price: firstVariant?.price ?? activeVariant.price ?? product.price,
+      originalPrice: firstVariant?.originalPrice ?? activeVariant.originalPrice ?? product.originalPrice,
+      stock: firstVariant?.stock ?? activeVariant.stock ?? product.stock,
+      images: activeVariant.images?.length > 0 
+        ? activeVariant.images.map((img: any) => getImageUrl(img)).filter(Boolean)
+        : firstVariant?.images?.length > 0
+          ? firstVariant.images.map((img: any) => getImageUrl(img)).filter(Boolean)
+          : getDummyImagesForColor(activeVariant.color || activeVariant.colorName || ""),
+      id: firstVariant?._id || firstVariant?.id || activeVariant._id || activeVariant.id || product.id
+    };
+  }, [activeVariant, product]);
+
+  const activeImages = useMemo(() => {
+    if (activeProductData?.images && activeProductData.images.length > 0) {
+      return activeProductData.images;
+    }
+    return images;
+  }, [activeProductData, images]);
+
+  const displayPrice = activeProductData?.price ?? product.price;
+  const displayOriginalPrice = activeProductData?.originalPrice ?? product.originalPrice;
+  const displayStock = activeProductData?.stock ?? product.stock;
 
   const startScroll = useCallback(() => {
-    if (images.length <= 1 || intervalRef.current) return;
+    if (activeImages.length <= 1 || intervalRef.current) return;
     intervalRef.current = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % images.length);
+      setCurrentSlide((prev) => (prev + 1) % activeImages.length);
     }, 3000);
-  }, [images.length]);
+  }, [activeImages.length]);
 
   const stopScroll = useCallback(() => {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
@@ -103,9 +169,14 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   const tags: string[] = product.tags ?? [product.category ?? "", "Adjustable"].filter(Boolean);
 
   const cartProduct: Product = {
-    id: product.id, name: productName, image: images[0] ?? "",
-    price: product.price, category: product.category,
-    badge: product.badge, rating: product.rating, reviews: product.reviews,
+    id: activeProductData?.id ?? product.id, 
+    name: productName, 
+    image: activeImages[0] ?? "",
+    price: displayPrice, 
+    category: product.category,
+    badge: product.badge, 
+    rating: product.rating, 
+    reviews: product.reviews,
   };
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -127,8 +198,8 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     if (upper === "BESTSELLER" || upper === "BEST SELLER") badgeColor = "bg-yellow-400";
     else if (upper === "SALE") { displayText = "HOT DEALS"; badgeColor = "bg-red-500"; }
   }
-  const hasDiscount = !!product.originalPrice && product.originalPrice > product.price;
-  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+  const hasDiscount = !!displayOriginalPrice && displayOriginalPrice > displayPrice;
+  const isOutOfStock = displayStock !== undefined && displayStock <= 0;
 
   return (
     <div
@@ -141,7 +212,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
       onTouchCancel={deactivate}
     >
       <Link
-        href={`/products/${product.id}`}
+        href={`/products/${activeProductData?.id ?? product.id}`}
         className="flex flex-col h-full w-full bg-white"
         style={{
           borderRadius: 12,
@@ -200,7 +271,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           </div> */}
 
           <div className="absolute inset-0 pointer-events-none">
-            {images.map((img, idx) => (
+            {activeImages.map((img: string, idx: number) => (
               <img
                 key={idx} src={img} alt={productName}
                 className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${idx === currentSlide ? "opacity-100" : "opacity-0"}`}
@@ -208,9 +279,9 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
             ))}
           </div>
 
-          {images.length > 1 && (
+          {activeImages.length > 1 && (
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-              {images.map((_, idx) => (
+              {activeImages.map((_: any, idx: number) => (
                 <div key={idx} className={`rounded-full transition-all duration-300 ${idx === currentSlide ? "w-3 h-1.5 bg-[#E8456A]" : "w-1.5 h-1.5 bg-white/70"}`} />
               ))}
             </div>
@@ -228,8 +299,36 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           </div>
 
           {tags.length > 0 && (
-            <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
-              {tags.slice(0, 2).join(" • ")}
+            <div className="flex flex-wrap gap-1 mb-2">
+              {tags.slice(0, 2).map((tag, i) => (
+                <span key={i} className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Color Selectors */}
+          {product.variants && product.variants.length > 0 && (
+            <div className="flex gap-1.5 mb-3" onClick={(e) => e.preventDefault()}>
+              {product.variants.map((v: any, idx: number) => (
+                <div
+                  key={idx}
+                  onMouseEnter={() => {
+                    setActiveVariant(v);
+                    setCurrentSlide(0);
+                  }}
+                  onMouseLeave={() => {
+                    setActiveVariant(null);
+                    setCurrentSlide(0);
+                  }}
+                  className={`w-4 h-4 rounded-full border border-gray-200 cursor-pointer transition-transform hover:scale-125 ${
+                    activeVariant?.color === v.color ? "ring-2 ring-pink-400 ring-offset-1" : ""
+                  }`}
+                  style={{ backgroundColor: v.colorCode || "#ccc" }}
+                  title={v.color}
+                />
+              ))}
             </div>
           )}
 
@@ -241,11 +340,11 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>
-                ₹{(product.price || 0).toFixed(0)}
+                ₹{(displayPrice || 0).toFixed(0)}
               </span>
               {hasDiscount && (
                 <span style={{ fontSize: 12, color: "#9ca3af", textDecoration: "line-through" }}>
-                  ₹{(product.originalPrice || 0).toFixed(0)}
+                  ₹{(displayOriginalPrice || 0).toFixed(0)}
                 </span>
               )}
             </div>
