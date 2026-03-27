@@ -694,10 +694,11 @@ export default function ProductDetailsPage() {
         const derivedSizesFromVariants = data.variants
           ? Array.from(new Set(
               data.variants
-                .flatMap((v: any) => v.attributes || [])
-                .filter((a: any) => a.name?.toLowerCase() === "size")
-                .map((a: any) => a.value)
-            ))
+                .flatMap((v: any) => {
+                  if (v.sizes && Array.isArray(v.sizes)) return v.sizes.map((s: any) => s.size);
+                  return (v.attributes || []).filter((a: any) => a.name?.toLowerCase() === "size").map((a: any) => a.value);
+                })
+            )).filter(Boolean) as string[]
           : [];
 
         const flatSizes =

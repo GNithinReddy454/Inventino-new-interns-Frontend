@@ -144,15 +144,6 @@ export default function ReturnExchangePage({
     }
 
     const productId = selectedIds[0];
-
-    if (!isObjectId(productId)) {
-      setSubmitError(
-        `Cannot submit: the product ID "${productId || "(empty)"}" is not a valid MongoDB ObjectId. ` +
-        `Please contact support.`
-      );
-      return;
-    }
-
     const selectedItem = orderItems.find((i) => i.productObjectId === productId);
     const selectedQuantity = selectedItem?.quantity ?? 1;
 
@@ -160,19 +151,26 @@ export default function ReturnExchangePage({
 
     try {
       if (requestType === "return") {
+        // Step 10/11: Return item(s) or whole order
+        const isFullReturn = selectedIds.length === orderItems.length;
+        
+        const payload: any = isFullReturn 
+          ? { reason: reason + (comments ? `: ${comments}` : "") }
+          : {
+              reason: reason + (comments ? `: ${comments}` : ""),
+              items: selectedIds.map((pid) => ({
+                productId: pid,
+                action: "return"
+              }))
+            };
+
         const result = await dispatch(returnOrderAction({
           id: orderId,
-          data: {
-            reason,
-            items: selectedIds.map((pid) => {
-              const item = orderItems.find((i) => i.productObjectId === pid);
-              return { productId: pid, quantity: item?.quantity ?? 1 };
-            }),
-            resolution: "refund",
-          }
+          data: payload
         })).unwrap();
         console.log("Return success:", result);
       } else {
+        // Step 12: Exchange request
         const result = await dispatch(exchangeOrderAction({
           id: orderId,
           data: {
@@ -183,9 +181,10 @@ export default function ReturnExchangePage({
             exchangeDetails: {
               newSize: newSize ?? null,
               newColor: newColor ?? null,
-              newProductId: productId,
+              newProductId: null, // As per docs example
             },
-            comments: comments || undefined,
+            comments: comments || "Exchange requested",
+            proofImages: [], // Could be expanded to use 'images' state if backend supports
           }
         })).unwrap();
         console.log("Exchange success:", result);

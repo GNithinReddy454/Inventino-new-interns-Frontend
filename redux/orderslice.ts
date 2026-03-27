@@ -86,7 +86,7 @@ export const returnOrderAction = createAsyncThunk(
     "order/return",
     async (payload: { id: string; data: any }, { rejectWithValue }) => {
         try {
-            const response = await orderService.requestReturnExchange(payload.id, payload.data);
+            const response = await orderService.requestReturn(payload.id, payload.data);
             return response;
         } catch (error: any) {
             const errorMsg = error.response?.data?.message || error.message || "Return request failed";
@@ -102,7 +102,7 @@ export const exchangeOrderAction = createAsyncThunk(
     "order/exchange",
     async (payload: { id: string; data: any }, { rejectWithValue }) => {
         try {
-            const response = await orderService.requestReturnExchange(payload.id, payload.data);
+            const response = await orderService.requestExchange(payload.id, payload.data);
             return response;
         } catch (error: any) {
             const errorMsg = error.response?.data?.message || error.message || "Exchange request failed";
@@ -116,13 +116,28 @@ export const exchangeOrderAction = createAsyncThunk(
  */
 export const cancelItemsAction = createAsyncThunk(
     "order/cancelItems",
-    async (payload: { id: string; data: any }, { rejectWithValue }) => {
+    async (payload: { id: string; data: { items: any[], reason: string } }, { rejectWithValue }) => {
         try {
-            // Using the same request endpoint which handles item-specific actions
-            const response = await orderService.requestReturnExchange(payload.id, payload.data);
+            const response = await orderService.cancelItems(payload.id, payload.data);
             return response;
         } catch (error: any) {
-            const errorMsg = error.response?.data?.message || error.message || "Cancellation request failed";
+            const errorMsg = error.response?.data?.message || error.message || "Item cancellation failed";
+            return rejectWithValue(errorMsg);
+        }
+    }
+);
+
+/**
+ * Thunk to cancel whole order
+ */
+export const cancelWholeOrderAction = createAsyncThunk(
+    "order/cancelWhole",
+    async (payload: { id: string; reason?: string }, { rejectWithValue }) => {
+        try {
+            const response = await orderService.cancelOrder(payload.id, payload.reason);
+            return response;
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.message || error.message || "Order cancellation failed";
             return rejectWithValue(errorMsg);
         }
     }
@@ -211,6 +226,20 @@ const orderSlice = createSlice({
                 state.lastOrderResponse = action.payload;
             })
             .addCase(cancelItemsAction.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            })
+            // Cancel Whole Order
+            .addCase(cancelWholeOrderAction.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(cancelWholeOrderAction.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.error = null;
+                state.lastOrderResponse = action.payload;
+            })
+            .addCase(cancelWholeOrderAction.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload as string;
             });

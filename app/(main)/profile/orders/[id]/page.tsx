@@ -36,37 +36,48 @@ export default function OrderDetailsPage({
         setLoading(true);
         setError(null);
         const response = await orderService.getOrderById(id);
-        const rawOrder = response.data;
+        // Handle both { success, data: order } and direct order shapes
+        const rawOrder = response?.data ?? response;
         
-        // Normalize pricing with fallbacks
-        if (rawOrder && rawOrder.pricing) {
-          const subtotal = Number(rawOrder.subtotal ?? rawOrder.pricing.subtotal ?? 0);
-          const total = Number(rawOrder.total_amount ?? rawOrder.total ?? rawOrder.pricing.total ?? 0);
-          
-          const localDiscounts = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("order_discounts") || "{}") : {};
-          const localDiscountPercent = localDiscounts[rawOrder.orderNumber] || localDiscounts[rawOrder?._id] || 0;
+        if (!rawOrder) throw new Error("Order not found");
 
-          let discount = Number(rawOrder.discount ?? rawOrder.discountAmount ?? rawOrder.pricing.discount ?? 0);
-          
-          if (discount === 0 && subtotal > total && subtotal > 0) {
-            discount = subtotal - total;
-          }
-          
-          if (discount === 0 && localDiscountPercent > 0 && subtotal > 0) {
-            discount = subtotal * (localDiscountPercent / 100);
-          }
-          
-          rawOrder.pricing = {
-            ...rawOrder.pricing,
-            subtotal,
-            total: (discount > 0 && total === subtotal) ? subtotal - discount : total,
-            discount
-          };
-          
-          if (localDiscountPercent > 0) {
-            (rawOrder as any).promoCode = "SESSION_PROMO";
-          }
+        // Ensure pricing always exists with safe defaults
+        const existingPricing = rawOrder.pricing ?? {};
+        const subtotal = Number(rawOrder.subtotal ?? existingPricing.subtotal ?? 0);
+        const total = Number(rawOrder.total_amount ?? rawOrder.total ?? existingPricing.total ?? 0);
+        
+        const localDiscounts = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("order_discounts") || "{}") : {};
+        const localDiscountPercent = localDiscounts[rawOrder.orderNumber] || localDiscounts[rawOrder?._id] || 0;
+
+        let discount = Number(rawOrder.discount ?? rawOrder.discountAmount ?? existingPricing.discount ?? 0);
+        
+        if (discount === 0 && subtotal > total && subtotal > 0) {
+          discount = subtotal - total;
         }
+        
+        if (discount === 0 && localDiscountPercent > 0 && subtotal > 0) {
+          discount = subtotal * (localDiscountPercent / 100);
+        }
+        
+        // Always ensure pricing object is complete with safe defaults
+        rawOrder.pricing = {
+          subtotal,
+          tax: Number(existingPricing.tax ?? 0),
+          shipping: Number(existingPricing.shipping ?? 0),
+          discount,
+          total: (discount > 0 && total === subtotal) ? subtotal - discount : total,
+        };
+        
+        if (localDiscountPercent > 0) {
+          (rawOrder as any).promoCode = "SESSION_PROMO";
+        }
+
+        // Ensure items array always exists
+        if (!Array.isArray(rawOrder.items)) rawOrder.items = [];
+        // Ensure shippingAddress always exists
+        if (!rawOrder.shippingAddress) rawOrder.shippingAddress = {};
+        // Ensure payment always exists
+        if (!rawOrder.payment) rawOrder.payment = { method: "—", status: "—", transactionId: null, paidAt: null };
         
         setOrder(rawOrder);
       } catch (err: any) {

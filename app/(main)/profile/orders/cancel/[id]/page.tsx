@@ -16,6 +16,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/store";
 import {
   fetchOrderByIdAction,
   cancelItemsAction,
+  cancelWholeOrderAction,
   resetOrderState
 } from "@/redux/orderslice";
 
@@ -73,9 +74,11 @@ export default function CancelItemsPage({
       const rawItems: any[] = currentOrder.items ?? [];
       const mapped: OrderItem[] = rawItems.map((item: any) => {
         const objectId =
-          (isObjectId(item.product?._id) ? item.product._id : null) ??
-          (isObjectId(item._id) ? item._id : null) ??
-          (isObjectId(item.productObjectId) ? item.productObjectId : null) ??
+          (item.productId) ??
+          (item.product?._id) ??
+          (typeof item.product === 'string' ? item.product : null) ??
+          (item.productObjectId) ??
+          (item._id) ??
           null;
 
         return {
@@ -113,22 +116,44 @@ export default function CancelItemsPage({
     setSubmitError(null);
 
     try {
+      // Step 5/6/7 in documentation: Cancel specific item(s)
       await dispatch(cancelItemsAction({
         id: orderId,
         data: {
-          requestType: "cancellation",
-          reason,
-          comments: comments || undefined,
-          items: selectedIds.map((pid) => {
-            const item = orderItems.find((i) => i.productObjectId === pid);
-            return { productId: pid, quantity: item?.quantity ?? 1 };
-          }),
+          items: selectedIds.map((pid) => ({
+            productId: pid,
+            action: 'cancel'
+          })),
+          reason: reason + (comments ? `: ${comments}` : "")
         }
       })).unwrap();
 
       setIsSubmitted(true);
     } catch (err: any) {
       setSubmitError(err || "Failed to submit request. Please try again.");
+    }
+  };
+
+  const handleFullCancellation = async () => {
+    if (!reason) {
+      alert("Please select a reason for cancellation.");
+      return;
+    }
+    
+    if (!confirm("Are you sure you want to cancel the entire order?")) return;
+
+    setSubmitError(null);
+
+    try {
+      // Step 8 in documentation: Cancel whole order at once
+      await dispatch(cancelWholeOrderAction({
+        id: orderId,
+        reason: reason + (comments ? `: ${comments}` : "")
+      })).unwrap();
+
+      setIsSubmitted(true);
+    } catch (err: any) {
+      setSubmitError(err || "Failed to cancel order. Please try again.");
     }
   };
 
@@ -226,10 +251,17 @@ export default function CancelItemsPage({
               <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 16, fontWeight: 500 }}>{submitError}</p>
             )}
 
-            <button type="submit" disabled={!selectedIds.length || !reason || isLoading}
-              style={{ width: "100%", background: (selectedIds.length && reason && !isLoading) ? "#111" : "#f3f4f6", color: (selectedIds.length && reason && !isLoading) ? "#fff" : "#9ca3af", padding: "16px", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: (selectedIds.length && reason && !isLoading) ? "pointer" : "not-allowed", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              {isLoading ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> : "Request Cancellation"}
-            </button>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button type="submit" disabled={!selectedIds.length || !reason || isLoading}
+                style={{ flex: 2, background: (selectedIds.length && reason && !isLoading) ? "#111" : "#f3f4f6", color: (selectedIds.length && reason && !isLoading) ? "#fff" : "#9ca3af", padding: "16px", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: (selectedIds.length && reason && !isLoading) ? "pointer" : "not-allowed", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                {isLoading ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> : "Request Item Cancellation"}
+              </button>
+              
+              <button type="button" onClick={handleFullCancellation} disabled={!reason || isLoading}
+                style={{ flex: 1, background: "#fff", color: (reason && !isLoading) ? "#ef4444" : "#9ca3af", border: (reason && !isLoading) ? "2px solid #fee2e2" : "2px solid #f3f4f6", padding: "16px", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: (reason && !isLoading) ? "pointer" : "not-allowed" }}>
+                Cancel Entire Order
+              </button>
+            </div>
           </form>
 
         </div>
