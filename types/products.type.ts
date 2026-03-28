@@ -110,4 +110,5 @@ export interface NormalizedProduct {
   tags: string[];
   bestSeller: boolean;
   trendy: boolean;
+  variants?: any[];
 }

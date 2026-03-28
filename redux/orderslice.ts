@@ -28,6 +28,12 @@ export const placeOrderAction = createAsyncThunk(
         addressId: string;
         items: Array<{ productId: string; quantity: number; color?: string | null; size?: string }>;
         paymentMethod: string;
+        promoCode?: string | null;
+        code?: string | null;
+        promo_code?: string | null;
+        discount?: number;
+        subtotal?: number;
+        total?: number;
         razorpay_order_id?: string;
         razorpay_payment_id?: string;
         razorpay_signature?: string;
@@ -36,6 +42,12 @@ export const placeOrderAction = createAsyncThunk(
             const response = await orderService.placeOrder({
                 addressId: payload.addressId,
                 items: payload.items,
+                promoCode: payload.promoCode,
+                code: payload.code,
+                promo_code: payload.promo_code,
+                discount: payload.discount,
+                subtotal: payload.subtotal,
+                total: payload.total,
                 payment: { 
                     method: payload.paymentMethod,
                     razorpay_order_id: payload.razorpay_order_id,
@@ -74,7 +86,7 @@ export const returnOrderAction = createAsyncThunk(
     "order/return",
     async (payload: { id: string; data: any }, { rejectWithValue }) => {
         try {
-            const response = await orderService.requestReturnExchange(payload.id, payload.data);
+            const response = await orderService.requestReturn(payload.id, payload.data);
             return response;
         } catch (error: any) {
             const errorMsg = error.response?.data?.message || error.message || "Return request failed";
@@ -90,7 +102,7 @@ export const exchangeOrderAction = createAsyncThunk(
     "order/exchange",
     async (payload: { id: string; data: any }, { rejectWithValue }) => {
         try {
-            const response = await orderService.requestReturnExchange(payload.id, payload.data);
+            const response = await orderService.requestExchange(payload.id, payload.data);
             return response;
         } catch (error: any) {
             const errorMsg = error.response?.data?.message || error.message || "Exchange request failed";
@@ -98,6 +110,39 @@ export const exchangeOrderAction = createAsyncThunk(
         }
     }
 );
+
+/**
+ * Thunk to cancel specific items in an order
+ */
+export const cancelItemsAction = createAsyncThunk(
+    "order/cancelItems",
+    async (payload: { id: string; data: { items: any[], reason: string } }, { rejectWithValue }) => {
+        try {
+            const response = await orderService.cancelItems(payload.id, payload.data);
+            return response;
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.message || error.message || "Item cancellation failed";
+            return rejectWithValue(errorMsg);
+        }
+    }
+);
+
+/**
+ * Thunk to cancel whole order
+ */
+export const cancelWholeOrderAction = createAsyncThunk(
+    "order/cancelWhole",
+    async (payload: { id: string; reason?: string }, { rejectWithValue }) => {
+        try {
+            const response = await orderService.cancelOrder(payload.id, payload.reason);
+            return response;
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.message || error.message || "Order cancellation failed";
+            return rejectWithValue(errorMsg);
+        }
+    }
+);
+
 
 const orderSlice = createSlice({
     name: "order",
@@ -167,6 +212,34 @@ const orderSlice = createSlice({
                 state.exchangeResponse = action.payload;
             })
             .addCase(exchangeOrderAction.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            })
+            // Cancel Items
+            .addCase(cancelItemsAction.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(cancelItemsAction.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.error = null;
+                state.lastOrderResponse = action.payload;
+            })
+            .addCase(cancelItemsAction.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            })
+            // Cancel Whole Order
+            .addCase(cancelWholeOrderAction.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(cancelWholeOrderAction.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.error = null;
+                state.lastOrderResponse = action.payload;
+            })
+            .addCase(cancelWholeOrderAction.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload as string;
             });

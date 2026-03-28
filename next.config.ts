@@ -31,6 +31,18 @@ const nextConfig = {
         protocol: "https",
         hostname: "inventino-products.s3.ap-south-1.amazonaws.com",
       },
+      {
+        protocol: "https",
+        hostname: "example.com",
+      },
+      {
+        protocol: "https",
+        hostname: "placehold.co",
+      },
+      {
+        protocol: "https",
+        hostname: "yourcdn.com",
+      },
     ],
   },
   async rewrites() {

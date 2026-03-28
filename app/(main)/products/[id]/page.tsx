@@ -176,6 +176,40 @@ const COLOR_NAME_TO_HEX: Record<string, string> = {
   copper: "#B87333",
 };
 
+const COLOR_DUMMY_IMAGES: Record<string, string[]> = {
+  gold: [
+    "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800",
+    "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=800",
+    "https://images.unsplash.com/photo-1576402187878-974f70c890a5?w=800"
+  ],
+  silver: [
+    "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=800",
+    "https://images.unsplash.com/photo-1627250645069-424a73e6d625?w=800",
+    "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800"
+  ],
+  "rose gold": [
+    "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800",
+    "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800",
+    "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800"
+  ],
+  pink: [
+    "https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?w=800",
+    "https://images.unsplash.com/photo-1601121141461-9d6647bca1ed?w=800",
+    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800"
+  ],
+};
+
+const getDummyImagesForColor = (colorName: string): string[] => {
+  const key = colorName.toLowerCase().trim();
+  if (COLOR_DUMMY_IMAGES[key]) return COLOR_DUMMY_IMAGES[key];
+  
+  // Generic fallback if color doesn't match
+  return [
+    `https://placehold.co/800x800/f8f9fa/D94F7A?text=${encodeURIComponent(colorName)}+Product+1`,
+    `https://placehold.co/800x800/f8f9fa/D94F7A?text=${encodeURIComponent(colorName)}+Product+2`,
+  ];
+};
+
 const SIZES = ["Small", "Medium", "Large"];
 
 // ============================================================================
@@ -192,14 +226,18 @@ const resolveColorHex = (colorVal: string): string => {
 };
 
 const calculateDiscount = (original: number | null, current: number): number | null => {
-  if (!original || original <= current) return null;
-  return Math.round(((original - current) / original) * 100);
+  if (!original || !current || isNaN(original) || isNaN(current) || original <= current) return null;
+  const pct = Math.round(((original - current) / original) * 100);
+  return isNaN(pct) ? null : pct;
 };
 
 const getImageUrl = (img?: ImageType): string => {
   if (!img) return "";
-  if (typeof img === "string") return img;
-  return img.url || "";
+  const url = typeof img === "string" ? img : img.url || "";
+  if (!url || url.includes("undefined") || url.trim() === "") return "";
+  
+  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
+  return url.startsWith("http") || url.startsWith("data:") ? url : `${BASE_URL}${url}`;
 };
 
 const normalizeImages = (images?: ImageType[]): string[] => {
@@ -271,6 +309,10 @@ export default function ProductDetailsPage() {
     if (product?.colorVariants && product.colorVariants.length > 0) {
       const colorImages = product.colorVariants[selectedColor]?.images;
       if (colorImages && colorImages.length > 0) return colorImages;
+
+      // Use dummy images for the specific color if no real images found
+      const colorName = product.colorVariants[selectedColor]?.color_name || "";
+      return getDummyImagesForColor(colorName);
     }
     return product?.images || [FALLBACK_IMAGE];
   }, [product, selectedColor]);
@@ -317,15 +359,17 @@ export default function ProductDetailsPage() {
   );
 
   const displayPrice = useMemo(() => {
-    if (activePriceEntry) return activePriceEntry.price;
-    if (selectedVariant) return selectedVariant.price;
-    return product?.price || 0;
+    const rawPrice = activePriceEntry?.price ?? selectedVariant?.price ?? product?.price ?? 0;
+    const numPrice = Number(rawPrice);
+    return isNaN(numPrice) ? 0 : numPrice;
   }, [activePriceEntry, selectedVariant, product]);
 
   const displayStock = useMemo(() => {
-    if (activePriceEntry) return activePriceEntry.stock;
-    return product?.stock ?? 0;
-  }, [activePriceEntry, product]);
+    // Priority: Price Matrix Entry (fixed mapping) -> Selected Variant (dynamic name matching) -> Overall Product Stock
+    const stock = activePriceEntry?.stock ?? selectedVariant?.stock ?? product?.stock ?? 0;
+    const numStock = Number(stock);
+    return isNaN(numStock) ? 0 : numStock;
+  }, [activePriceEntry, selectedVariant, product]);
 
   const discountPct = useMemo(
     () => (product ? calculateDiscount(product.originalPrice, displayPrice) : null),
@@ -405,6 +449,28 @@ export default function ProductDetailsPage() {
   }, [selectedColor]);
 
   useEffect(() => {
+    if (!product || variants.length === 0) return;
+
+    const currentColor = hasColorVariants
+      ? product.colorVariants?.[selectedColor]?.color_name
+      : variantColors[selectedColor];
+    
+    const matchedVariant = variants.find((v) => {
+      const hasColorMatch = !currentColor || v.attributes?.some(
+        (a) => a.name?.toLowerCase() === "color" && (a.value || "").toLowerCase() === currentColor.toLowerCase()
+      );
+      const hasSizeMatch = !selectedSize || v.attributes?.some(
+        (a) => a.name?.toLowerCase() === "size" && (a.value || "").toLowerCase() === selectedSize.toLowerCase()
+      );
+      return hasColorMatch && hasSizeMatch;
+    });
+
+    if (matchedVariant) {
+      setSelectedVariant(matchedVariant);
+    }
+  }, [selectedColor, selectedSize, variants, product, hasColorVariants, variantColors]);
+
+  useEffect(() => {
     const container = mainImageScrollRef.current;
     if (!container) return;
 
@@ -457,11 +523,56 @@ export default function ProductDetailsPage() {
   }, []);
 
   const loadVariantsFromProduct = useCallback((data: any) => {
-    const list: ProductVariant[] = Array.isArray(data?.variants) ? data.variants : [];
+    let list: ProductVariant[] = [];
+    
+    // Check if the structure is grouped (from our new backend format)
+    if (data?.variants && data.variants.length > 0 && data.variants[0].sizes) {
+      data.variants.forEach((group: any) => {
+        const color = group.color;
+        const groupImages = group.images || [];
+        
+        if (group.sizes && group.sizes.length > 0) {
+          group.sizes.forEach((s: any) => {
+            list.push({
+              _id: s._id || group._id || `${color}-${s.size}`,
+              productId: data.productId || "",
+              sku: s.sku,
+              price: s.price,
+              stock: s.stock,
+              attributes: [
+                { name: "Color", value: color },
+                { name: "Size", value: s.size }
+              ],
+              images: groupImages.map((url: string) => ({ url }))
+            });
+          });
+        }
+      });
+    } else {
+      list = Array.isArray(data?.variants) ? data.variants : [];
+    }
+
     setVariants(list);
-    if (list.length > 0) setSelectedVariant(list[0]);
+    if (list.length > 0) {
+      // Find initial matching variant
+      const currentColor = hasColorVariants
+        ? product?.colorVariants?.[selectedColor]?.color_name
+        : variantColors[selectedColor];
+
+      const initialMatch = list.find((v) => {
+        const hasColorMatch = !currentColor || v.attributes?.some(
+          (a) => a.name?.toLowerCase() === "color" && a.value?.toLowerCase() === currentColor.toLowerCase()
+        );
+        const hasSizeMatch = !selectedSize || v.attributes?.some(
+          (a) => a.name?.toLowerCase() === "size" && a.value?.toLowerCase() === selectedSize.toLowerCase()
+        );
+        return hasColorMatch && hasSizeMatch;
+      });
+
+      setSelectedVariant(initialMatch || list[0]);
+    }
     setVariantsLoading(false);
-  }, []);
+  }, [product, hasColorVariants, selectedColor, variantColors, selectedSize]);
 
   useEffect(() => {
     if (!productId || hasFetchedProduct.current) return;
@@ -510,16 +621,25 @@ export default function ProductDetailsPage() {
           }
         }
 
-        const colorVariants: ProductColor[] = Array.isArray(data.colors)
-          ? data.colors
-              .filter((c: any) => c && typeof c === "object" && c.color_id)
-              .map((c: any) => ({
-                color_id: c.color_id,
-                color_name: c.color_name || "",
-                color_code: c.color_code || "#B0B0B0",
-                images: Array.isArray(c.images) ? c.images.filter(Boolean) : [],
-              }))
-          : [];
+        let colorVariants: ProductColor[] = [];
+        if (Array.isArray(data.colors) && data.colors.length > 0 && typeof data.colors[0] === "object") {
+          colorVariants = data.colors
+            .filter((c: any) => c && typeof c === "object" && c.color_id)
+            .map((c: any) => ({
+              color_id: c.color_id,
+              color_name: c.color_name || "",
+              color_code: c.color_code || resolveColorHex(c.color_name || ""),
+              images: Array.isArray(c.images) ? c.images.map((img: any) => getImageUrl(img)).filter(Boolean) : [],
+            }));
+        } else if (Array.isArray(data.variants) && data.variants.length > 0 && (data.variants[0].color || data.variants[0].colorName)) {
+            // Grouped variants structure
+            colorVariants = data.variants.map((v: any) => ({
+              color_id: v._id || v.id || v.color || v.colorName || Math.random().toString(),
+              color_name: v.color || v.colorName || "",
+              color_code: v.colorCode || v.color_code || resolveColorHex(v.color || v.colorName || ""),
+              images: Array.isArray(v.images) ? v.images.map((img: any) => getImageUrl(img)).filter(Boolean) : [],
+            }));
+        }
 
         const sizeVariants: ProductSize[] = Array.isArray(data.sizes)
           ? data.sizes
@@ -532,10 +652,10 @@ export default function ProductDetailsPage() {
 
         const priceMatrix: ProductPrice[] = Array.isArray(data.prices)
           ? data.prices.map((p: any) => ({
-              color_id: p.color_id,
-              size_id: p.size_id,
-              price: p.price,
-              stock: p.stock,
+              color_id: String(p.color_id || ""),
+              size_id: String(p.size_id || ""),
+              price: Number(p.price || 0),
+              stock: Number(p.stock || 0),
             }))
           : [];
 
@@ -547,19 +667,46 @@ export default function ProductDetailsPage() {
           setSelectedSize(sizeVariants[0].size);
         }
 
-        const flatColors =
+        const derivedColorsFromVariants = data.variants
+          ? Array.from(new Set(
+              data.variants
+                .flatMap((v: any) => v.attributes || [])
+                .filter((a: any) => a.name?.toLowerCase() === "color")
+                .map((a: any) => a.value)
+            ))
+          : [];
+
+        const initialFlatColors =
           colorVariants.length === 0
-            ? Array.isArray(data.colors) && data.colors.every((c: any) => typeof c === "string")
+            ? Array.isArray(data.colors) && data.colors.length > 0 && typeof data.colors[0] === "string"
               ? data.colors
+              : derivedColorsFromVariants.length > 0
+              ? derivedColorsFromVariants
               : data.color
               ? data.color.split(",").map((c: string) => c.trim()).filter(Boolean)
               : []
             : [];
 
+        // Ensure Gold, Silver, Rose Gold are always available as per user request
+        const mandatoryColors = ["Gold", "Silver", "Rose Gold"];
+        const flatColors = Array.from(new Set([...initialFlatColors, ...mandatoryColors]));
+
+        const derivedSizesFromVariants = data.variants
+          ? Array.from(new Set(
+              data.variants
+                .flatMap((v: any) => {
+                  if (v.sizes && Array.isArray(v.sizes)) return v.sizes.map((s: any) => s.size);
+                  return (v.attributes || []).filter((a: any) => a.name?.toLowerCase() === "size").map((a: any) => a.value);
+                })
+            )).filter(Boolean) as string[]
+          : [];
+
         const flatSizes =
           sizeVariants.length === 0
-            ? Array.isArray(data.sizes) && data.sizes.every((s: any) => typeof s === "string")
+            ? Array.isArray(data.sizes) && data.sizes.length > 0 && typeof data.sizes[0] === "string"
               ? data.sizes
+              : derivedSizesFromVariants.length > 0
+              ? derivedSizesFromVariants
               : []
             : [];
 
@@ -567,7 +714,7 @@ export default function ProductDetailsPage() {
         const basePrice =
           priceMatrix.length > 0
             ? priceMatrix[0].price
-            : data.pricing?.price ?? data.price ?? 0;
+            : data.pricing?.price ?? data.price ?? (variants.length > 0 ? variants[0].price : 0);
 
         const mainImage = data.media?.mainImage || getImageUrl(data.images?.[0]) || FALLBACK_IMAGE;
         const gallery = data.media?.galleryImages?.map((img: any) => getImageUrl(img)).filter(Boolean) || data.images?.map((img: any) => getImageUrl(img)).filter(Boolean) || [];
@@ -677,18 +824,22 @@ export default function ProductDetailsPage() {
     [activeImages.length]
   );
 
-  const handleColorSelect = useCallback(
-    (idx: number) => {
-      setSelectedColor(idx);
-      setSelectedImage(0);
-      setIsZoomMode(false);
-
-      if (product?.colorVariants && product.colorVariants[idx]) {
-        setSelectedColorId(product.colorVariants[idx].color_id);
-      }
-    },
-    [product]
-  );
+    const handleColorSelect = useCallback(
+      (idx: number) => {
+        setSelectedColor(idx);
+        setSelectedImage(0);
+        setIsZoomMode(false);
+  
+        if (product?.colorVariants && product.colorVariants[idx]) {
+          setSelectedColorId(product.colorVariants[idx].color_id);
+        } else if (variantColors[idx]) {
+          // If using flat colors, use the name as ID if no specific ID matching is available
+          // This helps activePriceEntry find the right row if IDs are values
+          setSelectedColorId(variantColors[idx]);
+        }
+      },
+      [product, variantColors]
+    );
 
   const handleSizeSelect = useCallback((sizeObj: ProductSize | string) => {
     if (typeof sizeObj === "string") {
@@ -1150,7 +1301,7 @@ export default function ProductDetailsPage() {
                 </span>
               )}
 
-              {discountPct && (
+              {typeof discountPct === 'number' && !isNaN(discountPct) && discountPct > 0 && (
                 <span className="bg-[#4CAF50] text-white text-[10px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1.5 rounded-full">
                   {discountPct}% OFF
                 </span>
@@ -1215,7 +1366,12 @@ export default function ProductDetailsPage() {
             </div>
           ) : variantColors.length > 0 ? (
             <div className="flex flex-col gap-2 md:gap-3">
-              <span className="text-sm md:text-[15px] font-semibold text-gray-900">Choose Color</span>
+              <span className="text-sm md:text-[15px] font-semibold text-gray-900">
+                Color:{" "}
+                <span className="font-normal text-gray-600">
+                  {variantColors[selectedColor]}
+                </span>
+              </span>
               <div className="flex gap-3 md:gap-4">
                 {variantColors.map((colorVal, idx) => {
                   const bgColor = resolveColorHex(colorVal);
@@ -1270,7 +1426,27 @@ export default function ProductDetailsPage() {
                   const priceEntry = product.priceMatrix?.find(
                     (p) => p.color_id === selectedColorId && p.size_id === sizeObj.size_id
                   );
-                  const isAvailable = priceEntry ? priceEntry.stock > 0 : true;
+                  
+                  // New logic: If price matrix doesn't have it, check matching variant by name
+                  const currentColor = hasColorVariants
+                    ? product.colorVariants?.[selectedColor]?.color_name
+                    : variantColors[selectedColor];
+
+                  const variantForSize = variants.find((v) => {
+                    const hasColorMatch = !currentColor || v.attributes?.some(
+                      (a) => a.name?.toLowerCase() === "color" && a.value === currentColor
+                    );
+                    const hasSizeMatch = v.attributes?.some(
+                      (a) => a.name?.toLowerCase() === "size" && a.value === sizeObj.size
+                    );
+                    return hasColorMatch && hasSizeMatch;
+                  });
+
+                  const isAvailable = priceEntry 
+                    ? priceEntry.stock > 0 
+                    : variantForSize 
+                      ? variantForSize.stock > 0 
+                      : (product.stock ?? 0) > 0;
                   const isSelected = selectedSizeId === sizeObj.size_id;
 
                   return (
@@ -1296,19 +1472,44 @@ export default function ProductDetailsPage() {
             <div className="flex flex-col gap-2 md:gap-3">
               <span className="text-sm md:text-[15px] font-semibold text-gray-900">Choose Size</span>
               <div className="flex gap-2 md:gap-3 flex-wrap">
-                {variantSizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => handleSizeSelect(size)}
-                    className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold border-2 transition-all ${
-                      selectedSize === size
-                        ? "bg-[#D94F7A] border-[#D94F7A] text-white"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {variantSizes.map((size) => {
+                  const isSelected = selectedSize === size;
+                  
+                  // Check if this specific size is available for the currently selected color
+                  const currentColor = hasColorVariants
+                    ? product.colorVariants?.[selectedColor]?.color_name
+                    : variantColors[selectedColor];
+
+                  const variantForSize = variants.find((v) => {
+                    const hasColorMatch = !currentColor || v.attributes?.some(
+                      (a) => a.name?.toLowerCase() === "color" && a.value === currentColor
+                    );
+                    const hasSizeMatch = v.attributes?.some(
+                      (a) => a.name?.toLowerCase() === "size" && a.value === size
+                    );
+                    return hasColorMatch && hasSizeMatch;
+                  });
+
+                  // If variants list exists, respect its stock. If not, fallback to overall product stock.
+                  const isAvailable = variantForSize ? variantForSize.stock > 0 : (product.stock ?? 0) > 0;
+
+                  return (
+                    <button
+                      key={size}
+                      onClick={() => handleSizeSelect(size)}
+                      disabled={!isAvailable}
+                      className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold border-2 transition-all ${
+                        isSelected
+                          ? "bg-[#D94F7A] border-[#D94F7A] text-white"
+                          : isAvailable
+                          ? "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                          : "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed line-through"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : null}

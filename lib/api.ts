@@ -6,10 +6,10 @@ import axios, {
   AxiosRequestConfig,
 } from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
-if (!BASE_URL) {
-  throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
+  console.warn("[api.ts] NEXT_PUBLIC_API_BASE_URL is not defined – falling back to http://localhost:8080/api");
 }
 
 const apiClient: AxiosInstance = axios.create({

@@ -125,5 +125,6 @@ export function normalize(p: ApiProduct): NormalizedProduct {
     tags:          tags.length > 0 ? tags : [p.category].filter(Boolean) as string[],
     bestSeller:    p.bestSeller || (typeof p.story === 'object' ? p.story?.featured : undefined) || false,
     trendy:        p.trendy || false,
+    variants:      p.variants,
   };
 }

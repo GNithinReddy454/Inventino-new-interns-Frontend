@@ -1,0 +1,63 @@
+{
+  "statusCode": 200,
+  "message": "Product fetched",
+  "data": {
+    "_id": "69c5178fc05d538bc0ae1715",
+    "productId": "PRD-5e3b70ae63",
+    "productName": "Men's Silver Chain",
+    "category": "Jewelry",
+    "description": "Stylish sterling silver chain designed for modern men with a bold finish.",
+    "pricing": {
+      "price": 4800,
+      "originalPrice": 5500,
+      "offerPercentage": 13,
+      "taxIncluded": true
+    },
+    "media": {
+      "mainImage": "https://inventino-products.s3.ap-south-1.amazonaws.com/products/chain-main.jpg",
+      "galleryImages": [
+        {
+          "id": "1",
+          "url": "https://inventino-products.s3.ap-south-1.amazonaws.com/products/chain-1.jpg"
+        },
+        {
+          "id": "2",
+          "url": "https://inventino-products.s3.ap-south-1.amazonaws.com/products/chain-2.jpg"
+        }
+      ]
+    },
+    "variants": [
+      {
+        "color": "Silver",
+        "colorCode": "#C0C0C0",
+        "images": [
+          "https://inventino-products.s3.ap-south-1.amazonaws.com/products/chain-main.jpg"
+        ],
+        "sizes": [
+          {
+            "size": "18 inch",
+            "price": 4800,
+            "stock": 20,
+            "sku": "MSC-18-01"
+          },
+          {
+            "size": "20 inch",
+            "price": 5000,
+            "stock": 15,
+            "sku": "MSC-20-02"
+          }
+        ]
+      }
+    ],
+    "totalStock": 35,
+    "rating": 0,
+    "reviewCount": 0,
+    "story": {
+      "title": "Men's Silver Chain",
+      "content": "Crafted for durability and shine, this chain is perfect for daily wear and special occasions.",
+      "isDisplayed": true,
+      "featured": false
+    }
+  },
+  "error": null
+}

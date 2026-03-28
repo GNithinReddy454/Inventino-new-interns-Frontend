@@ -1,94 +1,88 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Download } from "lucide-react";
-
-// Mock data matching other order pages
-const MOCK_INVOICE_DATA: Record<string, any> = {
-    "ORD-2024-001": {
-        orderId: "ORD-2024-001",
-        date: "Feb 6, 2026",
-        paymentMethod: "Visa ending in •••• 4242",
-        billingDetails: {
-            name: "Jane Doe",
-            email: "jane.doe@example.com",
-            address: "123 Magnolia Ave, Apartment 4B",
-            city: "New York, NY",
-            zip: "10001",
-            country: "United States"
-        },
-        shippingDetails: {
-            name: "Jane Doe",
-            address: "123 Magnolia Ave, Apartment 4B",
-            city: "New York, NY",
-            zip: "10001",
-            country: "United States"
-        },
-        items: [
-            {
-                id: "ITEM-1",
-                name: "Rose Gold Bracelet",
-                sku: "B-RG-M-001",
-                variant: "Color: Rose Gold · Size: Medium",
-                price: 89.99,
-                quantity: 1,
-            },
-        ],
-        subtotal: 89.99,
-        tax: 4.50,
-        shipping: 0.00,
-        total: 94.49,
-    },
-    "ORD-2024-002": {
-        orderId: "ORD-2024-002",
-        date: "Feb 10, 2026",
-        paymentMethod: "Mastercard ending in •••• 8831",
-        billingDetails: {
-            name: "John Smith",
-            email: "john.smith@example.com",
-            address: "456 Oak Street",
-            city: "San Francisco, CA",
-            zip: "94107",
-            country: "United States"
-        },
-        shippingDetails: {
-            name: "John Smith",
-            address: "456 Oak Street",
-            city: "San Francisco, CA",
-            zip: "94107",
-            country: "United States"
-        },
-        items: [
-            {
-                id: "ITEM-2",
-                name: "Pearl Necklace Set",
-                sku: "N-PL-S-004",
-                variant: "Color: Silver · Style: Classic",
-                price: 129.99,
-                quantity: 1,
-            },
-        ],
-        subtotal: 129.99,
-        tax: 6.50,
-        shipping: 5.00,
-        total: 141.49,
-    },
-};
+import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
+import { orderService } from "@/services/order.service";
+import { OrderData } from "@/types/orderid";
 
 export default function InvoicePage({ params }: { params: Promise<{ id: string }> | any }) {
     const unwrappedParams = React.use(params as Promise<{ id: string }>);
-    const idValue = unwrappedParams.id;
+    const orderId = unwrappedParams.id;
 
-    const invoice = MOCK_INVOICE_DATA[idValue as keyof typeof MOCK_INVOICE_DATA] || MOCK_INVOICE_DATA["ORD-2024-001"];
+    const [order, setOrder] = useState<OrderData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        async function fetchOrder() {
+            try {
+                setLoading(true);
+                const response = await orderService.getOrderById(orderId);
+                const rawOrder = response.data;
+
+                // Normalize pricing with fallbacks
+                if (rawOrder && rawOrder.pricing) {
+                    const subtotal = Number(rawOrder.subtotal ?? rawOrder.pricing.subtotal ?? 0);
+                    const total = Number(rawOrder.total_amount ?? rawOrder.total ?? rawOrder.pricing.total ?? 0);
+                    
+                    const localDiscounts = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("order_discounts") || "{}") : {};
+                    const localDiscountPercent = localDiscounts[rawOrder.orderNumber] || localDiscounts[rawOrder?._id] || 0;
+
+                    let discount = Number(rawOrder.discount ?? rawOrder.discountAmount ?? rawOrder.pricing.discount ?? 0);
+                    
+                    if (discount === 0 && subtotal > total && subtotal > 0) {
+                        discount = subtotal - total;
+                    }
+                    
+                    if (discount === 0 && localDiscountPercent > 0 && subtotal > 0) {
+                        discount = subtotal * (localDiscountPercent / 100);
+                    }
+                    
+                    rawOrder.pricing = {
+                        ...rawOrder.pricing,
+                        subtotal,
+                        total: (discount > 0 && total === subtotal) ? subtotal - discount : total,
+                        discount
+                    };
+                }
+
+                setOrder(rawOrder);
+            } catch (err: any) {
+                setError(err.message || "Failed to load invoice.");
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchOrder();
+    }, [orderId]);
 
     const handlePrint = () => {
         window.print();
     };
 
+    if (loading) {
+        return (
+            <div style={{ background: "#fff", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Loader2 size={32} color="#D94F7A" style={{ animation: "spin 1s linear infinite" }} />
+                <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+            </div>
+        );
+    }
+
+    if (error || !order) {
+        return (
+            <div style={{ padding: 40, textAlign: "center" }}>
+                <p style={{ color: "red" }}>{error || "Order not found"}</p>
+                <Link href="/profile/orders">Back to Orders</Link>
+            </div>
+        );
+    }
+
+    const { items, pricing, shippingAddress, payment, orderNumber, createdAt } = order;
+
     return (
         <div style={{ background: "#fdf8f9", minHeight: "100vh", paddingBottom: 60, fontFamily: "Inter, sans-serif" }}>
-            {/* Non-printable header actions */}
             <style>{`
         @media print {
           body { background: white !important; }
@@ -100,7 +94,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
             <div className="no-print" style={{ maxWidth: 800, margin: "0 auto", padding: "32px 16px 16px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <Link
-                        href="/profile/orders"
+                        href={`/profile/orders/${orderId}`}
                         style={{
                             display: "inline-flex",
                             alignItems: "center",
@@ -111,7 +105,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                             fontSize: 14,
                         }}
                     >
-                        <ArrowLeft size={16} /> Back to Orders
+                        <ArrowLeft size={16} /> Back to Order
                     </Link>
                     <div style={{ display: "flex", gap: 12 }}>
                         <button
@@ -134,7 +128,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                             <Printer size={16} /> Print
                         </button>
                         <button
-                            onClick={handlePrint} // same action, just labelled download
+                            onClick={handlePrint}
                             style={{
                                 display: "flex",
                                 alignItems: "center",
@@ -156,7 +150,6 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                 </div>
             </div>
 
-            {/* Invoice Document Main Area */}
             <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 16px" }}>
                 <div
                     className="print-card"
@@ -169,18 +162,16 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                         color: "#111"
                     }}
                 >
-                    {/* Header Row */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 48 }}>
                         <div>
-                            {/* Fake logo / Brand name */}
                             <div style={{ fontSize: 28, fontWeight: 900, color: "#D94F7A", letterSpacing: "-0.03em", marginBottom: 8 }}>
                                 Inventino<span style={{ color: "#111" }}>Jewels</span>
                             </div>
                             <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>
                                 123 Jewelry District<br />
-                                Los Angeles, CA 90014<br />
+                                Mumbai, MH 400001<br />
                                 support@inventinojewels.com<br />
-                                +1 (800) 123-4567
+                                +91 800-123-4567
                             </div>
                         </div>
                         <div style={{ textAlign: "right" }}>
@@ -188,16 +179,12 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                             <table style={{ borderCollapse: "collapse", fontSize: 13, width: "100%", maxWidth: 200, marginLeft: "auto" }}>
                                 <tbody>
                                     <tr>
-                                        <td style={{ padding: "4px 0", color: "#6b7280", fontWeight: 500, textAlign: "left" }}>Invoice No:</td>
-                                        <td style={{ padding: "4px 0", fontWeight: 600, textAlign: "right" }}>{invoice.orderId.replace('ORD-', 'INV-')}</td>
-                                    </tr>
-                                    <tr>
                                         <td style={{ padding: "4px 0", color: "#6b7280", fontWeight: 500, textAlign: "left" }}>Order ID:</td>
-                                        <td style={{ padding: "4px 0", fontWeight: 600, textAlign: "right" }}>{invoice.orderId}</td>
+                                        <td style={{ padding: "4px 0", fontWeight: 600, textAlign: "right" }}>#{orderNumber}</td>
                                     </tr>
                                     <tr>
                                         <td style={{ padding: "4px 0", color: "#6b7280", fontWeight: 500, textAlign: "left" }}>Invoice Date:</td>
-                                        <td style={{ padding: "4px 0", fontWeight: 600, textAlign: "right" }}>{invoice.date}</td>
+                                        <td style={{ padding: "4px 0", fontWeight: 600, textAlign: "right" }}>{new Date(createdAt).toLocaleDateString("en-IN")}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -205,31 +192,23 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, marginBottom: 48 }}>
-                        {/* Bill To */}
                         <div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Billed To</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 4 }}>{invoice.billingDetails.name}</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Billed & Shipped To</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 4 }}>{shippingAddress.fullName}</div>
                             <div style={{ fontSize: 14, color: "#4b5563", lineHeight: 1.6 }}>
-                                {invoice.billingDetails.address}<br />
-                                {invoice.billingDetails.city} {invoice.billingDetails.zip}<br />
-                                {invoice.billingDetails.country}
+                                {shippingAddress.street}<br />
+                                {shippingAddress.city}, {shippingAddress.state} {shippingAddress.pincode}<br />
+                                {shippingAddress.country}
                             </div>
-                            <div style={{ fontSize: 14, color: "#4b5563", marginTop: 4 }}>{invoice.billingDetails.email}</div>
+                            <div style={{ fontSize: 14, color: "#4b5563", marginTop: 4 }}>{shippingAddress.phone}</div>
                         </div>
-
-                        {/* Ship To */}
-                        <div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Shipped To</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 4 }}>{invoice.shippingDetails.name}</div>
-                            <div style={{ fontSize: 14, color: "#4b5563", lineHeight: 1.6 }}>
-                                {invoice.shippingDetails.address}<br />
-                                {invoice.shippingDetails.city} {invoice.shippingDetails.zip}<br />
-                                {invoice.shippingDetails.country}
-                            </div>
+                        <div style={{ textAlign: "right" }}>
+                           <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Payment Info</div>
+                           <div style={{ fontSize: 14, color: "#4b5563" }}>Method: <strong>{payment.method}</strong></div>
+                           <div style={{ fontSize: 14, color: "#4b5563" }}>Status: <strong style={{ color: "#059669" }}>{payment.status.toUpperCase()}</strong></div>
                         </div>
                     </div>
 
-                    {/* Line Items Table */}
                     <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 32 }}>
                         <thead>
                             <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
@@ -240,55 +219,69 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                             </tr>
                         </thead>
                         <tbody>
-                            {invoice.items.map((item: any, i: number) => (
+                            {items.map((item: any, i: number) => (
                                 <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
                                     <td style={{ padding: "20px 0" }}>
                                         <div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>{item.name}</div>
-                                        <div style={{ fontSize: 13, color: "#6b7280" }}>{item.variant}</div>
-                                        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>SKU: {item.sku}</div>
                                     </td>
                                     <td style={{ padding: "20px 16px", textAlign: "right", fontSize: 14, color: "#374151" }}>{item.quantity}</td>
-                                    <td style={{ padding: "20px 16px", textAlign: "right", fontSize: 14, color: "#374151" }}>${item.price.toFixed(2)}</td>
-                                    <td style={{ padding: "20px 0", textAlign: "right", fontSize: 14, fontWeight: 600, color: "#111" }}>${(item.price * item.quantity).toFixed(2)}</td>
+                                    <td style={{ padding: "20px 16px", textAlign: "right", fontSize: 14, color: "#374151" }}>₹{item.price.toLocaleString("en-IN")}</td>
+                                    <td style={{ padding: "20px 0", textAlign: "right", fontSize: 14, fontWeight: 600, color: "#111" }}>₹{(item.price * item.quantity).toLocaleString("en-IN")}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
 
-                    {/* Totals & Payment */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                         <div style={{ flex: 1, paddingRight: 48 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Payment Method</div>
-                            <div style={{ fontSize: 14, color: "#374151", fontWeight: 500 }}>{invoice.paymentMethod}</div>
                             <div style={{ marginTop: 24, padding: 16, background: "#f9fafb", borderRadius: 8, fontSize: 13, color: "#6b7280", lineHeight: 1.5 }}>
-                                Thank you for your business! If you have any questions regarding this invoice, please contact support. returns & exchanges are accepted within 30 days of delivery.
+                                Thank you for your business! This is a system generated invoice. For any support, please contact help@inventinojewels.com
                             </div>
                         </div>
 
-                        <div style={{ width: 260 }}>
+                        <div style={{ width: 280 }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                                 <tbody>
                                     <tr>
                                         <td style={{ padding: "8px 0", color: "#6b7280", textAlign: "left" }}>Subtotal</td>
-                                        <td style={{ padding: "8px 0", fontWeight: 600, color: "#111", textAlign: "right" }}>${invoice.subtotal.toFixed(2)}</td>
+                                        <td style={{ padding: "8px 0", fontWeight: 600, color: "#111", textAlign: "right" }}>₹{pricing.subtotal.toLocaleString("en-IN")}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{ padding: "8px 0", color: "#6b7280", textAlign: "left" }}>
+                                            <div>Discount</div>
+                                            {pricing.discount > 0 && (
+                                                <div style={{ fontSize: "10px", color: "#059669" }}>
+                                                    ({Math.round((pricing.discount / (pricing.subtotal || 1)) * 100)}% Applied)
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td style={{ padding: "8px 0", fontWeight: 600, color: pricing.discount > 0 ? "#059669" : "#111", textAlign: "right", verticalAlign: "top" }}>
+                                            {pricing.discount > 0 
+                                                ? `-₹${pricing.discount.toLocaleString("en-IN")}` 
+                                                : "₹0"}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <td style={{ padding: "8px 0", color: "#6b7280", textAlign: "left" }}>Shipping</td>
-                                        <td style={{ padding: "8px 0", fontWeight: 600, color: "#111", textAlign: "right" }}>${invoice.shipping.toFixed(2)}</td>
+                                        <td style={{ padding: "8px 0", fontWeight: 600, color: "#111", textAlign: "right" }}>
+                                            {pricing.shipping > 0 ? `₹${pricing.shipping.toLocaleString("en-IN")}` : "Free"}
+                                        </td>
                                     </tr>
                                     <tr>
-                                        <td style={{ padding: "8px 0", color: "#6b7280", textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>Tax</td>
-                                        <td style={{ padding: "8px 0", fontWeight: 600, color: "#111", textAlign: "right", borderBottom: "1px solid #e5e7eb" }}>${invoice.tax.toFixed(2)}</td>
+                                        <td style={{ padding: "8px 0", color: "#6b7280", textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>GST</td>
+                                        <td style={{ padding: "8px 0", fontWeight: 600, color: "#111", textAlign: "right", borderBottom: "1px solid #e5e7eb" }}>
+                                            ₹{pricing.tax.toLocaleString("en-IN")}
+                                            {pricing.tax > 0 && ` (${Math.round((pricing.tax / (pricing.subtotal || 1)) * 100)}%)`}
+                                        </td>
                                     </tr>
                                     <tr>
-                                        <td style={{ padding: "16px 0 0", color: "#111", fontWeight: 800, fontSize: 16, textAlign: "left" }}>Total Due</td>
-                                        <td style={{ padding: "16px 0 0", fontWeight: 800, fontSize: 20, color: "#D94F7A", textAlign: "right" }}>${invoice.total.toFixed(2)}</td>
+                                        <td style={{ padding: "16px 0 0", color: "#111", fontWeight: 800, fontSize: 16, textAlign: "left" }}>Grand Total</td>
+                                        <td style={{ padding: "16px 0 0", fontWeight: 800, fontSize: 20, color: "#D94F7A", textAlign: "right" }}>₹{pricing.total.toLocaleString("en-IN")}</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>

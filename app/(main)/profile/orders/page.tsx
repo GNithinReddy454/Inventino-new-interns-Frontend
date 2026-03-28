@@ -32,7 +32,11 @@ interface Order {
   id: string;        // orderNumber — used for display only
   backendId: string; // MongoDB _id — used for ALL API calls & links
   date: string;
-  total: string;
+  totalAmount: number;
+  subtotal: number;
+  discount: number;
+  discountPercent?: number;
+  promoCode?: string;
   status: OrderStatus;
   items: OrderItem[];
   _raw: any;         // full raw API order — passed to Return/Exchange page
@@ -76,6 +80,35 @@ function mapApiOrder(apiOrder: any): Order {
   const rawStatus = (apiOrder.status ?? "").toLowerCase().trim();
   const mappedStatus: OrderStatus = API_STATUS_MAP[rawStatus] ?? "Processing";
 
+  const localDiscounts = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("order_discounts") || "{}") : {};
+  const localDiscountPercent = localDiscounts[apiOrder.orderNumber] || localDiscounts[apiOrder?._id] || 0;
+
+  const subtotalVal = Number(apiOrder.subtotal ?? apiOrder.pricing?.subtotal ?? 0);
+  const totalVal = Number(apiOrder.total_amount ?? apiOrder.total ?? apiOrder.pricing?.total ?? 0);
+  
+  let discountVal = Number(
+    apiOrder.discount ?? 
+    apiOrder.discountAmount ?? 
+    apiOrder.discount_amount ?? 
+    apiOrder.pricing?.discount ?? 
+    apiOrder.pricing?.discountAmount ?? 
+    apiOrder.pricing?.discount_amount ?? 
+    0
+  );
+
+  // Fallback 1: Discrepancy calculation
+  if (discountVal === 0 && subtotalVal > totalVal && subtotalVal > 0) {
+    discountVal = subtotalVal - totalVal;
+  }
+  
+  // Fallback 2: Local Session History (for very recent orders)
+  if (discountVal === 0 && localDiscountPercent > 0 && subtotalVal > 0) {
+    discountVal = subtotalVal * (localDiscountPercent / 100);
+  }
+
+  // Force totalAmount to be discounted if we found a discount
+  const finalTotal = (discountVal > 0 && totalVal === subtotalVal) ? subtotalVal - discountVal : totalVal;
+
   return {
     id: apiOrder.orderNumber,
     backendId: apiOrder._id ?? apiOrder.id ?? apiOrder.orderNumber,
@@ -86,7 +119,29 @@ function mapApiOrder(apiOrder: any): Order {
       hour: "2-digit",
       minute: "2-digit",
     }),
-    total: `₹${Number(apiOrder.pricing?.total ?? 0).toFixed(2)}`,
+    totalAmount: finalTotal,
+    subtotal: subtotalVal,
+    discount: discountVal,
+    discountPercent: localDiscountPercent || Number(
+      apiOrder.discountPercentage ?? 
+      apiOrder.discount_percentage ?? 
+      apiOrder.discount_percent ?? 
+      apiOrder.pricing?.percentage ?? 
+      apiOrder.pricing?.discountPercentage ?? 
+      apiOrder.pricing?.discount_percent ?? 
+      0
+    ),
+    promoCode: 
+      apiOrder.promoCode ?? 
+      apiOrder.code ?? 
+      apiOrder.promo_code ?? 
+      apiOrder.coupon ?? 
+      apiOrder.couponCode ?? 
+      apiOrder.promo?.code ?? 
+      apiOrder.pricing?.promoCode ?? 
+      apiOrder.pricing?.code ?? 
+      apiOrder.pricing?.promo_code ?? 
+      (localDiscountPercent > 0 ? "SESSION_PROMO" : ""),
     status: mappedStatus,
     items: (apiOrder.items ?? []).map((item: any) => ({
       id: item.productId ?? "",
@@ -359,8 +414,29 @@ export default function OrdersPage() {
                           color: "#E8456A",
                         }}
                       >
-                        {order.total}
+                        ₹{(order.totalAmount || 0).toFixed(2)}
                       </p>
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: "#9ca3af",
+                          marginBottom: 3,
+                        }}
+                      >
+                        Discount
+                      </p>
+                      {(order.discount > 0 || order.promoCode) ? (
+                        <p style={{ fontSize: 11, color: "#10b981", fontWeight: 700 }}>
+                          ({(order.discount > 0 && order.subtotal > 0) ? Math.round((order.discount / order.subtotal) * 100) : 10}% Applied)
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>0%</p>
+                      )}
                     </div>
                     <div style={{ marginLeft: "auto" }}>
                       <span
@@ -450,10 +526,10 @@ export default function OrdersPage() {
                                 Last
                               </span>
                             )}
-                            {item!.image ? (
+                            {item?.image?.trim() ? (
                               <img
-                                src={item!.image}
-                                alt={item!.name}
+                                src={item.image.trim()}
+                                alt={item.name}
                                 style={{
                                   width: 52,
                                   height: 52,
@@ -705,8 +781,8 @@ export default function OrdersPage() {
                         >
                           <Eye size={13} /> View Details
                         </Link>
-                        <button
-                          onClick={() => setCancellingId(order.id)}
+                        <Link
+                          href={`/profile/orders/cancel/${order.id}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -715,16 +791,14 @@ export default function OrdersPage() {
                             padding: "12px 8px",
                             fontSize: 12,
                             fontWeight: 500,
-                            cursor: "pointer",
+                            textDecoration: "none",
                             background: "#fff",
                             color: "#374151",
-                            border: "none",
                             borderRight: "1px solid #fce7f3",
-                            fontFamily: "inherit",
                           }}
                         >
-                          <XCircle size={13} /> Cancel Order
-                        </button>
+                          <XCircle size={13} /> Cancel Order/Items
+                        </Link>
                         <Link
                           href="/contact"
                           style={{

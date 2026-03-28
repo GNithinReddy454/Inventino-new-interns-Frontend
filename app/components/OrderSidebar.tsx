@@ -209,9 +209,14 @@ export function OrderSidebar({
           </span>
         </div>
         {summary?.discount > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Discount</span>
-            <span className="font-medium text-green-600">
+          <div className="flex justify-between text-sm items-start">
+            <div>
+              <span className="text-gray-600">Discount</span>
+              <p className="text-[10px] text-green-600 font-medium">
+                ({Math.round((summary.discount / (summary.subtotal || 1)) * 100)}% Applied)
+              </p>
+            </div>
+            <span className="font-bold text-green-600">
               -₹{(summary?.discount || 0).toFixed(2)}
             </span>
           </div>

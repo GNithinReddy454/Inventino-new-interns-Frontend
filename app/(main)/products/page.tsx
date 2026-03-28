@@ -102,53 +102,128 @@ function PriceRange({
   const currentMin = minPrice ?? rangeMin;
   const currentMax = maxPrice ?? rangeMax;
 
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic step based on total range (e.g. 10000 range => 100 step, 1000 range => 10 step)
+  const rangeDiff = rangeMax - rangeMin;
+  const step = rangeDiff > 1000 ? (rangeDiff > 5000 ? 100 : 50) : 10;
+
+  // Percentage calculation for positioning
+  const getPercent = (value: number) => {
+    if (rangeMax <= rangeMin) return 0;
+    return ((value - rangeMin) / (rangeMax - rangeMin)) * 100;
+  };
+
+  const left = getPercent(currentMin);
+  const right = getPercent(currentMax);
+
+  const handleTrackClick = (e: React.MouseEvent) => {
+    if (!trackRef.current) return;
+    
+    const rect = trackRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percent = Math.min(Math.max(0, clickX / rect.width), 1);
+    
+    // Calculate raw value then snap to nearest step
+    const rawValue = rangeMin + percent * (rangeMax - rangeMin);
+    const snappedValue = Math.round(rawValue / step) * step;
+    
+    // Clamp to min/max range
+    const clickedValue = Math.min(Math.max(rangeMin, snappedValue), rangeMax);
+
+    const distMin = Math.abs(clickedValue - currentMin);
+    const distMax = Math.abs(clickedValue - currentMax);
+
+    if (distMin < distMax) {
+      if (clickedValue <= currentMax) {
+        setMinPrice(clickedValue === rangeMin ? undefined : clickedValue);
+      }
+    } else {
+      if (clickedValue >= currentMin) {
+        setMaxPrice(clickedValue === rangeMax ? undefined : clickedValue);
+      }
+    }
+  };
+
   return (
     <div className="w-full space-y-3">
       <div className="flex gap-3">
+        <div className="relative flex-1">
+          <input
+            type="number"
+            value={currentMin}
+            min={rangeMin}
+            max={currentMax}
+            step={step}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (val <= currentMax) {
+                setMinPrice(val === rangeMin ? undefined : val);
+              }
+            }}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors focus:border-[#D94F7A] focus:outline-none"
+            placeholder="Min"
+          />
+        </div>
+        <div className="relative flex-1">
+          <input
+            type="number"
+            value={currentMax}
+            min={currentMin}
+            max={rangeMax}
+            step={step}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (val >= currentMin) {
+                setMaxPrice(val === rangeMax ? undefined : val);
+              }
+            }}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors focus:border-[#D94F7A] focus:outline-none"
+            placeholder="Max"
+          />
+        </div>
+      </div>
+
+      <div 
+        ref={trackRef}
+        onClick={handleTrackClick}
+        className="relative flex h-5 items-center px-1 cursor-pointer"
+      >
+        {/* Track */}
+        <div className="absolute h-1.5 w-[calc(100%-8px)] rounded-full bg-gray-200 left-1" />
+        
+        {/* Active range (pink line) */}
+        <div
+          className="absolute h-1.5 rounded-full bg-[#D94F7A]"
+          style={{
+            left: `${left}%`,
+            width: `${Math.max(0, right - left)}%`,
+          }}
+        />
+        
+        {/* Thumb for Min */}
         <input
-          type="number"
-          value={currentMin}
+          type="range"
           min={rangeMin}
-          max={currentMax}
+          max={rangeMax}
+          step={step}
+          value={currentMin}
           onChange={(e) => {
             const val = Number(e.target.value);
             if (val <= currentMax) {
               setMinPrice(val === rangeMin ? undefined : val);
             }
           }}
-          className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors focus:border-[#D94F7A] focus:outline-none"
+          className="range-thumb-pink absolute left-0 h-1.5 w-full cursor-pointer appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-moz-range-thumb]:pointer-events-auto"
+          style={{ zIndex: currentMin > (rangeMax - rangeMin) / 2 ? 5 : 4 }}
         />
-        <input
-          type="number"
-          value={currentMax}
-          min={currentMin}
-          max={rangeMax}
-          onChange={(e) => {
-            const val = Number(e.target.value);
-            if (val >= currentMin) {
-              setMaxPrice(val === rangeMax ? undefined : val);
-            }
-          }}
-          className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors focus:border-[#D94F7A] focus:outline-none"
-        />
-      </div>
 
-      <div className="relative flex h-5 items-center">
-        <div className="absolute h-1.5 w-full rounded-full bg-gray-200" />
-        <div
-          className="absolute left-0 h-1.5 rounded-full bg-[#D94F7A]"
-          style={{
-            width: `${
-              rangeMax === rangeMin
-                ? 100
-                : ((currentMax - rangeMin) / (rangeMax - rangeMin)) * 100
-            }%`,
-          }}
-        />
+        {/* Thumb for Max */}
         <input
           type="range"
           min={rangeMin}
           max={rangeMax}
+          step={step}
           value={currentMax}
           onChange={(e) => {
             const val = Number(e.target.value);
@@ -156,8 +231,22 @@ function PriceRange({
               setMaxPrice(val === rangeMax ? undefined : val);
             }
           }}
-          className="range-thumb-pink absolute h-1.5 w-full cursor-pointer appearance-none bg-transparent"
+          className="range-thumb-pink absolute left-0 h-1.5 w-full cursor-pointer appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-moz-range-thumb]:pointer-events-auto"
+          style={{ zIndex: 4 }}
         />
+      </div>
+
+      {/* Price Range Summary Indicator */}
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex flex-col">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">From</span>
+          <span className="text-xs font-black text-gray-700">₹{currentMin.toLocaleString()}</span>
+        </div>
+        <div className="h-px w-4 bg-gray-200" />
+        <div className="flex flex-col items-end">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">To</span>
+          <span className="text-xs font-black text-gray-700">₹{currentMax.toLocaleString()}</span>
+        </div>
       </div>
     </div>
   );
@@ -393,9 +482,11 @@ function ProductsContent() {
 
           counts[key] = (counts[key] || 0) + 1;
 
-          const price = p.discountPrice ?? p.price ?? 0;
-          if (price < min) min = price;
-          if (price > max) max = price;
+          const price = p.pricing?.price ?? p.discountPrice ?? p.price ?? 0;
+          if (price > 0) {
+            if (price < min) min = price;
+            if (price > max) max = price;
+          }
         });
 
         setCategoryCounts(counts);

@@ -13,7 +13,7 @@ import { orderService } from "@/services/order.service";
 import { addressService } from "@/services/address.service";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { fetchCart } from "@/redux/cartslice";
-import { placeOrderAction, resetOrderState } from "@/redux/orderslice";
+import { placeOrderAction, resetOrderState, fetchOrderByIdAction } from "@/redux/orderslice";
 import {
   CheckoutStep,
   ShippingAddress,
@@ -24,7 +24,7 @@ import { useEffect } from "react";
 
 export default function CheckoutFlow() {
   const dispatch = useAppDispatch();
-  const { totalAmount, items: cartItems = [] } = useAppSelector((state) => state.cart);
+  const { totalAmount, items: cartItems = [], promoCode: appliedCode, discount: currentDiscount } = useAppSelector((state) => state.cart);
   const { isLoading: isOrderProcessing, error: orderError } = useAppSelector((state) => state.order);
 
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("shipping");
@@ -94,11 +94,23 @@ export default function CheckoutFlow() {
             color: item.color || undefined,
             size: item.size || undefined,
           })),
-          paymentMethod: "COD"
+          paymentMethod: "COD",
+          promoCode: appliedCode,
+          code: appliedCode,
+          promo_code: appliedCode,
+          subtotal: cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0),
+          discount: currentDiscount,
+          total: totalAmount,
         }));
 
         if (placeOrderAction.fulfilled.match(resultAction)) {
           const orderRes = resultAction.payload;
+          const orderKey = orderRes.data.orderNumber || orderRes.data._id;
+          if (orderKey && appliedCode) {
+            const saved = JSON.parse(localStorage.getItem('order_discounts') || '{}');
+            saved[orderKey] = 10;
+            localStorage.setItem('order_discounts', JSON.stringify(saved));
+          }
           setOrderResponse({
             status: "success",
             orderId: orderRes.data._id || orderRes.data.orderNumber,
@@ -163,7 +175,13 @@ export default function CheckoutFlow() {
               addressId: capturedAddressId,
               items: capturedItems,
               paymentMethod: capturedPaymentMethod.toUpperCase(),
-              razorpay_order_id: rzpOrderData.id,
+              promoCode: appliedCode,
+              code: appliedCode,
+              promo_code: appliedCode,
+              subtotal: capturedItems.reduce((acc, item) => acc + (item.quantity * (cartItems.find(ci => ci.productId === item.productId)?.price || 0)), 0),
+              discount: currentDiscount,
+              total: totalAmount,
+              razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             }));
@@ -172,26 +190,41 @@ export default function CheckoutFlow() {
 
             if (placeOrderAction.fulfilled.match(resultAction)) {
               const orderRes = resultAction.payload;
-              const dbOrderId = orderRes.data?._id;
+              const dbOrderId = orderRes.data?._id || orderRes.data?.id;
 
-              console.log("Order created, verifying payment signature with order ID:", dbOrderId);
+              console.log("Verifying payment signature for order:", dbOrderId);
+              // Verify payment against the newly created DB order ID
               await orderService.verifyPayment({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                orderId: dbOrderId,
+                orderId: dbOrderId, // Use DB Order ID
               });
+
+              console.log("Fetching final order status...");
+              // Fulfill "use and show order api" requirement
+              const finalOrderAction = await dispatch(fetchOrderByIdAction(dbOrderId));
+               const finalOrder = fetchOrderByIdAction.fulfilled.match(finalOrderAction) 
+                ? finalOrderAction.payload.data || finalOrderAction.payload
+                : orderRes.data;
+
+              const orderKey = finalOrder?.orderNumber || orderRes.data?.orderNumber || dbOrderId;
+              if (orderKey && appliedCode) {
+                const saved = JSON.parse(localStorage.getItem('order_discounts') || '{}');
+                saved[orderKey] = 10;
+                localStorage.setItem('order_discounts', JSON.stringify(saved));
+              }
 
               setOrderResponse({
                 status: "success",
                 orderId: dbOrderId || response.razorpay_payment_id,
-                orderNumber: orderRes.data?.orderNumber || "N/A",
-                orderDate: orderRes.data?.createdAt || new Date().toISOString(),
+                orderNumber: finalOrder?.orderNumber || orderRes.data?.orderNumber || "N/A",
+                orderDate: finalOrder?.createdAt || orderRes.data?.createdAt || new Date().toISOString(),
                 transactionId: response.razorpay_payment_id,
                 paymentMethod: capturedPaymentMethod,
-                totalAmount: orderRes.data?.total || capturedTotalAmount,
+                totalAmount: finalOrder?.total || orderRes.data?.total || capturedTotalAmount,
                 shippingAddress: capturedShippingAddress!,
-                trackingNumber: "TRK-" + Math.floor(Math.random() * 1000000),
+                trackingNumber: finalOrder?.trackingNumber || "TRK-" + Math.floor(Math.random() * 1000000),
                 estimatedDelivery: "3-5 Days",
               });
               setCurrentStep("success");
@@ -212,7 +245,7 @@ export default function CheckoutFlow() {
               setCurrentStep("failed");
             }
           } catch (err: any) {
-            console.error("Post-payment order creation failed:", err);
+            console.error("Payment verification or order creation failed:", err);
             setOrderResponse({
               status: "failed",
               orderId: "",
@@ -222,7 +255,7 @@ export default function CheckoutFlow() {
               paymentMethod: capturedPaymentMethod,
               shippingAddress: capturedShippingAddress!,
               transactionId: response.razorpay_payment_id,
-              errorMessage: err?.message || "Unknown error during order creation",
+              errorMessage: err?.message || "Unknown error during order verification/creation",
             });
             setCurrentStep("failed");
           } finally {
