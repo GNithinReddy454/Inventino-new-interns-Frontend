@@ -57,9 +57,6 @@ export default function CancelItemsPage({
   const dispatch = useAppDispatch();
   const { currentOrder, isLoading, error: reduxError } = useAppSelector((state) => state.order);
 
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [orderNumber, setOrderNumber] = useState<string>("");
-
   useEffect(() => {
     dispatch(fetchOrderByIdAction(orderId));
     return () => {
@@ -67,32 +64,30 @@ export default function CancelItemsPage({
     };
   }, [orderId, dispatch]);
 
-  useEffect(() => {
-    if (currentOrder) {
-      setOrderNumber(currentOrder.orderNumber ?? currentOrder.orderId ?? orderId);
+  // ── Derived State ──────────────────────────────────────────────────────────
+  const orderNumber = currentOrder?.orderNumber ?? currentOrder?.orderId ?? orderId;
 
-      const rawItems: any[] = currentOrder.items ?? [];
-      const mapped: OrderItem[] = rawItems.map((item: any) => {
-        const objectId =
-          (item.productId) ??
-          (item.product?._id) ??
-          (typeof item.product === 'string' ? item.product : null) ??
-          (item.productObjectId) ??
-          (item._id) ??
-          null;
+  const orderItems: OrderItem[] = React.useMemo(() => {
+    if (!currentOrder) return [];
+    const rawItems: any[] = currentOrder.items ?? [];
+    return rawItems.map((item: any) => {
+      const objectId =
+        (item.productId) ??
+        (item.product?._id) ??
+        (typeof item.product === 'string' ? item.product : null) ??
+        (item.productObjectId) ??
+        (item._id) ??
+        null;
 
-        return {
-          productObjectId: objectId ?? "",
-          name: item.productName || item.name || item.product?.name || "Product",
-          imageUrl: item.imageUrl || item.product?.images?.[0]?.url || "",
-          price: item.price ?? 0,
-          quantity: item.quantity ?? item.qty ?? 1,
-        };
-      });
-
-      setOrderItems(mapped);
-    }
-  }, [currentOrder, orderId]);
+      return {
+        productObjectId: objectId ?? "",
+        name: item.productName || item.name || item.product?.name || "Product",
+        imageUrl: item.imageUrl || item.product?.images?.[0]?.url || "",
+        price: item.price ?? 0,
+        quantity: item.quantity ?? item.qty ?? 1,
+      };
+    });
+  }, [currentOrder]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [reason, setReason] = useState("");

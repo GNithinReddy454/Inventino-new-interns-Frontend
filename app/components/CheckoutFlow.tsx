@@ -178,7 +178,7 @@ export default function CheckoutFlow() {
               promoCode: appliedCode,
               code: appliedCode,
               promo_code: appliedCode,
-              subtotal: capturedItems.reduce((acc, item) => acc + (item.quantity * cartItems.find(ci => ci.productId === item.productId)?.price! || 0), 0),
+              subtotal: capturedItems.reduce((acc, item) => acc + (item.quantity * (cartItems.find(ci => ci.productId === item.productId)?.price || 0)), 0),
               discount: currentDiscount,
               total: totalAmount,
               razorpay_order_id: response.razorpay_order_id,
