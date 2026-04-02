@@ -301,7 +301,7 @@ export default function ProductDetailsPage() {
   );
 
   const backendProductId = useMemo(
-    () => (product ? product.mongoId || product.prdId || productId : ""),
+    () => (product ? product.prdId || product.mongoId || productId : ""),
     [product, productId]
   );
 
@@ -946,6 +946,11 @@ export default function ProductDetailsPage() {
           color: currentColor,
           size: currentSize,
           quantity,
+          product: {
+            name: product.name || product.title || "Product",
+            price: Number(displayPrice || product.price || 0),
+            image: activeImages[0] || product.image || "",
+          }
         })
       );
 

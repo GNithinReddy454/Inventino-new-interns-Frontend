@@ -13,6 +13,7 @@ import { orderService } from "@/services/order.service";
 import { addressService } from "@/services/address.service";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { fetchCart } from "@/redux/cartslice";
+import { clearBuyNowProduct } from "@/redux/buyNowSlice";
 import { placeOrderAction, resetOrderState, fetchOrderByIdAction } from "@/redux/orderslice";
 import {
   CheckoutStep,
@@ -24,7 +25,8 @@ import { useEffect } from "react";
 
 export default function CheckoutFlow() {
   const dispatch = useAppDispatch();
-  const { totalAmount, items: cartItems = [], promoCode: appliedCode, discount: currentDiscount } = useAppSelector((state) => state.cart);
+  const { totalAmount: cartTotal, items: cartItems = [], promoCode: appliedCode, discount: currentDiscount } = useAppSelector((state) => state.cart);
+  const { product: buyNowProduct } = useAppSelector((state) => state.buyNow);
   const { isLoading: isOrderProcessing, error: orderError } = useAppSelector((state) => state.order);
 
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("shipping");
@@ -36,6 +38,21 @@ export default function CheckoutFlow() {
     null,
   );
   const [localIsProcessing, setLocalIsProcessing] = useState(false);
+
+  // Derive active items and totals based on buyNow flow
+  const itemsToOrder = buyNowProduct 
+    ? [{ 
+        productId: buyNowProduct.productId, 
+        quantity: buyNowProduct.quantity, 
+        color: buyNowProduct.color, 
+        size: buyNowProduct.size, 
+        price: buyNowProduct.product?.price || 0,
+        name: buyNowProduct.product?.name || "Product"
+      }] 
+    : cartItems;
+
+  const orderSubtotal = Number(itemsToOrder.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * Number(item.quantity || 1)), 0));
+  const orderTotal = buyNowProduct ? Math.max(0, orderSubtotal - Number(currentDiscount || 0)) : Number(cartTotal || 0);
 
   // Combine processing states
   const isProcessing = localIsProcessing || isOrderProcessing;
@@ -74,7 +91,7 @@ export default function CheckoutFlow() {
 
     setLocalIsProcessing(true);
     try {
-      // 1. Ensure address is saved and we have an addressId
+      // Step 1: Ensure address is saved and we have an addressId
       let addressId = shippingAddress._id;
       if (!addressId) {
         const addrResponse = await addressService.addAddress(shippingAddress);
@@ -84,45 +101,51 @@ export default function CheckoutFlow() {
         }
       }
 
-      // 2. COD flow
+      // Prepare order details for common fields
+      const orderPayload = {
+        addressId: addressId!,
+        items: itemsToOrder.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          color: item.color || null,
+          size: item.size || undefined,
+        })),
+        promoCode: appliedCode,
+        code: appliedCode,
+        promo_code: appliedCode,
+        subtotal: orderSubtotal,
+        discount: currentDiscount,
+        total: orderTotal,
+      };
+
+      // Handle COD Flow (Step 1 is same, but no payment creation)
       if (paymentMethod === "cod") {
         const resultAction = await dispatch(placeOrderAction({
-          addressId: addressId!,
-          items: cartItems.map(item => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            color: item.color || undefined,
-            size: item.size || undefined,
-          })),
+          ...orderPayload,
           paymentMethod: "COD",
-          promoCode: appliedCode,
-          code: appliedCode,
-          promo_code: appliedCode,
-          subtotal: cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0),
-          discount: currentDiscount,
-          total: totalAmount,
         }));
 
         if (placeOrderAction.fulfilled.match(resultAction)) {
           const orderRes = resultAction.payload;
-          const orderKey = orderRes.data.orderNumber || orderRes.data._id;
-          if (orderKey && appliedCode) {
-            const saved = JSON.parse(localStorage.getItem('order_discounts') || '{}');
-            saved[orderKey] = 10;
-            localStorage.setItem('order_discounts', JSON.stringify(saved));
-          }
           setOrderResponse({
             status: "success",
-            orderId: orderRes.data._id || orderRes.data.orderNumber,
-            orderNumber: orderRes.data.orderNumber,
-            orderDate: orderRes.data.createdAt || new Date().toISOString(),
-            totalAmount: orderRes.data.total || totalAmount,
+            orderId: orderRes.data?._id || orderRes.data?.orderNumber,
+            orderNumber: orderRes.data?.orderNumber || "N/A",
+            orderDate: orderRes.data?.createdAt || new Date().toISOString(),
+            totalAmount: orderRes.data?.total || orderTotal,
             paymentMethod: "cod",
             shippingAddress: shippingAddress,
-            trackingNumber: "TRK-" + Math.floor(Math.random() * 1000000),
+            trackingNumber: orderRes.data?.trackingNumber || "TBD",
             estimatedDelivery: "5-7 Days",
           });
           setCurrentStep("success");
+          // Clear cart after success
+          if (buyNowProduct) {
+            dispatch(clearBuyNowProduct());
+          } else {
+            await cartService.clearCart();
+          }
+          dispatch(fetchCart());
         } else {
           throw new Error(resultAction.payload as string || "Failed to place order");
         }
@@ -130,155 +153,135 @@ export default function CheckoutFlow() {
         return;
       }
 
-      // 3. Online Payment (Razorpay)
+      // Secure Online Flow (Steps 1 through 5)
+      
+      // Step 1: Place Order (Create Order in Database)
+      const resultAction = await dispatch(placeOrderAction({
+        ...orderPayload,
+        paymentMethod: "CARD",
+      }));
+
+      if (placeOrderAction.rejected.match(resultAction)) {
+        throw new Error(resultAction.payload as string || "Failed to create order");
+      }
+
+      const orderRes = resultAction.payload;
+      const dbOrderId = orderRes.data?._id || orderRes.data?.id;
+
+      if (!dbOrderId) {
+        throw new Error("Failed to retrieve order ID from database");
+      }
+
+      // Step 2: Create Razorpay Order (Send orderId to Backend)
+      const rzpServiceResp = await orderService.createRazorpayOrder(dbOrderId);
+      const { razorpayOrderId, amount: rzpAmount, currency } = rzpServiceResp.data || rzpServiceResp;
+
       if (!(window as any).Razorpay) {
         throw new Error("Razorpay SDK not loaded");
       }
 
-      // const amountInPaise = Math.round(totalAmount * 1);
-      const amountInPaise = 100; // 1 Rupee in paise
-
-      const rzpOrderResp = await fetch("/api/razorpay/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amountInPaise }),
-      });
-      const rzpOrderData = await rzpOrderResp.json();
-
-      if (!rzpOrderResp.ok) {
-        throw new Error(rzpOrderData.error || "Failed to create Razorpay order");
-      }
-
-      // Capture current values in closure variables to prevent stale state
-      const capturedAddressId = addressId!;
-      const capturedItems = cartItems.map(item => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        color: item.color || undefined,
-        size: item.size || undefined,
-      }));
-      const capturedPaymentMethod = paymentMethod;
-      const capturedTotalAmount = totalAmount;
-      const capturedShippingAddress = shippingAddress;
-
+      // Step 3: Open Razorpay Checkout
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: amountInPaise,
-        currency: "INR",
-        order_id: rzpOrderData.id,
+        amount: rzpAmount,
+        currency: currency || "INR",
+        order_id: razorpayOrderId,
         name: "Inventino Jewels",
-        description: "Order Payment",
+        description: "Payment for Order " + (orderRes.data?.orderNumber || dbOrderId),
         handler: async function (response: any) {
           try {
-            console.log("Creating order in database...");
-            const resultAction = await dispatch(placeOrderAction({
-              addressId: capturedAddressId,
-              items: capturedItems,
-              paymentMethod: capturedPaymentMethod.toUpperCase(),
-              promoCode: appliedCode,
-              code: appliedCode,
-              promo_code: appliedCode,
-              subtotal: capturedItems.reduce((acc, item) => acc + (item.quantity * (cartItems.find(ci => ci.productId === item.productId)?.price || 0)), 0),
-              discount: currentDiscount,
-              total: totalAmount,
+            setLocalIsProcessing(true);
+            
+            // Step 4: Verify Payment (Send Payment Details to Backend)
+            await orderService.verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-            }));
+              orderId: dbOrderId,
+            });
 
-            console.log("placeOrderAction result:", resultAction);
+            // Step 5: Show Success to the User
+            const finalOrderAction = await dispatch(fetchOrderByIdAction(dbOrderId));
+            const finalOrder = fetchOrderByIdAction.fulfilled.match(finalOrderAction) 
+              ? finalOrderAction.payload.data || finalOrderAction.payload
+              : orderRes.data;
 
-            if (placeOrderAction.fulfilled.match(resultAction)) {
-              const orderRes = resultAction.payload;
-              const dbOrderId = orderRes.data?._id || orderRes.data?.id;
-
-              console.log("Verifying payment signature for order:", dbOrderId);
-              // Verify payment against the newly created DB order ID
-              await orderService.verifyPayment({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                orderId: dbOrderId, // Use DB Order ID
-              });
-
-              console.log("Fetching final order status...");
-              // Fulfill "use and show order api" requirement
-              const finalOrderAction = await dispatch(fetchOrderByIdAction(dbOrderId));
-               const finalOrder = fetchOrderByIdAction.fulfilled.match(finalOrderAction) 
-                ? finalOrderAction.payload.data || finalOrderAction.payload
-                : orderRes.data;
-
-              const orderKey = finalOrder?.orderNumber || orderRes.data?.orderNumber || dbOrderId;
-              if (orderKey && appliedCode) {
-                const saved = JSON.parse(localStorage.getItem('order_discounts') || '{}');
-                saved[orderKey] = 10;
-                localStorage.setItem('order_discounts', JSON.stringify(saved));
-              }
-
-              setOrderResponse({
-                status: "success",
-                orderId: dbOrderId || response.razorpay_payment_id,
-                orderNumber: finalOrder?.orderNumber || orderRes.data?.orderNumber || "N/A",
-                orderDate: finalOrder?.createdAt || orderRes.data?.createdAt || new Date().toISOString(),
-                transactionId: response.razorpay_payment_id,
-                paymentMethod: capturedPaymentMethod,
-                totalAmount: finalOrder?.total || orderRes.data?.total || capturedTotalAmount,
-                shippingAddress: capturedShippingAddress!,
-                trackingNumber: finalOrder?.trackingNumber || "TRK-" + Math.floor(Math.random() * 1000000),
-                estimatedDelivery: "3-5 Days",
-              });
-              setCurrentStep("success");
+            setOrderResponse({
+              status: "success",
+              orderId: dbOrderId,
+              orderNumber: finalOrder?.orderNumber || orderRes.data?.orderNumber || "N/A",
+              orderDate: finalOrder?.createdAt || orderRes.data?.createdAt || new Date().toISOString(),
+              transactionId: response.razorpay_payment_id,
+              paymentMethod: "card",
+              totalAmount: finalOrder?.total || orderRes.data?.total || orderTotal,
+              shippingAddress: shippingAddress!,
+              trackingNumber: finalOrder?.trackingNumber || "TBD",
+              estimatedDelivery: "3-5 Days",
+            });
+            setCurrentStep("success");
+            
+            // Clear cart/buyNow
+            if (buyNowProduct) {
+              dispatch(clearBuyNowProduct());
             } else {
-              const errorMsg = (resultAction as any).payload || (resultAction as any).error?.message || "Order creation failed";
-              console.error("Order creation rejected:", errorMsg);
-              setOrderResponse({
-                status: "failed",
-                orderId: "",
-                orderNumber: "",
-                orderDate: new Date().toISOString(),
-                totalAmount: capturedTotalAmount,
-                paymentMethod: capturedPaymentMethod,
-                shippingAddress: capturedShippingAddress!,
-                transactionId: response.razorpay_payment_id,
-                errorMessage: String(errorMsg),
-              });
-              setCurrentStep("failed");
+              await cartService.clearCart();
             }
+            dispatch(fetchCart());
           } catch (err: any) {
-            console.error("Payment verification or order creation failed:", err);
+            console.error("Payment verification failed:", err);
             setOrderResponse({
               status: "failed",
-              orderId: "",
-              orderNumber: "",
-              orderDate: new Date().toISOString(),
-              totalAmount: capturedTotalAmount,
-              paymentMethod: capturedPaymentMethod,
-              shippingAddress: capturedShippingAddress!,
-              transactionId: response.razorpay_payment_id,
-              errorMessage: err?.message || "Unknown error during order verification/creation",
+              orderId: dbOrderId,
+              orderNumber: orderRes.data?.orderNumber || "N/A",
+              orderDate: orderRes.data?.createdAt || new Date().toISOString(),
+              errorMessage: err?.message || "Payment verification failed. Please contact support.",
+              totalAmount: orderTotal,
+              paymentMethod: "card",
+              shippingAddress: shippingAddress!,
             });
+
             setCurrentStep("failed");
           } finally {
             setLocalIsProcessing(false);
           }
+        },
+        prefill: {
+          name: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}').name : "",
+          email: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}').email : "",
+          contact: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}').phone : "",
+        },
+        theme: {
+          color: "#ec4899",
         },
         modal: {
           ondismiss: function () {
             setLocalIsProcessing(false);
           },
         },
-        theme: {
-          color: "#ec4899",
-        },
       };
 
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
+
     } catch (error: any) {
-      console.error("Payment failed:", error);
+      console.error("Checkout process failed:", error);
+      // Show failure if order creation failed or Razorpay failed to open
+      setOrderResponse({
+        status: "failed",
+        orderId: "",
+        orderNumber: "N/A",
+        orderDate: new Date().toISOString(),
+        errorMessage: error?.message || "Something went wrong during checkout",
+        totalAmount: orderTotal,
+        paymentMethod: paymentMethod,
+        shippingAddress: shippingAddress!,
+      });
+
+      setCurrentStep("failed");
       setLocalIsProcessing(false);
     }
   };
+
 
   const handleViewTracking = () => {
     setCurrentStep("tracking");
@@ -345,6 +348,7 @@ export default function CheckoutFlow() {
               paymentMethod={paymentMethod}
               onPlaceOrder={currentStep === "review" ? handlePlaceOrder : (currentStep === "payment" && paymentMethod === "cod" ? handlePlaceOrder : () => { })}
               isProcessing={isProcessing}
+              orderResponse={orderResponse}
             />
           </div>
         </div>

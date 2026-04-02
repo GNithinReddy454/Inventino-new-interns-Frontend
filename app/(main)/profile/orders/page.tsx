@@ -122,15 +122,9 @@ function mapApiOrder(apiOrder: any): Order {
     totalAmount: finalTotal,
     subtotal: subtotalVal,
     discount: discountVal,
-    discountPercent: localDiscountPercent || Number(
-      apiOrder.discountPercentage ?? 
-      apiOrder.discount_percentage ?? 
-      apiOrder.discount_percent ?? 
-      apiOrder.pricing?.percentage ?? 
-      apiOrder.pricing?.discountPercentage ?? 
-      apiOrder.pricing?.discount_percent ?? 
-      0
-    ),
+    discountPercent: (subtotalVal > 0 && discountVal > 0) 
+      ? Math.round((discountVal / subtotalVal) * 100) 
+      : (apiOrder.discount_percentage ?? apiOrder.discountPercentage ?? apiOrder.discount_percent ?? apiOrder.pricing?.discountPercentage ?? apiOrder.pricing?.percentage ?? apiOrder.promoCode ?? apiOrder.code ?? apiOrder.promo_code ?? apiOrder.coupon ?? apiOrder.promo?.code) ? 10 : 0,
     promoCode: 
       apiOrder.promoCode ?? 
       apiOrder.code ?? 
@@ -141,7 +135,7 @@ function mapApiOrder(apiOrder: any): Order {
       apiOrder.pricing?.promoCode ?? 
       apiOrder.pricing?.code ?? 
       apiOrder.pricing?.promo_code ?? 
-      (localDiscountPercent > 0 ? "SESSION_PROMO" : ""),
+      "",
     status: mappedStatus,
     items: (apiOrder.items ?? []).map((item: any) => ({
       id: item.productId ?? "",
@@ -430,9 +424,9 @@ export default function OrdersPage() {
                       >
                         Discount
                       </p>
-                      {(order.discount > 0 || order.promoCode) ? (
-                        <p style={{ fontSize: 11, color: "#10b981", fontWeight: 700 }}>
-                          ({(order.discount > 0 && order.subtotal > 0) ? Math.round((order.discount / order.subtotal) * 100) : 10}% Applied)
+                      {(order.discountPercent || 0) > 0 ? (
+                        <p style={{ fontSize: 13, color: "#10b981", fontWeight: 700 }}>
+                          {order.discountPercent}% OFF
                         </p>
                       ) : (
                         <p style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>0%</p>

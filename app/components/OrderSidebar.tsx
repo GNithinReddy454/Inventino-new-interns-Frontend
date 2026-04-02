@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { fetchCart, applyPromoCode as applyPromoAction } from "@/redux/cartslice";
+import { fetchCart, applyPromoCode as applyPromoAction, addToCart } from "@/redux/cartslice";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { CheckoutStep, PaymentMethod } from "@/lib/types";
@@ -13,6 +13,7 @@ type OrderSidebarProps = {
   paymentMethod: PaymentMethod;
   onPlaceOrder: (method: PaymentMethod) => void;
   isProcessing: boolean;
+  orderResponse?: any | null;
 };
 
 export function OrderSidebar({
@@ -20,29 +21,52 @@ export function OrderSidebar({
   paymentMethod,
   onPlaceOrder,
   isProcessing,
+  orderResponse,
 }: OrderSidebarProps) {
   const dispatch = useAppDispatch();
   const { 
     items: cart, 
-    totalAmount, 
+    totalAmount: cartTotal, 
     isLoading: cartLoading, 
-    discount, 
+    discount: cartDiscount, 
     promoCode: appliedCode 
   } = useAppSelector((state) => state.cart);
+  const { product: buyNowProduct } = useAppSelector((state) => state.buyNow);
 
-  // Calculate summary from cart data
+  // Derive active items and totals based on flow
+  const itemsToDisplay = orderResponse?.items 
+    ? orderResponse.items 
+    : (buyNowProduct 
+        ? [{ 
+            productId: buyNowProduct.productId, 
+            quantity: buyNowProduct.quantity, 
+            color: buyNowProduct.color, 
+            size: buyNowProduct.size, 
+            price: Number(buyNowProduct.product?.price || 0),
+            name: buyNowProduct.product?.name || "Product",
+            image: buyNowProduct.product?.image || ""
+          }] 
+        : cart);
+
+  const orderSubtotal = orderResponse?.subtotal 
+    ? Number(orderResponse.subtotal)
+    : Number(itemsToDisplay.reduce((acc: any, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * Number(item.quantity || 1)), 0));
+  
+  const orderTotal = orderResponse?.totalAmount 
+    ? Number(orderResponse.totalAmount)
+    : (buyNowProduct ? Math.max(0, orderSubtotal - Number(cartDiscount || 0)) : Number(cartTotal || 0));
+  
+  const orderDiscount = orderResponse?.discount 
+    ? Number(orderResponse.discount)
+    : Number(cartDiscount || 0);
+
+  // Calculate summary from active data
   const summary = {
-    subtotal: cart.reduce(
-      (sum: any, item: any) => {
-        const price = item.price || item.product?.price || 0;
-        return sum + price * item.quantity;
-      },
-      0,
-    ),
-    shipping: 0, // Default free shipping
-    discount: discount || 0,
-    tax: 0,
-    total: totalAmount,
+    subtotal: orderSubtotal,
+    shipping: orderResponse?.shipping || 0,
+    discount: orderDiscount,
+    tax: orderResponse?.tax || 0,
+    total: orderTotal,
   };
 
   const [promoCode, setPromoCode] = useState("");
@@ -64,6 +88,19 @@ export function OrderSidebar({
     setApplyingPromo(true);
     setPromoError("");
     try {
+      // If doing Buy Now and cart is empty, we must add item to cart for backend to apply promo
+      if (buyNowProduct && cart.length === 0) {
+        // Ensure item is in cart first
+        await dispatch(addToCart({
+          productId: buyNowProduct.productId,
+          quantity: buyNowProduct.quantity,
+          color: buyNowProduct.color,
+          size: buyNowProduct.size
+        })).unwrap();
+        // Refresh local state to ensure backend session and frontend state are in perfect sync
+        await dispatch(fetchCart()).unwrap();
+      }
+
       const result = await dispatch(applyPromoAction(promoCode));
       if (applyPromoAction.rejected.match(result)) {
         setPromoError(result.payload as string || "Invalid promo code");
@@ -105,11 +142,11 @@ export function OrderSidebar({
 
       {/* Cart Items with Product Cards */}
       <div className="space-y-4 mb-6">
-        {cart?.map((item: any, index: any) => {
+        {itemsToDisplay?.map((item: any, index: any) => {
           const product = item.product || item;
-          const name = product.name || "Product Name";
+          const name = item.productName || item.name || product.name || "Product Name";
           const selectedColor = item.color || product.color || "Standard";
-          const price = product.price || item.price || 0;
+          const price = Number(item.pricing?.price || item.price || product.price || 0);
           const quantity = item.quantity || 1;
           const id = product._id || product.productId || item.productId || index;
 
@@ -213,7 +250,7 @@ export function OrderSidebar({
             <div>
               <span className="text-gray-600">Discount</span>
               <p className="text-[10px] text-green-600 font-medium">
-                ({Math.round((summary.discount / (summary.subtotal || 1)) * 100)}% Applied)
+                ({summary.subtotal > 0 ? Math.round((summary.discount / summary.subtotal) * 100) : 0}% Applied)
               </p>
             </div>
             <span className="font-bold text-green-600">

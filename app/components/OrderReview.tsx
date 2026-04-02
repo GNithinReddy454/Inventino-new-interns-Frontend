@@ -30,13 +30,29 @@ export function OrderReview({
   onBack,
   isProcessing,
 }: OrderReviewProps) {
-  const { items: cart, totalAmount, isLoading: cartLoading } = useAppSelector((state) => state.cart);
+  const { items: cart, totalAmount: cartTotal, isLoading: cartLoading, discount: cartDiscount } = useAppSelector((state) => state.cart);
+  const { product: buyNowProduct } = useAppSelector((state) => state.buyNow);
+
+  const itemsToDisplay = buyNowProduct 
+    ? [{ 
+        productId: buyNowProduct.productId, 
+        quantity: buyNowProduct.quantity, 
+        color: buyNowProduct.color, 
+        size: buyNowProduct.size, 
+        price: buyNowProduct.product?.price || 0,
+        name: buyNowProduct.product?.name || "Product",
+        image: buyNowProduct.product?.image || ""
+      }] 
+    : cart;
+
+  const orderSubtotal = Number(itemsToDisplay.reduce((acc: any, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * Number(item.quantity || 1)), 0));
+  const orderTotal = buyNowProduct ? Math.max(0, orderSubtotal - Number(cartDiscount || 0)) : Number(cartTotal || 0);
 
   const summary = {
-    subtotal: totalAmount,
+    subtotal: orderSubtotal,
     shipping: 0,
     tax: 0,
-    total: totalAmount,
+    total: orderTotal,
   };
 
   const getPaymentLabel = () => {
@@ -118,15 +134,15 @@ export function OrderReview({
         <div className="mt-10">
           <div className="flex items-center gap-2 pb-2 border-b border-gray-100 mb-4">
             <ShoppingCart className="w-4 h-4 text-pink-500" />
-            <h3 className="font-bold text-sm uppercase tracking-wider text-gray-500">Review Items ({cart.length})</h3>
+            <h3 className="font-bold text-sm uppercase tracking-wider text-gray-500">Review Items ({itemsToDisplay.length})</h3>
           </div>
           <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-            {cart.map((item: any) => {
+            {itemsToDisplay.map((item: any, idx: number) => {
               // Handle both structures (Redux vs API)
-              const name = item.name || item.product?.name;
-              const price = item.price || item.product?.price;
-              const quantity = item.quantity;
-              const id = item.productId || item.product?._id;
+              const name = item.productName || item.name || item.product?.name || "Product";
+              const price = Number(item.pricing?.price || item.price || item.product?.price || 0);
+              const quantity = item.quantity || 1;
+              const id = item.productId || item.product?._id || idx;
               
               return (
                 <div key={id} className="flex items-center gap-4 p-3 bg-white border border-gray-100 rounded-xl hover:border-pink-100 transition-colors">

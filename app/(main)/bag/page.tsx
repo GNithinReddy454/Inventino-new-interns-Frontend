@@ -60,13 +60,13 @@ export default function BagPage() {
 
   const mappedRedux = reduxCart.map((item: any) => ({
     productId: String(item.productId || item.product?._id || item._id),
-    name: item.name || item.product?.name || item.product?.title || "Untitled Product",
-    price: item.price !== undefined ? item.price : item.product?.price || 0,
-    image: getImageUrl(item.image || item.product?.images?.[0] || item.product?.image),
+    name: item.productName || item.name || item.product?.name || item.product?.title || "Untitled Product",
+    price: item.pricing?.price ?? item.price ?? item.product?.price ?? 0,
+    image: getImageUrl(item.media?.mainImage || item.media?.images?.[0] || item.image || item.product?.images?.[0] || item.product?.image),
     quantity: item.quantity || 1,
-    originalPrice: item.originalPrice !== undefined ? item.originalPrice : item.product?.originalPrice,
-    color: item.color,
-    size: item.size,
+    originalPrice: item.pricing?.originalPrice ?? item.originalPrice ?? item.product?.originalPrice,
+    color: item.selectedVariant?.color || item.color,
+    size: item.selectedVariant?.size || item.size,
     id: item.productId || item.product?._id || item._id, // Backwards compatibility for removal
   }));
 
