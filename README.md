@@ -244,3 +244,5 @@ export default function Checkout() {
 
 **Last Updated:** Feb 24, 2026  
 **Maintainer:** Frontend Team
+ 
+ 
