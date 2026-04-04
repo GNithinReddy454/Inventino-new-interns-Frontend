@@ -469,10 +469,10 @@ export default function BagPage() {
                                   <span className="text-xs font-bold text-gray-700">{item.color}</span>
                                 </div>
                               )}
-                              {item.size && (
+                              {(item.size || true) && (
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Size:</span>
-                                  <span className="text-xs font-bold text-gray-700">{item.size}</span>
+                                  <span className="text-xs font-bold text-gray-700">{item.size || "Free Size"}</span>
                                 </div>
                               )}
                             </div>

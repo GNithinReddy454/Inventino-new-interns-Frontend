@@ -115,8 +115,8 @@ export default function WishlistPage() {
           const item = apiItem.product || apiItem || {};
           const pId = String(item.productId || item._id || item.id);
           const wishId = explicitId || pId;
-          const color = apiItem.color || null;
-          const size = apiItem.size || null;
+          const color = apiItem.color || item.color || "";
+          const size = apiItem.size || item.size || "";
           const quantity = apiItem.quantity || 1;
           
           if (user) {
@@ -134,8 +134,8 @@ export default function WishlistPage() {
           const item = apiItem.product || apiItem || {};
           const pId = String(item.productId || item._id || item.id);
           const wishId = explicitId || pId;
-          const color = apiItem.color || null;
-          const size = apiItem.size || null;
+          const color = apiItem.color || item.color || "";
+          const size = apiItem.size || item.size || "";
           const quantity = apiItem.quantity || 1;
           const errorMessage = typeof error === 'string' ? error : error.message || "";
           
@@ -173,8 +173,8 @@ export default function WishlistPage() {
     for (const entry of itemsToProcess) {
       try {
         const { apiItem, item, selectionId } = entry;
-        const color = apiItem.color || null;
-        const size = apiItem.size || null;
+        const color = apiItem.color || item.color || "";
+        const size = apiItem.size || item.size || "";
         const quantity = apiItem.quantity || 1;
 
         if (item && (item._id || item.id || item.productId)) {
@@ -198,8 +198,8 @@ export default function WishlistPage() {
                 price: item.price || 0,
                 image: getImageUrl(item.images?.[0] || item.image),
                 quantity,
-                color,
-                size
+                color: color || "",
+                size: size || ""
               };
               dispatch(addLocalCartItem(cartPayload));
               await dispatch(removeWishlistItem(selectionId)).unwrap();
@@ -268,8 +268,8 @@ export default function WishlistPage() {
     for (const itemWrapper of itemsSnapshot) {
       try {
         const item = itemWrapper.product || itemWrapper;
-        const color = itemWrapper.color || null;
-        const size = itemWrapper.size || null;
+        const color = itemWrapper.color || item.color || "";
+        const size = itemWrapper.size || item.size || "";
         const quantity = itemWrapper.quantity || 1;
 
         if (item && (item._id || item.id || item.productId)) {
@@ -294,8 +294,8 @@ export default function WishlistPage() {
                 price: item.price || 0,
                 image: getImageUrl(item.images?.[0] || item.image),
                 quantity,
-                color,
-                size
+                color: color || "",
+                size: size || ""
               };
               dispatch(addLocalCartItem(cartPayload));
               count++;
@@ -323,10 +323,10 @@ export default function WishlistPage() {
   const selectableIds = useMemo(() => {
     return savedItems.map((apiItem: any, idx: number) => {
       const item = apiItem.product || apiItem || {};
-      // Robust ID check: handle strings, objects, and nested IDs
       const rawId = typeof item === 'string' ? item : (item._id || item.productId || item.id);
-      return String(apiItem._id || rawId || `fallback-${idx}`);
-    }).filter(id => id && id !== "undefined" && !id.startsWith("fallback-"));
+      // Ensure absolute uniqueness by including index alongside ID and variant attributes
+      return `${apiItem._id || rawId}-${apiItem.color || ''}-${apiItem.size || ''}-${idx}`;
+    }).filter(id => id && id !== "undefined");
   }, [savedItems]);
 
   const toggleSelectAll = () => {
@@ -496,9 +496,10 @@ export default function WishlistPage() {
             {savedItems.map((apiItem: any, index: number) => {
               const item = apiItem.product || apiItem || {};
               const rawId = typeof item === 'string' ? item : (item._id || item.productId || item.id);
-              const id = String(apiItem._id || rawId || `fallback-${index}`);
+              // Combining original ID with variants and index ensures React key stability AND uniqueness
+              const id = `${apiItem._id || rawId}-${apiItem.color || ''}-${apiItem.size || ''}-${index}`;
               
-              if (!id || id === "undefined" || id.startsWith("fallback-")) return null;
+              if (!id || id === "undefined") return null;
 
               const isSelected = selectedIds.includes(id);
               const name = item.name || item.title || item.productName || "Untitled Product";
@@ -661,10 +662,10 @@ export default function WishlistPage() {
                             <span className="text-[10px] sm:text-xs font-bold text-gray-700 capitalize">{itemColor}</span>
                           </div>
                         )}
-                        {itemSize && (
+                        {(itemSize || true) && (
                           <div className="flex items-center gap-1">
                             <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-bold">Size:</span>
-                            <span className="text-[10px] sm:text-xs font-bold text-gray-700">{itemSize}</span>
+                            <span className="text-[10px] sm:text-xs font-bold text-gray-700">{itemSize || "Free Size"}</span>
                           </div>
                         )}
                         {itemQuantity && (

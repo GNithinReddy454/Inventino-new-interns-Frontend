@@ -703,12 +703,18 @@ export default function ProductDetailsPage() {
 
         const flatSizes =
           sizeVariants.length === 0
-            ? Array.isArray(data.sizes) && data.sizes.length > 0 && typeof data.sizes[0] === "string"
+            ? (Array.isArray(data.sizes) && data.sizes.length > 0 && typeof data.sizes[0] === "string"
               ? data.sizes
               : derivedSizesFromVariants.length > 0
               ? derivedSizesFromVariants
-              : []
+              : [])
             : [];
+
+        if (sizeVariants.length === 0 && flatSizes.length > 0) {
+          if (!flatSizes.includes("Medium")) {
+            setSelectedSize(flatSizes[0]);
+          }
+        }
 
         // Derive a base price for display before matrix is used
         const basePrice =
@@ -861,8 +867,12 @@ export default function ProductDetailsPage() {
       rating: product!.rating,
       reviews: product!.reviews,
       originalPrice: product!.originalPrice,
+      color: hasColorVariants
+        ? product!.colorVariants?.[selectedColor]?.color_name || undefined
+        : variantColors[selectedColor] || undefined,
+      size: selectedSize,
     }),
-    [product, backendProductId, displayPrice, activeImages]
+    [product, backendProductId, displayPrice, activeImages, hasColorVariants, selectedColor, variantColors, selectedSize]
   );
 
   const handleAddToCart = useCallback(
@@ -947,7 +957,7 @@ export default function ProductDetailsPage() {
           size: currentSize,
           quantity,
           product: {
-            name: product.name || product.title || "Product",
+            name: product.name || "Product",
             price: Number(displayPrice || product.price || 0),
             image: activeImages[0] || product.image || "",
           }

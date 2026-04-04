@@ -11,8 +11,8 @@ export const cartService = {
     const response = await apiClient.post("/cart", { 
       productId, 
       quantity,
-      color: color || null,
-      size: size || null
+      color: color || "",
+      size: size || ""
     });
     return response.data;
   },

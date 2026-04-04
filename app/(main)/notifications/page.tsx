@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notificationService, Notification } from "@/services/notification.service";
+import { useAuth } from "@/app/(main)/components/authContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatTime(dateStr: string): string {
@@ -79,6 +80,7 @@ function NotifIcon({ type, isRead }: { type: string; isRead: boolean }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { user, loading: authLoading }    = useAuth();
   const [loading, setLoading]             = useState(true);
   const [deleting, setDeleting]           = useState<string | null>(null);
   const [activeTab, setActiveTab]         = useState<TabKey>("ALL");
@@ -86,15 +88,20 @@ export default function NotificationsPage() {
   const [unreadOnly, setUnreadOnly]       = useState(false);
 
   const fetchNotifications = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const res = await notificationService.getNotifications();
       setNotifications(res.data?.data?.notifications ?? []);
     } catch {
     } finally { setLoading(false); }
-  }, []);
+  }, [user]);
 
-  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [fetchNotifications, user]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -143,7 +150,33 @@ export default function NotificationsPage() {
     });
   }, [notifications, activeTab, search, unreadOnly]);
 
-  const grouped = useMemo(() => groupByDate(filtered), [filtered]);
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF8F9]">
+        <div className="w-8 h-8 border-2 border-pink-200 border-t-pink-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F9] flex flex-col items-center justify-center p-4">
+        <div className="w-20 h-20 rounded-3xl bg-pink-50 flex items-center justify-center mb-6 shadow-sm border border-pink-100">
+          <Bell size={40} className="text-pink-300" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Login Required</h1>
+        <p className="text-gray-500 text-center max-w-xs mb-8">
+          Please log in to your account to view your notifications and stay updated on your orders.
+        </p>
+        <Link 
+          href="/login" 
+          className="bg-[#D94F7A] text-white px-8 py-3 rounded-full font-bold shadow-lg hover:shadow-pink-200/50 transition-all hover:scale-105 active:scale-95"
+        >
+          Go to Login
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF8F9]">
