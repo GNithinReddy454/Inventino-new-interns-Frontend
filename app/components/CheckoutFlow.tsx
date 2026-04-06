@@ -173,11 +173,23 @@ export default function CheckoutFlow() {
       }
 
       // Step 2: Create Razorpay Order (Send orderId to Backend)
+      console.group("🚀 Payment Flow - Step 2: Create Razorpay Order");
+      console.log("Input Order ID:", dbOrderId);
       const rzpServiceResp = await orderService.createRazorpayOrder(dbOrderId);
-      const { razorpayOrderId, amount: rzpAmount, currency } = rzpServiceResp.data || rzpServiceResp;
+      console.log("Full Backend Response:", rzpServiceResp);
+
+      const rzpData = rzpServiceResp.data || rzpServiceResp;
+      const { razorpayOrderId, amount: rzpAmount, currency } = rzpData;
+
+      console.log("Extracted Razorpay Data:", { razorpayOrderId, rzpAmount, currency });
+      console.groupEnd();
+
+      if (!razorpayOrderId) {
+        throw new Error("Razorpay Order ID missing from backend response");
+      }
 
       if (!(window as any).Razorpay) {
-        throw new Error("Razorpay SDK not loaded");
+        throw new Error("Razorpay SDK not loaded. Please check your internet connection.");
       }
 
       // Step 3: Open Razorpay Checkout
@@ -193,12 +205,17 @@ export default function CheckoutFlow() {
             setLocalIsProcessing(true);
             
             // Step 4: Verify Payment (Send Payment Details to Backend)
-            await orderService.verifyPayment({
-              razorpay_order_id: response.razorpay_order_id,
+            console.group("💳 Payment Flow - Step 4: Verify Payment");
+            console.log("Razorpay Response:", response);
+            
+            const verificationResult = await orderService.verifyPayment({
+              razorpay_order_id: razorpayOrderId, // Use the ID from backend, not response
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               orderId: dbOrderId,
             });
+            console.log("Verification Result:", verificationResult);
+            console.groupEnd();
 
             // Step 5: Show Success to the User
             const finalOrderAction = await dispatch(fetchOrderByIdAction(dbOrderId));

@@ -237,7 +237,10 @@ const getImageUrl = (img?: ImageType): string => {
   if (!url || url.includes("undefined") || url.trim() === "") return "";
   
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
-  return url.startsWith("http") || url.startsWith("data:") ? url : `${BASE_URL}${url}`;
+  // Check for common URL prefixes that should not be prepended with BASE_URL
+  const isAbsolute = url.startsWith("http") || url.startsWith("https") || url.startsWith("data:") || url.startsWith("blob:");
+  
+  return isAbsolute ? url : `${BASE_URL}${url}`;
 };
 
 const normalizeImages = (images?: ImageType[]): string[] => {
