@@ -13,10 +13,10 @@ import {
   RefreshCw,
   Eye,
 } from "lucide-react";
-import { SkeletonCard, SkeletonTable } from "./Skeleton";
-import Pagination from "./Pagination";
+import { SkeletonCard, SkeletonTable } from "../_components/Skeleton";
+import Pagination from "../_components/Pagination";
 import { getCategories } from "@/services/admin.service";
-import EditProductModal, { EditableProduct } from "./EditProductModal";
+import EditProductView from "../products/EditProductView";
 import { adminProductService } from "@/services/admin-product.service";
 import ProductPreviewModal from "./ProductPreviewModal";
 
@@ -44,37 +44,11 @@ interface NormalizedAdminProduct {
   size?: string;
 }
 
-type EditImage = { id: string; url: string };
-
 function getImageUrl(img: any): string {
   if (!img) return "";
   if (typeof img === "string") return img;
   if (typeof img === "object" && typeof img.url === "string") return img.url;
   return "";
-}
-
-function normalizeEditImages(images: any[]): EditImage[] {
-  if (!Array.isArray(images)) return [];
-
-  return images
-    .map((img, index) => {
-      if (typeof img === "string" && img.trim()) {
-        return {
-          id: `img-${index}`,
-          url: img,
-        };
-      }
-
-      if (img && typeof img === "object" && typeof img.url === "string") {
-        return {
-          id: img.id || img._id || `img-${index}`,
-          url: img.url,
-        };
-      }
-
-      return null;
-    })
-    .filter((img): img is EditImage => Boolean(img?.url));
 }
 
 function extractItemsAndMeta(response: any) {
@@ -280,7 +254,7 @@ export default function AllProductsView({
   const [categoryOptions, setCategoryOptions] = useState<string[]>([
     "All Categories",
   ]);
-  const [editProduct, setEditProduct] = useState<EditableProduct | null>(null);
+  const [editProductId, setEditProductId] = useState<string | null>(null);
   const [previewProductId, setPreviewProductId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -458,40 +432,30 @@ export default function AllProductsView({
   };
 
   const handleEdit = (prod: NormalizedAdminProduct) => {
-    setEditProduct({
-      _id: prod._id,
-      productId: prod.productId,
-      productName: prod.name,
-      description: prod.description,
-      price: prod.price,
-      originalPrice: prod.originalPrice,
-      category: prod.category,
-      stock: prod.stock,
-      material: prod.material,
-      color: prod.color || "",
-      size: prod.size || "",
-      isActive: prod.isActive,
-      trendy: prod.trendy,
-      bestSeller: prod.bestSeller,
-      hashtags: prod.hashtags || [],
-      story: prod.story || "",
-      images: normalizeEditImages(prod.images || []),
-    });
+    setEditProductId(prod.productId || prod._id);
     setOpenMenu(null);
   };
 
   const handleProductSaved = async () => {
-    setEditProduct(null);
+    setEditProductId(null);
     await fetchProducts();
   };
 
-  const editCategories = categoryOptions.filter(
-    (c) => c !== "All Categories"
-  );
-
   const activeCount = products.filter((p) => p.isActive).length;
-  const lowStockCount = products.filter((p) => p.stock > 0 && p.stock < 5).length;
+  const lowStockCount = products.filter(
+    (p) => p.stock > 0 && p.stock < 5
+  ).length;
   const outOfStockCount = products.filter((p) => p.stock === 0).length;
+
+  if (editProductId) {
+    return (
+      <EditProductView
+        productId={editProductId}
+        onBack={() => setEditProductId(null)}
+        onSuccess={handleProductSaved}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 w-full text-[#1F1728]">
@@ -881,42 +845,14 @@ export default function AllProductsView({
         </div>
       )}
 
-      {editProduct && (
-        <EditProductModal
-          product={editProduct}
-          categories={editCategories}
-          onClose={() => setEditProduct(null)}
-          onSaved={handleProductSaved}
-        />
-      )}
-
       {previewProductId && (
         <ProductPreviewModal
           productId={previewProductId}
           onClose={() => setPreviewProductId(null)}
           onEdit={(product: any) => {
             const normalized = normalizeProduct(product);
-
             setPreviewProductId(null);
-            setEditProduct({
-              _id: normalized._id,
-              productId: normalized.productId,
-              productName: normalized.name,
-              description: normalized.description,
-              price: normalized.price,
-              originalPrice: normalized.originalPrice,
-              category: normalized.category,
-              stock: normalized.stock,
-              material: normalized.material,
-              color: normalized.color || "",
-              size: normalized.size || "",
-              isActive: normalized.isActive,
-              trendy: normalized.trendy,
-              bestSeller: normalized.bestSeller,
-              hashtags: normalized.hashtags || [],
-              story: normalized.story || "",
-              images: normalizeEditImages(normalized.images || []),
-            });
+            setEditProductId(normalized.productId || normalized._id);
           }}
         />
       )}
