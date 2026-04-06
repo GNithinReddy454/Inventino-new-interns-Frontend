@@ -18,7 +18,7 @@ import AddProductVariantCard, {
   ProductVariantGroup,
   VariantImageItem,
 } from "./AddProductVariantCard";
-import AddProductPreviewModal from "./AddProductPreviewModal";
+import AddProductPreviewModal from "../products/AddProductPreviewModal";
 
 type ArtisanStep = {
   title: string;

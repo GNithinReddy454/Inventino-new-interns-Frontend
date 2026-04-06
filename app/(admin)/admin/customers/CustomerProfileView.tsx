@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Save, Copy } from "lucide-react";
-import { SkeletonTable } from "./Skeleton";
+import { SkeletonTable } from "../_components/Skeleton";
 import {
     getAdminCustomerById,
     getAdminCustomerOrders,
