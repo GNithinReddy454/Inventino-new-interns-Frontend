@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Search, ShoppingCart, TrendingUp, MoreVertical } from "lucide-react";
-import { SkeletonCard, SkeletonTable } from "./Skeleton";
-import Pagination from "./Pagination";
+import { SkeletonCard, SkeletonTable } from "../_components/Skeleton";
+import Pagination from "../_components/Pagination";
 import {
     getAdminOrders,
     getAdminOrderStats,

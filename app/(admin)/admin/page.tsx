@@ -20,17 +20,17 @@ import {
 
 import { TOP_PRODUCTS, RECENT_ORDERS, RECENT_ACTIVITY } from "./_data/mockData";
 import DashboardView from "./_components/DashboardView";
-import AllProductsView from "./_components/AllProductsView";
-import OrdersView from "./_components/OrdersView";
-import CustomersView from "./_components/CustomersView";
+import AllProductsView from "./products/AllProductsView";
+import OrdersView from "./orders/OrdersView";
+import CustomersView from "./customers/CustomersView";
 import ReportsAnalyticsView from "./_components/ReportsAnalyticsView";
 import SettingsView from "./_components/SettingsView";
 import LandingPageCMSView from "./_components/LandingPageCMSView";
 import LandingPagePreviewModal from "./_components/LandingPagePreviewModal";
 import ReviewsView from "./_components/ReviewsView";
-import CustomerProfileView from "./_components/CustomerProfileView";
-import AddProduct from "./_components/AddProduct";
-import OrderDetailView from "./_components/OrderDetailView";
+import CustomerProfileView from "./customers/CustomerProfileView";
+import AddProduct from "./products/AddProduct";
+import OrderDetailView from "./orders/OrderDetailView";
 
 interface NavItemProps {
   icon: React.ElementType;

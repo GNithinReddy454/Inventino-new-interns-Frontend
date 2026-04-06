@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { SkeletonTable } from "./Skeleton";
+import { SkeletonTable } from "../_components/Skeleton";
 import {
     Select,
     SelectContent,
