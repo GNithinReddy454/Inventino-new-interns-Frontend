@@ -95,10 +95,7 @@ export function useNotificationCount() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) {
-      setUnreadCount(0);
-      return;
-    }
+    if (!user) return;
 
     const controller = new AbortController();
     const runFetch = async () => {
