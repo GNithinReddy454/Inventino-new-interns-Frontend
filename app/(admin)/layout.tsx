@@ -1,5 +1,5 @@
 "use client";
-// Bare layout for admin — no Navbar or Footer
+// layout for admin — no Navbar or Footer
 import { withAuth } from "@/app/components/hoc/withAuth";
 import React from "react";
 
