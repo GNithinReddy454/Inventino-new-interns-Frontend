@@ -5,6 +5,12 @@ interface BuyNowProduct {
   color: string | null;
   size: string;
   quantity: number;
+  product?: {
+    name: string;
+    price: number;
+    image: string;
+    [key: string]: any;
+  };
 }
 
 interface BuyNowState {

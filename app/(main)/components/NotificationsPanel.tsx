@@ -10,6 +10,7 @@ import {
   notificationService,
   Notification,
 } from "@/services/notification.service";
+import { useAuth } from "@/app/(main)/components/authContext";
 
 interface NotificationsPanelProps {
   isOpen: boolean;
@@ -83,15 +84,22 @@ function NotifIcon({ type, isRead }: { type: string; isRead: boolean }) {
 // ── Exported hook ─────────────────────────────────────────────────────────────
 export function useNotificationCount() {
   const [unreadCount, setUnreadCount] = useState(0);
+  const { user } = useAuth();
 
   const fetchCount = useCallback(async () => {
+    if (!user) return;
     try {
       const res = await notificationService.getUnreadCount();
       setUnreadCount(res.data?.data?.unreadCount ?? 0);
     } catch {}
-  }, []);
+  }, [user]);
 
   useEffect(() => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+
     const controller = new AbortController();
     const runFetch = async () => {
       try {
@@ -107,7 +115,7 @@ export function useNotificationCount() {
       controller.abort();
       clearInterval(interval);
     };
-  }, []);
+  }, [user]);
 
   return { unreadCount, refetch: fetchCount };
 }
@@ -123,6 +131,7 @@ export default function NotificationsPanel({
   const [deleting, setDeleting]           = useState<string | null>(null);
   const [isMobile, setIsMobile]           = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const { user }                          = useAuth();
 
   // Detect mobile
   useEffect(() => {
@@ -134,13 +143,14 @@ export default function NotificationsPanel({
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const res = await notificationService.getNotifications();
       setNotifications(res.data?.data?.notifications ?? []);
     } catch {
     } finally { setLoading(false); }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (isOpen) fetchNotifications();

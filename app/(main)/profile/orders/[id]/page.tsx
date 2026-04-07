@@ -71,6 +71,16 @@ export default function OrderDetailsPage({
         if (localDiscountPercent > 0) {
           (rawOrder as any).promoCode = "SESSION_PROMO";
         }
+        
+        // Also look for promo in the rawOrder directly
+        const promoCodeValue = rawOrder.promoCode || rawOrder.code || rawOrder.promo_code || rawOrder.coupon || rawOrder.pricing?.code || rawOrder.pricing?.promoCode;
+        if (promoCodeValue) {
+          (rawOrder as any).tempPromoValue = promoCodeValue;
+        }
+        
+        rawOrder.discountPercent = (subtotal > 0 && discount > 0) 
+          ? Math.round((discount / subtotal) * 100) 
+          : promoCodeValue ? 10 : 0;
 
         // Ensure items array always exists
         if (!Array.isArray(rawOrder.items)) rawOrder.items = [];
@@ -345,9 +355,9 @@ export default function OrderDetailsPage({
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, alignItems: "flex-start" }}>
                   <div>
                     <p style={{ fontSize: 13, color: "#6b7280" }}>Discount</p>
-                    {(order.pricing.discount > 0 || (order as any).promoCode || (order as any).code) && (
+                    {((order as any).discountPercent > 0 || (order as any).tempPromoValue) && (
                       <p style={{ fontSize: 11, color: "#059669", fontWeight: 500 }}>
-                        ({(order.pricing.discount > 0 && order.pricing.subtotal > 0) ? Math.round((order.pricing.discount / order.pricing.subtotal) * 100) : 10}% Applied)
+                        ({(order as any).discountPercent || 10}% Applied)
                       </p>
                     )}
                   </div>

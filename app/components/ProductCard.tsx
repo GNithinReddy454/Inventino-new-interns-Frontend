@@ -7,8 +7,10 @@ import { useAppDispatch, useAppSelector } from "@/redux/store";
 // import { addToCart as reduxAddToCart } from "@/redux/cartslice";
 import { useCart, Product } from "@/lib/cartContext";
 import { useToast } from "@/app/components/GlobalToast";
+import { setBuyNowProduct } from "@/redux/buyNowSlice";
 
 export interface ProductCardProduct extends Product {
+  productId?: string;
   title?: string;
   images?: string[];
   description?: string;
@@ -135,7 +137,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
         : firstVariant?.images?.length > 0
           ? firstVariant.images.map((img: any) => getImageUrl(img)).filter(Boolean)
           : getDummyImagesForColor(activeVariant.color || activeVariant.colorName || ""),
-      id: firstVariant?._id || firstVariant?.id || activeVariant._id || activeVariant.id || product.id
+      id: firstVariant?.productId || firstVariant?._id || firstVariant?.id || activeVariant.productId || activeVariant._id || activeVariant.id || product.productId || product.id
     };
   }, [activeVariant, product]);
 
@@ -350,25 +352,50 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
             </div>
 
             {/* VIEW DETAILS BUTTON */}
-            <span
-              style={{
-                backgroundColor: isHovered ? buttonBg : "transparent",
-                color: isHovered ? "#fff" : buttonBg,
-                fontSize: 9,
-                fontWeight: 800,
-                padding: "7px 10px",
-                borderRadius: 999,
-                border: `1.5px solid ${buttonBg}`,
-                cursor: "pointer",
-                textTransform: "uppercase" as const,
-                letterSpacing: "0.06em",
-                whiteSpace: "nowrap" as const,
-                flexShrink: 0,
-                transition: "background-color 0.2s ease, color 0.2s ease",
-              }}
-            >
-              View Details
-            </span>
+            <div className="flex gap-2 items-center mt-auto">
+              <span
+                style={{
+                  backgroundColor: isHovered ? buttonBg : "transparent",
+                  color: isHovered ? "#fff" : buttonBg,
+                  fontSize: 8,
+                  fontWeight: 800,
+                  padding: "6px 8px",
+                  borderRadius: 999,
+                  border: `1.5px solid ${buttonBg}`,
+                  cursor: "pointer",
+                  textTransform: "uppercase" as const,
+                  letterSpacing: "0.06em",
+                  whiteSpace: "nowrap" as const,
+                  flex: 1,
+                  textAlign: "center",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                View Details
+              </span>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  dispatch(setBuyNowProduct({
+                    productId: String(activeProductData?.id ?? product.id),
+                    color: activeVariant?.color || null,
+                    size: "Free Size", // Default size if not specified
+                    quantity: 1,
+                    product: {
+                      name: productName || "Product",
+                      price: Number(displayPrice || 0),
+                      image: activeImages[0] || "",
+                      id: activeProductData?.id ?? product.id,
+                    }
+                  } as any));
+                  window.location.href = "/checkout";
+                }}
+                className="flex-1 py-[7px] px-2 bg-pink-600 text-white text-[8px] font-black uppercase tracking-widest rounded-full hover:bg-pink-700 transition-colors shadow-sm"
+              >
+                Buy Now
+              </button>
+            </div>
           </div>
         </div>
       </Link>

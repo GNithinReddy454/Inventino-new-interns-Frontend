@@ -237,7 +237,10 @@ const getImageUrl = (img?: ImageType): string => {
   if (!url || url.includes("undefined") || url.trim() === "") return "";
   
   const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
-  return url.startsWith("http") || url.startsWith("data:") ? url : `${BASE_URL}${url}`;
+  // Check for common URL prefixes that should not be prepended with BASE_URL
+  const isAbsolute = url.startsWith("http") || url.startsWith("https") || url.startsWith("data:") || url.startsWith("blob:");
+  
+  return isAbsolute ? url : `${BASE_URL}${url}`;
 };
 
 const normalizeImages = (images?: ImageType[]): string[] => {
@@ -301,7 +304,7 @@ export default function ProductDetailsPage() {
   );
 
   const backendProductId = useMemo(
-    () => (product ? product.mongoId || product.prdId || productId : ""),
+    () => (product ? product.prdId || product.mongoId || productId : ""),
     [product, productId]
   );
 
@@ -703,12 +706,18 @@ export default function ProductDetailsPage() {
 
         const flatSizes =
           sizeVariants.length === 0
-            ? Array.isArray(data.sizes) && data.sizes.length > 0 && typeof data.sizes[0] === "string"
+            ? (Array.isArray(data.sizes) && data.sizes.length > 0 && typeof data.sizes[0] === "string"
               ? data.sizes
               : derivedSizesFromVariants.length > 0
               ? derivedSizesFromVariants
-              : []
+              : [])
             : [];
+
+        if (sizeVariants.length === 0 && flatSizes.length > 0) {
+          if (!flatSizes.includes("Medium")) {
+            setSelectedSize(flatSizes[0]);
+          }
+        }
 
         // Derive a base price for display before matrix is used
         const basePrice =
@@ -861,8 +870,12 @@ export default function ProductDetailsPage() {
       rating: product!.rating,
       reviews: product!.reviews,
       originalPrice: product!.originalPrice,
+      color: hasColorVariants
+        ? product!.colorVariants?.[selectedColor]?.color_name || undefined
+        : variantColors[selectedColor] || undefined,
+      size: selectedSize,
     }),
-    [product, backendProductId, displayPrice, activeImages]
+    [product, backendProductId, displayPrice, activeImages, hasColorVariants, selectedColor, variantColors, selectedSize]
   );
 
   const handleAddToCart = useCallback(
@@ -946,6 +959,11 @@ export default function ProductDetailsPage() {
           color: currentColor,
           size: currentSize,
           quantity,
+          product: {
+            name: product.name || "Product",
+            price: Number(displayPrice || product.price || 0),
+            image: activeImages[0] || product.image || "",
+          }
         })
       );
 

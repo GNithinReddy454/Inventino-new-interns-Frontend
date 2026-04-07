@@ -147,12 +147,15 @@ export const addWishlistItem = createAsyncThunk(
 
 export const removeWishlistItem = createAsyncThunk(
   "wishlist/remove",
-  async (productId: string, { rejectWithValue }) => {
+  async (compositeId: string, { rejectWithValue }) => {
     try {
+      // Extract the original ID if a composite ID (e.g. "id-color-size-index") was passed
+      const productId = compositeId.includes("-") ? compositeId.split("-")[0] : compositeId;
+
       if (!isLoggedIn()) {
         const items = getLocalWishlist().filter((i: any) => {
           // If we passed a unique _id (like "prod-color-size"), match that first
-          if (i._id === productId) return false;
+          if (i._id === productId || i._id === compositeId) return false;
           // Fallback to product level IDs if _id didn't match
           const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i.id);
           return id !== productId;
@@ -209,10 +212,18 @@ const wishlistSlice = createSlice({
             }
         },
         removeLocalWishlistItem: (state, action) => {
-            const id = String(action.payload);
-            state.items = state.items.filter(i => 
-                String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i._id || i.id) !== id
-            );
+            const compositeId = String(action.payload);
+            const baseId = compositeId.includes("-") ? compositeId.split("-")[0] : compositeId;
+
+            state.items = state.items.filter(i => {
+                const itemId = String(i._id || "");
+                const productId = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i.id || "");
+                
+                // If it matches exactly (composite or _id), remove it
+                if (itemId === compositeId || itemId === baseId) return false;
+                // If it's the base product level ID, remove it
+                return productId !== baseId;
+            });
         }
     },
     extraReducers: (builder) => {

@@ -148,13 +148,13 @@ const cartSlice = createSlice({
                 });
             }
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
-            state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            state.totalAmount = state.items.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * item.quantity), 0);
         },
         removeLocalCartItem: (state, action) => {
             const id = String(action.payload);
             state.items = state.items.filter(i => String(i.productId || (i as any)._id) !== id);
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
-            state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            state.totalAmount = state.items.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * item.quantity), 0);
         }
     },
     extraReducers: (builder) => {
@@ -180,13 +180,14 @@ const cartSlice = createSlice({
                 }
             });
             state.items = merged;
-            state.totalAmount = action.payload?.data?.total || action.payload?.cart?.totalAmount || action.payload?.data?.newTotal || action.payload?.newTotal || state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            state.totalAmount = action.payload?.data?.total || action.payload?.cart?.totalAmount || action.payload?.data?.newTotal || action.payload?.newTotal || state.items.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * item.quantity), 0);
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
             state.promoCode = action.payload?.data?.promoCode || action.payload?.cart?.promoCode || action.payload?.data?.code || action.payload?.code || action.payload?.promoCode || state.promoCode;
             state.discount = Number(action.payload?.data?.discount || action.payload?.cart?.discount || action.payload?.data?.discountAmount || action.payload?.discount || state.discount || 0);
 
             // Recalculate totalAmount if a discount is applied but not factored into totalAmount
-            if (state.discount > 0 && state.totalAmount === state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0)) {
+            const calculatedSubtotal = state.items.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * item.quantity), 0);
+            if (state.discount > 0 && state.totalAmount === calculatedSubtotal) {
                 state.totalAmount = state.totalAmount - state.discount;
             }
         });
@@ -210,7 +211,7 @@ const cartSlice = createSlice({
                 }
             });
             state.items = merged;
-            state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            state.totalAmount = state.items.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * item.quantity), 0);
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
         });
 
@@ -229,7 +230,7 @@ const cartSlice = createSlice({
                 }
             });
             state.items = merged;
-            state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            state.totalAmount = state.items.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * item.quantity), 0);
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
         });
 
@@ -248,7 +249,7 @@ const cartSlice = createSlice({
                 }
             });
             state.items = merged;
-            state.totalAmount = state.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+            state.totalAmount = state.items.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * item.quantity), 0);
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
         });
 
@@ -265,9 +266,15 @@ const cartSlice = createSlice({
             const data = action.payload?.data || action.payload;
             if (data) {
                 state.promoCode = data.code || data.promoCode || action.meta.arg;
-                state.discount = data.discount || data.discountAmount || 0;
-                state.originalTotal = data.originalTotal || state.totalAmount;
-                state.totalAmount = data.newTotal || data.total || (state.totalAmount - state.discount);
+                state.discount = Number(data.discount || data.discountAmount || 0);
+                state.originalTotal = Number(data.originalTotal || state.totalAmount || 0);
+                
+                const newTotal = data.newTotal || data.total;
+                if (newTotal !== undefined && newTotal !== null) {
+                    state.totalAmount = Number(newTotal);
+                } else {
+                    state.totalAmount = Number(state.totalAmount || 0) - state.discount;
+                }
             }
         });
     },

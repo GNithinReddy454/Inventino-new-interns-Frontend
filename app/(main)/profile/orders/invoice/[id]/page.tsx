@@ -39,11 +39,19 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                         discount = subtotal * (localDiscountPercent / 100);
                     }
                     
+                    // Promo field mapping
+                    const promoCodeValue = rawOrder.promoCode || rawOrder.code || rawOrder.promo_code || rawOrder.coupon || rawOrder.pricing?.code || rawOrder.pricing?.promoCode;
+                    const discountPercentValue = (subtotal > 0 && discount > 0) 
+                        ? Math.round((discount / subtotal) * 100) 
+                        : promoCodeValue ? 10 : 0;
+
                     rawOrder.pricing = {
                         ...rawOrder.pricing,
                         subtotal,
                         total: (discount > 0 && total === subtotal) ? subtotal - discount : total,
-                        discount
+                        discount,
+                        discountPercent: discountPercentValue,
+                        promoCode: promoCodeValue
                     };
                 }
 
@@ -249,9 +257,10 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                                     <tr>
                                         <td style={{ padding: "8px 0", color: "#6b7280", textAlign: "left" }}>
                                             <div>Discount</div>
-                                            {pricing.discount > 0 && (
+                                            <div>Discount</div>
+                                            {((pricing as any).discount > 0 || (pricing as any).discountPercent > 0 || (pricing as any).promoCode) && (
                                                 <div style={{ fontSize: "10px", color: "#059669" }}>
-                                                    ({Math.round((pricing.discount / (pricing.subtotal || 1)) * 100)}% Applied)
+                                                    ({(pricing as any).discountPercent || 10}% Applied)
                                                 </div>
                                             )}
                                         </td>

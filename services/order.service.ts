@@ -52,7 +52,13 @@ export const orderService = {
     return response.data;
   },
 
+  async createRazorpayOrder(orderId: string) {
+    const response = await apiClient.post("/payments/create-order", { orderId });
+    return response.data;
+  },
+
   async getOrders() {
+
     const response = await apiClient.get("/orders");
     return response.data;
   },
