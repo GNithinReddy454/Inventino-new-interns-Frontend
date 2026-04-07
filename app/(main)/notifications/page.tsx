@@ -150,6 +150,8 @@ export default function NotificationsPage() {
     });
   }, [notifications, activeTab, search, unreadOnly]);
 
+  const grouped = useMemo(() => groupByDate(filtered), [filtered]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF8F9]">

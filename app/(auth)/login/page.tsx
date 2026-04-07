@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/app/(main)/components/authContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { loginUserAction } from "@/redux/authslice";
 import { loginSchema, type LoginFormData } from "../schema";
@@ -20,6 +20,8 @@ import GoogleButton from "../_components/GoogleButton";
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.auth);
   const { showToast } = useToast();
@@ -45,6 +47,8 @@ export default function LoginPage() {
         showToast("Login Successful!", "Welcome back.", "success");
         if (serverUser.role === "admin") {
           router.push("/admin");
+        } else if (redirect) {
+          router.push(redirect);
         } else {
           router.push("/products");
         }

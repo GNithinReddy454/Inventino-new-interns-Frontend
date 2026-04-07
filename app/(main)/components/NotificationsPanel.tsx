@@ -94,11 +94,13 @@ export function useNotificationCount() {
     } catch {}
   }, [user]);
 
+  // Reset count if user logs out (adjusting state during render to avoid cascading renders)
+  if (!user && unreadCount !== 0) {
+    setUnreadCount(0);
+  }
+
   useEffect(() => {
-    if (!user) {
-      setUnreadCount(0);
-      return;
-    }
+    if (!user) return;
 
     const controller = new AbortController();
     const runFetch = async () => {

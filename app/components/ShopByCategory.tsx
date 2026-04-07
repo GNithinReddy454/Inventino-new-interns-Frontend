@@ -208,13 +208,13 @@ export default function ShopByCategory() {
             <div className="overflow-hidden">
               <div
                 ref={scrollRef}
-                className="flex gap-4 sm:gap-6 lg:gap-8 overflow-x-auto pb-4 py-2 px-1"
+                className="flex gap-4 sm:gap-6 lg:gap-8 overflow-x-auto pb-4 py-2 px-1 snap-x snap-mandatory"
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
               >
                 {categories.map((cat) => (
                   <div
                     key={cat.slug}
-                    className="flex-shrink-0 w-[70vw] sm:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1.5rem)]"
+                    className="flex-shrink-0 w-full sm:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1.5rem)] snap-start"
                   >
                     <Link
                       href={`/products?category=${encodeURIComponent(cat.name)}`}
