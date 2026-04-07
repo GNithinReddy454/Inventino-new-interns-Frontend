@@ -91,16 +91,12 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
                     email: customer?.email || "—",
                     phone: customer?.phone || "—",
                     userId: customer?.userId || "",
-                    totalOrders: customer?.totalOrders,
-                    totalSpent: customer?.totalSpent,
-                    customerType: customer?.customerType || "Regular",
                 }));
 
             setCustomers(normalizedCustomers);
+
             setTotalItems(
-                typeof customersResponse?.total === "number"
-                    ? customersResponse.total
-                    : normalizedCustomers.length
+                Number(statsResponse?.total ?? 0) || normalizedCustomers.length
             );
 
             setStats({
@@ -175,11 +171,13 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
     const tabs = ["All Customers", "Returns", "Replacements", "Support"];
 
     return (
-        <div className="space-y-6 w-full">
-            <div className="flex items-start justify-between gap-4">
+        <div className="space-y-6 w-full text-[#1F1728]">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-foreground">Customers Management</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">
+                    <h2 className="text-[24px] font-semibold tracking-[-0.02em] text-[#2A1F2F]">
+                        Customers Management
+                    </h2>
+                    <p className="mt-1 text-[13px] text-[#9D95A3]">
                         View and manage all customers
                     </p>
                 </div>
@@ -187,7 +185,7 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
                 <button
                     onClick={handleExport}
                     disabled={isExporting}
-                    className="px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-sm shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="h-[38px] px-4 bg-[#EB5C8A] text-white text-[12px] font-semibold rounded-[10px] hover:bg-[#E35182] transition-all shadow-sm shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     {isExporting ? "Exporting..." : "Export Customers"}
                 </button>
@@ -201,95 +199,99 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
                         {
                             label: "Total Customers",
                             value: stats.total.toLocaleString(),
-                            color: "text-primary",
+                            color: "text-[#EB5C8A]",
                             key: "total",
                         },
                         {
                             label: "Active Customers",
                             value: stats.active.toLocaleString(),
-                            color: "text-green-600",
+                            color: "text-[#EB5C8A]",
                             key: "active",
                         },
                         {
                             label: "Inactive Customers",
                             value: stats.inactive.toLocaleString(),
-                            color: "text-red-500",
+                            color: "text-[#EB5C8A]",
                             key: "inactive",
                         },
                         {
                             label: "Showing",
                             value: customers.length.toLocaleString(),
-                            color: "text-foreground",
+                            color: "text-[#EB5C8A]",
                             key: "showing",
                         },
                     ].map((card) => (
                         <div
                             key={card.key}
-                            className="bg-card rounded-2xl border border-border shadow-sm p-5"
+                            className="rounded-[18px] border border-[#F1E6EA] bg-white p-5 shadow-[0_4px_18px_rgba(31,23,40,0.04)]"
                         >
-                            <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-2">
+                            <p className="mb-2 text-[10px] font-medium text-[#B7AEB6]">
                                 {card.label}
                             </p>
-                            <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
+                            <p className={`text-[40px] leading-none font-bold ${card.color}`}>
+                                {card.value}
+                            </p>
                         </div>
                     ))
                 )}
             </div>
 
-            <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-                <div className="flex border-b border-border px-6 overflow-x-auto">
+            <div className="bg-white rounded-[24px] border border-[#F1E6EA] shadow-[0_6px_24px_rgba(31,23,40,0.05)] overflow-hidden">
+                <div className="flex border-b border-[#F3E9ED] px-6 overflow-x-auto">
                     {tabs.map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`relative px-4 py-4 text-sm font-semibold transition-colors whitespace-nowrap ${
+                            className={`relative px-4 py-4 text-[13px] font-semibold transition-colors whitespace-nowrap ${
                                 activeTab === tab
-                                    ? "text-primary"
-                                    : "text-muted-foreground hover:text-foreground"
+                                    ? "text-[#EB5C8A]"
+                                    : "text-[#A59CA7] hover:text-[#3B3340]"
                             }`}
                         >
                             {tab}
                             {activeTab === tab && (
-                                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#EB5C8A] rounded-full" />
                             )}
                         </button>
                     ))}
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-3 p-4 border-b border-border">
-                    <div className="relative flex-1">
-                        <Search
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                            size={15}
-                        />
-                        <input
-                            type="text"
-                            placeholder="Search by name, email, phone, or customer ID..."
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full pl-9 pr-4 py-2.5 bg-[#FDF2F5] border border-pink-200 rounded-xl text-sm focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all"
-                        />
-                    </div>
+                <div className="p-4 border-b border-[#F3E9ED]">
+                    <div className="flex flex-col md:flex-row gap-3 rounded-[18px] bg-[#FFF8FA] p-3">
+                        <div className="relative flex-1">
+                            <Search
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B6ADB7]"
+                                size={14}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Search customers..."
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="w-full h-[40px] pl-9 pr-4 bg-white border border-[#EEE3E8] rounded-[12px] text-[13px] text-[#2A1F2F] placeholder:text-[#B6ADB7] focus:outline-none focus:border-[#EB5C8A] transition-all"
+                            />
+                        </div>
 
-                    <div className="relative">
-                        <select
-                            value={sort}
-                            onChange={(e) => {
-                                setSort(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="appearance-none pl-4 pr-8 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none cursor-pointer"
-                        >
-                            <option value="Newest">Newest</option>
-                            <option value="Oldest">Oldest</option>
-                        </select>
-                        <ChevronDown
-                            size={14}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                        />
+                        <div className="relative">
+                            <select
+                                value={sort}
+                                onChange={(e) => {
+                                    setSort(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="appearance-none min-w-[170px] h-[40px] pl-4 pr-9 bg-white border border-[#EEE3E8] rounded-[12px] text-[13px] text-[#2A1F2F] focus:outline-none focus:border-[#EB5C8A] cursor-pointer"
+                            >
+                                <option value="Newest">Sort: Newest</option>
+                                <option value="Oldest">Sort: Oldest</option>
+                            </select>
+                            <ChevronDown
+                                size={14}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B6ADB7] pointer-events-none"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -300,20 +302,20 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
                 ) : activeTab === "All Customers" ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                            <thead className="bg-pink-50/50 text-muted-foreground text-xs uppercase">
+                            <thead className="bg-[#FDF1F4] text-[#8E8794] text-[10px] uppercase tracking-[0.08em]">
                                 <tr>
-                                    <th className="px-4 py-3 text-left">Customer</th>
-                                    <th className="px-4 py-3 text-left">Customer ID</th>
-                                    <th className="px-4 py-3 text-left">Email</th>
-                                    <th className="px-4 py-3 text-left">Phone</th>
-                                    <th className="px-4 py-3 text-left">Actions</th>
+                                    <th className="px-6 py-4 text-left font-semibold">Customer</th>
+                                    <th className="px-6 py-4 text-left font-semibold">Customer ID</th>
+                                    <th className="px-6 py-4 text-left font-semibold">Email</th>
+                                    <th className="px-6 py-4 text-left font-semibold">Phone</th>
+                                    <th className="px-6 py-4 text-left font-semibold">Actions</th>
                                 </tr>
                             </thead>
 
-                            <tbody className="divide-y divide-border">
+                            <tbody className="divide-y divide-[#F5EDF0]">
                                 {customers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                                        <td colSpan={5} className="text-center py-12 text-[#9D95A3]">
                                             No customers found
                                         </td>
                                     </tr>
@@ -322,54 +324,57 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
                                         const menuKey = customer.userId || customer._id;
 
                                         return (
-                                            <tr key={menuKey} className="hover:bg-muted/20">
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-8 h-8 rounded-full bg-[#E91E63] text-white text-xs font-bold flex items-center justify-center">
+                                            <tr
+                                                key={menuKey}
+                                                className="hover:bg-[#FFFDFE] transition-colors"
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-[#E95D8A] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                                                             {(customer.name || "U").slice(0, 2).toUpperCase()}
                                                         </div>
                                                         <button
                                                             onClick={() => handleViewProfile(customer)}
-                                                            className="font-medium hover:underline text-foreground text-left"
+                                                            className="font-semibold text-[#2A1F2F] hover:text-[#EB5C8A] text-left transition-colors"
                                                         >
                                                             {customer.name}
                                                         </button>
                                                     </div>
                                                 </td>
 
-                                                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
+                                                <td className="px-6 py-4 text-[#8A8190] font-mono text-[12px]">
                                                     {customer.userId || "—"}
                                                 </td>
 
-                                                <td className="px-4 py-3 text-muted-foreground">
+                                                <td className="px-6 py-4 text-[#7B7382] text-[13px]">
                                                     {customer.email}
                                                 </td>
 
-                                                <td className="px-4 py-3 text-muted-foreground">
+                                                <td className="px-6 py-4 text-[#7B7382] text-[13px]">
                                                     {customer.phone || "—"}
                                                 </td>
 
-                                                <td className="px-4 py-3 relative">
+                                                <td className="px-6 py-4 relative">
                                                     <button
                                                         onClick={() =>
                                                             setOpenMenu(openMenu === menuKey ? null : menuKey)
                                                         }
-                                                        className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                                                        className="p-2 rounded-lg hover:bg-[#F8F3F6] transition-colors"
                                                     >
                                                         <MoreVertical
                                                             size={16}
-                                                            className="text-muted-foreground"
+                                                            className="text-[#9A93A3]"
                                                         />
                                                     </button>
 
                                                     {openMenu === menuKey && (
-                                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-border py-1 z-50">
+                                                        <div className="absolute right-6 mt-2 w-44 bg-white rounded-[14px] shadow-[0_14px_30px_rgba(31,23,40,0.1)] border border-[#F0E4E8] py-2 z-50">
                                                             <button
                                                                 onClick={() => {
                                                                     handleViewProfile(customer);
                                                                     setOpenMenu(null);
                                                                 }}
-                                                                className="w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors"
+                                                                className="w-full text-left px-4 py-2.5 text-[13px] text-[#2A1F2F] hover:bg-[#FAF6F8] transition-colors"
                                                             >
                                                                 View Profile
                                                             </button>
@@ -383,7 +388,7 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
                             </tbody>
                         </table>
 
-                        <div className="border-t border-border px-4 py-3">
+                        <div className="border-t border-[#F3E9ED] px-4 py-3">
                             <Pagination
                                 currentPage={currentPage}
                                 totalItems={totalItems}
@@ -401,7 +406,7 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
                         </div>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center py-16 text-[#9D95A3]">
                         <Users size={36} className="mb-3 opacity-20" />
                         <p className="text-sm">{activeTab} — No records found</p>
                     </div>
