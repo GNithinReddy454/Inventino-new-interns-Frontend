@@ -34,7 +34,7 @@ function StarRating({ rating }: { rating: number }) {
       {[1, 2, 3, 4, 5].map((star) => {
         const filled = rating >= star;
         return (
-          <svg key={star} width="11" height="11" viewBox="0 0 24 24" className="flex-shrink-0">
+          <svg key={star} width="11" height="11" viewBox="0 0 24 24" className="shrink-0">
             <polygon
               points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
               fill={filled ? "#FFD700" : "#e5e7eb"}
@@ -410,7 +410,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
                   }
                   router.push("/checkout");
                 }}
-                className="flex-1 py-[7px] px-2 bg-pink-600 text-white text-[8px] font-black uppercase tracking-widest rounded-full hover:bg-pink-700 transition-colors shadow-sm"
+                className="flex-1 py-1.75 px-2 bg-pink-600 text-white text-[8px] font-black uppercase tracking-widest rounded-full hover:bg-pink-700 transition-colors shadow-sm"
               >
                 Buy Now
               </button>

@@ -13,6 +13,7 @@ export type VariantSizeStock = {
   size: string;
   stock: number;
   sku: string;
+  price: number;
 };
 
 export type ProductVariantGroup = {
@@ -34,6 +35,7 @@ interface AddProductVariantCardProps {
   onAddCustomSize: () => void;
   onUpdateStock: (size: string, stock: number) => void;
   onUpdateSku: (size: string, sku: string) => void;
+  onUpdatePrice: (size: string, price: number) => void;
   onVariantImagesChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveVariantImage: (imageId: string) => void;
   colorSwatchMap: Record<string, string>;
@@ -51,6 +53,7 @@ export default function AddProductVariantCard({
   onAddCustomSize,
   onUpdateStock,
   onUpdateSku,
+  onUpdatePrice,
   onVariantImagesChange,
   onRemoveVariantImage,
   colorSwatchMap,
@@ -140,7 +143,7 @@ export default function AddProductVariantCard({
                     key={size}
                     type="button"
                     onClick={() => onToggleSize(size)}
-                    className={`rounded-[8px] border px-3 py-1.5 text-[10px] font-medium transition ${
+                    className={`rounded-xl border px-3 py-1.5 text-[10px] font-medium transition ${
                       selected
                         ? "border-[#EB5C8A] bg-[#FFF4F7] text-[#EB5C8A]"
                         : "border-[#E6E0E5] bg-white text-[#5C5562] hover:border-[#F1A6BC]"
@@ -158,12 +161,12 @@ export default function AddProductVariantCard({
                 value={customSizeValue}
                 onChange={(e) => setCustomSizeValue(e.target.value)}
                 placeholder="Add Custom Size"
-                className="h-[36px] flex-1 rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] text-[#1C1630] placeholder:text-[#B5AEB8] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
+                className="h-9 flex-1 rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] text-[#1C1630] placeholder:text-[#B5AEB8] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
               />
               <button
                 type="button"
                 onClick={onAddCustomSize}
-                className="inline-flex h-[36px] items-center gap-1 rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] px-3 text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]"
+                className="inline-flex h-9 items-center gap-1 rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] px-3 text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]"
               >
                 <Plus size={12} />
                 Add
@@ -176,7 +179,7 @@ export default function AddProductVariantCard({
               Add Images
             </h4>
 
-            <label className="inline-flex h-[38px] cursor-pointer items-center rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] px-4 text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]">
+            <label className="inline-flex h-9.5 cursor-pointer items-center rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] px-4 text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]">
               <Upload size={13} className="mr-2" />
               Upload Variant Images
               <input
@@ -193,7 +196,7 @@ export default function AddProductVariantCard({
                 {variant.images.map((image) => (
                   <div
                     key={image.id}
-                    className="group relative h-[68px] w-[68px] overflow-hidden rounded-[10px] border border-[#E8E3E7]"
+                    className="group relative h-17 w-17 overflow-hidden rounded-[10px] border border-[#E8E3E7]"
                   >
                     <Image
                       src={image.preview}
@@ -237,9 +240,14 @@ export default function AddProductVariantCard({
                           Price
                         </label>
                         <input
-                          readOnly
-                          value={inheritedPrice || 0}
-                          className="h-[34px] w-full rounded-[8px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] text-[#6B6572]"
+                          type="number"
+                          min="0"
+                          value={entry.price ?? ""}
+                          placeholder={String(inheritedPrice || 0)}
+                          onChange={(e) =>
+                            onUpdatePrice(entry.size, Number(e.target.value) || 0)
+                          }
+                          className="h-8.5 w-full rounded-xl border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
                         />
                       </div>
 
@@ -254,7 +262,7 @@ export default function AddProductVariantCard({
                           onChange={(e) =>
                             onUpdateStock(entry.size, Number(e.target.value) || 0)
                           }
-                          className="h-[34px] w-full rounded-[8px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
+                          className="h-8.5 w-full rounded-xl border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
                         />
                       </div>
 
@@ -267,7 +275,7 @@ export default function AddProductVariantCard({
                           value={entry.sku}
                           onChange={(e) => onUpdateSku(entry.size, e.target.value)}
                           placeholder={`${variant.color}-${entry.size}`}
-                          className="h-[34px] w-full rounded-[8px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
+                          className="h-8.5 w-full rounded-xl border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
                         />
                       </div>
                     </div>

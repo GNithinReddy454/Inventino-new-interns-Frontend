@@ -224,7 +224,7 @@ export default function BestSellers() {
                 {products.map((product, index) => (
                   <div
                     key={product._id || product.productId || index}
-                    className="flex-shrink-0 w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
+                    className="shrink-0 w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
                   >
                     <ProductCard product={normalizeProduct(product)} />
                   </div>

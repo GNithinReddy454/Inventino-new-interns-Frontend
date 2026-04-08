@@ -623,12 +623,7 @@ export default function EditProductView({
             size.price === "" ? sale : safeNumber(size.price, sale),
         })),
       })),
-      story: {
-        title: form.name.trim(),
-        content: form.story || "",
-        isDisplayed: true,
-        featured: false,
-      },
+      story: form.story || "",
     };
   };
 
@@ -722,7 +717,7 @@ export default function EditProductView({
               type="button"
               onClick={handlePreview}
               disabled={previewLoading}
-              className="inline-flex h-[42px] items-center gap-2 rounded-[12px] border border-[#E8DDE3] bg-white px-4 text-[14px] font-medium text-[#5F5563] hover:bg-[#FAF7F8] disabled:opacity-60"
+              className="inline-flex h-10.5 items-center gap-2 rounded-[12px] border border-[#E8DDE3] bg-white px-4 text-[14px] font-medium text-[#5F5563] hover:bg-[#FAF7F8] disabled:opacity-60"
             >
               {previewLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -735,7 +730,7 @@ export default function EditProductView({
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex h-[42px] items-center gap-2 rounded-[12px] bg-[#EB5C8A] px-5 text-[14px] font-semibold text-white shadow-sm hover:bg-[#e14f80] disabled:opacity-60"
+              className="inline-flex h-10.5 items-center gap-2 rounded-[12px] bg-[#EB5C8A] px-5 text-[14px] font-semibold text-white shadow-sm hover:bg-[#e14f80] disabled:opacity-60"
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -748,18 +743,18 @@ export default function EditProductView({
         </div>
 
         {error ? (
-          <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         ) : null}
 
         {successMessage ? (
-          <div className="rounded-[16px] border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {successMessage}
           </div>
         ) : null}
 
-        <section className="overflow-hidden rounded-[24px] border border-[#F0E4E8] bg-white shadow-[0_2px_10px_rgba(31,23,40,0.03)]">
+        <section className="overflow-hidden rounded-3xl border border-[#F0E4E8] bg-white shadow-[0_2px_10px_rgba(31,23,40,0.03)]">
           <div className="border-b border-[#F4E9EE] px-6 py-5">
             <h2 className="text-[28px] font-semibold text-[#2A1F2F]">Basic Information</h2>
             <p className="mt-1 text-[13px] text-[#A0959F]">
@@ -776,7 +771,7 @@ export default function EditProductView({
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
                 placeholder="e.g., Delicate Rose Bracelet"
-                className="h-[48px] w-full rounded-[14px] border border-[#F4B8C8] bg-[#FFF7FA] px-4 text-[14px] text-[#2A1F2F] placeholder:text-[#B6AAB4] outline-none focus:border-[#EB5C8A]"
+                className="h-12 w-full rounded-[14px] border border-[#F4B8C8] bg-[#FFF7FA] px-4 text-[14px] text-[#2A1F2F] placeholder:text-[#B6AAB4] outline-none focus:border-[#EB5C8A]"
               />
             </div>
 
@@ -825,7 +820,7 @@ export default function EditProductView({
                       }
                     }}
                     placeholder="Add a tag..."
-                    className="min-w-[160px] flex-1 bg-transparent text-[13px] text-[#4B4250] outline-none placeholder:text-[#B6AAB4]"
+                    className="min-w-40 flex-1 bg-transparent text-[13px] text-[#4B4250] outline-none placeholder:text-[#B6AAB4]"
                   />
                 </div>
               </div>
@@ -833,7 +828,7 @@ export default function EditProductView({
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-[24px] border border-[#F0E4E8] bg-white shadow-[0_2px_10px_rgba(31,23,40,0.03)]">
+        <section className="overflow-hidden rounded-3xl border border-[#F0E4E8] bg-white shadow-[0_2px_10px_rgba(31,23,40,0.03)]">
           <div className="flex items-start gap-3 border-b border-[#F4E9EE] px-6 py-5">
             <div className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFF2F6] text-[#EB5C8A]">
               <DollarSign className="h-4 w-4" />
@@ -860,7 +855,7 @@ export default function EditProductView({
                       e.target.value === "" ? "" : Number(e.target.value)
                     )
                   }
-                  className="h-[48px] w-full rounded-[14px] border border-[#F4B8C8] bg-[#FFF7FA] px-4 text-[14px] outline-none focus:border-[#EB5C8A]"
+                  className="h-12 w-full rounded-[14px] border border-[#F4B8C8] bg-[#FFF7FA] px-4 text-[14px] outline-none focus:border-[#EB5C8A]"
                 />
               </div>
 
@@ -877,12 +872,12 @@ export default function EditProductView({
                       e.target.value === "" ? "" : Number(e.target.value)
                     )
                   }
-                  className="h-[48px] w-full rounded-[14px] border border-[#F4B8C8] bg-[#FFF7FA] px-4 text-[14px] outline-none focus:border-[#EB5C8A]"
+                  className="h-12 w-full rounded-[14px] border border-[#F4B8C8] bg-[#FFF7FA] px-4 text-[14px] outline-none focus:border-[#EB5C8A]"
                 />
               </div>
             </div>
 
-            <label className="flex items-center gap-3 rounded-[14px] border border-[#F0E4E8] bg-[#FFFDFC] px-4 py-3 max-w-[260px]">
+            <label className="flex items-center gap-3 rounded-[14px] border border-[#F0E4E8] bg-[#FFFDFC] px-4 py-3 max-w-65">
               <input
                 type="checkbox"
                 checked={form.taxIncluded}
@@ -895,7 +890,7 @@ export default function EditProductView({
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-[24px] border border-[#F0E4E8] bg-white shadow-[0_2px_10px_rgba(31,23,40,0.03)]">
+        <section className="overflow-hidden rounded-3xl border border-[#F0E4E8] bg-white shadow-[0_2px_10px_rgba(31,23,40,0.03)]">
           <div className="flex items-start justify-between gap-4 border-b border-[#F4E9EE] px-6 py-5">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFF2F6] text-[#EB5C8A]">
@@ -913,7 +908,7 @@ export default function EditProductView({
                 value={newColorName}
                 onChange={(e) => setNewColorName(e.target.value)}
                 placeholder="Add color"
-                className="h-[40px] rounded-[12px] border border-[#EADDE3] bg-white px-3 text-[13px] outline-none focus:border-[#EB5C8A]"
+                className="h-10 rounded-[12px] border border-[#EADDE3] bg-white px-3 text-[13px] outline-none focus:border-[#EB5C8A]"
               />
               <button
                 type="button"
@@ -921,7 +916,7 @@ export default function EditProductView({
                   addColor(newColorName);
                   setNewColorName("");
                 }}
-                className="inline-flex h-[40px] items-center gap-2 rounded-[12px] border border-[#EADDE3] bg-white px-4 text-[13px] font-medium text-[#7D7482]"
+                className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-[#EADDE3] bg-white px-4 text-[13px] font-medium text-[#7D7482]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Color
@@ -951,7 +946,7 @@ export default function EditProductView({
                     className="group text-left"
                   >
                     <div
-                      className={`relative h-[58px] w-[58px] rounded-[14px] border-2 transition ${
+                      className={`relative h-14.5 w-14.5 rounded-[14px] border-2 transition ${
                         isSelected
                           ? "border-[#EB5C8A]"
                           : "border-[#ECE5E9] hover:border-[#F3A6BF]"
@@ -974,7 +969,7 @@ export default function EditProductView({
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-[24px] border border-[#F0E4E8] bg-white shadow-[0_2px_10px_rgba(31,23,40,0.03)]">
+        <section className="overflow-hidden rounded-3xl border border-[#F0E4E8] bg-white shadow-[0_2px_10px_rgba(31,23,40,0.03)]">
           <div className="flex items-start gap-3 border-b border-[#F4E9EE] px-6 py-5">
             <div className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFF2F6] text-[#EB5C8A]">
               <ShoppingBag className="h-4 w-4" />
@@ -999,7 +994,7 @@ export default function EditProductView({
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
                     <div
-                      className="h-7 w-7 rounded-[8px] border border-[#E7DFE3]"
+                      className="h-7 w-7 rounded-xl border border-[#E7DFE3]"
                       style={{ backgroundColor: getColorHex(variant.color, variant.colorCode) }}
                     />
                     <span className="text-[15px] font-semibold text-[#2A1F2F]">
@@ -1047,7 +1042,7 @@ export default function EditProductView({
                         {variant.sizes.map((size) => (
                           <div
                             key={size.id}
-                            className="relative min-h-[110px] w-[120px] rounded-[14px] border border-[#F3B2C7] bg-white px-3 py-3 text-center"
+                            className="relative min-h-27.5 w-30 rounded-[14px] border border-[#F3B2C7] bg-white px-3 py-3 text-center"
                           >
                             <button
                               type="button"
@@ -1081,7 +1076,7 @@ export default function EditProductView({
                                   e.target.value === "" ? "" : Number(e.target.value)
                                 )
                               }
-                              className="mt-2 w-full rounded-[8px] border border-[#F3B2C7] bg-[#FFF7FA] px-2 py-1 text-center text-[12px] outline-none"
+                              className="mt-2 w-full rounded-xl border border-[#F3B2C7] bg-[#FFF7FA] px-2 py-1 text-center text-[12px] outline-none"
                               placeholder="Stock"
                             />
                             <input
@@ -1094,7 +1089,7 @@ export default function EditProductView({
                                   e.target.value
                                 )
                               }
-                              className="mt-2 w-full rounded-[8px] border border-[#F3B2C7] bg-[#FFF7FA] px-2 py-1 text-center text-[12px] outline-none"
+                              className="mt-2 w-full rounded-xl border border-[#F3B2C7] bg-[#FFF7FA] px-2 py-1 text-center text-[12px] outline-none"
                               placeholder="SKU"
                             />
                           </div>
@@ -1103,7 +1098,7 @@ export default function EditProductView({
                         <button
                           type="button"
                           onClick={() => addSizeToVariant(variant.id)}
-                          className="flex min-h-[110px] w-[120px] flex-col items-center justify-center rounded-[14px] border border-dashed border-[#F2C2D1] bg-[#FFF9FB] text-[13px] font-medium text-[#EB5C8A]"
+                          className="flex min-h-27.5 w-30 flex-col items-center justify-center rounded-[14px] border border-dashed border-[#F2C2D1] bg-[#FFF9FB] text-[13px] font-medium text-[#EB5C8A]"
                         >
                           <Plus className="mb-1 h-4 w-4" />
                           Add Size
@@ -1120,7 +1115,7 @@ export default function EditProductView({
                         {variant.images.map((image, imageIndex) => (
                           <div
                             key={image.id}
-                            className="relative h-[118px] w-[118px] overflow-hidden rounded-[14px] border border-[#EADDE3] bg-[#F9F4F6]"
+                            className="relative h-29.5 w-29.5 overflow-hidden rounded-[14px] border border-[#EADDE3] bg-[#F9F4F6]"
                           >
                             {image.preview ? (
                               <Image
@@ -1148,7 +1143,7 @@ export default function EditProductView({
                           </div>
                         ))}
 
-                        <label className="flex h-[118px] w-[118px] cursor-pointer items-center justify-center rounded-[14px] border border-dashed border-[#F2C2D1] bg-[#FFF9FB] text-[#EB5C8A]">
+                        <label className="flex h-29.5 w-29.5 cursor-pointer items-center justify-center rounded-[14px] border border-dashed border-[#F2C2D1] bg-[#FFF9FB] text-[#EB5C8A]">
                           <div className="flex flex-col items-center gap-1">
                             <Upload className="h-4 w-4" />
                             <span className="text-[12px] font-medium">Upload</span>
