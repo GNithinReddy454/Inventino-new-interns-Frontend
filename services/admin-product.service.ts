@@ -29,7 +29,7 @@ function getMultipartHeaders(data: unknown) {
 
 function handleAxiosError(error: unknown, label: string): never {
   if (axios.isAxiosError(error)) {
-    console.error(`${label}:`, {
+    console.warn(`${label}:`, {
       url: error.config?.url,
       method: error.config?.method?.toUpperCase(),
       baseURL: error.config?.baseURL,
@@ -47,7 +47,7 @@ function handleAxiosError(error: unknown, label: string): never {
     );
   }
 
-  console.error(`${label} UNKNOWN ERROR:`, error);
+  console.warn(`${label} UNKNOWN ERROR:`, error);
   throw error;
 }
 

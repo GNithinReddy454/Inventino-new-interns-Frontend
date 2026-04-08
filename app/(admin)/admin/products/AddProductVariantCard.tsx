@@ -13,6 +13,7 @@ export type VariantSizeStock = {
   size: string;
   stock: number;
   sku: string;
+  price: number;
 };
 
 export type ProductVariantGroup = {
@@ -34,6 +35,7 @@ interface AddProductVariantCardProps {
   onAddCustomSize: () => void;
   onUpdateStock: (size: string, stock: number) => void;
   onUpdateSku: (size: string, sku: string) => void;
+  onUpdatePrice: (size: string, price: number) => void;
   onVariantImagesChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveVariantImage: (imageId: string) => void;
   colorSwatchMap: Record<string, string>;
@@ -51,6 +53,7 @@ export default function AddProductVariantCard({
   onAddCustomSize,
   onUpdateStock,
   onUpdateSku,
+  onUpdatePrice,
   onVariantImagesChange,
   onRemoveVariantImage,
   colorSwatchMap,
@@ -237,9 +240,14 @@ export default function AddProductVariantCard({
                           Price
                         </label>
                         <input
-                          readOnly
-                          value={inheritedPrice || 0}
-                          className="h-[34px] w-full rounded-[8px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] text-[#6B6572]"
+                          type="number"
+                          min="0"
+                          value={entry.price ?? ""}
+                          placeholder={String(inheritedPrice || 0)}
+                          onChange={(e) =>
+                            onUpdatePrice(entry.size, Number(e.target.value) || 0)
+                          }
+                          className="h-[34px] w-full rounded-[8px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
                         />
                       </div>
 

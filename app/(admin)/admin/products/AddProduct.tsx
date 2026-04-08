@@ -322,13 +322,27 @@ export default function AddProduct() {
     return level2 as T;
   };
 
+  const extractPrimaryProduct = (raw: any): any => {
+    const payload = unwrapApiData<any>(raw);
+
+    if (Array.isArray(payload?.items) && payload.items.length > 0) {
+      return payload.items[0];
+    }
+
+    if (Array.isArray(payload) && payload.length > 0) {
+      return payload[0];
+    }
+
+    return payload;
+  };
+
   const extractProductResourceId = (raw: any): string => {
-    const product = unwrapApiData<any>(raw);
+    const product = extractPrimaryProduct(raw);
     return String(product?.productId || product?.id || product?._id || "");
   };
 
   const extractBatchUploadedUrls = (raw: any): string[] => {
-    const product = unwrapApiData<any>(raw);
+    const product = extractPrimaryProduct(raw);
 
     const mainImage =
       typeof product?.media?.mainImage === "string" ? product.media.mainImage : "";
@@ -441,6 +455,10 @@ export default function AddProduct() {
   };
 
   const toggleSizeForVariant = (variantId: string, size: string) => {
+    const defaultPrice = salePrice.trim()
+      ? toNumber(salePrice)
+      : toNumber(regularPrice);
+
     setVariants((prev) =>
       prev.map((variant) => {
         if (variant.id !== variantId) return variant;
@@ -460,6 +478,7 @@ export default function AddProduct() {
             ...variant.sizes,
             {
               size,
+              price: defaultPrice,
               stock: 0,
               sku: `${variant.color}-${size}`.replace(/\s+/g, "-").toUpperCase(),
             },
@@ -472,6 +491,10 @@ export default function AddProduct() {
   const addCustomSizeToVariant = (variantId: string) => {
     const sizeValue = (customSizeInputs[variantId] || "").trim();
     if (!sizeValue) return;
+
+    const defaultPrice = salePrice.trim()
+      ? toNumber(salePrice)
+      : toNumber(regularPrice);
 
     setVariants((prev) =>
       prev.map((variant) => {
@@ -489,6 +512,7 @@ export default function AddProduct() {
             ...variant.sizes,
             {
               size: sizeValue,
+              price: defaultPrice,
               stock: 0,
               sku: `${variant.color}-${sizeValue}`
                 .replace(/\s+/g, "-")
@@ -529,6 +553,21 @@ export default function AddProduct() {
           ...variant,
           sizes: variant.sizes.map((entry) =>
             entry.size === size ? { ...entry, sku } : entry
+          ),
+        };
+      })
+    );
+  };
+
+  const updateVariantPrice = (variantId: string, size: string, price: number) => {
+    setVariants((prev) =>
+      prev.map((variant) => {
+        if (variant.id !== variantId) return variant;
+
+        return {
+          ...variant,
+          sizes: variant.sizes.map((entry) =>
+            entry.size === size ? { ...entry, price } : entry
           ),
         };
       })
@@ -701,6 +740,7 @@ export default function AddProduct() {
         images: (uploadedUrlsByVariant[variant.id] || []).filter(Boolean),
         sizes: variant.sizes.map((sizeItem) => ({
           size: sizeItem.size?.trim() || null,
+          price: Number(sizeItem.price) || effectivePrice,
           stock: Number(sizeItem.stock) || 0,
           sku:
             sizeItem.sku?.trim() ||
@@ -822,7 +862,7 @@ export default function AddProduct() {
       const finalPayload = buildPayloadForBackend(uploadedUrlsByVariant);
       await adminProductService.update(productResourceId, finalPayload);
 
-      const createdProduct = unwrapApiData<any>(created);
+      const createdProduct = extractPrimaryProduct(created);
 
 const serializableVariants = variants.map((variant) => ({
   id: variant.id,
@@ -830,6 +870,7 @@ const serializableVariants = variants.map((variant) => ({
   expanded: variant.expanded,
   sizes: variant.sizes.map((sizeItem) => ({
     size: sizeItem.size,
+    price: Number(sizeItem.price) || effectivePrice,
     stock: Number(sizeItem.stock) || 0,
     sku: sizeItem.sku || "",
   })),
@@ -1277,6 +1318,9 @@ dispatch(
                     }
                     onUpdateSku={(size, sku) =>
                       updateVariantSku(variant.id, size, sku)
+                    }
+                    onUpdatePrice={(size, price) =>
+                      updateVariantPrice(variant.id, size, price)
                     }
                     onVariantImagesChange={(e) => handleVariantImagesChange(variant.id, e)}
                     onRemoveVariantImage={(imageId) =>

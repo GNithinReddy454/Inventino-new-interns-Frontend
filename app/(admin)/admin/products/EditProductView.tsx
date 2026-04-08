@@ -623,12 +623,7 @@ export default function EditProductView({
             size.price === "" ? sale : safeNumber(size.price, sale),
         })),
       })),
-      story: {
-        title: form.name.trim(),
-        content: form.story || "",
-        isDisplayed: true,
-        featured: false,
-      },
+      story: form.story || "",
     };
   };
 
