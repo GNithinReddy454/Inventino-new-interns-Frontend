@@ -505,7 +505,7 @@ export default function WishlistPage() {
               const name = item.name || item.title || item.productName || "Untitled Product";
               const image = getImageUrl(item.images?.[0] || item.image);
               const rating =
-                typeof item.rating === "number" ? item.rating : 4.7;
+                typeof item.rating === "number" ? item.rating : 0;
               const badge = getBadgeInfo(item.badge);
               const hasDiscount =
                 !!item.originalPrice && item.originalPrice > (item.price || 0);

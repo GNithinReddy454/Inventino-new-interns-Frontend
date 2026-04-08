@@ -201,7 +201,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
     // setAdded(true);
   };
 
-  const rating = typeof product.rating === "number" ? product.rating : 4.7;
+  const rating = typeof product.rating === "number" ? product.rating : 0;
   const badgeText = getBadgeText(product.badge);
   let displayText = badgeText;
   let badgeColor = "bg-pink-500";
@@ -334,7 +334,7 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
                     setActiveVariant(null);
                     setCurrentSlide(0);
                   }}
-                  className={`w-4 h-4 rounded-full border border-gray-200 cursor-pointer transition-transform hover:scale-125 ${
+                  className={`w-4 h-4 rounded-full border border-gray-300 cursor-pointer transition-transform hover:scale-125 ${
                     activeVariant?.color === v.color ? "ring-2 ring-pink-400 ring-offset-1" : ""
                   }`}
                   style={{ backgroundColor: v.colorCode || "#ccc" }}

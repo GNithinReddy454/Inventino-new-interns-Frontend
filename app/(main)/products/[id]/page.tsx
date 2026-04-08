@@ -49,6 +49,7 @@ interface ProductPrice {
   color_id: string;
   size_id: string;
   price: number;
+  originalPrice?: number;
   stock: number;
 }
 
@@ -135,6 +136,7 @@ interface ProductVariant {
   productId: string;
   sku?: string;
   price: number;
+  originalPrice?: number;
   stock: number;
   attributes: VariantAttribute[];
   images?: Array<{ url?: string }>;
@@ -374,9 +376,15 @@ export default function ProductDetailsPage() {
     return isNaN(numStock) ? 0 : numStock;
   }, [activePriceEntry, selectedVariant, product]);
 
+  const displayOriginalPrice = useMemo(() => {
+    const rawOriginal = activePriceEntry?.originalPrice ?? selectedVariant?.originalPrice ?? product?.originalPrice ?? null;
+    const numOriginal = Number(rawOriginal);
+    return isNaN(numOriginal) ? null : numOriginal;
+  }, [activePriceEntry, selectedVariant, product]);
+
   const discountPct = useMemo(
-    () => (product ? calculateDiscount(product.originalPrice, displayPrice) : null),
-    [product, displayPrice]
+    () => (product ? calculateDiscount(displayOriginalPrice, displayPrice) : null),
+    [displayOriginalPrice, displayPrice]
   );
 
   const isInWishlist = useCallback((): boolean => {
@@ -541,6 +549,7 @@ export default function ProductDetailsPage() {
               productId: data.productId || "",
               sku: s.sku,
               price: s.price,
+              originalPrice: s.originalPrice,
               stock: s.stock,
               attributes: [
                 { name: "Color", value: color },
@@ -598,8 +607,8 @@ export default function ProductDetailsPage() {
         const slug: string = data?.slug ?? "";
         const mongoId: string = String(data?._id ?? productId);
 
-        let liveRating = data.ratingsAverage || 4.8;
-        let liveReviewCount = 0;
+        let liveRating = data.ratingsAverage || 0;
+        let liveReviewCount = data.ratingsCount || 0;
         const reviewId = prdId || mongoId;
 
         if (reviewId) {
@@ -661,6 +670,7 @@ export default function ProductDetailsPage() {
               color_id: String(p.color_id || ""),
               size_id: String(p.size_id || ""),
               price: Number(p.price || 0),
+              originalPrice: p.originalPrice ? Number(p.originalPrice) : undefined,
               stock: Number(p.stock || 0),
             }))
           : [];
@@ -860,6 +870,7 @@ export default function ProductDetailsPage() {
   const handleSizeSelect = useCallback((sizeObj: ProductSize | string) => {
     if (typeof sizeObj === "string") {
       setSelectedSize(sizeObj);
+      setSelectedSizeId(sizeObj);
     } else {
       setSelectedSize(sizeObj.size);
       setSelectedSizeId(sizeObj.size_id);
@@ -876,7 +887,7 @@ export default function ProductDetailsPage() {
       badge: product!.badge,
       rating: product!.rating,
       reviews: product!.reviews,
-      originalPrice: product!.originalPrice,
+      originalPrice: displayOriginalPrice,
       color: hasColorVariants
         ? product!.colorVariants?.[selectedColor]?.color_name || undefined
         : variantColors[selectedColor] || undefined,
@@ -1320,9 +1331,9 @@ export default function ProductDetailsPage() {
                 ₹{(displayPrice || 0).toFixed(2)}
               </span>
 
-              {product.originalPrice && (
+              {displayOriginalPrice && (
                 <span className="text-sm md:text-base text-gray-400 line-through">
-                  ₹{(product.originalPrice || 0).toFixed(2)}
+                  ₹{(displayOriginalPrice || 0).toFixed(2)}
                 </span>
               )}
 
@@ -1361,7 +1372,7 @@ export default function ProductDetailsPage() {
                       className={`w-9 h-9 md:w-11 md:h-11 rounded-full border-[3px] transition-all relative flex items-center justify-center hover:scale-110 ${
                         isSelected
                           ? "border-[#D94F7A] scale-105"
-                          : "border-transparent hover:border-gray-300"
+                          : "border-gray-200 hover:border-gray-300"
                       }`}
                       style={{ backgroundColor: colorObj.color_code }}
                       aria-label={`Select ${colorObj.color_name} color`}
@@ -1410,7 +1421,7 @@ export default function ProductDetailsPage() {
                       className={`w-9 h-9 md:w-11 md:h-11 rounded-full border-[3px] transition-all relative flex items-center justify-center hover:scale-110 ${
                         isSelected
                           ? "border-[#D94F7A] scale-105"
-                          : "border-transparent hover:border-gray-300"
+                          : "border-gray-200 hover:border-gray-300"
                       }`}
                       style={{ backgroundColor: bgColor }}
                       aria-label={`Select ${colorVal} color`}
