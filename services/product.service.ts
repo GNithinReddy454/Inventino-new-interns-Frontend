@@ -94,20 +94,35 @@ export const productService = {
   },
 
   // ─── PRODUCT DETAILS ─────────────────────────────────────
-  async getById(id: string | number): Promise<ProductDetailResponse> {
-    const res = await apiClient.get(`/products/${id}`);
-    return res.data;
+  async getById(id: string | number): Promise<ProductDetailResponse | null> {
+    try {
+      const res = await apiClient.get(`/products/${id}`);
+      return res.data;
+    } catch (error) {
+      console.error(`[Product Details] fetch failed for ID: ${id}`, error);
+      return null;
+    }
   },
 
-  async getBySlug(slug: string): Promise<ProductDetailResponse> {
-    const res = await apiClient.get(`/products/${slug}`);
-    return res.data;
+  async getBySlug(slug: string): Promise<ProductDetailResponse | null> {
+    try {
+      const res = await apiClient.get(`/products/${slug}`);
+      return res.data;
+    } catch (error) {
+      console.error(`[Product Details] fetch failed for slug: ${slug}`, error);
+      return null;
+    }
   },
 
   // ─── EXTRA FEATURES ─────────────────────────────────────
   async getSimilar(productId: string) {
-    const res = await apiClient.get(`/products/${productId}/similar`);
-    return res.data;
+    try {
+      const res = await apiClient.get(`/products/${productId}/similar`);
+      return res.data;
+    } catch (error) {
+      console.error(`[Similar Products] fetch failed for ID: ${productId}`, error);
+      return { data: [] };
+    }
   },
 
   async getStory(productId: string) {
@@ -120,7 +135,8 @@ export const productService = {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         return null;
       }
-      throw error;
+      console.error(`[Product Story] fetch failed for ID: ${productId}`, error);
+      return null;
     }
   },
 

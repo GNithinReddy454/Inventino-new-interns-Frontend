@@ -582,14 +582,17 @@ export default function ProductDetailsPage() {
     hasFetchedProduct.current = true;
 
     const fetchProduct = async () => {
+      if (productId.startsWith("fallback-")) {
+        setLoading(false);
+        return;
+      }
       try {
         const res = await productService.getById(productId);
-        const data = res?.data ?? res;
-
-        if (!data) {
+        if (!res || !res.data) {
           setLoading(false);
           return;
         }
+        const data = res.data;
 
         const prdId: string = data?.productId ?? "";
         const slug: string = data?.slug ?? "";
@@ -782,6 +785,10 @@ export default function ProductDetailsPage() {
     hasFetchedStory.current = true;
 
     const fetchStory = async () => {
+      if (productId.startsWith("fallback-")) {
+        setStoryLoading(false);
+        return;
+      }
       setStoryLoading(true);
 
       try {

@@ -222,6 +222,17 @@ export default function StoriesPage() {
   // ─── API: Fetch Story Data ───────────────────────────────────────────────
   const fetchStoryData = async (productId: string) => {
     if (!productId) return;
+    
+    // Skip API call for mock IDs to avoid 500 errors on backend
+    // Valid MongoDB ObjectId is 24-char hex string
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(productId);
+    if (!isObjectId) {
+      console.log(`[Story] Skipping API for mock/invalid ID: ${productId}`);
+      setStoryData(null);
+      setStoryLoading(false);
+      return;
+    }
+
     setStoryLoading(true);
     try {
       const response = await productService.getStory(productId);
@@ -232,11 +243,8 @@ export default function StoriesPage() {
         setStoryData(null);
       }
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 404) {
-        console.log(`Story not found for product ID: ${productId}`);
-      } else {
-        console.error("[Story] fetch failed:", err);
-      }
+      // service now handles errors, but we keep this as extra safety
+      console.error("[Story] fetch failed:", err);
       setStoryData(null);
     } finally {
       setStoryLoading(false);
@@ -246,6 +254,15 @@ export default function StoriesPage() {
   // ─── API: Similar Products ───────────────────────────────────────────────
   const fetchSimilarProducts = async (productId: string) => {
     if (!productId) return;
+    
+    // Skip API call for mock IDs to avoid 500 errors on backend
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(productId);
+    if (!isObjectId) {
+      console.log(`[Similar] Skipping API for mock/invalid ID: ${productId}`);
+      setSimilarProducts(FALLBACK_SIMILAR_PRODUCTS);
+      return;
+    }
+
     setSimilarLoading(true);
     try {
       const response = await productService.getSimilar(productId);
@@ -271,11 +288,7 @@ export default function StoriesPage() {
         setSimilarProducts(FALLBACK_SIMILAR_PRODUCTS);
       }
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 404) {
-        console.log(`Product with ID ${productId} not found in database, using fallback similar products`);
-      } else {
-        console.error("[Similar] fetch failed:", err);
-      }
+      console.error("[Similar] fetch failed:", err);
       setSimilarProducts(FALLBACK_SIMILAR_PRODUCTS);
     } finally {
       setSimilarLoading(false);

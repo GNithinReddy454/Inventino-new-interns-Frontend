@@ -8,6 +8,8 @@ import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { useCart, Product } from "@/lib/cartContext";
 import { useToast } from "@/app/components/GlobalToast";
 import { setBuyNowProduct } from "@/redux/buyNowSlice";
+import { useAuth } from "@/app/(main)/components/authContext";
+import { useRouter } from "next/navigation";
 
 export interface ProductCardProduct extends Product {
   productId?: string;
@@ -86,9 +88,17 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
   const dispatch = useAppDispatch();
   // const { items: wishlistItems = [] } = useAppSelector((state: any) => state.wishlist);
   const { addToCart } = useCart();
+  const { user, loading: authLoading } = useAuth();
   const { showToast } = useToast();
+  const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
   const [added, setAdded] = useState(false);
+  const [isBuyNowLoading, setIsBuyNowLoading] = useState(false);
+
+  const isAuthenticated = useMemo(
+    () => !!user || (typeof window !== "undefined" && !!localStorage.getItem("token")),
+    [user]
+  );
 
   // const isSaved = wishlistItems.some((wItem: any) =>
   //   wItem.product?._id === product.id || wItem.product?.id === product.id
@@ -389,7 +399,16 @@ export default function ProductCard({ product, onAdd, buttonBg = "#E8456A" }: Pr
                       id: activeProductData?.id ?? product.id,
                     }
                   } as any));
-                  window.location.href = "/checkout";
+
+                  if (!isAuthenticated) {
+                    showToast("Login Required", "Please login to continue with checkout", "info");
+                    const returnUrl = encodeURIComponent("/checkout");
+                    setTimeout(() => {
+                      router.push(`/login?redirect=${returnUrl}`);
+                    }, 1000);
+                    return;
+                  }
+                  router.push("/checkout");
                 }}
                 className="flex-1 py-[7px] px-2 bg-pink-600 text-white text-[8px] font-black uppercase tracking-widest rounded-full hover:bg-pink-700 transition-colors shadow-sm"
               >

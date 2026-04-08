@@ -40,15 +40,15 @@ export default function CheckoutFlow() {
   const [localIsProcessing, setLocalIsProcessing] = useState(false);
 
   // Derive active items and totals based on buyNow flow
-  const itemsToOrder = buyNowProduct 
-    ? [{ 
-        productId: buyNowProduct.productId, 
-        quantity: buyNowProduct.quantity, 
-        color: buyNowProduct.color, 
-        size: buyNowProduct.size, 
-        price: buyNowProduct.product?.price || 0,
-        name: buyNowProduct.product?.name || "Product"
-      }] 
+  const itemsToOrder = buyNowProduct
+    ? [{
+      productId: buyNowProduct.productId,
+      quantity: buyNowProduct.quantity,
+      color: buyNowProduct.color,
+      size: buyNowProduct.size,
+      price: buyNowProduct.product?.price || 0,
+      name: buyNowProduct.product?.name || "Product"
+    }]
     : cartItems;
 
   const orderSubtotal = Number(itemsToOrder.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * Number(item.quantity || 1)), 0));
@@ -154,7 +154,7 @@ export default function CheckoutFlow() {
       }
 
       // Secure Online Flow (Steps 1 through 5)
-      
+
       // Step 1: Place Order (Create Order in Database)
       const resultAction = await dispatch(placeOrderAction({
         ...orderPayload,
@@ -177,11 +177,13 @@ export default function CheckoutFlow() {
       console.log("Input Order ID:", dbOrderId);
       const rzpServiceResp = await orderService.createRazorpayOrder(dbOrderId);
       console.log("Full Backend Response:", rzpServiceResp);
-
       const rzpData = rzpServiceResp.data || rzpServiceResp;
-      const { razorpayOrderId, amount: rzpAmount, currency } = rzpData;
+      // Fetch both orderId and razorpayOrderId from backend
+      const { razorpayOrderId, orderId: updatedOrderId, amount: rzpAmount, currency } = rzpData;
+      
+      const finalOrderId = updatedOrderId || dbOrderId;
 
-      console.log("Extracted Razorpay Data:", { razorpayOrderId, rzpAmount, currency });
+      console.log("Extracted Razorpay Data:", { razorpayOrderId, updatedOrderId, finalOrderId, rzpAmount, currency });
       console.groupEnd();
 
       if (!razorpayOrderId) {
@@ -199,33 +201,33 @@ export default function CheckoutFlow() {
         currency: currency || "INR",
         order_id: razorpayOrderId,
         name: "Inventino Jewels",
-        description: "Payment for Order " + (orderRes.data?.orderNumber || dbOrderId),
+        description: "Payment for Order " + (orderRes.data?.orderNumber || finalOrderId),
         handler: async function (response: any) {
           try {
             setLocalIsProcessing(true);
-            
+
             // Step 4: Verify Payment (Send Payment Details to Backend)
             console.group("💳 Payment Flow - Step 4: Verify Payment");
             console.log("Razorpay Response:", response);
-            
+
             const verificationResult = await orderService.verifyPayment({
-              razorpay_order_id: razorpayOrderId, // Use the ID from backend, not response
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              orderId: dbOrderId,
+              razorpay_order_id: razorpayOrderId, // Use order id fetched from backend
+              razorpay_payment_id: response.razorpay_payment_id, // Get from razorpay
+              razorpay_signature: response.razorpay_signature,   // Get from razorpay
+              orderId: finalOrderId, // Use order id fetched from backend
             });
             console.log("Verification Result:", verificationResult);
             console.groupEnd();
 
             // Step 5: Show Success to the User
-            const finalOrderAction = await dispatch(fetchOrderByIdAction(dbOrderId));
-            const finalOrder = fetchOrderByIdAction.fulfilled.match(finalOrderAction) 
+            const finalOrderAction = await dispatch(fetchOrderByIdAction(finalOrderId));
+            const finalOrder = fetchOrderByIdAction.fulfilled.match(finalOrderAction)
               ? finalOrderAction.payload.data || finalOrderAction.payload
               : orderRes.data;
 
             setOrderResponse({
               status: "success",
-              orderId: dbOrderId,
+              orderId: finalOrderId,
               orderNumber: finalOrder?.orderNumber || orderRes.data?.orderNumber || "N/A",
               orderDate: finalOrder?.createdAt || orderRes.data?.createdAt || new Date().toISOString(),
               transactionId: response.razorpay_payment_id,
@@ -236,7 +238,7 @@ export default function CheckoutFlow() {
               estimatedDelivery: "3-5 Days",
             });
             setCurrentStep("success");
-            
+
             // Clear cart/buyNow
             if (buyNowProduct) {
               dispatch(clearBuyNowProduct());
@@ -248,7 +250,7 @@ export default function CheckoutFlow() {
             console.error("Payment verification failed:", err);
             setOrderResponse({
               status: "failed",
-              orderId: dbOrderId,
+              orderId: finalOrderId,
               orderNumber: orderRes.data?.orderNumber || "N/A",
               orderDate: orderRes.data?.createdAt || new Date().toISOString(),
               errorMessage: err?.message || "Payment verification failed. Please contact support.",
