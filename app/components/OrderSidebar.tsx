@@ -157,7 +157,7 @@ export function OrderSidebar({
             >
               {/* Product Image Box */}
               <div
-                className={`w-16 h-16 bg-gradient-to-br ${getGradient(selectedColor)} rounded-xl flex-shrink-0 shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden`}
+                className={`w-16 h-16 bg-linear-to-br ${getGradient(selectedColor)} rounded-xl shrink-0 shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden`}
               >
                   {(product.image || product.images?.[0]?.url) && (
                       <img src={product.image || product.images?.[0]?.url} alt={name} className="w-full h-full object-cover" />
@@ -184,7 +184,7 @@ export function OrderSidebar({
       {/* Promo Code */}
       {currentStep !== "success" && currentStep !== "tracking" && (
         appliedCode ? (
-          <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4 transition-all duration-500">
+          <div className="mb-6 bg-linear-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4 transition-all duration-500">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -280,7 +280,7 @@ export function OrderSidebar({
           <Button
             onClick={() => onPlaceOrder(paymentMethod)}
             disabled={isProcessing}
-            className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-semibold py-6 rounded-xl shadow-md hover:shadow-lg transition-all"
+            className="w-full bg-linear-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-semibold py-6 rounded-xl shadow-md hover:shadow-lg transition-all"
           >
             {isProcessing ? (
               <>
@@ -309,7 +309,7 @@ export function OrderSidebar({
 
     {/* Toast Popup */}
     <div
-      className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${
+      className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-100 transition-all duration-300 ${
         toast.show
           ? "opacity-100 translate-y-0"
           : "opacity-0 translate-y-4 pointer-events-none"

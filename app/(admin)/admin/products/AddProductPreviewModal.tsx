@@ -58,13 +58,13 @@ export default function AddProductPreviewModal({
   const colors = variants.map((variant) => variant.color);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-full max-w-[820px] overflow-hidden rounded-[16px] border border-[#E9DDE3] bg-[#FCFBFC] shadow-[0_20px_50px_rgba(30,20,30,0.16)]">
+      <div className="relative z-10 w-full max-w-205 overflow-hidden rounded-2xl border border-[#E9DDE3] bg-[#FCFBFC] shadow-[0_20px_50px_rgba(30,20,30,0.16)]">
         <div className="flex items-center justify-between border-b border-[#F0E4E8] px-4 py-3">
           <h3 className="text-[14px] font-semibold text-[#201A24]">
             Product Preview
@@ -82,7 +82,7 @@ export default function AddProductPreviewModal({
         <div className="max-h-[85vh] overflow-y-auto p-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[344px_1fr]">
             <div>
-              <div className="h-[184px] overflow-hidden rounded-[10px] border border-[#F0E4E8] bg-[#F6F2F4]">
+              <div className="h-46 overflow-hidden rounded-[10px] border border-[#F0E4E8] bg-[#F6F2F4]">
                 {activeImage ? (
                   <Image
                     src={activeImage}
@@ -105,7 +105,7 @@ export default function AddProductPreviewModal({
                   {productImages.map((image) => (
                     <div
                       key={image.id}
-                      className="h-[54px] w-[54px] shrink-0 overflow-hidden rounded-[8px] border border-[#EB6F96]"
+                      className="h-13.5 w-13.5 shrink-0 overflow-hidden rounded-xl border border-[#EB6F96]"
                     >
                       <Image
                         src={image.preview}
@@ -121,9 +121,9 @@ export default function AddProductPreviewModal({
               )}
             </div>
 
-            <div className="flex min-h-[246px] flex-col">
+            <div className="flex min-h-61.5 flex-col">
               <div>
-                <h2 className="text-[16px] font-semibold leading-[1.25] text-[#1F1728]">
+                <h2 className="text-[16px] font-semibold leading-tight text-[#1F1728]">
                   {name || "Product"}
                 </h2>
 
@@ -222,7 +222,7 @@ export default function AddProductPreviewModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="h-[34px] w-full rounded-[8px] bg-[#EB5C8A] text-[11px] font-semibold text-white hover:bg-[#E35182]"
+                  className="h-8.5 w-full rounded-xl bg-[#EB5C8A] text-[11px] font-semibold text-white hover:bg-[#E35182]"
                 >
                   Close Preview
                 </button>

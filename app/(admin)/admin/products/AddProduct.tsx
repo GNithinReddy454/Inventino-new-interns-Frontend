@@ -82,7 +82,7 @@ function Toggle({
     <button
       type="button"
       onClick={onChange}
-      className={`flex h-5 w-8 items-center rounded-full p-[2px] transition ${
+      className={`flex h-5 w-8 items-center rounded-full p-0.5 transition ${
         checked ? "bg-[#EB5C8A]" : "bg-[#D7D5D9]"
       }`}
     >
@@ -146,7 +146,7 @@ function Input(
       ) : null}
       <input
         {...rest}
-        className={`h-[38px] w-full rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] text-[#1C1630] placeholder:text-[#B5AEB8] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A] ${
+        className={`h-9.5 w-full rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] text-[#1C1630] placeholder:text-[#B5AEB8] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A] ${
           prefix ? "pl-7" : ""
         } ${suffix ? "pr-8" : ""} ${className}`}
       />
@@ -185,7 +185,7 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-[38px] w-full appearance-none rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 pr-9 text-[12px] text-[#1C1630] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
+        className="h-9.5 w-full appearance-none rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 pr-9 text-[12px] text-[#1C1630] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
       >
         <option value="">{placeholder}</option>
         {options.map((item) => (
@@ -929,7 +929,7 @@ dispatch(
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="mx-auto max-w-[1280px] pb-20">
+      <form onSubmit={handleSubmit} className="mx-auto max-w-7xl pb-20">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-[22px] font-semibold text-[#1C1630]">
@@ -943,7 +943,7 @@ dispatch(
           <button
             type="button"
             onClick={() => router.push("/admin")}
-            className="inline-flex h-[38px] items-center justify-center rounded-[10px] border border-[#EADDE3] bg-white px-4 text-[12px] font-medium text-[#6D6776] hover:bg-[#FAF6F8]"
+            className="inline-flex h-9.5 items-center justify-center rounded-[10px] border border-[#EADDE3] bg-white px-4 text-[12px] font-medium text-[#6D6776] hover:bg-[#FAF6F8]"
           >
             Cancel
           </button>
@@ -956,13 +956,13 @@ dispatch(
         ) : null}
 
         <div
-          className={`fixed bottom-5 left-1/2 z-[100] -translate-x-1/2 transition-all duration-300 sm:left-auto sm:right-6 sm:translate-x-0 ${
+          className={`fixed bottom-5 left-1/2 z-100 -translate-x-1/2 transition-all duration-300 sm:left-auto sm:right-6 sm:translate-x-0 ${
             toast.show
               ? "translate-y-0 opacity-100"
               : "pointer-events-none translate-y-4 opacity-0"
           }`}
         >
-          <div className="flex min-w-[260px] max-w-[88vw] items-center gap-3 rounded-[16px] border border-[#F0E4E8] bg-white px-4 py-3 shadow-[0_10px_28px_rgba(31,23,40,0.12)]">
+          <div className="flex min-w-65 max-w-[88vw] items-center gap-3 rounded-2xl border border-[#F0E4E8] bg-white px-4 py-3 shadow-[0_10px_28px_rgba(31,23,40,0.12)]">
             <div
               className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
                 toast.type === "success" ? "bg-[#16A34A]" : "bg-[#E74C3C]"
@@ -1040,7 +1040,7 @@ dispatch(
 
                 <div>
                   <Label>Tags</Label>
-                  <div className="flex min-h-[42px] flex-wrap items-center gap-2 rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 py-2">
+                  <div className="flex min-h-10.5 flex-wrap items-center gap-2 rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 py-2">
                     {tags.map((tag) => (
                       <span
                         key={tag}
@@ -1062,7 +1062,7 @@ dispatch(
                       onKeyDown={handleAddTag}
                       type="text"
                       placeholder="Add a tag..."
-                      className="min-w-[120px] flex-1 bg-transparent text-[12px] focus:outline-none"
+                      className="min-w-30 flex-1 bg-transparent text-[12px] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1223,7 +1223,7 @@ dispatch(
                 <button
                   type="button"
                   onClick={handleAddArtisanStep}
-                  className="flex h-[38px] w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]"
+                  className="flex h-9.5 w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]"
                 >
                   <Plus size={13} />
                   Add Another Step
@@ -1253,7 +1253,7 @@ dispatch(
                         type="button"
                         onClick={() => addVariantColor(colorName)}
                         title={colorName}
-                        className={`relative h-8 w-8 rounded-[8px] border transition ${
+                        className={`relative h-8 w-8 rounded-xl border transition ${
                           isSelected
                             ? "border-[#EB5C8A] ring-1 ring-[#EB5C8A]"
                             : "border-[#E6E0E5] hover:border-[#F1A6BC]"
@@ -1278,12 +1278,12 @@ dispatch(
                       onChange={(e) => setCustomColorName(e.target.value)}
                       type="text"
                       placeholder="Add Color Name"
-                      className="w-[150px]"
+                      className="w-37.5"
                     />
                     <button
                       type="button"
                       onClick={addCustomColor}
-                      className="h-[38px] rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] px-4 text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]"
+                      className="h-9.5 rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] px-4 text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]"
                     >
                       Add
                     </button>
@@ -1344,7 +1344,7 @@ dispatch(
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex h-[40px] flex-1 items-center justify-center rounded-[10px] border border-[#EB5C8A] bg-white text-[12px] font-semibold text-[#EB5C8A] hover:bg-[#FFF7FA] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-10 flex-1 items-center justify-center rounded-[10px] border border-[#EB5C8A] bg-white text-[12px] font-semibold text-[#EB5C8A] hover:bg-[#FFF7FA] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isLoading ? (
                     <span className="inline-flex items-center gap-2">
@@ -1359,7 +1359,7 @@ dispatch(
                 <button
                   type="button"
                   onClick={() => setShowPreview(true)}
-                  className="flex h-[40px] flex-1 items-center justify-center rounded-[10px] bg-[#EB5C8A] text-[12px] font-semibold text-white hover:bg-[#E35182]"
+                  className="flex h-10 flex-1 items-center justify-center rounded-[10px] bg-[#EB5C8A] text-[12px] font-semibold text-white hover:bg-[#E35182]"
                 >
                   Preview Product
                 </button>
@@ -1575,7 +1575,7 @@ dispatch(
               <button
                 type="button"
                 onClick={() => setShowPreview(true)}
-                className="mt-4 flex h-[38px] w-full items-center justify-center gap-2 rounded-[10px] border border-[#F2B8C8] bg-[#FFF4F7] text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDECF2]"
+                className="mt-4 flex h-9.5 w-full items-center justify-center gap-2 rounded-[10px] border border-[#F2B8C8] bg-[#FFF4F7] text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDECF2]"
               >
                 <Eye size={14} />
                 Preview Product
