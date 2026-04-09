@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/(main)/components/authContext";
 
-export const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
+type WithAuthOptions = {
+  requiredRole?: string;
+};
+
+export const withAuth = <P extends object>(
+  WrappedComponent: React.ComponentType<P>,
+  options?: WithAuthOptions
+) => {
   return function ProtectedRoute(props: P) {
     const { user, loading } = useAuth();
     const router = useRouter();
@@ -14,9 +21,21 @@ export const withAuth = <P extends object>(WrappedComponent: React.ComponentType
       if (loading) return;
       if (!user) {
         router.replace("/login");
-      } else {
-        setIsAuthorized(true);
+        return;
       }
+
+      if (options?.requiredRole) {
+        const isRoleMatch =
+          user.role === options.requiredRole ||
+          (options.requiredRole === "admin" && Array.isArray((user as any).permissions));
+
+        if (!isRoleMatch) {
+          router.replace("/");
+          return;
+        }
+      }
+
+      setIsAuthorized(true);
     }, [user, loading, router]);
 
     if (!isAuthorized) {

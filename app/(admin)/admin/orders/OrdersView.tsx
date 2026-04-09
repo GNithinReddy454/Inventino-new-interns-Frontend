@@ -59,6 +59,8 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
 
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+    const [isCancelling, setIsCancelling] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search), 400);
@@ -128,7 +130,10 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     };
 
     const handleExport = async () => {
+        if (isExporting) return;
+
         try {
+            setIsExporting(true);
             const blob = await exportAdminOrders({
                 search: debouncedSearch || undefined,
                 status:
@@ -150,6 +155,8 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         } catch (err) {
             console.error("Export failed:", err);
             showToast("Error", "Export failed", "error");
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -185,10 +192,15 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
     };
 
     const confirmCancel = async () => {
-        if (!cancellingOrderId) return;
+        if (!cancellingOrderId || isCancelling) return;
 
         try {
-            await cancelOrder(cancellingOrderId, "Cancelled by admin");
+            setIsCancelling(true);
+            const cancelled = await cancelOrder(cancellingOrderId, "Cancelled by admin");
+
+            if (!cancelled) {
+                throw new Error("Cancel response invalid");
+            }
 
             setOrders((prev) =>
                 prev.map((o) => {
@@ -204,6 +216,7 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
             console.error("Cancel failed:", err);
             showToast("Error", "Failed to cancel order", "error");
         } finally {
+            setIsCancelling(false);
             setShowCancelConfirm(false);
             setCancellingOrderId(null);
         }
@@ -680,9 +693,10 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                         <button
                             className="text-xs font-bold text-primary hover:text-primary-dark transition-colors shrink-0"
                             onClick={handleExport}
+                            disabled={isExporting}
                             type="button"
                         >
-                            Export CSV →
+                            {isExporting ? "Exporting..." : "Export CSV →"}
                         </button>
                     </div>
                 </div>
@@ -699,12 +713,13 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
                         <div className="flex gap-3 justify-end">
                             <Button
                                 variant="outline"
+                                disabled={isCancelling}
                                 onClick={() => setShowCancelConfirm(false)}
                             >
                                 No, Keep
                             </Button>
-                            <Button variant="destructive" onClick={confirmCancel}>
-                                Yes, Cancel
+                            <Button variant="destructive" disabled={isCancelling} onClick={confirmCancel}>
+                                {isCancelling ? "Cancelling..." : "Yes, Cancel"}
                             </Button>
                         </div>
                     </div>
