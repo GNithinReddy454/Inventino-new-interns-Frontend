@@ -83,6 +83,18 @@ async function gracefulFetch<T>(fn: () => Promise<T>): Promise<T | null> {
     }
 }
 
+const unwrapApiData = <T>(payload: any): T => {
+    if (payload && typeof payload === "object" && "data" in payload) {
+        return payload.data as T;
+    }
+    return payload as T;
+};
+
+const toNumber = (value: any, fallback = 0): number => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+};
+
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
 // GET ORDERS LIST
@@ -90,7 +102,8 @@ export const getAdminOrders = (params?: any) =>
     gracefulFetch(async () => {
         const res = await apiMethods.get<any>("/admin/orders-manage", { params });
 
-        const list: any[] = Array.isArray(res?.data) ? res.data : res ?? [];
+        const listData = unwrapApiData<any[]>(res);
+        const list: any[] = Array.isArray(listData) ? listData : [];
 
         const BG_COLORS = [
             "bg-purple-500","bg-blue-500","bg-green-500",
@@ -102,18 +115,24 @@ export const getAdminOrders = (params?: any) =>
                 const name =
                     typeof o.customer === "string"
                         ? o.customer
-                        : o.customer?.name ?? "";
+                        : o.customer?.name ?? o.user?.name ?? o.shippingAddress?.fullName ?? "";
+
+                const email =
+                    o.email ??
+                    (typeof o.customer === "object" ? o.customer?.email : "") ??
+                    o.user?.email ??
+                    "";
+
+                const totalAmount =
+                    toNumber(o.total, NaN) ||
+                    toNumber(o.totalAmount, NaN) ||
+                    toNumber(o.pricing?.total, 0);
 
                 return {
                     _id: o._id ?? o.orderNumber,
                     orderNumber: o.orderNumber ?? "",
                     customer: name || "Unknown",
-                    email:
-                        o.email ??
-                        (typeof o.customer === "object"
-                            ? o.customer?.email
-                            : "") ??
-                        "",
+                    email,
                     initials: name ? name.slice(0, 2).toUpperCase() : "NA",
                     bg: BG_COLORS[idx % BG_COLORS.length],
                     products:
@@ -122,58 +141,71 @@ export const getAdminOrders = (params?: any) =>
                             quantity: i.quantity ?? 1,
                             price: i.price ?? 0,
                         })) ?? [],
-                    totalAmount: Number(o.total ?? 0),
+                    totalAmount,
+                    total: totalAmount,
                     status: o.status ?? "created",
                     date: o.createdAt ?? new Date().toISOString(),
+                    createdAt: o.createdAt ?? new Date().toISOString(),
                     trackingNumber: o.trackingNumber ?? "",
-                    payment: o.paymentMethod ?? "",
+                    payment: o.paymentMethod ?? o.payment?.method ?? "",
                 };
             }),
-            total: res?.total ?? list.length,
-            page: params?.page ?? 1,
-            limit: params?.limit ?? 10,
-            totalPages: Math.ceil((res?.total ?? list.length) / (params?.limit ?? 10)),
+            total: toNumber(res?.total, list.length),
+            page: toNumber(res?.page, params?.page ?? 1),
+            limit: toNumber(res?.limit, params?.limit ?? 10),
+            totalPages:
+                toNumber(res?.totalPages, 0) ||
+                Math.ceil(
+                    toNumber(res?.total, list.length) / Math.max(toNumber(res?.limit, params?.limit ?? 10), 1)
+                ),
         };
     });
 
 // GET ORDER DETAIL
 export const getAdminOrderById = (id: string) =>
     gracefulFetch(async () => {
-        const o = await apiMethods.get<any>(`/admin/orders-manage/${id}`);
+        const res = await apiMethods.get<any>(`/admin/orders-manage/${id}`);
+        const o = unwrapApiData<any>(res);
+
+        const pricing = o.pricing ?? {};
+        const payment = o.payment ?? {};
+        const customer = o.customer ?? o.user ?? {};
 
         return {
             _id: o._id ?? id,
             orderNumber: o.orderNumber ?? "",
+            paymentMethod: payment.method ?? o.paymentMethod ?? "",
+            total: toNumber(o.total, NaN) || toNumber(pricing.total, 0),
 
             customer: {
                 name:
-                    typeof o.customer === "string"
-                        ? o.customer
-                        : o.customer?.name ?? "",
-                email: o.customer?.email ?? "",
-                phone: o.customer?.phone ?? "",
-                billingAddress: o.customer?.billingAddress ?? null,
-                shippingAddress: o.customer?.shippingAddress ?? null,
+                    typeof customer === "string"
+                        ? customer
+                        : customer?.name ?? o.shippingAddress?.fullName ?? "",
+                email: customer?.email ?? "",
+                phone: customer?.phone ?? o.shippingAddress?.phone ?? "",
+                billingAddress: customer?.billingAddress ?? null,
+                shippingAddress: customer?.shippingAddress ?? o.shippingAddress ?? null,
             },
 
             payment: {
-                method: o.paymentMethod ?? o.payment?.method ?? "",
-                transactionId: o.payment?.transactionId ?? "",
-                status: o.payment?.status ?? "pending",
-                subtotal: Number(o.payment?.subtotal ?? 0),
-                shipping: Number(o.payment?.shipping ?? 0),
-                tax: Number(o.payment?.tax ?? 0),
-                discount: Number(o.payment?.discount ?? 0),
-                total: Number(o.payment?.total ?? o.total ?? 0),
+                method: payment.method ?? o.paymentMethod ?? "",
+                transactionId: payment.transactionId ?? "",
+                status: payment.status ?? "pending",
+                subtotal: toNumber(pricing.subtotal, 0),
+                shipping: toNumber(pricing.shipping, 0),
+                tax: toNumber(pricing.tax, 0),
+                discount: toNumber(pricing.discount, 0),
+                total: toNumber(pricing.total, NaN) || toNumber(o.total, 0),
             },
 
             items: (o.items ?? []).map((i: any) => ({
                 name: i.name ?? "",
                 sku: i.sku ?? i.name ?? "",
-                quantity: Number(i.quantity ?? 1),
-                price: Number(i.price ?? 0),
-                total: Number(i.total ?? (i.price ?? 0) * (i.quantity ?? 1)),
-                image: i.image ?? "",
+                quantity: toNumber(i.quantity, 1),
+                price: toNumber(i.price, 0),
+                total: toNumber(i.total, toNumber(i.price, 0) * toNumber(i.quantity, 1)),
+                image: i.image ?? i.imageUrl ?? "",
             })),
 
             status: o.status ?? "created",
@@ -200,31 +232,35 @@ export const getAdminOrderById = (id: string) =>
 // UPDATE STATUS
 export const updateOrderStatus = (id: string, status: string) =>
     gracefulFetch(async () => {
-        return await apiMethods.put(`/admin/orders-manage/${id}/status`, { status });
+        const res = await apiMethods.put(`/admin/orders-manage/${id}/status`, { status });
+        return unwrapApiData(res);
     });
 
 // UPDATE TRACKING
 export const updateOrderTracking = (id: string, trackingNumber: string) =>
     gracefulFetch(async () => {
-        return await apiMethods.put(`/admin/orders-manage/${id}/tracking`, {
+        const res = await apiMethods.put(`/admin/orders-manage/${id}/tracking`, {
             trackingNumber,
         });
+        return unwrapApiData(res);
     });
 
 // CANCEL ORDER
 export const cancelOrder = (id: string, reason?: string) =>
     gracefulFetch(async () => {
-        return await apiMethods.patch(`/admin/orders-manage/${id}/cancel`, {
+        const res = await apiMethods.patch(`/admin/orders-manage/${id}/cancel`, {
             reason: reason ?? "Cancelled by admin",
         });
+        return unwrapApiData(res);
     });
 
 // ADD NOTE
 export const addOrderNote = (id: string, note: string) =>
     gracefulFetch(async () => {
-        return await apiMethods.post(`/admin/orders-manage/${id}/notes`, {
+        const res = await apiMethods.post(`/admin/orders-manage/${id}/notes`, {
             note,
         });
+        return unwrapApiData(res);
     });
 
 // DOWNLOAD INVOICE

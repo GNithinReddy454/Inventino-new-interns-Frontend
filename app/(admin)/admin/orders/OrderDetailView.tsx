@@ -45,6 +45,10 @@ export default function OrderDetailView({
     const [pendingTracking, setPendingTracking] = useState("");
     const [newNote, setNewNote] = useState("");
     const [notes, setNotes] = useState<any[]>([]);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    const [isUpdatingTracking, setIsUpdatingTracking] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
+    const [isAddingNote, setIsAddingNote] = useState(false);
 
     const { showToast } = useToast();
 
@@ -95,13 +99,18 @@ export default function OrderDetailView({
         : [];
 
     const handleStatusUpdate = async () => {
-        if (!resolvedOrderId || !pendingStatus) {
+        if (!resolvedOrderId || !pendingStatus || isUpdatingStatus) {
             showToast("Error", "Missing order ID or status", "error");
             return;
         }
 
         try {
-            await updateOrderStatus(resolvedOrderId, pendingStatus);
+            setIsUpdatingStatus(true);
+            const updated = await updateOrderStatus(resolvedOrderId, pendingStatus);
+
+            if (!updated) {
+                throw new Error("Status update response invalid");
+            }
 
             setOrder((prev) =>
                 prev
@@ -124,28 +133,42 @@ export default function OrderDetailView({
         } catch (err) {
             console.error("Status update failed:", err);
             showToast("Error", "Failed to update status", "error");
+        } finally {
+            setIsUpdatingStatus(false);
         }
     };
 
     const handleTrackingUpdate = async () => {
-        if (!resolvedOrderId) {
+        if (!resolvedOrderId || isUpdatingTracking) {
             showToast("Error", "Order ID not found", "error");
             return;
         }
 
-        if (!pendingTracking.trim()) {
+        const tracking = pendingTracking.trim();
+
+        if (!tracking) {
             showToast("Error", "Please enter tracking number", "error");
             return;
         }
 
+        if (tracking.length < 4 || tracking.length > 64) {
+            showToast("Error", "Tracking number must be 4-64 characters", "error");
+            return;
+        }
+
         try {
-            await updateOrderTracking(resolvedOrderId, pendingTracking.trim());
+            setIsUpdatingTracking(true);
+            const updated = await updateOrderTracking(resolvedOrderId, tracking);
+
+            if (!updated) {
+                throw new Error("Tracking update response invalid");
+            }
 
             setOrder((prev) =>
                 prev
                     ? {
                           ...prev,
-                          trackingNumber: pendingTracking.trim(),
+                          trackingNumber: tracking,
                       }
                     : prev
             );
@@ -154,17 +177,24 @@ export default function OrderDetailView({
         } catch (err) {
             console.error("Tracking update failed:", err);
             showToast("Error", "Failed to update tracking", "error");
+        } finally {
+            setIsUpdatingTracking(false);
         }
     };
 
     const handleCancelOrder = async () => {
-        if (!resolvedOrderId) {
+        if (!resolvedOrderId || isCancelling) {
             showToast("Error", "Order ID not found", "error");
             return;
         }
 
         try {
-            await cancelOrder(resolvedOrderId, "Cancelled by admin");
+            setIsCancelling(true);
+            const cancelled = await cancelOrder(resolvedOrderId, "Cancelled by admin");
+
+            if (!cancelled) {
+                throw new Error("Cancel response invalid");
+            }
 
             setOrder((prev) =>
                 prev
@@ -186,28 +216,42 @@ export default function OrderDetailView({
         } catch (err) {
             console.error("Cancel order failed:", err);
             showToast("Error", "Failed to cancel order", "error");
+        } finally {
+            setIsCancelling(false);
         }
     };
 
     const handleAddNote = async () => {
-        if (!resolvedOrderId) {
+        if (!resolvedOrderId || isAddingNote) {
             showToast("Error", "Order ID not found", "error");
             return;
         }
 
-        if (!newNote.trim()) {
+        const noteText = newNote.trim();
+
+        if (!noteText) {
             showToast("Error", "Note cannot be empty", "error");
             return;
         }
 
+        if (noteText.length > 500) {
+            showToast("Error", "Note cannot exceed 500 characters", "error");
+            return;
+        }
+
         try {
-            const savedNote = await addOrderNote(resolvedOrderId, newNote.trim());
+            setIsAddingNote(true);
+            const savedNote = await addOrderNote(resolvedOrderId, noteText);
+
+            if (!savedNote) {
+                throw new Error("Notes endpoint unavailable");
+            }
 
             const returnedNote =
                 (savedNote as any)?.data || savedNote || null;
 
             const localNote = {
-                text: newNote.trim(),
+                text: noteText,
                 createdAt: new Date().toISOString(),
             };
 
@@ -223,7 +267,13 @@ export default function OrderDetailView({
             showToast("Success", "Note added", "success");
         } catch (err) {
             console.error("Add note failed:", err);
-            showToast("Error", "Failed to add note", "error");
+            showToast(
+                "Error",
+                "Could not save note. Backend notes API is not available yet.",
+                "error"
+            );
+        } finally {
+            setIsAddingNote(false);
         }
     };
 
@@ -308,10 +358,10 @@ export default function OrderDetailView({
                         <button
                             type="button"
                             onClick={handleStatusUpdate}
-                            disabled={!pendingStatus}
+                            disabled={!pendingStatus || isUpdatingStatus}
                             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50"
                         >
-                            Update Status
+                            {isUpdatingStatus ? "Updating..." : "Update Status"}
                         </button>
                     </div>
                 )}
@@ -331,9 +381,10 @@ export default function OrderDetailView({
                     <button
                         type="button"
                         onClick={handleTrackingUpdate}
+                        disabled={isUpdatingTracking}
                         className="px-4 py-2 rounded-lg bg-primary text-primary-foreground"
                     >
-                        Save Tracking
+                        {isUpdatingTracking ? "Saving..." : "Save Tracking"}
                     </button>
                 </div>
             </div>
@@ -389,9 +440,10 @@ export default function OrderDetailView({
                     <button
                         type="button"
                         onClick={handleAddNote}
+                        disabled={isAddingNote}
                         className="px-4 py-2 rounded-lg bg-primary text-primary-foreground w-fit"
                     >
-                        Add Note
+                        {isAddingNote ? "Adding..." : "Add Note"}
                     </button>
                 </div>
 
@@ -419,9 +471,10 @@ export default function OrderDetailView({
                 <button
                     type="button"
                     onClick={handleCancelOrder}
+                    disabled={isCancelling}
                     className="text-red-500 font-medium"
                 >
-                    Cancel Order
+                    {isCancelling ? "Cancelling..." : "Cancel Order"}
                 </button>
             )}
         </div>

@@ -11,4 +11,4 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default withAuth(AdminLayout);
+export default withAuth(AdminLayout, { requiredRole: "admin" });
