@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { useAppDispatch } from "@/redux/store";
 import { addProduct } from "@/redux/adminSlice";
 import { adminProductService } from "@/services/admin-product.service";
-import { getAdminCategories } from "@/services/admin.service";
+import { getCategories } from "@/services/admin.service";
 import AddProductVariantCard, {
   ProductVariantGroup,
   VariantImageItem,
@@ -278,7 +278,7 @@ export default function AddProduct() {
 useEffect(() => {
   const loadCategories = async () => {
     try {
-      const response = await getAdminCategories();
+      const response = await getCategories();
       console.log("FULL CATEGORY RESPONSE:", response);
 
       const responseAny = response as any;

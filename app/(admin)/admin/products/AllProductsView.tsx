@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { SkeletonCard, SkeletonTable } from "../_components/Skeleton";
 import Pagination from "../_components/Pagination";
-import { getAdminCategories } from "@/services/admin.service";
+import { getCategories } from "@/services/admin.service";
 import EditProductView from "../products/EditProductView";
 import { adminProductService } from "@/services/admin-product.service";
 import ProductPreviewModal from "./ProductPreviewModal";
@@ -304,7 +304,7 @@ export default function AllProductsView({
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await getAdminCategories();
+      const response = await getCategories();
       const items = response?.items || [];
 
       const names = Array.isArray(items)
