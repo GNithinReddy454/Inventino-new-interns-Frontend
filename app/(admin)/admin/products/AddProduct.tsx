@@ -275,26 +275,41 @@ export default function AddProduct() {
     {}
   );
 
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const response = await getCategories();
-        const items = (response?.items || []) as CategoryItem[];
+useEffect(() => {
+  const loadCategories = async () => {
+    try {
+      const response = await getCategories();
+      console.log("FULL CATEGORY RESPONSE:", response);
 
-        const names = items
-          .filter((item) => item?.isActive !== false)
-          .map((item) => item.name)
-          .filter(Boolean);
+      const responseAny = response as any;
 
-        setCategoryOptions(Array.from(new Set(names)));
-      } catch (err) {
-        console.error("Failed to load categories:", err);
-      }
-    };
+      const rawItems =
+        responseAny?.items ||
+        responseAny?.data?.items ||
+        responseAny?.data?.data?.items ||
+        responseAny?.data ||
+        [];
 
-    loadCategories();
-  }, []);
+      const items = Array.isArray(rawItems) ? rawItems : [];
 
+      console.log("CATEGORY ITEMS:", items);
+
+      const names = items
+        .filter((item: any) => item?.isActive !== false)
+        .map((item: any) => item?.name?.trim())
+        .filter(Boolean);
+
+      console.log("CATEGORY NAMES:", names);
+
+      setCategoryOptions(Array.from(new Set(names)));
+    } catch (err) {
+      console.error("Failed to load categories:", err);
+      setCategoryOptions([]);
+    }
+  };
+
+  loadCategories();
+}, []);
   useEffect(() => {
     return () => {
       variants.forEach((variant) => {
