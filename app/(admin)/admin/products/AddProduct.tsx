@@ -292,14 +292,9 @@ useEffect(() => {
 
       const items = Array.isArray(rawItems) ? rawItems : [];
 
-      console.log("CATEGORY ITEMS:", items);
-
       const names = items
-        .filter((item: any) => item?.isActive !== false)
         .map((item: any) => item?.name?.trim())
         .filter(Boolean);
-
-      console.log("CATEGORY NAMES:", names);
 
       setCategoryOptions(Array.from(new Set(names)));
     } catch (err) {
