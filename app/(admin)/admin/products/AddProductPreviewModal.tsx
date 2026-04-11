@@ -52,7 +52,7 @@ export default function AddProductPreviewModal({
   if (!open) return null;
 
   const productImages = variants.flatMap((variant) => variant.images);
-  const activeImage = productImages[0]?.preview || "";
+  const activeMedia = productImages[0];
   const effectivePrice = salePrice || regularPrice || "0";
   const comparePrice = salePrice ? regularPrice : "";
   const colors = variants.map((variant) => variant.color);
@@ -83,15 +83,25 @@ export default function AddProductPreviewModal({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[344px_1fr]">
             <div>
               <div className="h-46 overflow-hidden rounded-[10px] border border-[#F0E4E8] bg-[#F6F2F4]">
-                {activeImage ? (
-                  <Image
-                    src={activeImage}
-                    alt={name || "Product"}
-                    width={344}
-                    height={184}
-                    unoptimized
-                    className="h-full w-full object-cover"
-                  />
+                {activeMedia?.preview ? (
+                  activeMedia.mediaType === "video" ? (
+                    <video
+                      src={activeMedia.preview}
+                      className="h-full w-full object-cover"
+                      controls
+                      muted
+                      playsInline
+                    />
+                  ) : (
+                    <Image
+                      src={activeMedia.preview}
+                      alt={name || "Product"}
+                      width={344}
+                      height={184}
+                      unoptimized
+                      className="h-full w-full object-cover"
+                    />
+                  )
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center text-[#9CA3AF]">
                     <Package size={28} className="mb-2 opacity-50" />
@@ -107,14 +117,23 @@ export default function AddProductPreviewModal({
                       key={image.id}
                       className="h-13.5 w-13.5 shrink-0 overflow-hidden rounded-xl border border-[#EB6F96]"
                     >
-                      <Image
-                        src={image.preview}
-                        alt={image.file.name}
-                        width={54}
-                        height={54}
-                        unoptimized
-                        className="h-full w-full object-cover"
-                      />
+                      {image.mediaType === "video" ? (
+                        <video
+                          src={image.preview}
+                          className="h-full w-full object-cover"
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <Image
+                          src={image.preview}
+                          alt={image.file.name}
+                          width={54}
+                          height={54}
+                          unoptimized
+                          className="h-full w-full object-cover"
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
