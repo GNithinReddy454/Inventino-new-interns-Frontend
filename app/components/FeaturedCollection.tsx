@@ -209,7 +209,7 @@ export default function FeaturedCollection() {
             >
               ❮
             </button>
-+
+            
             <div className="overflow-hidden">
               <div
                 ref={scrollRef}
