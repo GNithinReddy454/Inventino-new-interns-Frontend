@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   X,
@@ -69,6 +69,16 @@ const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 const toNumber = (value: string | number | undefined | null) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
+};
+
+const calculateDiscountPercent = (originalPrice: string, discountPrice: string) => {
+  const original = Number(originalPrice);
+  const discount = Number(discountPrice);
+
+  if (!Number.isFinite(original) || original <= 0) return null;
+  if (!Number.isFinite(discount) || discount <= 0 || discount >= original) return null;
+
+  return Math.round(((original - discount) / original) * 100);
 };
 
 function Toggle({
@@ -233,11 +243,6 @@ export default function AddProduct() {
   const [isFeatured, setIsFeatured] = useState(true);
   const [reviewsEnabled, setReviewsEnabled] = useState(false);
 
-  const [regularPrice, setRegularPrice] = useState("");
-  const [salePrice, setSalePrice] = useState("");
-  const [material, setMaterial] = useState("");
-  const [stockStatus, setStockStatus] = useState("In Stock");
-
   const [weight, setWeight] = useState("");
   const [length, setLength] = useState("");
   const [width, setWidth] = useState("");
@@ -270,50 +275,56 @@ export default function AddProduct() {
   });
 
   const [variants, setVariants] = useState<ProductVariantGroup[]>([]);
+  const variantsRef = useRef<ProductVariantGroup[]>([]);
   const [customColorName, setCustomColorName] = useState("");
   const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>(
     {}
   );
 
-useEffect(() => {
-  const loadCategories = async () => {
-    try {
-      const response = await getCategories();
-      console.log("FULL CATEGORY RESPONSE:", response);
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await getCategories();
+        console.log("FULL CATEGORY RESPONSE:", response);
 
-      const responseAny = response as any;
+        const responseAny = response as any;
 
-      const rawItems =
-        responseAny?.items ||
-        responseAny?.data?.items ||
-        responseAny?.data?.data?.items ||
-        responseAny?.data ||
-        [];
+        const rawItems =
+          responseAny?.items ||
+          responseAny?.data?.items ||
+          responseAny?.data?.data?.items ||
+          responseAny?.data ||
+          [];
 
-      const items = Array.isArray(rawItems) ? rawItems : [];
+        const items = Array.isArray(rawItems) ? rawItems : [];
 
-      const names = items
-        .map((item: any) => item?.name?.trim())
-        .filter(Boolean);
+        const names = items
+          .map((item: any) => item?.name?.trim())
+          .filter(Boolean);
 
-      setCategoryOptions(Array.from(new Set(names)));
-    } catch (err) {
-      console.error("Failed to load categories:", err);
-      setCategoryOptions([]);
-    }
-  };
+        setCategoryOptions(Array.from(new Set(names)));
+      } catch (err) {
+        console.error("Failed to load categories:", err);
+        setCategoryOptions([]);
+      }
+    };
 
-  loadCategories();
-}, []);
+    loadCategories();
+  }, []);
+
+  useEffect(() => {
+    variantsRef.current = variants;
+  }, [variants]);
+
   useEffect(() => {
     return () => {
-      variants.forEach((variant) => {
+      variantsRef.current.forEach((variant) => {
         variant.images.forEach((image) => {
           if (image.preview) URL.revokeObjectURL(image.preview);
         });
       });
     };
-  }, [variants]);
+  }, []);
 
   const triggerToast = (
     message: string,
@@ -418,6 +429,8 @@ useEffect(() => {
           sizes: [],
           images: [],
           expanded: true,
+          material: "",
+          stockStatus: "In Stock",
         },
       ];
     });
@@ -465,10 +478,6 @@ useEffect(() => {
   };
 
   const toggleSizeForVariant = (variantId: string, size: string) => {
-    const defaultPrice = salePrice.trim()
-      ? toNumber(salePrice)
-      : toNumber(regularPrice);
-
     setVariants((prev) =>
       prev.map((variant) => {
         if (variant.id !== variantId) return variant;
@@ -488,8 +497,9 @@ useEffect(() => {
             ...variant.sizes,
             {
               size,
-              price: defaultPrice,
-              stock: 0,
+              originalPrice: "",
+              discountPrice: "",
+              stock: "",
               sku: `${variant.color}-${size}`.replace(/\s+/g, "-").toUpperCase(),
             },
           ],
@@ -501,10 +511,6 @@ useEffect(() => {
   const addCustomSizeToVariant = (variantId: string) => {
     const sizeValue = (customSizeInputs[variantId] || "").trim();
     if (!sizeValue) return;
-
-    const defaultPrice = salePrice.trim()
-      ? toNumber(salePrice)
-      : toNumber(regularPrice);
 
     setVariants((prev) =>
       prev.map((variant) => {
@@ -522,8 +528,9 @@ useEffect(() => {
             ...variant.sizes,
             {
               size: sizeValue,
-              price: defaultPrice,
-              stock: 0,
+              originalPrice: "",
+              discountPrice: "",
+              stock: "",
               sku: `${variant.color}-${sizeValue}`
                 .replace(/\s+/g, "-")
                 .toUpperCase(),
@@ -539,7 +546,7 @@ useEffect(() => {
     }));
   };
 
-  const updateVariantStock = (variantId: string, size: string, stock: number) => {
+  const updateVariantStock = (variantId: string, size: string, stock: string) => {
     setVariants((prev) =>
       prev.map((variant) => {
         if (variant.id !== variantId) return variant;
@@ -569,7 +576,11 @@ useEffect(() => {
     );
   };
 
-  const updateVariantPrice = (variantId: string, size: string, price: number) => {
+  const updateVariantOriginalPrice = (
+    variantId: string,
+    size: string,
+    originalPrice: string
+  ) => {
     setVariants((prev) =>
       prev.map((variant) => {
         if (variant.id !== variantId) return variant;
@@ -577,10 +588,48 @@ useEffect(() => {
         return {
           ...variant,
           sizes: variant.sizes.map((entry) =>
-            entry.size === size ? { ...entry, price } : entry
+            entry.size === size ? { ...entry, originalPrice } : entry
           ),
         };
       })
+    );
+  };
+
+  const updateVariantDiscountPrice = (
+    variantId: string,
+    size: string,
+    discountPrice: string
+  ) => {
+    setVariants((prev) =>
+      prev.map((variant) => {
+        if (variant.id !== variantId) return variant;
+
+        return {
+          ...variant,
+          sizes: variant.sizes.map((entry) =>
+            entry.size === size ? { ...entry, discountPrice } : entry
+          ),
+        };
+      })
+    );
+  };
+
+  const updateVariantMaterial = (variantId: string, material: string) => {
+    setVariants((prev) =>
+      prev.map((variant) =>
+        variant.id === variantId ? { ...variant, material } : variant
+      )
+    );
+  };
+
+  const updateVariantStockStatus = (
+    variantId: string,
+    stockStatus: "In Stock" | "Out of Stock"
+  ) => {
+    setVariants((prev) =>
+      prev.map((variant) =>
+        variant.id === variantId ? { ...variant, stockStatus } : variant
+      )
     );
   };
 
@@ -595,6 +644,7 @@ useEffect(() => {
       id: makeId(),
       file,
       preview: URL.createObjectURL(file),
+      mediaType: file.type.startsWith("video") ? "video" : "image",
     }));
 
     setVariants((prev) =>
@@ -672,22 +722,31 @@ useEffect(() => {
     );
   }, [variants]);
 
-  const computedDiscountPercent = useMemo(() => {
-    const reg = toNumber(regularPrice);
-    const sale = toNumber(salePrice);
-    if (reg > 0 && sale > 0 && sale < reg) {
-      return Math.round(((reg - sale) / reg) * 100).toString();
-    }
-    return "";
-  }, [regularPrice, salePrice]);
+  const productPricing = useMemo(() => {
+    const firstPricedSize = variants
+      .flatMap((variant) => variant.sizes)
+      .find((sizeItem) => sizeItem.originalPrice.trim() || sizeItem.discountPrice.trim());
 
-  const finalDiscountPercent = salePrice.trim() ? computedDiscountPercent : "";
+    const originalPrice = firstPricedSize?.originalPrice || "";
+    const discountPrice = firstPricedSize?.discountPrice || "";
+    const discountPercent = calculateDiscountPercent(originalPrice, discountPrice);
+
+    const effectivePrice = discountPrice.trim()
+      ? toNumber(discountPrice)
+      : toNumber(originalPrice);
+
+    return {
+      originalPrice,
+      discountPrice,
+      discountPercent: discountPercent ? String(discountPercent) : "",
+      effectivePrice,
+    };
+  }, [variants]);
 
   const validateForm = () => {
     if (!name.trim()) return "Product name is required";
     if (!description.trim()) return "Description is required";
     if (!category.trim()) return "Category is required";
-    if (!regularPrice.trim()) return "Regular price is required";
     if (variants.length === 0) return "Please add at least one color";
 
     const emptyVariant = variants.find((variant) => variant.sizes.length === 0);
@@ -696,7 +755,9 @@ useEffect(() => {
     }
 
     const invalidStockVariant = variants.find((variant) =>
-      variant.sizes.some((size) => Number.isNaN(Number(size.stock)))
+      variant.sizes.some(
+        (size) => size.stock.trim().length > 0 && Number.isNaN(Number(size.stock))
+      )
     );
 
     if (invalidStockVariant) {
@@ -707,11 +768,12 @@ useEffect(() => {
   };
 
   const buildPayloadForBackend = (uploadedUrlsByVariant: Record<string, string[]>) => {
-    const effectivePrice = salePrice.trim()
-      ? toNumber(salePrice)
-      : toNumber(regularPrice);
+    const effectivePrice = productPricing.effectivePrice;
+    const originalPrice = productPricing.originalPrice
+      ? toNumber(productPricing.originalPrice)
+      : null;
 
-    const originalPrice = regularPrice.trim() ? toNumber(regularPrice) : null;
+    const primaryVariant = variants[0];
 
     const flatUploadedImages = Object.values(uploadedUrlsByVariant)
       .flat()
@@ -732,8 +794,8 @@ useEffect(() => {
       pricing: {
         price: effectivePrice,
         originalPrice,
-        offerPercentage: finalDiscountPercent
-          ? Number(finalDiscountPercent)
+        offerPercentage: productPricing.discountPercent
+          ? Number(productPricing.discountPercent)
           : null,
         taxIncluded: false,
       },
@@ -746,11 +808,41 @@ useEffect(() => {
       variants: variants.map((variant) => ({
         color: variant.color,
         colorCode: COLOR_SWATCH_MAP[variant.color.toLowerCase()] || "#E5E7EB",
-        price: effectivePrice,
+        price:
+          toNumber(variant.sizes[0]?.discountPrice) ||
+          toNumber(variant.sizes[0]?.originalPrice) ||
+          effectivePrice,
         images: (uploadedUrlsByVariant[variant.id] || []).filter(Boolean),
+        material: variant.material.trim() || "",
+        stockStatus: variant.stockStatus,
+        offerPercentage: (() => {
+          const firstSize = variant.sizes.find(
+            (sizeItem) =>
+              sizeItem.originalPrice.trim() &&
+              sizeItem.discountPrice.trim() &&
+              toNumber(sizeItem.discountPrice) < toNumber(sizeItem.originalPrice)
+          );
+
+          if (!firstSize) return null;
+
+          return calculateDiscountPercent(
+            firstSize.originalPrice,
+            firstSize.discountPrice
+          );
+        })(),
         sizes: variant.sizes.map((sizeItem) => ({
           size: sizeItem.size?.trim() || null,
-          price: Number(sizeItem.price) || effectivePrice,
+          price:
+            toNumber(sizeItem.discountPrice) ||
+            toNumber(sizeItem.originalPrice) ||
+            effectivePrice,
+          originalPrice: toNumber(sizeItem.originalPrice) || null,
+          discountPrice: toNumber(sizeItem.discountPrice) || null,
+          offerPercentage:
+            calculateDiscountPercent(
+              sizeItem.originalPrice,
+              sizeItem.discountPrice
+            ) || null,
           stock: Number(sizeItem.stock) || 0,
           sku:
             sizeItem.sku?.trim() ||
@@ -766,8 +858,8 @@ useEffect(() => {
 
       story: storyContent.trim() || storyTitle.trim() || "",
 
-      material: material.trim() || "",
-      stockStatus,
+      material: primaryVariant?.material?.trim() || "",
+      stockStatus: primaryVariant?.stockStatus || "In Stock",
       hashtags: tags,
       isActive: status === "Published",
       trendy: isFeatured,
@@ -817,17 +909,20 @@ useEffect(() => {
     try {
       setIsLoading(true);
 
-      const effectivePrice = salePrice.trim()
-        ? toNumber(salePrice)
-        : toNumber(regularPrice);
+      const effectivePrice = productPricing.effectivePrice;
+      const originalPrice = toNumber(productPricing.originalPrice);
+      const primaryVariant = variants[0];
 
       const createPayload = {
         name: name.trim(),
         description: description.trim(),
         price: effectivePrice,
-        discountPrice: salePrice.trim() ? effectivePrice : undefined,
+        discountPrice:
+          originalPrice > 0 && effectivePrice > 0 && effectivePrice < originalPrice
+            ? effectivePrice
+            : undefined,
         category: category.trim(),
-        material: material.trim() || "Material",
+        material: primaryVariant?.material?.trim() || "Material",
         stock: totalStock || 0,
       };
 
@@ -839,17 +934,24 @@ useEffect(() => {
       }
 
       const uploadedUrlsByVariant: Record<string, string[]> = {};
+      let hasSkippedVideos = false;
 
       for (const variant of variants) {
         const validFiles = variant.images.filter((img) => img.file instanceof File);
+        const imageFiles = validFiles.filter((img) => img.mediaType === "image");
+        const videoFiles = validFiles.filter((img) => img.mediaType === "video");
 
-        if (!validFiles.length) {
+        if (videoFiles.length > 0) {
+          hasSkippedVideos = true;
+        }
+
+        if (!imageFiles.length) {
           uploadedUrlsByVariant[variant.id] = [];
           continue;
         }
 
         const formData = new FormData();
-        validFiles.forEach((image) => {
+        imageFiles.forEach((image) => {
           formData.append("images", image.file);
         });
 
@@ -862,11 +964,18 @@ useEffect(() => {
 
         if (!batchUrls.length) {
           uploadedUrlsByVariant[variant.id] = [];
-        } else if (batchUrls.length >= validFiles.length) {
-          uploadedUrlsByVariant[variant.id] = batchUrls.slice(-validFiles.length);
+        } else if (batchUrls.length >= imageFiles.length) {
+          uploadedUrlsByVariant[variant.id] = batchUrls.slice(-imageFiles.length);
         } else {
           uploadedUrlsByVariant[variant.id] = batchUrls;
         }
+      }
+
+      if (hasSkippedVideos) {
+        triggerToast(
+          "Video preview is supported, but upload currently saves images only.",
+          "error"
+        );
       }
 
       const finalPayload = buildPayloadForBackend(uploadedUrlsByVariant);
@@ -880,16 +989,26 @@ const serializableVariants = variants.map((variant) => ({
   expanded: variant.expanded,
   sizes: variant.sizes.map((sizeItem) => ({
     size: sizeItem.size,
-    price: Number(sizeItem.price) || effectivePrice,
+    price:
+      toNumber(sizeItem.discountPrice) ||
+      toNumber(sizeItem.originalPrice) ||
+      effectivePrice,
     stock: Number(sizeItem.stock) || 0,
     sku: sizeItem.sku || "",
+    originalPrice: sizeItem.originalPrice || "",
+    discountPrice: sizeItem.discountPrice || "",
+    discountPercent:
+      calculateDiscountPercent(sizeItem.originalPrice, sizeItem.discountPrice) || 0,
   })),
   images: variant.images.map((image, index) => ({
     id: image.id,
     preview:
-      uploadedUrlsByVariant[variant.id]?.[index] ||
+      (image.mediaType === "image"
+        ? uploadedUrlsByVariant[variant.id]?.[index]
+        : "") ||
       image.preview ||
       "",
+    mediaType: image.mediaType,
   })),
 }));
 
@@ -906,7 +1025,7 @@ dispatch(
     price: effectivePrice,
     category: category.trim(),
     subCategory: subCategory.trim(),
-    material: material.trim(),
+    material: variants[0]?.material?.trim() || "",
     tags,
     variants: serializableVariants,
     colors: serializableVariants.map((variant) => variant.color),
@@ -1075,72 +1194,6 @@ dispatch(
                       className="min-w-30 flex-1 bg-transparent text-[12px] focus:outline-none"
                     />
                   </div>
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              title="Pricing & Inventory"
-              subtitle="Set your product pricing and stock details"
-            >
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div>
-                    <Label required>Regular Price</Label>
-                    <Input
-                      value={regularPrice}
-                      onChange={(e) => setRegularPrice(e.target.value)}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      prefix="₹"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Sale Price</Label>
-                    <Input
-                      value={salePrice}
-                      onChange={(e) => setSalePrice(e.target.value)}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      prefix="₹"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Offer Percentage</Label>
-                  <Input
-                    value={finalDiscountPercent}
-                    readOnly
-                    type="text"
-                    placeholder="0"
-                    suffix="%"
-                  />
-                </div>
-
-                <div>
-                  <Label>Material</Label>
-                  <Input
-                    value={material}
-                    onChange={(e) => setMaterial(e.target.value)}
-                    type="text"
-                    placeholder="e.g. Gold plated brass"
-                  />
-                </div>
-
-                <div>
-                  <Label>Stock Status</Label>
-                  <Select
-                    value={stockStatus}
-                    onChange={setStockStatus}
-                    options={["In Stock", "Out of Stock"]}
-                    placeholder="Select Stock Status"
-                  />
                 </div>
               </div>
             </SectionCard>
@@ -1329,17 +1382,23 @@ dispatch(
                     onUpdateSku={(size, sku) =>
                       updateVariantSku(variant.id, size, sku)
                     }
-                    onUpdatePrice={(size, price) =>
-                      updateVariantPrice(variant.id, size, price)
+                    onUpdateOriginalPrice={(size, price) =>
+                      updateVariantOriginalPrice(variant.id, size, price)
+                    }
+                    onUpdateDiscountPrice={(size, price) =>
+                      updateVariantDiscountPrice(variant.id, size, price)
+                    }
+                    onUpdateMaterial={(value) =>
+                      updateVariantMaterial(variant.id, value)
+                    }
+                    onUpdateStockStatus={(value) =>
+                      updateVariantStockStatus(variant.id, value)
                     }
                     onVariantImagesChange={(e) => handleVariantImagesChange(variant.id, e)}
                     onRemoveVariantImage={(imageId) =>
                       removeVariantImage(variant.id, imageId)
                     }
                     colorSwatchMap={COLOR_SWATCH_MAP}
-                    inheritedPrice={
-                      salePrice.trim() ? toNumber(salePrice) : toNumber(regularPrice)
-                    }
                   />
                 ))}
               </div>
@@ -1602,9 +1661,9 @@ dispatch(
         description={description}
         category={category}
         tags={tags}
-        regularPrice={regularPrice}
-        salePrice={salePrice}
-        discountPercent={finalDiscountPercent}
+        regularPrice={productPricing.originalPrice}
+        salePrice={productPricing.discountPrice}
+        discountPercent={productPricing.discountPercent}
         status={status}
         story={storyContent}
         storyTitle={storyTitle}

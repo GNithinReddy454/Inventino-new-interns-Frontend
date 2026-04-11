@@ -7,13 +7,15 @@ export type VariantImageItem = {
   id: string;
   file: File;
   preview: string;
+  mediaType: "image" | "video";
 };
 
 export type VariantSizeStock = {
   size: string;
-  stock: number;
+  stock: string;
   sku: string;
-  price: number;
+  originalPrice: string;
+  discountPrice: string;
 };
 
 export type ProductVariantGroup = {
@@ -22,6 +24,8 @@ export type ProductVariantGroup = {
   sizes: VariantSizeStock[];
   images: VariantImageItem[];
   expanded: boolean;
+  material: string;
+  stockStatus: "In Stock" | "Out of Stock";
 };
 
 interface AddProductVariantCardProps {
@@ -33,13 +37,15 @@ interface AddProductVariantCardProps {
   onRemove: () => void;
   onToggleSize: (size: string) => void;
   onAddCustomSize: () => void;
-  onUpdateStock: (size: string, stock: number) => void;
+  onUpdateStock: (size: string, stock: string) => void;
   onUpdateSku: (size: string, sku: string) => void;
-  onUpdatePrice: (size: string, price: number) => void;
+  onUpdateOriginalPrice: (size: string, price: string) => void;
+  onUpdateDiscountPrice: (size: string, price: string) => void;
+  onUpdateMaterial: (value: string) => void;
+  onUpdateStockStatus: (value: "In Stock" | "Out of Stock") => void;
   onVariantImagesChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveVariantImage: (imageId: string) => void;
   colorSwatchMap: Record<string, string>;
-  inheritedPrice: number;
 }
 
 export default function AddProductVariantCard({
@@ -53,13 +59,25 @@ export default function AddProductVariantCard({
   onAddCustomSize,
   onUpdateStock,
   onUpdateSku,
-  onUpdatePrice,
+  onUpdateOriginalPrice,
+  onUpdateDiscountPrice,
+  onUpdateMaterial,
+  onUpdateStockStatus,
   onVariantImagesChange,
   onRemoveVariantImage,
   colorSwatchMap,
-  inheritedPrice,
 }: AddProductVariantCardProps) {
   const swatchColor = colorSwatchMap[variant.color.toLowerCase()] || "#E5E7EB";
+
+  const getDiscountPercent = (originalPrice: string, discountPrice: string) => {
+    const original = Number(originalPrice);
+    const discount = Number(discountPrice);
+
+    if (!Number.isFinite(original) || original <= 0) return "";
+    if (!Number.isFinite(discount) || discount <= 0 || discount >= original) return "";
+
+    return String(Math.round(((original - discount) / original) * 100));
+  };
 
   return (
     <div className="overflow-hidden rounded-[14px] border border-[#F0E3E7] bg-white">
@@ -116,7 +134,7 @@ export default function AddProductVariantCard({
 
       {variant.expanded ? (
         <div className="border-t border-[#F1E3E8] bg-[#FFFDFC] p-4">
-          <div className="mb-5">
+          <div className="mb-5 space-y-4">
             <div className="mb-3 flex items-center gap-2.5">
               <div
                 className="h-5 w-5 rounded-[5px] border border-[#E6E0E5]"
@@ -172,24 +190,65 @@ export default function AddProductVariantCard({
                 Add
               </button>
             </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-[10px] font-semibold text-[#4B4453]">
+                  Material
+                </label>
+                <input
+                  type="text"
+                  value={variant.material}
+                  onChange={(e) => onUpdateMaterial(e.target.value)}
+                  placeholder="e.g. Gold plated brass"
+                  className="h-9.5 w-full rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] text-[#1C1630] placeholder:text-[#B5AEB8] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[10px] font-semibold text-[#4B4453]">
+                  Stock Status
+                </label>
+                <div className="relative">
+                  <select
+                    value={variant.stockStatus}
+                    onChange={(e) =>
+                      onUpdateStockStatus(e.target.value as "In Stock" | "Out of Stock")
+                    }
+                    className="h-9.5 w-full appearance-none rounded-[10px] border border-[#F2B8C8] bg-[#FFF8FA] px-3 pr-9 text-[12px] text-[#1C1630] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
+                  >
+                    <option value="In Stock">In Stock</option>
+                    <option value="Out of Stock">Out of Stock</option>
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#A199A7]"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="mb-5">
             <h4 className="mb-3 text-[12px] font-semibold text-[#1C1630]">
-              Add Images
+              Add Images / Videos
             </h4>
 
             <label className="inline-flex h-9.5 cursor-pointer items-center rounded-[10px] border border-dashed border-[#F3A9BF] bg-[#FFF7FA] px-4 text-[11px] font-semibold text-[#EB5C8A] hover:bg-[#FDF0F5]">
               <Upload size={13} className="mr-2" />
-              Upload Variant Images
+              Upload Variant Media
               <input
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,video/*"
                 className="hidden"
                 onChange={onVariantImagesChange}
               />
             </label>
+
+            <p className="mt-2 text-[10px] text-[#8E8794]">
+              Video previews are supported in form UI. Product upload currently saves images only.
+            </p>
 
             {variant.images.length > 0 ? (
               <div className="mt-4 flex flex-wrap gap-3">
@@ -198,13 +257,22 @@ export default function AddProductVariantCard({
                     key={image.id}
                     className="group relative h-17 w-17 overflow-hidden rounded-[10px] border border-[#E8E3E7]"
                   >
-                    <Image
-                      src={image.preview}
-                      alt={image.file.name}
-                      fill
-                      unoptimized
-                      className="object-cover"
-                    />
+                    {image.mediaType === "video" ? (
+                      <video
+                        src={image.preview}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <Image
+                        src={image.preview}
+                        alt={image.file.name}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    )}
                     <button
                       type="button"
                       onClick={() => onRemoveVariantImage(image.id)}
@@ -237,15 +305,18 @@ export default function AddProductVariantCard({
                     <div className="space-y-2">
                       <div>
                         <label className="mb-1 block text-[9px] font-semibold text-[#6B6572]">
-                          Price
+                          Original Price
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          value={entry.price ?? ""}
-                          placeholder={String(inheritedPrice || 0)}
+                          type="text"
+                          inputMode="decimal"
+                          value={entry.originalPrice}
+                          placeholder="999"
                           onChange={(e) =>
-                            onUpdatePrice(entry.size, Number(e.target.value) || 0)
+                            onUpdateOriginalPrice(
+                              entry.size,
+                              e.target.value.replace(/[^\d.]/g, "")
+                            )
                           }
                           className="h-8.5 w-full rounded-xl border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
                         />
@@ -253,14 +324,52 @@ export default function AddProductVariantCard({
 
                       <div>
                         <label className="mb-1 block text-[9px] font-semibold text-[#6B6572]">
+                          Discount Price
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={entry.discountPrice}
+                          placeholder="899"
+                          onChange={(e) =>
+                            onUpdateDiscountPrice(
+                              entry.size,
+                              e.target.value.replace(/[^\d.]/g, "")
+                            )
+                          }
+                          className="h-8.5 w-full rounded-xl border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-[9px] font-semibold text-[#6B6572]">
+                          Discount Percent
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            readOnly
+                            value={getDiscountPercent(entry.originalPrice, entry.discountPrice)}
+                            placeholder="10"
+                            className="h-8.5 w-full rounded-xl border border-[#F2B8C8] bg-[#FFF8FA] px-3 pr-7 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
+                          />
+                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#A199A7]">
+                            %
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-[9px] font-semibold text-[#6B6572]">
                           Stock
                         </label>
                         <input
-                          type="number"
-                          min="0"
+                          type="text"
+                          inputMode="numeric"
                           value={entry.stock}
+                          placeholder="25"
                           onChange={(e) =>
-                            onUpdateStock(entry.size, Number(e.target.value) || 0)
+                            onUpdateStock(entry.size, e.target.value.replace(/\D/g, ""))
                           }
                           className="h-8.5 w-full rounded-xl border border-[#F2B8C8] bg-[#FFF8FA] px-3 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
                         />
