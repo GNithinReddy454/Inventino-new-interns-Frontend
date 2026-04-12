@@ -259,15 +259,18 @@ function ProductsContent() {
 
   const initialSort: SortLabel =
     SORT_MAP_REVERSE[searchParams.get("sort") ?? ""] ?? "Featured";
+  const initialPageParam = Number(searchParams.get("page"));
+  const initialPage =
+    Number.isFinite(initialPageParam) && initialPageParam > 0
+      ? Math.floor(initialPageParam)
+      : 1;
 
   const [selectedCategory, setSelectedCategory] = useState(
     searchParams.get("category") || "All Products"
   );
   const [sortBy, setSortBy] = useState<SortLabel>(initialSort);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
-  const [currentPage, setCurrentPage] = useState(
-    Number(searchParams.get("page")) || 1
-  );
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [minPrice, setMinPrice] = useState<number | undefined>(
     searchParams.get("minPrice")
       ? Number(searchParams.get("minPrice"))
@@ -296,6 +299,7 @@ function ProductsContent() {
   const [minPriceFetched, setMinPriceFetched] = useState<number | undefined>();
   const [maxPriceFetched, setMaxPriceFetched] = useState<number | undefined>();
   const [globalTotal, setGlobalTotal] = useState(0);
+  const [retryKey, setRetryKey] = useState(0);
 
   const sortRef = useRef<HTMLDivElement>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
@@ -460,6 +464,7 @@ function ProductsContent() {
     debouncedSearch,
     minPrice,
     maxPrice,
+    retryKey,
   ]);
 
   useEffect(() => {
@@ -928,7 +933,7 @@ function ProductsContent() {
                 <button
                   onClick={() => {
                     setError(null);
-                    setCurrentPage((p) => p);
+                    setRetryKey((k) => k + 1);
                   }}
                   className="shrink-0 text-xs font-semibold underline"
                 >

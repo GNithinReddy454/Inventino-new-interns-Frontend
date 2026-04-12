@@ -60,7 +60,19 @@ function normalizeImageArray(images?: ProductImageInput[]): string[] {
   return urls.length > 0 ? urls : [PLACEHOLDER_IMAGE];
 }
 
+function resolveFirstVariantImages(p: ApiProduct): string[] {
+  const variants = Array.isArray(p.variants) ? p.variants : [];
+  if (variants.length === 0) return [];
+
+  const firstVariant = variants[0] as { images?: ProductImageInput[] };
+  const variantImages = normalizeImageArray(firstVariant.images);
+  return variantImages[0] !== PLACEHOLDER_IMAGE ? variantImages : [];
+}
+
 function resolvePrimaryImage(p: ApiProduct): string {
+  const firstVariantImages = resolveFirstVariantImages(p);
+  if (firstVariantImages.length > 0) return firstVariantImages[0];
+
   if (p.mainImage) return p.mainImage;
   if (p.imageUrl) return p.imageUrl;
 
@@ -74,6 +86,9 @@ function resolvePrimaryImage(p: ApiProduct): string {
 }
 
 function resolveAllImages(p: ApiProduct): string[] {
+  const firstVariantImages = resolveFirstVariantImages(p);
+  if (firstVariantImages.length > 0) return firstVariantImages;
+
   const galleryUrls = normalizeImageArray(p.galleryImages);
   if (galleryUrls[0] && galleryUrls[0] !== PLACEHOLDER_IMAGE) return galleryUrls;
 
@@ -104,8 +119,20 @@ export function normalize(p: ApiProduct): NormalizedProduct {
   const rating = p.rating ?? p.ratingsAverage ?? 0;
   const reviews = p.reviewCount ?? p.ratingsCount ?? 0;
   
-  const mainImage = p.media?.mainImage || p.mainImage || p.imageUrl || getImageUrl(p.images?.[0]) || PLACEHOLDER_IMAGE;
-  const gallery = p.media?.galleryImages?.map(img => getImageUrl(img)).filter((url): url is string => !!url) || p.images?.map(img => getImageUrl(img)).filter((url): url is string => !!url) || [];
+  const variantImages = resolveFirstVariantImages(p);
+  const mainImage =
+    variantImages[0] ||
+    p.media?.mainImage ||
+    p.mainImage ||
+    p.imageUrl ||
+    getImageUrl(p.images?.[0]) ||
+    PLACEHOLDER_IMAGE;
+  const gallery =
+    variantImages.length > 0
+      ? variantImages
+      : p.media?.galleryImages?.map(img => getImageUrl(img)).filter((url): url is string => !!url) ||
+        p.images?.map(img => getImageUrl(img)).filter((url): url is string => !!url) ||
+        [];
 
   return {
     id:            p._id || p.productId || Math.random().toString(36).substr(2, 9),
