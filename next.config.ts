@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const BACKEND_API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://3.6.36.33/api").replace(/\/$/, "");
+
 const nextConfig = {
   turbopack: {
     root: __dirname,
@@ -26,6 +28,11 @@ const nextConfig = {
         hostname: "3.6.36.33",
         pathname: "/uploads/**",
       },
+      {
+        protocol: "http",
+        hostname: "3.6.36.33",
+        pathname: "/uploads/**",
+      },
       // ✅ Added: Inventino S3 bucket for product images
       {
         protocol: "https",
@@ -49,7 +56,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:8080/api/:path*",
+        destination: `${BACKEND_API_BASE}/:path*`,
       },
     ];
   },

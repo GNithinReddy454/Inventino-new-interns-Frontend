@@ -115,9 +115,14 @@ export const productService = {
   },
 
   // ─── EXTRA FEATURES ─────────────────────────────────────
-  async getSimilar(productId: string) {
+  async getSimilar(
+    productId: string,
+    params?: Record<string, string | number>
+  ) {
     try {
-      const res = await apiClient.get(`/products/${productId}/similar`);
+      const res = await apiClient.get(`/products/${productId}/similar`, {
+        params,
+      });
       return res.data;
     } catch (error) {
       console.error(`[Similar Products] fetch failed for ID: ${productId}`, error);
@@ -125,9 +130,13 @@ export const productService = {
     }
   },
 
-  async getStory(productId: string) {
+  async getStory(
+    productId: string,
+    params?: Record<string, string | number>
+  ) {
     try {
       const res = await apiClient.get(`/products/${productId}/story`, {
+        params,
         headers: { "Cache-Control": "no-cache" },
       });
       return res.data;

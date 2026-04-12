@@ -271,6 +271,7 @@ export default function ProductDetailsPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState(0);
+  const [hasUserSelectedColor, setHasUserSelectedColor] = useState(false);
   const [selectedSize, setSelectedSize] = useState("Medium");
   const [selectedColorId, setSelectedColorId] = useState<string>("");
   const [selectedSizeId, setSelectedSizeId] = useState<string>("");
@@ -300,6 +301,34 @@ export default function ProductDetailsPage() {
   const hasFetchedProduct = useRef(false);
   const hasFetchedReviews = useRef(false);
 
+  useEffect(() => {
+    hasFetchedStory.current = false;
+    hasFetchedSimilar.current = false;
+    hasFetchedProduct.current = false;
+    hasFetchedReviews.current = false;
+
+    setProduct(null);
+    setProductStory(null);
+    setSimilarProducts([]);
+    setReviewsData(null);
+    setVariants([]);
+    setSelectedVariant(null);
+    setSelectedImage(0);
+    setSelectedColor(0);
+    setHasUserSelectedColor(false);
+    setSelectedColorId("");
+    setSelectedSizeId("");
+    setShowBottomReviews(false);
+    setIsZoomMode(false);
+    setActiveAccordion(null);
+    setQuantity(1);
+    setLoading(true);
+    setStoryLoading(false);
+    setSimilarLoading(false);
+    setReviewsLoading(false);
+    setVariantsLoading(false);
+  }, [productId]);
+
   const isAuthenticated = useMemo(
     () => !!user || (typeof window !== "undefined" && !!localStorage.getItem("token")),
     [user]
@@ -311,16 +340,57 @@ export default function ProductDetailsPage() {
   );
 
   const activeImages = useMemo(() => {
-    if (product?.colorVariants && product.colorVariants.length > 0) {
-      const colorImages = product.colorVariants[selectedColor]?.images;
-      if (colorImages && colorImages.length > 0) return colorImages;
+    const productFallbackImages =
+      product?.images && product.images.length > 0
+        ? product.images
+        : product?.image
+        ? [product.image]
+        : [FALLBACK_IMAGE];
 
-      // Use dummy images for the specific color if no real images found
-      const colorName = product.colorVariants[selectedColor]?.color_name || "";
-      return getDummyImagesForColor(colorName);
+    const collectVariantImagesByColor = (colorName: string): string[] => {
+      if (!colorName || variants.length === 0) return [];
+
+      const collected = variants
+        .filter((v) =>
+          (v.attributes || []).some(
+            (a) =>
+              a.name?.toLowerCase() === "color" &&
+              (a.value || "").toLowerCase() === colorName.toLowerCase()
+          )
+        )
+        .flatMap((v) => (v.images || []).map((img) => getImageUrl(img)).filter(Boolean));
+
+      return Array.from(new Set(collected));
+    };
+
+    const currentColorName = product?.colorVariants?.[selectedColor]?.color_name || "";
+    const firstColorName = product?.colorVariants?.[0]?.color_name || "";
+
+    const selectedColorImages =
+      product?.colorVariants?.[selectedColor]?.images?.filter(Boolean) || [];
+    const firstColorImages =
+      product?.colorVariants?.[0]?.images?.filter(Boolean) || [];
+
+    if (!hasUserSelectedColor) {
+      if (firstColorImages.length > 0) return firstColorImages;
+
+      const firstVariantColorImages = collectVariantImagesByColor(firstColorName);
+      if (firstVariantColorImages.length > 0) return firstVariantColorImages;
+
+      return productFallbackImages;
     }
-    return product?.images || [FALLBACK_IMAGE];
-  }, [product, selectedColor]);
+
+    if (product?.colorVariants && product.colorVariants.length > 0) {
+      if (selectedColorImages.length > 0) return selectedColorImages;
+
+      const selectedVariantColorImages = collectVariantImagesByColor(currentColorName);
+      if (selectedVariantColorImages.length > 0) return selectedVariantColorImages;
+
+      // If this color has no images, keep current product imagery instead of generic dummies.
+      return productFallbackImages;
+    }
+    return productFallbackImages;
+  }, [product, selectedColor, hasUserSelectedColor]);
 
   const activePriceEntry = useMemo(() => {
     if (!product?.priceMatrix || !selectedColorId || !selectedSizeId) return null;
@@ -382,6 +452,12 @@ export default function ProductDetailsPage() {
     return isNaN(numOriginal) ? null : numOriginal;
   }, [activePriceEntry, selectedVariant, product]);
 
+  useEffect(() => {
+    if (displayStock > 0 && quantity > displayStock) {
+      setQuantity(displayStock);
+    }
+  }, [displayStock, quantity]);
+
   const discountPct = useMemo(
     () => (product ? calculateDiscount(displayOriginalPrice, displayPrice) : null),
     [displayOriginalPrice, displayPrice]
@@ -439,7 +515,7 @@ export default function ProductDetailsPage() {
     if (mainImageScrollRef.current && window.innerWidth >= 768) {
       mainImageScrollRef.current.scrollTo({
         left: selectedImage * mainImageScrollRef.current.offsetWidth,
-        behavior: "instant" as ScrollBehavior,
+        behavior: "auto",
       });
     }
 
@@ -500,8 +576,7 @@ export default function ProductDetailsPage() {
     setSimilarLoading(true);
 
     try {
-      const cacheBuster = `?t=${Date.now()}`;
-      const similarRes = await productService.getSimilar(id + cacheBuster);
+      const similarRes = await productService.getSimilar(id, { t: Date.now() });
       const payload = similarRes?.data ?? similarRes;
       const list: SimilarProduct[] = Array.isArray(payload) ? payload : [];
       setSimilarProducts(list);
@@ -648,8 +723,8 @@ export default function ProductDetailsPage() {
             }));
         } else if (Array.isArray(data.variants) && data.variants.length > 0 && (data.variants[0].color || data.variants[0].colorName)) {
             // Grouped variants structure
-            colorVariants = data.variants.map((v: any) => ({
-              color_id: v._id || v.id || v.color || v.colorName || Math.random().toString(),
+            colorVariants = data.variants.map((v: any, idx: number) => ({
+              color_id: String(v._id || v.id || v.variantId || v.colorId || v.color || v.colorName || `variant-${idx}`),
               color_name: v.color || v.colorName || "",
               color_code: v.colorCode || v.color_code || resolveColorHex(v.color || v.colorName || ""),
               images: Array.isArray(v.images) ? v.images.map((img: any) => getImageUrl(img)).filter(Boolean) : [],
@@ -676,6 +751,7 @@ export default function ProductDetailsPage() {
           : [];
 
         if (colorVariants.length > 0) {
+          setSelectedColor(0);
           setSelectedColorId(colorVariants[0].color_id);
         }
         if (sizeVariants.length > 0) {
@@ -703,9 +779,7 @@ export default function ProductDetailsPage() {
               : []
             : [];
 
-        // Ensure Gold, Silver, Rose Gold are always available as per user request
-        const mandatoryColors = ["Gold", "Silver", "Rose Gold"];
-        const flatColors = Array.from(new Set([...initialFlatColors, ...mandatoryColors]));
+        const flatColors = Array.from(new Set(initialFlatColors));
 
         const derivedSizesFromVariants = data.variants
           ? Array.from(new Set(
@@ -749,16 +823,8 @@ export default function ProductDetailsPage() {
           originalPrice: data.pricing?.originalPrice ?? data.originalPrice ?? (basePrice > 0 ? basePrice + 150 : 0),
           description: data.description || (typeof data.story === 'object' ? data.story?.content : undefined) || "",
           category: data.category || "General",
-          image:
-            colorVariants.length > 0
-              ? colorVariants[0].images[0] || mainImage
-              : mainImage,
-          images:
-            colorVariants.length > 0
-              ? colorVariants[0].images.length > 0
-                ? colorVariants[0].images
-                : gallery.length > 0 ? gallery : [mainImage]
-              : gallery.length > 0 ? gallery : [mainImage],
+          image: mainImage,
+          images: gallery.length > 0 ? gallery : [mainImage],
           slug,
           prdId,
           rating: data.rating ?? liveRating,
@@ -802,8 +868,7 @@ export default function ProductDetailsPage() {
       setStoryLoading(true);
 
       try {
-        const cacheBuster = `?cb=${Date.now()}`;
-        const storyRes = await productService.getStory(productId + cacheBuster);
+        const storyRes = await productService.getStory(productId, { cb: Date.now() });
         const storyData = storyRes?.data ?? storyRes;
 
         if (storyData) {
@@ -852,6 +917,7 @@ export default function ProductDetailsPage() {
 
     const handleColorSelect = useCallback(
       (idx: number) => {
+        setHasUserSelectedColor(true);
         setSelectedColor(idx);
         setSelectedImage(0);
         setIsZoomMode(false);
@@ -1470,10 +1536,10 @@ export default function ProductDetailsPage() {
 
                   const variantForSize = variants.find((v) => {
                     const hasColorMatch = !currentColor || v.attributes?.some(
-                      (a) => a.name?.toLowerCase() === "color" && a.value === currentColor
+                      (a) => a.name?.toLowerCase() === "color" && (a.value || "").toLowerCase() === (currentColor || "").toLowerCase()
                     );
                     const hasSizeMatch = v.attributes?.some(
-                      (a) => a.name?.toLowerCase() === "size" && a.value === sizeObj.size
+                      (a) => a.name?.toLowerCase() === "size" && (a.value || "").toLowerCase() === (sizeObj.size || "").toLowerCase()
                     );
                     return hasColorMatch && hasSizeMatch;
                   });
@@ -1518,10 +1584,10 @@ export default function ProductDetailsPage() {
 
                   const variantForSize = variants.find((v) => {
                     const hasColorMatch = !currentColor || v.attributes?.some(
-                      (a) => a.name?.toLowerCase() === "color" && a.value === currentColor
+                      (a) => a.name?.toLowerCase() === "color" && (a.value || "").toLowerCase() === (currentColor || "").toLowerCase()
                     );
                     const hasSizeMatch = v.attributes?.some(
-                      (a) => a.name?.toLowerCase() === "size" && a.value === size
+                      (a) => a.name?.toLowerCase() === "size" && (a.value || "").toLowerCase() === (size || "").toLowerCase()
                     );
                     return hasColorMatch && hasSizeMatch;
                   });
@@ -1582,8 +1648,13 @@ export default function ProductDetailsPage() {
               </span>
 
               <button
-                onClick={() => setQuantity((q) => q + 1)}
+                onClick={() =>
+                  setQuantity((q) =>
+                    displayStock > 0 ? Math.min(displayStock, q + 1) : q
+                  )
+                }
                 className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-[#D94F7A] hover:bg-[#D94F7A] hover:text-white transition-all active:scale-90"
+                disabled={displayStock <= 0 || quantity >= displayStock}
                 aria-label="Increase quantity"
               >
                 <Plus size={14} className="md:w-4 md:h-4" strokeWidth={2.5} />
