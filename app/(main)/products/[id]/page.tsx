@@ -863,6 +863,7 @@ export default function ProductDetailsPage() {
 
   useEffect(() => {
     if (!productId || hasFetchedStory.current) return;
+    if (!backendProductId) return;
     hasFetchedStory.current = true;
 
     const fetchStory = async () => {
@@ -873,7 +874,7 @@ export default function ProductDetailsPage() {
       setStoryLoading(true);
 
       try {
-        const storyRes = await productService.getStory(productId, { cb: Date.now() });
+        const storyRes = await productService.getStory(backendProductId, { cb: Date.now() });
         const storyData = storyRes?.data ?? storyRes;
 
         if (storyData) {
@@ -887,7 +888,7 @@ export default function ProductDetailsPage() {
     };
 
     fetchStory();
-  }, [productId]);
+  }, [productId, backendProductId]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

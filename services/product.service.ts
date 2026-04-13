@@ -151,8 +151,11 @@ export const productService = {
       });
       return res.data;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        return null;
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 404 || status === 400 || status === 500) {
+          return null;
+        }
       }
       console.error(`[Product Story] fetch failed for ID: ${productId}`, error);
       return null;
