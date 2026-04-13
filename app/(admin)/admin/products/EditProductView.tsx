@@ -77,6 +77,28 @@ const defaultColorPalette = [
   { name: "White", hex: "#f8f8f8" },
 ];
 
+const COLOR_ALIAS_TO_HEX: Record<string, string> = {
+  aqua: "#00FFFF",
+  aquablue: "#00B7EB",
+  turquoise: "#40E0D0",
+  torquoise: "#40E0D0",
+  torquois: "#40E0D0",
+  blue: "#0000FF",
+  red: "#FF0000",
+  green: "#008000",
+  yellow: "#FFFF00",
+  orange: "#FFA500",
+  purple: "#800080",
+  brown: "#8B4513",
+  grey: "#808080",
+  gray: "#808080",
+  black: "#000000",
+  white: "#FFFFFF",
+  pink: "#FFC0CB",
+  navy: "#000080",
+  teal: "#008080",
+};
+
 const defaultSizeOptions = ["14 cm", "16 cm", "17 cm", "18 cm", "20 cm", "22 cm"];
 
 function makeId() {
@@ -96,13 +118,54 @@ function safeNumber(value: unknown, fallback = 0) {
   return Number.isNaN(n) ? fallback : n;
 }
 
-function getColorHex(color: string, colorCode?: string) {
-  if (colorCode) return colorCode;
+function normalizeColorName(value: string) {
+  return String(value || "").trim().toLowerCase();
+}
 
-  const found = defaultColorPalette.find(
-    (item) => item.name.toLowerCase() === String(color).toLowerCase()
+function compactColorName(value: string) {
+  return normalizeColorName(value).replace(/[^a-z]/g, "");
+}
+
+function isCssColorValue(value: string) {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(raw)) return true;
+  if (/^(rgb|rgba|hsl|hsla)\(/i.test(raw)) return true;
+  if (/^[a-zA-Z]+$/.test(raw)) return true;
+  return false;
+}
+
+function resolveColorHex(color: string, colorCode?: string) {
+  if (isCssColorValue(colorCode || "")) return String(colorCode).trim();
+
+  const key = normalizeColorName(color);
+  const compact = compactColorName(color);
+
+  const paletteMatch = defaultColorPalette.find(
+    (item) => normalizeColorName(item.name) === key || compactColorName(item.name) === compact
   );
-  return found?.hex || "#e5e7eb";
+  if (paletteMatch?.hex) return paletteMatch.hex;
+
+  if (COLOR_ALIAS_TO_HEX[key]) return COLOR_ALIAS_TO_HEX[key];
+  if (COLOR_ALIAS_TO_HEX[compact]) return COLOR_ALIAS_TO_HEX[compact];
+
+  const tokens = key.split(/\s+/).filter(Boolean);
+  for (const token of tokens) {
+    const compactToken = compactColorName(token);
+    if (COLOR_ALIAS_TO_HEX[token]) return COLOR_ALIAS_TO_HEX[token];
+    if (COLOR_ALIAS_TO_HEX[compactToken]) return COLOR_ALIAS_TO_HEX[compactToken];
+  }
+
+  for (const alias of Object.keys(COLOR_ALIAS_TO_HEX)) {
+    if (compact.includes(alias)) return COLOR_ALIAS_TO_HEX[alias];
+  }
+
+  if (isCssColorValue(color)) return String(color).trim();
+  return "#e5e7eb";
+}
+
+function getColorHex(color: string, colorCode?: string) {
+  return resolveColorHex(color, colorCode);
 }
 
 function normalizeTagArray(tags: any) {
@@ -265,7 +328,7 @@ export default function EditProductView({
 
   const selectedColors = useMemo(() => {
     if (!form) return [];
-    return form.variants.map((v) => v.color.toLowerCase());
+    return form.variants.map((v) => normalizeColorName(v.color));
   }, [form]);
 
   useEffect(() => {
@@ -360,20 +423,16 @@ export default function EditProductView({
     if (!trimmed) return;
 
     const exists = form.variants.some(
-      (variant) => variant.color.toLowerCase() === trimmed.toLowerCase()
+      (variant) => normalizeColorName(variant.color) === normalizeColorName(trimmed)
     );
     if (exists) return;
-
-    const matched = defaultColorPalette.find(
-      (item) => item.name.toLowerCase() === trimmed.toLowerCase()
-    );
 
     updateField("variants", [
       ...form.variants,
       {
         id: makeId(),
         color: trimmed,
-        colorCode: matched?.hex || "",
+        colorCode: resolveColorHex(trimmed),
         expanded: false,
         images: [],
         sizes: [
@@ -666,10 +725,21 @@ export default function EditProductView({
   const handlePreview = async () => {
     try {
       setPreviewLoading(true);
-      await adminProductService.getById(productId);
-      window.open(`/product/${productId}`, "_blank");
+      const res = await adminProductService.getById(productId);
+      const product =
+        res?.data?.data ||
+        res?.data?.product ||
+        res?.data ||
+        res?.product ||
+        res;
+
+      const routeId = String(
+        product?.slug || product?.productId || product?._id || productId
+      ).trim();
+
+      window.open(`/products/${encodeURIComponent(routeId)}`, "_blank");
     } catch {
-      window.open(`/product/${productId}`, "_blank");
+      window.open(`/products/${encodeURIComponent(String(productId))}`, "_blank");
     } finally {
       setPreviewLoading(false);
     }

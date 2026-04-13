@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const BACKEND_API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://3.6.36.33/api").replace(/\/$/, "");
+const BACKEND_API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api").replace(/\/$/, "");
 
 const nextConfig = {
   turbopack: {
@@ -54,6 +54,10 @@ const nextConfig = {
   },
   async rewrites() {
     return [
+      {
+        source: "/proxy/:path*",
+        destination: `${BACKEND_API_BASE}/:path*`,
+      },
       {
         source: "/api/:path*",
         destination: `${BACKEND_API_BASE}/:path*`,

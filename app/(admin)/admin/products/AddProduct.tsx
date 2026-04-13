@@ -50,6 +50,63 @@ const COLOR_SWATCH_MAP: Record<string, string> = {
   pink: "#E5649A",
 };
 
+const COLOR_KEYWORD_TO_HEX: Record<string, string> = {
+  aqua: "#00FFFF",
+  blue: "#0000FF",
+  red: "#FF0000",
+  green: "#008000",
+  yellow: "#FFFF00",
+  orange: "#FFA500",
+  purple: "#800080",
+  brown: "#8B4513",
+  grey: "#808080",
+  gray: "#808080",
+  black: "#000000",
+  white: "#FFFFFF",
+  pink: "#FFC0CB",
+  navy: "#000080",
+  teal: "#008080",
+};
+
+const normalizeColorKey = (value: string) => value.trim().toLowerCase();
+
+const isDirectCssColor = (value: string) => {
+  const raw = value.trim();
+  if (!raw) return false;
+  if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(raw)) return true;
+  if (/^(rgb|rgba|hsl|hsla)\(/i.test(raw)) return true;
+  if (/^[a-zA-Z]+$/.test(raw)) return true;
+  return false;
+};
+
+const resolveColorFromPhrase = (value: string) => {
+  const key = normalizeColorKey(value);
+  if (!key) return null;
+
+  if (COLOR_SWATCH_MAP[key]) return COLOR_SWATCH_MAP[key];
+  if (COLOR_KEYWORD_TO_HEX[key]) return COLOR_KEYWORD_TO_HEX[key];
+
+  const words = key.split(/\s+/).filter(Boolean);
+  for (const word of words) {
+    if (COLOR_SWATCH_MAP[word]) return COLOR_SWATCH_MAP[word];
+    if (COLOR_KEYWORD_TO_HEX[word]) return COLOR_KEYWORD_TO_HEX[word];
+  }
+
+  return null;
+};
+
+const resolveVariantColorCode = (colorName: string) => {
+  const resolvedFromPhrase = resolveColorFromPhrase(colorName);
+  if (resolvedFromPhrase) return resolvedFromPhrase;
+  if (isDirectCssColor(colorName)) return colorName.trim();
+  return "#E5E7EB";
+};
+
+const toRoundedPrice = (value: number) => {
+  if (!Number.isFinite(value)) return "";
+  return String(Math.max(0, Math.round(value * 100) / 100));
+};
+
 const DEFAULT_SIZE_OPTIONS = [
   "14 Cm",
   "15 Cm",
@@ -277,6 +334,9 @@ export default function AddProduct() {
   const [variants, setVariants] = useState<ProductVariantGroup[]>([]);
   const variantsRef = useRef<ProductVariantGroup[]>([]);
   const [customColorName, setCustomColorName] = useState("");
+  const [discountPercentInputs, setDiscountPercentInputs] = useState<
+    Record<string, string>
+  >({});
   const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>(
     {}
   );
@@ -314,6 +374,29 @@ export default function AddProduct() {
 
   useEffect(() => {
     variantsRef.current = variants;
+  }, [variants]);
+
+  useEffect(() => {
+    const validKeys = new Set(
+      variants.flatMap((variant) =>
+        variant.sizes.map((entry) => getVariantSizeKey(variant.id, entry.size))
+      )
+    );
+
+    setDiscountPercentInputs((prev) => {
+      const next: Record<string, string> = {};
+      let changed = false;
+
+      Object.entries(prev).forEach(([key, value]) => {
+        if (validKeys.has(key)) {
+          next[key] = value;
+        } else {
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
   }, [variants]);
 
   useEffect(() => {
@@ -411,13 +494,16 @@ export default function AddProduct() {
     setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
   };
 
+  const getVariantSizeKey = (variantId: string, size: string) =>
+    `${variantId}::${size.toLowerCase()}`;
+
   const addVariantColor = (colorName: string) => {
     const normalized = colorName.trim();
     if (!normalized) return;
 
     setVariants((prev) => {
       const exists = prev.some(
-        (variant) => variant.color.toLowerCase() === normalized.toLowerCase()
+        (variant) => normalizeColorKey(variant.color) === normalizeColorKey(normalized)
       );
       if (exists) return prev;
 
@@ -463,6 +549,17 @@ export default function AddProduct() {
     setCustomSizeInputs((prev) => {
       const next = { ...prev };
       delete next[variantId];
+      return next;
+    });
+
+    setDiscountPercentInputs((prev) => {
+      const next: Record<string, string> = {};
+      const prefix = `${variantId}::`;
+      Object.entries(prev).forEach(([key, value]) => {
+        if (!key.startsWith(prefix)) {
+          next[key] = value;
+        }
+      });
       return next;
     });
   };
@@ -581,15 +678,42 @@ export default function AddProduct() {
     size: string,
     originalPrice: string
   ) => {
+    const normalizedOriginal = originalPrice.replace(/[^\d.]/g, "");
+
     setVariants((prev) =>
       prev.map((variant) => {
         if (variant.id !== variantId) return variant;
 
+        const sizeKey = getVariantSizeKey(variantId, size);
+        const manualPercent = discountPercentInputs[sizeKey];
+
         return {
           ...variant,
-          sizes: variant.sizes.map((entry) =>
-            entry.size === size ? { ...entry, originalPrice } : entry
-          ),
+          sizes: variant.sizes.map((entry) => {
+            if (entry.size !== size) return entry;
+
+            if (!manualPercent) {
+              return { ...entry, originalPrice: normalizedOriginal };
+            }
+
+            const originalNum = Number(normalizedOriginal);
+            const percentNum = Number(manualPercent);
+
+            if (!Number.isFinite(originalNum) || originalNum <= 0) {
+              return { ...entry, originalPrice: normalizedOriginal };
+            }
+
+            const clampedPercent = Math.min(99, Math.max(0, percentNum));
+            const nextDiscount = toRoundedPrice(
+              originalNum * (1 - clampedPercent / 100)
+            );
+
+            return {
+              ...entry,
+              originalPrice: normalizedOriginal,
+              discountPrice: nextDiscount,
+            };
+          }),
         };
       })
     );
@@ -600,6 +724,16 @@ export default function AddProduct() {
     size: string,
     discountPrice: string
   ) => {
+    const normalizedDiscount = discountPrice.replace(/[^\d.]/g, "");
+    const sizeKey = getVariantSizeKey(variantId, size);
+
+    setDiscountPercentInputs((prev) => {
+      if (!(sizeKey in prev)) return prev;
+      const next = { ...prev };
+      delete next[sizeKey];
+      return next;
+    });
+
     setVariants((prev) =>
       prev.map((variant) => {
         if (variant.id !== variantId) return variant;
@@ -607,11 +741,77 @@ export default function AddProduct() {
         return {
           ...variant,
           sizes: variant.sizes.map((entry) =>
-            entry.size === size ? { ...entry, discountPrice } : entry
+            entry.size === size ? { ...entry, discountPrice: normalizedDiscount } : entry
           ),
         };
       })
     );
+  };
+
+  const updateVariantDiscountPercent = (
+    variantId: string,
+    size: string,
+    percent: string
+  ) => {
+    const normalizedPercent = percent.replace(/\D/g, "");
+    const clampedPercent =
+      normalizedPercent === ""
+        ? ""
+        : String(Math.min(99, Math.max(0, Number(normalizedPercent))));
+
+    const sizeKey = getVariantSizeKey(variantId, size);
+
+    setDiscountPercentInputs((prev) => {
+      if (!clampedPercent) {
+        if (!(sizeKey in prev)) return prev;
+        const next = { ...prev };
+        delete next[sizeKey];
+        return next;
+      }
+      return {
+        ...prev,
+        [sizeKey]: clampedPercent,
+      };
+    });
+
+    if (!clampedPercent) return;
+
+    setVariants((prev) =>
+      prev.map((variant) => {
+        if (variant.id !== variantId) return variant;
+
+        return {
+          ...variant,
+          sizes: variant.sizes.map((entry) => {
+            if (entry.size !== size) return entry;
+
+            const original = Number(entry.originalPrice);
+            const percentNum = Number(clampedPercent);
+
+            if (!Number.isFinite(original) || original <= 0) return entry;
+
+            return {
+              ...entry,
+              discountPrice: toRoundedPrice(original * (1 - percentNum / 100)),
+            };
+          }),
+        };
+      })
+    );
+  };
+
+  const getVariantDiscountPercentValue = (
+    variantId: string,
+    originalPrice: string,
+    discountPrice: string,
+    size: string
+  ) => {
+    const sizeKey = getVariantSizeKey(variantId, size);
+    const manualPercent = discountPercentInputs[sizeKey];
+    if (manualPercent !== undefined) return manualPercent;
+
+    const calculated = calculateDiscountPercent(originalPrice, discountPrice);
+    return calculated ? String(calculated) : "";
   };
 
   const updateVariantMaterial = (variantId: string, material: string) => {
@@ -807,7 +1007,7 @@ export default function AddProduct() {
 
       variants: variants.map((variant) => ({
         color: variant.color,
-        colorCode: COLOR_SWATCH_MAP[variant.color.toLowerCase()] || "#E5E7EB",
+        colorCode: resolveVariantColorCode(variant.color),
         price:
           toNumber(variant.sizes[0]?.discountPrice) ||
           toNumber(variant.sizes[0]?.originalPrice) ||
@@ -1307,7 +1507,7 @@ dispatch(
                   {COLOR_OPTIONS.map((colorName) => {
                     const isSelected = variants.some(
                       (variant) =>
-                        variant.color.toLowerCase() === colorName.toLowerCase()
+                        normalizeColorKey(variant.color) === normalizeColorKey(colorName)
                     );
 
                     return (
@@ -1388,6 +1588,9 @@ dispatch(
                     onUpdateDiscountPrice={(size, price) =>
                       updateVariantDiscountPrice(variant.id, size, price)
                     }
+                    onUpdateDiscountPercent={(size, percent) =>
+                      updateVariantDiscountPercent(variant.id, size, percent)
+                    }
                     onUpdateMaterial={(value) =>
                       updateVariantMaterial(variant.id, value)
                     }
@@ -1399,6 +1602,14 @@ dispatch(
                       removeVariantImage(variant.id, imageId)
                     }
                     colorSwatchMap={COLOR_SWATCH_MAP}
+                    getDiscountPercentValue={(entry) =>
+                      getVariantDiscountPercentValue(
+                        variant.id,
+                        entry.originalPrice,
+                        entry.discountPrice,
+                        entry.size
+                      )
+                    }
                   />
                 ))}
               </div>
