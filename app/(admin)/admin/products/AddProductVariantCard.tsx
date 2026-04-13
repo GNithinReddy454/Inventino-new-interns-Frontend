@@ -41,11 +41,13 @@ interface AddProductVariantCardProps {
   onUpdateSku: (size: string, sku: string) => void;
   onUpdateOriginalPrice: (size: string, price: string) => void;
   onUpdateDiscountPrice: (size: string, price: string) => void;
+  onUpdateDiscountPercent: (size: string, percent: string) => void;
   onUpdateMaterial: (value: string) => void;
   onUpdateStockStatus: (value: "In Stock" | "Out of Stock") => void;
   onVariantImagesChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveVariantImage: (imageId: string) => void;
   colorSwatchMap: Record<string, string>;
+  getDiscountPercentValue: (entry: VariantSizeStock) => string;
 }
 
 export default function AddProductVariantCard({
@@ -61,23 +63,55 @@ export default function AddProductVariantCard({
   onUpdateSku,
   onUpdateOriginalPrice,
   onUpdateDiscountPrice,
+  onUpdateDiscountPercent,
   onUpdateMaterial,
   onUpdateStockStatus,
   onVariantImagesChange,
   onRemoveVariantImage,
   colorSwatchMap,
+  getDiscountPercentValue,
 }: AddProductVariantCardProps) {
-  const swatchColor = colorSwatchMap[variant.color.toLowerCase()] || "#E5E7EB";
+  const swatchColor = (() => {
+    const colorKey = variant.color.trim().toLowerCase();
+    const mapped = colorSwatchMap[colorKey];
+    if (mapped) return mapped;
 
-  const getDiscountPercent = (originalPrice: string, discountPrice: string) => {
-    const original = Number(originalPrice);
-    const discount = Number(discountPrice);
+    const tokenFallbackMap: Record<string, string> = {
+      aqua: "#00FFFF",
+      blue: "#0000FF",
+      red: "#FF0000",
+      green: "#008000",
+      yellow: "#FFFF00",
+      orange: "#FFA500",
+      purple: "#800080",
+      brown: "#8B4513",
+      grey: "#808080",
+      gray: "#808080",
+      black: "#000000",
+      white: "#FFFFFF",
+      pink: "#FFC0CB",
+      navy: "#000080",
+      teal: "#008080",
+    };
 
-    if (!Number.isFinite(original) || original <= 0) return "";
-    if (!Number.isFinite(discount) || discount <= 0 || discount >= original) return "";
+    if (tokenFallbackMap[colorKey]) return tokenFallbackMap[colorKey];
+    for (const token of colorKey.split(/\s+/).filter(Boolean)) {
+      if (colorSwatchMap[token]) return colorSwatchMap[token];
+      if (tokenFallbackMap[token]) return tokenFallbackMap[token];
+    }
 
-    return String(Math.round(((original - discount) / original) * 100));
-  };
+    const raw = variant.color.trim();
+    if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(raw)) {
+      return raw;
+    }
+    if (/^(rgb|rgba|hsl|hsla)\(/i.test(raw)) {
+      return raw;
+    }
+    if (/^[a-zA-Z]+$/.test(raw)) {
+      return raw;
+    }
+    return "#E5E7EB";
+  })();
 
   return (
     <div className="overflow-hidden rounded-[14px] border border-[#F0E3E7] bg-white">
@@ -348,9 +382,15 @@ export default function AddProductVariantCard({
                         <div className="relative">
                           <input
                             type="text"
-                            readOnly
-                            value={getDiscountPercent(entry.originalPrice, entry.discountPrice)}
+                            inputMode="numeric"
+                            value={getDiscountPercentValue(entry)}
                             placeholder="10"
+                            onChange={(e) =>
+                              onUpdateDiscountPercent(
+                                entry.size,
+                                e.target.value.replace(/\D/g, "")
+                              )
+                            }
                             className="h-8.5 w-full rounded-xl border border-[#F2B8C8] bg-[#FFF8FA] px-3 pr-7 text-[12px] focus:border-[#EB5C8A] focus:outline-none focus:ring-1 focus:ring-[#EB5C8A]"
                           />
                           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#A199A7]">

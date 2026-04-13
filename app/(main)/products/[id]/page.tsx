@@ -434,7 +434,7 @@ export default function ProductDetailsPage() {
   );
 
   const displayPrice = useMemo(() => {
-    const rawPrice = activePriceEntry?.price ?? selectedVariant?.price ?? product?.price ?? 0;
+    const rawPrice = activePriceEntry?.price ?? product?.price ?? selectedVariant?.price ?? 0;
     const numPrice = Number(rawPrice);
     return isNaN(numPrice) ? 0 : numPrice;
   }, [activePriceEntry, selectedVariant, product]);
@@ -447,7 +447,7 @@ export default function ProductDetailsPage() {
   }, [activePriceEntry, selectedVariant, product]);
 
   const displayOriginalPrice = useMemo(() => {
-    const rawOriginal = activePriceEntry?.originalPrice ?? selectedVariant?.originalPrice ?? product?.originalPrice ?? null;
+    const rawOriginal = activePriceEntry?.originalPrice ?? product?.originalPrice ?? selectedVariant?.originalPrice ?? null;
     const numOriginal = Number(rawOriginal);
     return isNaN(numOriginal) ? null : numOriginal;
   }, [activePriceEntry, selectedVariant, product]);
@@ -671,7 +671,7 @@ export default function ProductDetailsPage() {
         return;
       }
       try {
-        const res = await productService.getById(productId);
+        const res = await productService.getById(productId, { cb: Date.now() });
         if (!res || !res.data) {
           setLoading(false);
           return;
@@ -807,10 +807,15 @@ export default function ProductDetailsPage() {
         }
 
         // Derive a base price for display before matrix is used
+        const firstVariantPrice = Array.isArray(data.variants)
+          ? data.variants.find((v: any) => Number(v?.price) > 0)?.price
+          : 0;
+
         const basePrice =
-          priceMatrix.length > 0
-            ? priceMatrix[0].price
-            : data.pricing?.price ?? data.price ?? (variants.length > 0 ? variants[0].price : 0);
+          data.pricing?.price ??
+          data.discountPrice ??
+          data.price ??
+          (priceMatrix.length > 0 ? priceMatrix[0].price : firstVariantPrice ?? 0);
 
         const mainImage = data.media?.mainImage || getImageUrl(data.images?.[0]) || FALLBACK_IMAGE;
         const gallery = data.media?.galleryImages?.map((img: any) => getImageUrl(img)).filter(Boolean) || data.images?.map((img: any) => getImageUrl(img)).filter(Boolean) || [];

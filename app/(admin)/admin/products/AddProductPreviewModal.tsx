@@ -33,6 +33,46 @@ function getReadableTextColor(hex: string) {
   return brightness > 155 ? "#111827" : "#FFFFFF";
 }
 
+function resolvePreviewColor(color: string, colorSwatchMap: Record<string, string>) {
+  const normalized = color.trim().toLowerCase();
+  if (!normalized) return "#E5E7EB";
+
+  if (colorSwatchMap[normalized]) return colorSwatchMap[normalized];
+
+  const tokenFallbackMap: Record<string, string> = {
+    aqua: "#00FFFF",
+    blue: "#0000FF",
+    red: "#FF0000",
+    green: "#008000",
+    yellow: "#FFFF00",
+    orange: "#FFA500",
+    purple: "#800080",
+    brown: "#8B4513",
+    grey: "#808080",
+    gray: "#808080",
+    black: "#000000",
+    white: "#FFFFFF",
+    pink: "#FFC0CB",
+    navy: "#000080",
+    teal: "#008080",
+  };
+
+  if (tokenFallbackMap[normalized]) return tokenFallbackMap[normalized];
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  for (const word of words) {
+    if (colorSwatchMap[word]) return colorSwatchMap[word];
+    if (tokenFallbackMap[word]) return tokenFallbackMap[word];
+  }
+
+  const raw = color.trim();
+  if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(raw)) return raw;
+  if (/^(rgb|rgba|hsl|hsla)\(/i.test(raw)) return raw;
+  if (/^[a-zA-Z]+$/.test(raw)) return raw;
+
+  return "#E5E7EB";
+}
+
 export default function AddProductPreviewModal({
   open,
   onClose,
@@ -180,8 +220,7 @@ export default function AddProductPreviewModal({
                   </p>
                   <div className="flex gap-2">
                     {colors.map((color) => {
-                      const hex =
-                        colorSwatchMap[color.toLowerCase()] || "#E5E7EB";
+                      const hex = resolvePreviewColor(color, colorSwatchMap);
 
                       return (
                         <div
@@ -257,8 +296,7 @@ export default function AddProductPreviewModal({
 
               <div className="space-y-3">
                 {variants.map((variant) => {
-                  const colorHex =
-                    colorSwatchMap[variant.color.toLowerCase()] || "#E5E7EB";
+                  const colorHex = resolvePreviewColor(variant.color, colorSwatchMap);
 
                   return (
                     <div

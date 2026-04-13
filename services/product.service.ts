@@ -94,9 +94,19 @@ export const productService = {
   },
 
   // ─── PRODUCT DETAILS ─────────────────────────────────────
-  async getById(id: string | number): Promise<ProductDetailResponse | null> {
+  async getById(
+    id: string | number,
+    params?: Record<string, string | number>
+  ): Promise<ProductDetailResponse | null> {
     try {
-      const res = await apiClient.get(`/products/${id}`);
+      const res = await apiClient.get(`/products/${id}`, {
+        params,
+        headers: {
+          "Cache-Control": "no-cache, no-store, max-age=0",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
       return res.data;
     } catch (error) {
       console.error(`[Product Details] fetch failed for ID: ${id}`, error);
