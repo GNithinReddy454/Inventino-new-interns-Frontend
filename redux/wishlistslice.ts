@@ -47,12 +47,22 @@ function isLoggedIn(): boolean {
   try {
     return !!(
       localStorage.getItem("token") ||
-      localStorage.getItem("accessToken") ||
-      localStorage.getItem("inventino_user")
+      localStorage.getItem("accessToken")
     );
   } catch {
     return false;
   }
+}
+
+function shouldFallbackToLocal(error: any): boolean {
+  const status = error?.response?.status;
+  const message = String(error?.response?.data?.message || error?.message || "").toLowerCase();
+  return (
+    status === 401 ||
+    status === 403 ||
+    message.includes("user not found") ||
+    message.includes("unauthorized")
+  );
 }
 
 // ── Thunks ────────────────────────────────────────────────────────────────────
@@ -68,6 +78,9 @@ export const fetchWishlist = createAsyncThunk(
       const response = await wishlistService.getWishlist();
       return response.data?.wishlist?.items || [];
     } catch (error: any) {
+      if (shouldFallbackToLocal(error)) {
+        return getLocalWishlist();
+      }
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch wishlist"
       );
@@ -138,6 +151,43 @@ export const addWishlistItem = createAsyncThunk(
       const response = await wishlistService.addToWishlist(productId, color || undefined, size || undefined, quantity);
       return response.data?.wishlist?.items || [];
     } catch (error: any) {
+      if (shouldFallbackToLocal(error)) {
+        const items = getLocalWishlist();
+        const exists = items.some((i: any) => {
+          const id = String(i.productId || i.product?.productId || i.product?._id || i.product?.id || i._id || i.id);
+          return id === productId && i.color === color && i.size === size;
+        });
+        if (!exists) {
+          const itemToStore = {
+            product: {
+              _id: productId,
+              productId: productId,
+              name: (typeof payload === "object" ? payload.name || payload.product?.name : "") || "",
+              price: (typeof payload === "object" ? payload.price ?? payload.product?.price : 0) ?? 0,
+              images: (() => {
+                if (typeof payload !== "object") return [];
+                const img = payload.image || payload.product?.image;
+                const imgs = payload.images || payload.product?.images;
+                if (Array.isArray(imgs) && imgs.length > 0) {
+                  return imgs.map((i: any) => typeof i === "string" ? { url: i } : i);
+                }
+                if (img) return [typeof img === "string" ? { url: img } : img];
+                return [];
+              })(),
+              category: (typeof payload === "object" ? payload.category || payload.product?.category : "") || "",
+            },
+            _id: `${productId}-${color || ""}-${size || ""}`,
+            productId: productId,
+            color,
+            size,
+            quantity,
+            isLocal: true,
+          };
+          items.push(itemToStore);
+          saveLocalWishlist(items);
+        }
+        return items;
+      }
       return rejectWithValue(
         error.response?.data?.message || "Failed to add to wishlist"
       );
@@ -149,23 +199,29 @@ export const removeWishlistItem = createAsyncThunk(
   "wishlist/remove",
   async (compositeId: string, { rejectWithValue }) => {
     try {
-      // Extract the original ID if a composite ID (e.g. "id-color-size-index") was passed
-      const productId = compositeId.includes("-") ? compositeId.split("-")[0] : compositeId;
+      const targetId = String(compositeId);
 
       if (!isLoggedIn()) {
         const items = getLocalWishlist().filter((i: any) => {
-          // If we passed a unique _id (like "prod-color-size"), match that first
-          if (i._id === productId || i._id === compositeId) return false;
-          // Fallback to product level IDs if _id didn't match
+          if (String(i._id || "") === targetId) return false;
           const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i.id);
-          return id !== productId;
+          return id !== targetId;
         });
         saveLocalWishlist(items);
         return items;
       }
-      const response = await wishlistService.removeFromWishlist(productId);
+      const response = await wishlistService.removeFromWishlist(targetId);
       return response.data?.wishlist?.items || [];
     } catch (error: any) {
+      if (shouldFallbackToLocal(error)) {
+        const items = getLocalWishlist().filter((i: any) => {
+          if (String(i._id || "") === String(compositeId)) return false;
+          const id = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i.id);
+          return id !== String(compositeId);
+        });
+        saveLocalWishlist(items);
+        return items;
+      }
       return rejectWithValue(
         error.response?.data?.message || "Failed to remove from wishlist"
       );
@@ -184,6 +240,10 @@ export const clearWishlist = createAsyncThunk(
       await wishlistService.clearWishlist();
       return [];
     } catch (error: any) {
+      if (shouldFallbackToLocal(error)) {
+        saveLocalWishlist([]);
+        return [];
+      }
       return rejectWithValue(
         error.response?.data?.message || "Failed to clear wishlist"
       );
@@ -212,17 +272,14 @@ const wishlistSlice = createSlice({
             }
         },
         removeLocalWishlistItem: (state, action) => {
-            const compositeId = String(action.payload);
-            const baseId = compositeId.includes("-") ? compositeId.split("-")[0] : compositeId;
+          const targetId = String(action.payload);
 
             state.items = state.items.filter(i => {
                 const itemId = String(i._id || "");
                 const productId = String(i.product?.productId || i.product?._id || i.product?.id || i.productId || i.id || "");
-                
-                // If it matches exactly (composite or _id), remove it
-                if (itemId === compositeId || itemId === baseId) return false;
-                // If it's the base product level ID, remove it
-                return productId !== baseId;
+
+            if (itemId === targetId) return false;
+            return productId !== targetId;
             });
         }
     },

@@ -36,7 +36,13 @@ const initialState: CartState = {
 // ── Auth check helper ─────────────────────────────────────────────────────────
 function isLoggedIn(): boolean {
     try {
-        return !!localStorage.getItem("token");
+        const token = localStorage.getItem("token");
+        const rawUser = localStorage.getItem("inventino_user");
+        if (!token || !rawUser) return false;
+
+        const parsedUser = JSON.parse(rawUser);
+        const isAdminSession = parsedUser && Array.isArray(parsedUser.permissions);
+        return !isAdminSession;
     } catch {
         return false;
     }
@@ -73,10 +79,10 @@ export const addToCart = createAsyncThunk(
 
 export const updateCartQuantity = createAsyncThunk(
     "cart/updateCartQuantity",
-    async ({ productId, quantity }: { productId: string; quantity: number }, { rejectWithValue }) => {
+    async ({ productId, quantity, color, size }: { productId: string; quantity: number; color?: string | null; size?: string | null }, { rejectWithValue }) => {
         try {
             if (!isLoggedIn()) return { data: { items: [], totalAmount: 0 } };
-            return await cartService.updateCartQuantity(productId, quantity);
+            return await cartService.updateCartQuantity(productId, quantity, color, size);
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.message || "Failed to update quantity");
         }
@@ -85,10 +91,25 @@ export const updateCartQuantity = createAsyncThunk(
 
 export const removeFromCart = createAsyncThunk(
     "cart/removeFromCart",
-    async (productId: string, { rejectWithValue }) => {
+    async (
+        payload: string | { productId: string; color?: string | null; size?: string | null },
+        { rejectWithValue }
+    ) => {
         try {
             if (!isLoggedIn()) return { data: { items: [], totalAmount: 0 } };
-            return await cartService.removeFromCart(productId);
+            const normalized =
+                typeof payload === "string"
+                    ? { productId: payload, color: "", size: "" }
+                    : {
+                        productId: payload.productId,
+                        color: payload.color || "",
+                        size: payload.size || "",
+                    };
+            return await cartService.removeFromCart(
+                normalized.productId,
+                normalized.color,
+                normalized.size
+            );
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.message || "Failed to remove from cart");
         }
@@ -147,6 +168,24 @@ const cartSlice = createSlice({
                     isLocal: true 
                 });
             }
+            state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
+            state.totalAmount = state.items.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * item.quantity), 0);
+        },
+        updateLocalCartItemQuantity: (state, action) => {
+            const pId = String(action.payload?.productId);
+            const nextQuantity = Math.max(1, Number(action.payload?.quantity || 1));
+            const color = action.payload?.color;
+            const size = action.payload?.size;
+            state.items = state.items.map((item: any) => {
+                const itemId = String(item.productId || item._id || item.product?._id || item.id);
+                const sameVariant =
+                    (color === undefined || item.color === color) &&
+                    (size === undefined || item.size === size);
+                if (itemId === pId && sameVariant) {
+                    return { ...item, quantity: nextQuantity, isLocal: true };
+                }
+                return item;
+            });
             state.totalItems = state.items.reduce((acc, item) => acc + item.quantity, 0);
             state.totalAmount = state.items.reduce((acc, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * item.quantity), 0);
         },
@@ -237,7 +276,13 @@ const cartSlice = createSlice({
         // removeFromCart
         builder.addCase(removeFromCart.fulfilled, (state, action: any) => {
             const backendItems = action.payload?.data?.items || action.payload?.cart?.items || action.payload?.data?.cart?.items || [];
-            const localItems = state.items.filter((i: any) => i.isLocal && String(i.productId) !== String(action.meta.arg));
+            const argProductId =
+                typeof action.meta.arg === "string"
+                    ? action.meta.arg
+                    : action.meta.arg?.productId;
+            const localItems = state.items.filter(
+                (i: any) => i.isLocal && String(i.productId) !== String(argProductId)
+            );
             const merged = [...backendItems];
             localItems.forEach((loc: any) => {
                 if (!merged.some((m: any) => 
@@ -280,5 +325,5 @@ const cartSlice = createSlice({
     },
 });
 
-export const { addLocalCartItem, removeLocalCartItem } = cartSlice.actions;
+export const { addLocalCartItem, updateLocalCartItemQuantity, removeLocalCartItem } = cartSlice.actions;
 export default cartSlice.reducer;

@@ -17,15 +17,27 @@ export const cartService = {
     return response.data;
   },
 
-  async updateCartQuantity(productId: string, quantity: number) {
+  async updateCartQuantity(
+    productId: string,
+    quantity: number,
+    color?: string | null,
+    size?: string | null
+  ) {
     const response = await apiClient.put(`/cart/${productId}`, {
       quantity,
+      color: color || "",
+      size: size || "",
     });
     return response.data;
   },
 
-  async removeFromCart(productId: string) {
-    const response = await apiClient.delete(`/cart/${productId}`);
+  async removeFromCart(productId: string, color?: string | null, size?: string | null) {
+    const response = await apiClient.delete(`/cart/${productId}`, {
+      data: {
+        color: color || "",
+        size: size || "",
+      },
+    });
     return response.data;
   },
 

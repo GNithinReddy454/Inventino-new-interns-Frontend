@@ -20,7 +20,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCart } from "@/lib/cartContext";
 import { useStore } from "@/lib/storeContext";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { addToCart as reduxAddToCart } from "@/redux/cartslice";
+import { addToCart as reduxAddToCart, fetchCart } from "@/redux/cartslice";
 import { fetchWishlist } from "@/redux/wishlistslice";
 import { setBuyNowProduct } from "@/redux/buyNowSlice";
 import { useAuth } from "@/app/(main)/components/authContext";
@@ -299,6 +299,7 @@ export default function ProductDetailsPage() {
   const hasFetchedStory = useRef(false);
   const hasFetchedSimilar = useRef(false);
   const hasFetchedProduct = useRef(false);
+
   const hasFetchedReviews = useRef(false);
 
   useEffect(() => {
@@ -466,7 +467,14 @@ export default function ProductDetailsPage() {
   const isInWishlist = useCallback((): boolean => {
     if (!product) return false;
 
-    const productIdStr = String(backendProductId);
+    const validProductIds = new Set(
+      [backendProductId, product.prdId, product.mongoId, product.id, productId]
+        .filter(Boolean)
+        .map((id) => String(id))
+    );
+
+    if (validProductIds.size === 0) return false;
+
     const currentColor = hasColorVariants
       ? product.colorVariants?.[selectedColor]?.color_name || null
       : variantColors[selectedColor] || null;
@@ -476,7 +484,7 @@ export default function ProductDetailsPage() {
       return wishlistFromRedux.some((item: any) => {
         const itemId = item.product?._id || item._id || item.id || item.productId;
         return (
-          String(itemId) === productIdStr &&
+          validProductIds.has(String(itemId)) &&
           item.color === currentColor &&
           item.size === currentSize
         );
@@ -486,7 +494,7 @@ export default function ProductDetailsPage() {
     return savedItems.some((item: any) => {
       const itemId = item.product?._id || item._id || item.id || item.productId;
       return (
-        String(itemId) === productIdStr &&
+        validProductIds.has(String(itemId)) &&
         item.color === currentColor &&
         item.size === currentSize
       );
@@ -512,7 +520,7 @@ export default function ProductDetailsPage() {
   }, [dispatch, user]);
 
   useEffect(() => {
-    if (mainImageScrollRef.current && window.innerWidth >= 768) {
+    if (mainImageScrollRef.current) {
       mainImageScrollRef.current.scrollTo({
         left: selectedImage * mainImageScrollRef.current.offsetWidth,
         behavior: "auto",
@@ -981,13 +989,14 @@ export default function ProductDetailsPage() {
       }
 
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const canUseServerCart = !!token;
       const currentColor = hasColorVariants
         ? product.colorVariants?.[selectedColor]?.color_name || null
         : variantColors[selectedColor] || null;
       const currentSize = selectedSize;
 
       try {
-        if (user || token) {
+        if (canUseServerCart) {
           await dispatch(
             reduxAddToCart({
               productId: backendProductId,
@@ -996,6 +1005,10 @@ export default function ProductDetailsPage() {
               size: currentSize,
             })
           ).unwrap();
+
+          // Keep local cart context in sync so navbar badge reflects the selected quantity immediately.
+          addToCart(buildCartItem(), quantity, currentColor, currentSize);
+          await dispatch(fetchCart());
 
           setIsAdded(true);
           showToast("Success!", "Added to bag", "success");
@@ -1006,7 +1019,23 @@ export default function ProductDetailsPage() {
           showToast("Success!", "Added to bag", "success");
           setTimeout(() => setIsAdded(false), 3500);
         }
-      } catch {
+      } catch (error: any) {
+        const message = String(error?.message || error || "").toLowerCase();
+        const shouldFallbackToLocal =
+          message.includes("user not found") ||
+          message.includes("unauthorized") ||
+          message.includes("invalid") ||
+          message.includes("token") ||
+          message.includes("session");
+
+        if (shouldFallbackToLocal) {
+          addToCart(buildCartItem(), quantity);
+          setIsAdded(true);
+          showToast("Success!", "Added to bag", "success");
+          setTimeout(() => setIsAdded(false), 3500);
+          return;
+        }
+
         showToast("Error", "Failed to add to cart", "error");
       }
     },
@@ -1017,7 +1046,6 @@ export default function ProductDetailsPage() {
       variantColors,
       selectedColor,
       selectedSize,
-      user,
       backendProductId,
       quantity,
       dispatch,
@@ -1104,8 +1132,8 @@ export default function ProductDetailsPage() {
     handleSaved(product, currentColor, currentSize, quantity);
 
     showToast(
-      willBeSaved ? "Success!" : "Removed",
-      willBeSaved ? "Added to wishlist" : "Removed from wishlist",
+      willBeSaved ? "added to wishlist" : "removed from wishlist",
+      willBeSaved ? "added to wishlist" : "removed from wishlist",
       willBeSaved ? "success" : "info"
     );
   }, [
@@ -1260,8 +1288,8 @@ export default function ProductDetailsPage() {
                   onClick={handleWishlist}
                   className={`p-2.5 md:p-3 rounded-full shadow-md transition-all active:scale-90 ${
                     isSaved
-                      ? "bg-[#D94F7A] text-white"
-                      : "bg-white/90 text-gray-400 hover:text-[#D94F7A]"
+                      ? "bg-[#E8456A] text-white"
+                      : "bg-white text-black hover:text-black"
                   }`}
                   aria-label={isSaved ? "Remove from wishlist" : "Add to wishlist"}
                 >
