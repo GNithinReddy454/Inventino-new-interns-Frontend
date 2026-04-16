@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { wishlistService } from "@/services/wishlist.service";
+import { hasUserSession } from "@/lib/session";
 
 interface WishlistState {
   items: any[];
@@ -44,14 +45,7 @@ function saveLocalWishlist(items: GuestWishlistItem[]) {
 }
 
 function isLoggedIn(): boolean {
-  try {
-    return !!(
-      localStorage.getItem("token") ||
-      localStorage.getItem("accessToken")
-    );
-  } catch {
-    return false;
-  }
+  return hasUserSession();
 }
 
 function shouldFallbackToLocal(error: any): boolean {

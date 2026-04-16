@@ -30,6 +30,7 @@ import { addressService } from "@/services/address.service";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { fetchAddressesAction } from "@/redux/addressslice";
 import type { SavedAddress } from "@/types/address";
+import { hasUserSession } from "@/lib/session";
 
 interface ShippingFormProps {
   onSubmit: (address: ShippingAddress) => void;
@@ -83,7 +84,9 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
 
   // Fetch saved addresses on mount
   useEffect(() => {
-    dispatch(fetchAddressesAction());
+    if (hasUserSession()) {
+      dispatch(fetchAddressesAction());
+    }
   }, [dispatch]);
 
   // Auto-select logic when addresses change

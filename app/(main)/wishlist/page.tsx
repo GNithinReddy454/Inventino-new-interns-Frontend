@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { hasUserSession } from "@/lib/session";
 
 // ── Star Rating ───────────────────────────────────────────────────────────────
 function StarRating({ rating }: { rating: number }) {
@@ -152,7 +153,7 @@ export default function WishlistPage() {
   };
 
   const hasServerCartSession =
-    typeof window !== "undefined" && !!localStorage.getItem("token");
+    hasUserSession();
 
   const isAuthOrSessionError = (errorMessage: string) => {
     const msg = (errorMessage || "").toLowerCase();

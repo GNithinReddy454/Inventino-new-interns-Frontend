@@ -20,6 +20,7 @@ import { addWishlistItem, addLocalWishlistItem } from "@/redux/wishlistslice";
 import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode, removeLocalCartItem, updateLocalCartItemQuantity } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { useAuth } from "@/app/(main)/components/authContext";
+import { hasUserSession } from "@/lib/session";
 
 interface CartItem {
   productId: string;
@@ -718,9 +719,7 @@ export default function BagPage() {
             <div className="mb-3">
               <button
                 onClick={() => {
-                  const rawUser = localStorage.getItem("inventino_user");
-                  const token = localStorage.getItem("token");
-                  if (rawUser && token) {
+                  if (hasUserSession()) {
                     router.push("/checkout");
                   } else {
                     router.push("/login?redirect=/checkout");

@@ -28,6 +28,7 @@ import ProductReviews from "@/app/components/ProductReviews";
 import ProductCard from "@/app/components/ProductCard";
 import { productService } from "@/services/product.service";
 import { useToast } from "@/app/components/GlobalToast";
+import { hasUserSession } from "@/lib/session";
 
 // ============================================================================
 // TYPES
@@ -331,7 +332,7 @@ export default function ProductDetailsPage() {
   }, [productId]);
 
   const isAuthenticated = useMemo(
-    () => !!user || (typeof window !== "undefined" && !!localStorage.getItem("token")),
+    () => hasUserSession(),
     [user]
   );
 
@@ -514,7 +515,7 @@ export default function ProductDetailsPage() {
   const isSaved = useMemo(isInWishlist, [isInWishlist]);
 
   useEffect(() => {
-    if (user) {
+    if (hasUserSession()) {
       dispatch(fetchWishlist());
     }
   }, [dispatch, user]);
@@ -988,8 +989,7 @@ export default function ProductDetailsPage() {
         return;
       }
 
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      const canUseServerCart = !!token;
+      const canUseServerCart = hasUserSession();
       const currentColor = hasColorVariants
         ? product.colorVariants?.[selectedColor]?.color_name || null
         : variantColors[selectedColor] || null;
