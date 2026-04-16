@@ -34,13 +34,27 @@ interface SearchProduct {
 const Navbar = () => {
   const pathname = usePathname();
   const { items: savedItems = [] } = useAppSelector((state: any) => state.wishlist);
-  const { totalItems: reduxBagCount = 0 } = useAppSelector((state: any) => state.cart);
+  const { totalItems: reduxBagCount = 0, error: cartError } = useAppSelector((state: any) => state.cart);
   const { cart: localCart } = useCart();
   const { user, logout } = useAuth();
 
-  const bagCount = user
-    ? reduxBagCount
-    : localCart.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
+  const hasServerCartSession =
+    typeof window !== "undefined" && !!localStorage.getItem("token") && !!user;
+
+  const localBagCount = localCart.reduce(
+    (total: number, item: any) => total + (item.quantity || 1),
+    0
+  );
+  const hasCartAuthError =
+    typeof cartError === "string" &&
+    (cartError.toLowerCase().includes("user not found") ||
+      cartError.toLowerCase().includes("unauthorized"));
+
+  const bagCount = hasServerCartSession
+    ? hasCartAuthError
+      ? localBagCount
+      : Math.max(reduxBagCount, localBagCount)
+    : localBagCount;
 
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -62,8 +76,10 @@ const Navbar = () => {
   const { unreadCount, refetch: refetchCount } = useNotificationCount();
 
   useEffect(() => {
-    dispatch(fetchCart());
-  }, [dispatch, user]);
+    if (hasServerCartSession) {
+      dispatch(fetchCart());
+    }
+  }, [dispatch, hasServerCartSession]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);

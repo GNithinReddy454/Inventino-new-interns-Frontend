@@ -8,7 +8,7 @@ import {
   clearWishlist,
   removeLocalWishlistItem,
 } from "@/redux/wishlistslice";
-import { addToCart as reduxAddToCart, addLocalCartItem } from "@/redux/cartslice";
+import { addToCart as reduxAddToCart, fetchCart } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { useAuth } from "@/app/(main)/components/authContext";
 import {
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { hasUserSession } from "@/lib/session";
 
 // ── Star Rating ───────────────────────────────────────────────────────────────
 function StarRating({ rating }: { rating: number }) {
@@ -80,6 +81,41 @@ function getBadgeInfo(badge: any): { text: string; color: string } | null {
   return { text, color: "bg-[#E8456A]" };
 }
 
+function resolveColorSwatch(colorValue: string): string {
+  const val = String(colorValue || "").trim();
+  if (!val) return "#d1d5db";
+
+  const lower = val.toLowerCase();
+  const named: Record<string, string> = {
+    turquoise: "#40E0D0",
+    silver: "#B0B0B0",
+    gold: "#FFD700",
+    "rose gold": "#C9956C",
+    rosegold: "#C9956C",
+    pink: "#D94F7A",
+    red: "#E53935",
+    blue: "#1E88E5",
+    green: "#43A047",
+    black: "#212121",
+    white: "#FFFFFF",
+    yellow: "#FDD835",
+    orange: "#FB8C00",
+    purple: "#8E24AA",
+    brown: "#6D4C41",
+    beige: "#D7C5A0",
+    navy: "#1A237E",
+    grey: "#9E9E9E",
+    gray: "#9E9E9E",
+    copper: "#B87333",
+  };
+
+  if (lower.startsWith("#") || lower.startsWith("rgb") || lower.startsWith("hsl")) {
+    return val;
+  }
+
+  return named[lower] || val;
+}
+
 export default function WishlistPage() {
   const dispatch = useAppDispatch();
   const { items: savedItems, isLoading } = useAppSelector((state) => state.wishlist);
@@ -93,6 +129,9 @@ export default function WishlistPage() {
     show: boolean;
   }>({ title: "Added to cart!", message: "", show: false });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const isAddToCartToast =
+    (toast.title || "").toLowerCase().includes("added to cart") ||
+    (toast.message || "").toLowerCase().includes("added to cart");
 
   useEffect(() => {
     dispatch(fetchWishlist());
@@ -113,6 +152,20 @@ export default function WishlistPage() {
     return "";
   };
 
+  const hasServerCartSession =
+    hasUserSession();
+
+  const isAuthOrSessionError = (errorMessage: string) => {
+    const msg = (errorMessage || "").toLowerCase();
+    return (
+      msg.includes("user not found") ||
+      msg.includes("unauthorized") ||
+      msg.includes("invalid") ||
+      msg.includes("token") ||
+      msg.includes("session")
+    );
+  };
+
   // ── Add to cart + remove from wishlist using productId ──
   const handleAddToCart = useCallback(
     async (apiItem: any, productId: string) => {
@@ -123,12 +176,22 @@ export default function WishlistPage() {
         const quantity = apiItem.quantity || 1;
 
         // 1. Add to cart
-        if (user) {
+        if (hasServerCartSession) {
           await dispatch(
             reduxAddToCart({ productId, quantity, color, size })
           ).unwrap();
+          const localItem = {
+            ...item,
+            id: productId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
         } else {
-          const localItem = { ...item, id: productId };
+          const localItem = {
+            ...item,
+            id: productId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
           addToCart(localItem as any, quantity, color, size);
         }
 
@@ -140,6 +203,10 @@ export default function WishlistPage() {
           dispatch(removeLocalWishlistItem(productId));
         }
 
+        if (hasServerCartSession) {
+          await dispatch(fetchCart());
+        }
+
         triggerToast(`${item.name || item.title || "Item"} added to cart`);
       } catch (error: any) {
         // Fallback for stock/format issues
@@ -149,17 +216,20 @@ export default function WishlistPage() {
         const quantity = apiItem.quantity || 1;
         const errorMessage = typeof error === "string" ? error : error.message || "";
 
-        if (errorMessage.includes("stock") || errorMessage.includes("format") || productId === "7") {
-          const cartPayload = {
-            productId,
+        if (
+          errorMessage.includes("stock") ||
+          errorMessage.includes("format") ||
+          productId === "7" ||
+          isAuthOrSessionError(errorMessage)
+        ) {
+          const localItem = {
+            ...item,
+            id: productId,
             name: item.name || item.title || "Untitled Product",
             price: item.price || 0,
             image: getImageUrl(item.images?.[0] || item.image),
-            quantity,
-            color,
-            size,
           };
-          dispatch(addLocalCartItem(cartPayload));
+          addToCart(localItem as any, quantity, color, size);
           try {
             await dispatch(removeWishlistItem(productId)).unwrap();
           } catch {
@@ -171,7 +241,7 @@ export default function WishlistPage() {
         }
       }
     },
-    [addToCart, dispatch, triggerToast, user]
+    [addToCart, dispatch, triggerToast, hasServerCartSession]
   );
 
   // ── Bulk add selected items ──
@@ -190,12 +260,22 @@ export default function WishlistPage() {
         const size = wishlistItem.size || "";
         const quantity = wishlistItem.quantity || 1;
 
-        if (user) {
+        if (hasServerCartSession) {
           await dispatch(
             reduxAddToCart({ productId: pId, quantity, color, size })
           ).unwrap();
+          const localItem = {
+            ...item,
+            id: pId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
         } else {
-          const localItem = { ...item, id: pId };
+          const localItem = {
+            ...item,
+            id: pId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
           addToCart(localItem as any, quantity, color, size);
         }
 
@@ -210,17 +290,23 @@ export default function WishlistPage() {
         const item = wishlistItem.product || wishlistItem;
         const pId = wishlistItem.productId;
         const errorMessage = typeof error === "string" ? error : error.message || "";
-        if (errorMessage.includes("stock") || errorMessage.includes("format") || pId === "7") {
-          const cartPayload = {
-            productId: pId,
+        if (
+          errorMessage.includes("stock") ||
+          errorMessage.includes("format") ||
+          pId === "7" ||
+          isAuthOrSessionError(errorMessage)
+        ) {
+          const fallbackQuantity = wishlistItem.quantity || 1;
+          const fallbackColor = wishlistItem.color || "";
+          const fallbackSize = wishlistItem.size || "";
+          const localItem = {
+            ...item,
+            id: pId,
             name: item.name || item.title || "Untitled Product",
             price: item.price || 0,
             image: getImageUrl(item.images?.[0] || item.image),
-            quantity: wishlistItem.quantity || 1,
-            color: wishlistItem.color || "",
-            size: wishlistItem.size || "",
           };
-          dispatch(addLocalCartItem(cartPayload));
+          addToCart(localItem as any, fallbackQuantity, fallbackColor, fallbackSize);
           try {
             await dispatch(removeWishlistItem(pId)).unwrap();
           } catch {
@@ -232,6 +318,9 @@ export default function WishlistPage() {
     }
 
     if (count > 0) {
+      if (hasServerCartSession) {
+        await dispatch(fetchCart());
+      }
       triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart`);
       setSelectedIds([]);
       setTimeout(() => router.push("/bag"), 1000);
@@ -281,12 +370,22 @@ export default function WishlistPage() {
         const size = wishlistItem.size || "";
         const quantity = wishlistItem.quantity || 1;
 
-        if (user) {
+        if (hasServerCartSession) {
           await dispatch(
             reduxAddToCart({ productId: pId, quantity, color, size })
           ).unwrap();
+          const localItem = {
+            ...item,
+            id: pId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
         } else {
-          const localItem = { ...item, id: pId };
+          const localItem = {
+            ...item,
+            id: pId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
           addToCart(localItem as any, quantity, color, size);
         }
         count++;
@@ -294,23 +393,32 @@ export default function WishlistPage() {
         const item = wishlistItem.product || wishlistItem;
         const pId = wishlistItem.productId;
         const errorMessage = typeof error === "string" ? error : error.message || "";
-        if (errorMessage.includes("stock") || errorMessage.includes("format") || pId === "7") {
-          const cartPayload = {
-            productId: pId,
+        if (
+          errorMessage.includes("stock") ||
+          errorMessage.includes("format") ||
+          pId === "7" ||
+          isAuthOrSessionError(errorMessage)
+        ) {
+          const fallbackQuantity = wishlistItem.quantity || 1;
+          const fallbackColor = wishlistItem.color || "";
+          const fallbackSize = wishlistItem.size || "";
+          const localItem = {
+            ...item,
+            id: pId,
             name: item.name || item.title || "Untitled Product",
             price: item.price || 0,
             image: getImageUrl(item.images?.[0] || item.image),
-            quantity: wishlistItem.quantity || 1,
-            color: wishlistItem.color || "",
-            size: wishlistItem.size || "",
           };
-          dispatch(addLocalCartItem(cartPayload));
+          addToCart(localItem as any, fallbackQuantity, fallbackColor, fallbackSize);
           count++;
         }
       }
     }
 
     if (count > 0) {
+      if (hasServerCartSession) {
+        await dispatch(fetchCart());
+      }
       try {
         await dispatch(clearWishlist()).unwrap();
       } catch {
@@ -359,11 +467,21 @@ export default function WishlistPage() {
         }`}
       >
         <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-[200px] max-w-[88vw]">
-          <div className="bg-[#E8456A] w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0">
+          <div
+            className={`${
+              isAddToCartToast ? "bg-emerald-500" : "bg-[#E8456A]"
+            } w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0`}
+          >
             <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">{toast.title}</p>
+            <p
+              className={`text-sm font-bold leading-none mb-0.5 ${
+                isAddToCartToast ? "text-emerald-700" : "text-gray-900"
+              }`}
+            >
+              {toast.title}
+            </p>
             <p className="text-xs text-gray-400 truncate">{toast.message}</p>
           </div>
           <button
@@ -627,6 +745,11 @@ export default function WishlistPage() {
                             <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-bold">
                               Color:
                             </span>
+                            <span
+                              className="w-3 h-3 rounded-full border border-gray-300 shadow-sm"
+                              style={{ backgroundColor: resolveColorSwatch(itemColor) }}
+                              aria-label={`${itemColor} color`}
+                            />
                             <span className="text-[10px] sm:text-xs font-bold text-gray-700 capitalize">
                               {itemColor}
                             </span>

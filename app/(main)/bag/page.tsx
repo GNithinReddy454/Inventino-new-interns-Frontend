@@ -17,9 +17,10 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { addWishlistItem, addLocalWishlistItem } from "@/redux/wishlistslice";
-import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode, removeLocalCartItem } from "@/redux/cartslice";
+import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode, removeLocalCartItem, updateLocalCartItemQuantity } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { useAuth } from "@/app/(main)/components/authContext";
+import { hasUserSession } from "@/lib/session";
 
 interface CartItem {
   productId: string;
@@ -74,7 +75,12 @@ export default function BagPage() {
     productId: String(item.id),
     name: item.name || item.title || "Untitled Product",
     price: item.price || 0,
-    image: getImageUrl(item.image),
+    image: getImageUrl(
+      item.image ||
+        item.images?.[0] ||
+        item.product?.images?.[0] ||
+        item.product?.image
+    ),
     quantity: item.quantity || 1,
     originalPrice: item.originalPrice,
     color: item.color,
@@ -109,6 +115,71 @@ export default function BagPage() {
     [],
   );
 
+  const isAuthOrSessionError = (errorMessage: string) => {
+    const msg = (errorMessage || "").toLowerCase();
+    return (
+      msg.includes("user not found") ||
+      msg.includes("unauthorized") ||
+      msg.includes("invalid") ||
+      msg.includes("token") ||
+      msg.includes("session")
+    );
+  };
+
+  const handleQuantityChange = async (item: CartItem, nextQuantity: number) => {
+    const productId = String(item.productId || (item as any)._id || (item as any).id);
+    const color = item.color || "";
+    const size = item.size || "";
+    const requestedQuantity = Number(nextQuantity);
+
+    // If quantity goes to 0 (or below), remove the item from cart.
+    if (requestedQuantity <= 0) {
+      if (!user) {
+        removeLocalCart((item as any).id || productId);
+        dispatch(removeLocalCartItem(productId));
+        return;
+      }
+
+      try {
+        await dispatch(
+          removeFromCart({ productId, color, size })
+        ).unwrap();
+      } catch {
+        dispatch(removeLocalCartItem(productId));
+      }
+
+      removeLocalCart((item as any).id || productId);
+      return;
+    }
+
+    const safeQuantity = Math.max(1, requestedQuantity);
+
+    if (!user) {
+      updateLocalQuantity(item.productId as unknown as number, safeQuantity);
+      return;
+    }
+
+    try {
+      await dispatch(
+        updateCartQuantity({
+          productId,
+          quantity: safeQuantity,
+          color,
+          size,
+        })
+      ).unwrap();
+      updateLocalQuantity(item.productId as unknown as number, safeQuantity);
+    } catch (error: any) {
+      const errorMessage = typeof error === "string" ? error : error?.message || "";
+      if (isAuthOrSessionError(errorMessage)) {
+        updateLocalQuantity(item.productId as unknown as number, safeQuantity);
+        dispatch(updateLocalCartItemQuantity({ productId, quantity: safeQuantity, color, size }));
+      } else {
+        triggerToast("Failed to update quantity", "Error");
+      }
+    }
+  };
+
   const handleAction = (item: CartItem, type: "wishlist" | "remove") => {
     setAnimatingItem({ id: item.productId, type });
     setTimeout(async () => {
@@ -120,7 +191,18 @@ export default function BagPage() {
           );
           if (!exists) {
             if (user) {
-              await dispatch(addWishlistItem({ productId: itemId })).unwrap();
+              await dispatch(
+                addWishlistItem({
+                  productId: itemId,
+                  name: item.name || "",
+                  price: Number(item.price || 0),
+                  image: item.image || "",
+                  category: (item as any).category || "",
+                  color: item.color || null,
+                  size: item.size || null,
+                  quantity: item.quantity || 1,
+                })
+              ).unwrap();
             } else {
               // Now passing full item object for better guest experience
               dispatch(addWishlistItem(item));
@@ -134,12 +216,17 @@ export default function BagPage() {
         if (user) {
           // Robust ID check for backend removal
           const removeId = String(item.productId || (item as any).id || (item as any)._id);
+          const removeColor = item.color || "";
+          const removeSize = item.size || "";
           try {
-            await dispatch(removeFromCart(removeId)).unwrap();
+            await dispatch(
+              removeFromCart({ productId: removeId, color: removeColor, size: removeSize })
+            ).unwrap();
           } catch (e) {
             // Fallback for mock/invalid IDs that the server rejects
             dispatch(removeLocalCartItem(removeId));
           }
+          removeLocalCart((item as any).id || removeId);
         } else {
           // Robust ID check for local removal
           const removeId = String((item as any).id || item.productId || (item as any)._id);
@@ -154,18 +241,26 @@ export default function BagPage() {
           dispatch(addLocalWishlistItem({ _id: removeId, product: item, quantity: 1 }));
           triggerToast(`${item.name} moved to wishlist`, "Saved!");
           if (user) {
+            const removeColor = item.color || "";
+            const removeSize = item.size || "";
             try { 
-              await dispatch(removeFromCart(removeId)).unwrap(); 
+              await dispatch(
+                removeFromCart({ productId: removeId, color: removeColor, size: removeSize })
+              ).unwrap(); 
             } catch (e) {
               dispatch(removeLocalCartItem(removeId));
             }
+            removeLocalCart((item as any).id || removeId);
           } else {
             removeLocalCart((item as any).id || removeId);
           }
         } else {
           // FORCE removal even on failure to avoid "stuck" items in UI
           if (type === "remove") {
-             if (user) dispatch(removeLocalCartItem(removeId));
+             if (user) {
+               dispatch(removeLocalCartItem(removeId));
+               removeLocalCart((item as any).id || removeId);
+             }
              else removeLocalCart((item as any).id || removeId);
              triggerToast(`${item.name} removed from cart`, "Removed!");
           } else {
@@ -209,7 +304,18 @@ export default function BagPage() {
         if (!exists) {
           try {
             if (user) {
-              await dispatch(addWishlistItem({ productId: itemId })).unwrap();
+              await dispatch(
+                addWishlistItem({
+                  productId: itemId,
+                  name: item.name || "",
+                  price: Number(item.price || 0),
+                  image: item.image || "",
+                  category: (item as any).category || "",
+                  color: item.color || null,
+                  size: item.size || null,
+                  quantity: item.quantity || 1,
+                })
+              ).unwrap();
             } else {
               // Pass full item object
               dispatch(addWishlistItem(item));
@@ -484,15 +590,8 @@ export default function BagPage() {
                           <div className="flex items-center bg-[#FFF1F2] rounded-full p-0.5 border border-pink-50 shadow-sm h-9 md:h-10 w-fit">
                             <button
                               onClick={() => {
-                                const newQ = Math.max(1, (item.quantity || 1) - 1);
-                                if (user) {
-                                  dispatch(updateCartQuantity({
-                                    productId: item.productId,
-                                    quantity: newQ,
-                                  }))
-                                } else {
-                                  updateLocalQuantity(item.productId as unknown as number, newQ);
-                                }
+                                const newQ = (item.quantity || 1) - 1;
+                                handleQuantityChange(item, newQ);
                               }}
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                               aria-label="Decrease quantity"
@@ -505,14 +604,7 @@ export default function BagPage() {
                             <button
                               onClick={() => {
                                 const newQ = (item.quantity || 1) + 1;
-                                if (user) {
-                                  dispatch(updateCartQuantity({
-                                    productId: item.productId,
-                                    quantity: newQ,
-                                  }))
-                                } else {
-                                  updateLocalQuantity(item.productId as unknown as number, newQ);
-                                }
+                                handleQuantityChange(item, newQ);
                               }}
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                               aria-label="Increase quantity"
@@ -627,9 +719,7 @@ export default function BagPage() {
             <div className="mb-3">
               <button
                 onClick={() => {
-                  const rawUser = localStorage.getItem("inventino_user");
-                  const token = localStorage.getItem("token");
-                  if (rawUser && token) {
+                  if (hasUserSession()) {
                     router.push("/checkout");
                   } else {
                     router.push("/login?redirect=/checkout");
