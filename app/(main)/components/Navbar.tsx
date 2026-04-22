@@ -27,7 +27,7 @@ interface SearchProduct {
   id: string;
   name: string;
   category: string;
-  price: number;
+  price?: number;
   image: string;
 }
 
@@ -72,6 +72,7 @@ const Navbar = () => {
 
   // ── Notifications state ───────────────────────────────────────────────────
   const [showNotifications, setShowNotifications] = useState(false);
+  const [hasPersistedUserSession, setHasPersistedUserSession] = useState(false);
   const notifBtnRef = useRef<HTMLButtonElement>(null);
   const { unreadCount, refetch: refetchCount } = useNotificationCount();
 
@@ -80,6 +81,34 @@ const Navbar = () => {
       dispatch(fetchCart());
     }
   }, [dispatch, hasServerCartSession]);
+
+  useEffect(() => {
+    const syncPersistedSession = () => {
+      if (typeof window === "undefined") {
+        setHasPersistedUserSession(false);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("token");
+        const rawUser = localStorage.getItem("inventino_user");
+        if (!token || !rawUser) {
+          setHasPersistedUserSession(false);
+          return;
+        }
+
+        const parsedUser = JSON.parse(rawUser);
+        const isAdminSession = Array.isArray(parsedUser?.permissions);
+        setHasPersistedUserSession(!isAdminSession);
+      } catch {
+        setHasPersistedUserSession(false);
+      }
+    };
+
+    syncPersistedSession();
+    window.addEventListener("storage", syncPersistedSession);
+    return () => window.removeEventListener("storage", syncPersistedSession);
+  }, [user]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -95,10 +124,10 @@ const Navbar = () => {
             const items = response.data.data.items || [];
             const mapped = items.map((p: any) => ({
               id: p._id,
-              name: p.name,
-              category: p.category,
-              price: p.price,
-              image: p.images?.[0]?.url || "",
+              name: p.name || p.productName || "Untitled Product",
+              category: p.category || "",
+              price: Number(p.price ?? p.pricing?.price ?? 0),
+              image: p.images?.[0]?.url || p.media?.mainImage || p.imageUrl || "",
             }));
             setSearchResults(mapped);
           })
@@ -184,6 +213,8 @@ const Navbar = () => {
 
   const iconCircleStyle =
     "w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white text-gray-800 shadow-sm border border-pink-50 hover:text-pink-500 transition-all relative";
+
+  const shouldShowNotificationBell = Boolean(user) || hasPersistedUserSession;
 
   const navbarTop = announcementHeight - scrollProgress * announcementHeight;
   const spacerHeight = navbarHeight + announcementHeight * (1 - scrollProgress);
@@ -291,7 +322,7 @@ const Navbar = () => {
                             </span>
                           </div>
                           <span className="text-sm font-black text-[#E8456A] shrink-0">
-                            ₹{p.price.toFixed(2)}
+                            ₹{Number(p.price ?? 0).toFixed(2)}
                           </span>
                         </Link>
                       ))}
@@ -350,7 +381,7 @@ const Navbar = () => {
               </Link>
 
               {/* ── Bell icon — only for logged-in users ── */}
-              {user && (
+              {shouldShowNotificationBell && (
                 <div className="relative">
                   <button
                     ref={notifBtnRef}

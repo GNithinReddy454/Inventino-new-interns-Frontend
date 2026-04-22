@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import ClientOnly from "./ClientOnly";
 import ProductCard from "./ProductCard";
+import { productService } from "@/services/product.service";
 
 interface ProductImage {
   id?: string;
@@ -108,15 +109,9 @@ export default function FeaturedCollection() {
       try {
         setLoading(true);
 
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/products?category=all`
-        );
-
-        if (!res.ok) throw new Error("Failed to fetch featured products");
-
-        const data = await res.json();
-        const allProducts: Product[] = Array.isArray(data?.data?.items)
-          ? data.data.items
+        const response = await productService.getFeatured(1, 8);
+        const allProducts: Product[] = Array.isArray(response?.data?.data?.items)
+          ? response.data.data.items
           : [];
 
         const activeProducts = allProducts.filter(
@@ -219,7 +214,7 @@ export default function FeaturedCollection() {
                 {products.map((product, index) => (
                   <div
                     key={product._id || product.productId || index}
-                    className="flex-shrink-0 w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
+                    className="shrink-0 w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
                   >
                     <ProductCard product={normalizeProduct(product)} />
                   </div>

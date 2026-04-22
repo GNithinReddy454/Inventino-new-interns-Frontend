@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import ClientOnly from "./ClientOnly";
 import ProductCard from "./ProductCard";
+import { productService } from "@/services/product.service";
 
 interface ProductImage {
   id?: string;
@@ -108,15 +109,9 @@ export default function BestSellers() {
       try {
         setLoading(true);
 
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/products?category=all`
-        );
-
-        if (!res.ok) throw new Error("Failed to fetch best sellers");
-
-        const data = await res.json();
-        const allProducts: Product[] = Array.isArray(data?.data?.items)
-          ? data.data.items
+        const response = await productService.getBestSellers(1, 8);
+        const allProducts: Product[] = Array.isArray(response?.data?.data?.items)
+          ? response.data.data.items
           : [];
 
         const activeProducts = allProducts.filter(
@@ -124,9 +119,6 @@ export default function BestSellers() {
         );
 
         const bestSellers = activeProducts.filter((p) => p.bestSeller === true);
-
-        console.log("Fetched products:", allProducts);
-        console.log("Best sellers log:", bestSellers);
 
         setProducts(bestSellers.length > 0 ? bestSellers : activeProducts.slice(0, 8));
       } catch (err: any) {
@@ -138,8 +130,6 @@ export default function BestSellers() {
 
     fetchBestSellers();
   }, []);
-
-  console.log("Best sellers:", products);
 
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current || !scrollRef.current.children.length) return;

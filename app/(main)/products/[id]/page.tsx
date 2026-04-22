@@ -236,20 +236,43 @@ const calculateDiscount = (original: number | null, current: number): number | n
 
 const getImageUrl = (img?: ImageType): string => {
   if (!img) return "";
-  const url = typeof img === "string" ? img : img.url || "";
-  if (!url || url.includes("undefined") || url.trim() === "") return "";
-  
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
-  // Check for common URL prefixes that should not be prepended with BASE_URL
-  const isAbsolute = url.startsWith("http") || url.startsWith("https") || url.startsWith("data:") || url.startsWith("blob:");
-  
-  return isAbsolute ? url : `${BASE_URL}${url}`;
+
+  const rawUrl =
+    typeof img === "string"
+      ? img
+      : img && typeof img === "object" && typeof img.url === "string"
+      ? img.url
+      : "";
+
+  const normalizedUrl = rawUrl.trim().replace(/amazonawscom/gi, "amazonaws.com");
+  if (!normalizedUrl || normalizedUrl.includes("undefined")) return "";
+
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "")
+    .replace("/api", "")
+    .replace(/\/+$/, "");
+
+  const isAbsolute =
+    normalizedUrl.startsWith("http://") ||
+    normalizedUrl.startsWith("https://") ||
+    normalizedUrl.startsWith("data:") ||
+    normalizedUrl.startsWith("blob:");
+
+  if (isAbsolute) return normalizedUrl;
+
+  const relativePath = normalizedUrl.startsWith("/")
+    ? normalizedUrl
+    : `/${normalizedUrl}`;
+
+  return baseUrl ? `${baseUrl}${relativePath}` : relativePath;
 };
 
 const normalizeImages = (images?: ImageType[]): string[] => {
   const urls = (images ?? []).map(getImageUrl).filter(Boolean);
   return urls.length > 0 ? urls : [FALLBACK_IMAGE];
 };
+
+const isAbsoluteRemoteUrl = (url: string): boolean =>
+  url.startsWith("http://") || url.startsWith("https://");
 
 // ============================================================================
 // MAIN COMPONENT
@@ -300,6 +323,7 @@ export default function ProductDetailsPage() {
   const hasFetchedStory = useRef(false);
   const hasFetchedSimilar = useRef(false);
   const hasFetchedProduct = useRef(false);
+  const activeImagesLengthRef = useRef(0);
 
   const hasFetchedReviews = useRef(false);
 
@@ -545,6 +569,14 @@ export default function ProductDetailsPage() {
   }, [selectedColor]);
 
   useEffect(() => {
+    activeImagesLengthRef.current = activeImages.length;
+    setSelectedImage((prev) => {
+      if (activeImages.length === 0) return 0;
+      return Math.min(prev, activeImages.length - 1);
+    });
+  }, [activeImages.length]);
+
+  useEffect(() => {
     if (!product || variants.length === 0) return;
 
     const currentColor = hasColorVariants
@@ -568,16 +600,33 @@ export default function ProductDetailsPage() {
 
   useEffect(() => {
     const container = mainImageScrollRef.current;
-    if (!container) return;
+    if (!container || loading) return;
 
-    const handleScroll = () => {
+    const syncSelectedFromScroll = () => {
       if (window.innerWidth >= 768) return;
-      setSelectedImage(Math.round(container.scrollLeft / container.offsetWidth));
+
+      const imageCount = activeImagesLengthRef.current;
+      if (imageCount === 0) return;
+
+      const width = container.clientWidth || 1;
+      const rawIndex = container.scrollLeft / width;
+      const nextIndex = Math.max(
+        0,
+        Math.min(imageCount - 1, Math.round(rawIndex))
+      );
+
+      setSelectedImage((prev) => (prev === nextIndex ? prev : nextIndex));
     };
 
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, []);
+    syncSelectedFromScroll();
+    container.addEventListener("scroll", syncSelectedFromScroll, { passive: true });
+    window.addEventListener("resize", syncSelectedFromScroll);
+
+    return () => {
+      container.removeEventListener("scroll", syncSelectedFromScroll);
+      window.removeEventListener("resize", syncSelectedFromScroll);
+    };
+  }, [loading]);
 
   const fetchSimilarProducts = useCallback(async (id: string) => {
     if (!id || hasFetchedSimilar.current) return;
@@ -826,7 +875,13 @@ export default function ProductDetailsPage() {
           data.price ??
           (priceMatrix.length > 0 ? priceMatrix[0].price : firstVariantPrice ?? 0);
 
-        const mainImage = data.media?.mainImage || getImageUrl(data.images?.[0]) || FALLBACK_IMAGE;
+        const mainImage =
+          getImageUrl(data.media?.mainImage ?? undefined) ||
+          getImageUrl((data as any).media?.imageUrl) ||
+          getImageUrl(data.mainImage) ||
+          getImageUrl(data.imageUrl) ||
+          getImageUrl(data.images?.[0]) ||
+          FALLBACK_IMAGE;
         const gallery = data.media?.galleryImages?.map((img: any) => getImageUrl(img)).filter(Boolean) || data.images?.map((img: any) => getImageUrl(img)).filter(Boolean) || [];
 
         setProduct({
@@ -1336,6 +1391,7 @@ export default function ProductDetailsPage() {
                         alt={`${product.name} - Image ${idx + 1}`}
                         width={800}
                         height={800}
+                        unoptimized={isAbsoluteRemoteUrl(img)}
                         priority={idx === 0}
                         loading={idx === 0 ? "eager" : "lazy"}
                       />
@@ -1376,6 +1432,7 @@ export default function ProductDetailsPage() {
                     alt={`Thumbnail ${idx + 1}`}
                     width={96}
                     height={96}
+                    unoptimized={isAbsoluteRemoteUrl(img)}
                     loading="lazy"
                   />
                 </button>

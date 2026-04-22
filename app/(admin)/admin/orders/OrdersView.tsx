@@ -71,26 +71,32 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
         fetchData();
     }, [currentPage, pageSize, debouncedSearch, statusFilter, dateFilter, sort]);
 
+    const getDateRangeForFilter = (filter: string) => {
+        let from: string | undefined;
+        let to: string | undefined;
+        const now = new Date();
+
+        if (filter === "Today") {
+            from = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+            to = new Date(new Date().setHours(23, 59, 59, 999)).toISOString();
+        } else if (filter === "Last 7 Days") {
+            const d = new Date();
+            d.setDate(now.getDate() - 7);
+            from = d.toISOString();
+        } else if (filter === "Last 30 Days") {
+            const d = new Date();
+            d.setDate(now.getDate() - 30);
+            from = d.toISOString();
+        }
+
+        return { from, to };
+    };
+
     const fetchData = async () => {
         setIsLoading(true);
 
         try {
-            let from: string | undefined;
-            let to: string | undefined;
-            const now = new Date();
-
-            if (dateFilter === "Today") {
-                from = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-                to = new Date(new Date().setHours(23, 59, 59, 999)).toISOString();
-            } else if (dateFilter === "Last 7 Days") {
-                const d = new Date();
-                d.setDate(now.getDate() - 7);
-                from = d.toISOString();
-            } else if (dateFilter === "Last 30 Days") {
-                const d = new Date();
-                d.setDate(now.getDate() - 30);
-                from = d.toISOString();
-            }
+            const { from, to } = getDateRangeForFilter(dateFilter);
 
             const [ordersRes, statsRes] = await Promise.all([
                 getAdminOrders({
@@ -134,12 +140,16 @@ export default function OrdersView({ onViewOrder }: OrdersViewProps) {
 
         try {
             setIsExporting(true);
+            const { from, to } = getDateRangeForFilter(dateFilter);
+
             const blob = await exportAdminOrders({
                 search: debouncedSearch || undefined,
                 status:
                     statusFilter !== "All Status"
                         ? statusFilter.toLowerCase()
                         : undefined,
+                from,
+                to,
             });
 
             if (!blob) {
