@@ -108,7 +108,7 @@ export default function OrderDetailView({
             setIsUpdatingStatus(true);
             const updated = await updateOrderStatus(resolvedOrderId, pendingStatus);
 
-            if (!updated) {
+            if (!updated || typeof updated !== "object") {
                 throw new Error("Status update response invalid");
             }
 
@@ -160,7 +160,7 @@ export default function OrderDetailView({
             setIsUpdatingTracking(true);
             const updated = await updateOrderTracking(resolvedOrderId, tracking);
 
-            if (!updated) {
+            if (!updated || typeof updated !== "object") {
                 throw new Error("Tracking update response invalid");
             }
 
@@ -192,7 +192,7 @@ export default function OrderDetailView({
             setIsCancelling(true);
             const cancelled = await cancelOrder(resolvedOrderId, "Cancelled by admin");
 
-            if (!cancelled) {
+            if (!cancelled || typeof cancelled !== "object") {
                 throw new Error("Cancel response invalid");
             }
 

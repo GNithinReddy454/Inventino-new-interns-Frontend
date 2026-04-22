@@ -40,14 +40,14 @@ export interface AdminOrderDetail {
     allowedNextStatuses?: string[];
     trackingNumber?: string;
 
-    trackingUpdates: {
+    trackingUpdates?: {
         status: string;
         timestamp: string;
         location?: string;
         note?: string;
     }[];
 
-    notes: {
+    notes?: {
         author?: string;
         text: string;
         timestamp: string;
@@ -95,12 +95,72 @@ const toNumber = (value: any, fallback = 0): number => {
     return Number.isFinite(num) ? num : fallback;
 };
 
+const VALID_ORDER_STATUSES = new Set([
+    "created",
+    "confirmed",
+    "packed",
+    "shipped",
+    "delivered",
+    "cancelled",
+    "returned",
+    "payment_failed",
+    "partially_cancelled",
+]);
+
+const VALID_SORT_FIELDS = new Set([
+    "createdAt",
+    "updatedAt",
+    "orderNumber",
+    "status",
+    "trackingNumber",
+]);
+
+const normalizeListOrderParams = (params?: any) => {
+    const rawPage = toNumber(params?.page, 1);
+    const rawLimit = toNumber(params?.limit, 10);
+    const page = Math.max(1, Math.trunc(rawPage));
+    // Keep limits reasonable to avoid accidental heavy requests from UI.
+    const limit = Math.min(100, Math.max(1, Math.trunc(rawLimit)));
+
+    const search =
+        typeof params?.search === "string" && params.search.trim()
+            ? params.search.trim()
+            : undefined;
+
+    const statusRaw =
+        typeof params?.status === "string" ? params.status.toLowerCase().trim() : "";
+    const status = VALID_ORDER_STATUSES.has(statusRaw) ? statusRaw : undefined;
+
+    const sortByRaw =
+        typeof params?.sortBy === "string" ? params.sortBy.trim() : "createdAt";
+    const sortBy = VALID_SORT_FIELDS.has(sortByRaw) ? sortByRaw : "createdAt";
+
+    const sortOrder = params?.sortOrder === "asc" ? "asc" : "desc";
+
+    const from = typeof params?.from === "string" ? params.from : undefined;
+    const to = typeof params?.to === "string" ? params.to : undefined;
+
+    return {
+        page,
+        limit,
+        search,
+        status,
+        from,
+        to,
+        sortBy,
+        sortOrder,
+    };
+};
+
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
 // GET ORDERS LIST
 export const getAdminOrders = (params?: any) =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<any>("/admin/orders-manage", { params });
+        const normalizedParams = normalizeListOrderParams(params);
+        const res = await apiMethods.get<any>("/admin/orders-manage", {
+            params: normalizedParams,
+        });
 
         const listData = unwrapApiData<any[]>(res);
         const list: any[] = Array.isArray(listData) ? listData : [];
@@ -151,12 +211,13 @@ export const getAdminOrders = (params?: any) =>
                 };
             }),
             total: toNumber(res?.total, list.length),
-            page: toNumber(res?.page, params?.page ?? 1),
-            limit: toNumber(res?.limit, params?.limit ?? 10),
+            page: toNumber(res?.page, normalizedParams.page),
+            limit: toNumber(res?.limit, normalizedParams.limit),
             totalPages:
                 toNumber(res?.totalPages, 0) ||
                 Math.ceil(
-                    toNumber(res?.total, list.length) / Math.max(toNumber(res?.limit, params?.limit ?? 10), 1)
+                    toNumber(res?.total, list.length) /
+                        Math.max(toNumber(res?.limit, normalizedParams.limit), 1)
                 ),
         };
     });
@@ -276,9 +337,23 @@ export const downloadOrderInvoice = (id: string) =>
 // EXPORT ORDERS
 export const exportAdminOrders = (filters: any) =>
     gracefulFetch(async () => {
+        const payload = {
+            search:
+                typeof filters?.search === "string" && filters.search.trim()
+                    ? filters.search.trim()
+                    : undefined,
+            status:
+                typeof filters?.status === "string" &&
+                VALID_ORDER_STATUSES.has(filters.status.toLowerCase().trim())
+                    ? filters.status.toLowerCase().trim()
+                    : undefined,
+            from: typeof filters?.from === "string" ? filters.from : undefined,
+            to: typeof filters?.to === "string" ? filters.to : undefined,
+        };
+
         const res = await apiMethods.post(
             "/admin/orders-manage/export",
-            filters,
+            payload,
             { responseType: "blob" }
         );
         return res as Blob;
@@ -287,7 +362,9 @@ export const exportAdminOrders = (filters: any) =>
 export const getAdminOrderStats = () =>
     gracefulFetch(async () => {
         const direct = await gracefulFetch(async () => {
-            const res = await apiMethods.get<any>("/admin/orders-manage/stats");
+            const res = await apiMethods.get<any>("/admin/orders-manage/stats", {
+                timeout: 5000,
+            });
             return (res?.data ?? res) as any;
         });
 

@@ -21,11 +21,24 @@ interface ProductStory {
   productName: string;
 }
 
+interface StoryCard {
+  id: number;
+  artisan: string;
+  role: string;
+  title: string;
+  description: string;
+  quote: string;
+  process: string;
+  image: string;
+  thumbnail: string;
+  productId: string;
+}
+
 // You need to replace these with ACTUAL product IDs from your database
 // These should be either:
 // 1. The custom productId (like "PRD-001") - RECOMMENDED
 // 2. Or actual MongoDB _id that exist in your database
-const MOCK_STORIES = [
+const MOCK_STORIES: StoryCard[] = [
   {
     id: 1,
     artisan: "Sarah Anderson",
@@ -173,6 +186,44 @@ interface SimilarProduct {
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400";
 
+function resolveStoryImage(product: any): string {
+  return (
+    product?.storyMedia ||
+    product?.media?.mainImage ||
+    product?.mainImage ||
+    product?.imageUrl ||
+    product?.images?.[0]?.url ||
+    FALLBACK_IMAGE
+  );
+}
+
+function mapApiStories(items: any[]): StoryCard[] {
+  return items
+    .map((item, index) => {
+      const storyTitle =
+        item?.story?.title || item?.productName || item?.name || `Story ${index + 1}`;
+      const storyContent =
+        item?.story?.content || item?.story || item?.description || "";
+      const productId = String(item?.productId || item?._id || "");
+
+      if (!productId) return null;
+
+      return {
+        id: index + 1,
+        artisan: item?.story?.author || item?.story?.artisan || item?.productName || "Inventino Artisan",
+        role: item?.story?.role || "Featured Story",
+        title: storyTitle,
+        description: storyContent || storyTitle,
+        quote: item?.story?.quote || storyContent || storyTitle,
+        process: item?.story?.process || item?.description || storyContent || storyTitle,
+        image: resolveStoryImage(item),
+        thumbnail: resolveStoryImage(item),
+        productId,
+      } satisfies StoryCard;
+    })
+    .filter(Boolean) as StoryCard[];
+}
+
 function ProcessStepCard({ step }: { step: typeof PROCESS_STEPS[0] }) {
   return (
     <div className="bg-white rounded-2xl p-6 md:p-8 border border-pink-100 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-pink-100/60 hover:border-pink-200 hover:-translate-y-1">
@@ -186,6 +237,7 @@ function ProcessStepCard({ step }: { step: typeof PROCESS_STEPS[0] }) {
 }
 
 export default function StoriesPage() {
+  const [stories, setStories] = useState<StoryCard[]>(MOCK_STORIES);
   const [activeStoryId, setActiveStoryId] = useState(MOCK_STORIES[0].id);
   const [toastMessage, setToastMessage] = useState("");
   const [toastTitle, setToastTitle] = useState("Added to Cart");
@@ -204,10 +256,10 @@ export default function StoriesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const similarScrollRef = useRef<HTMLDivElement>(null);
 
-  const activeStory = MOCK_STORIES.find(s => s.id === activeStoryId)!;
-  const activeIndex = MOCK_STORIES.findIndex(s => s.id === activeStoryId);
+  const activeStory = stories.find(s => s.id === activeStoryId) ?? stories[0] ?? MOCK_STORIES[0];
+  const activeIndex = stories.findIndex(s => s.id === activeStoryId);
   const isFirst = activeIndex === 0;
-  const isLast = activeIndex === MOCK_STORIES.length - 1;
+  const isLast = activeIndex === stories.length - 1;
 
   // ─── Scroll active circle into view ────────────────────────────────────────
   const scrollActiveCircleIntoView = (storyId: number) => {
@@ -248,6 +300,26 @@ export default function StoriesPage() {
       setStoryData(null);
     } finally {
       setStoryLoading(false);
+    }
+  };
+
+  const fetchStoriesList = async () => {
+    try {
+      const response = await productService.getStories(1, 12);
+      const items = response?.data?.data?.items;
+
+      if (Array.isArray(items) && items.length > 0) {
+        const mappedStories = mapApiStories(items);
+        if (mappedStories.length > 0) {
+          setStories(mappedStories);
+          setActiveStoryId((currentId) => {
+            const currentExists = mappedStories.some((story) => story.id === currentId);
+            return currentExists ? currentId : mappedStories[0].id;
+          });
+        }
+      }
+    } catch (error) {
+      console.error("[Stories] list fetch failed:", error);
     }
   };
 
@@ -297,6 +369,10 @@ export default function StoriesPage() {
 
   // Fetch story and similar products when active story changes
   useEffect(() => {
+    fetchStoriesList();
+  }, []);
+
+  useEffect(() => {
     if (activeStory?.productId) {
       fetchStoryData(activeStory.productId);
       fetchSimilarProducts(activeStory.productId);
@@ -321,14 +397,14 @@ export default function StoriesPage() {
   };
 
   const handlePrev = () => {
-    const prevIndex = (activeIndex - 1 + MOCK_STORIES.length) % MOCK_STORIES.length;
-    setActiveStoryId(MOCK_STORIES[prevIndex].id);
+    const prevIndex = (activeIndex - 1 + stories.length) % stories.length;
+    setActiveStoryId(stories[prevIndex].id);
     scrollCirclesBy("prev");
   };
 
   const handleNext = () => {
-    const nextIndex = (activeIndex + 1) % MOCK_STORIES.length;
-    setActiveStoryId(MOCK_STORIES[nextIndex].id);
+    const nextIndex = (activeIndex + 1) % stories.length;
+    setActiveStoryId(stories[nextIndex].id);
     scrollCirclesBy("next");
   };
 
@@ -380,7 +456,7 @@ export default function StoriesPage() {
                 <button
                   onClick={handlePrev}
                   disabled={isFirst}
-                  className="flex-shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#E8456A]"
+                  className="shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#E8456A]"
                 >
                   <ChevronLeft size={16} strokeWidth={3} />
                 </button>
@@ -391,17 +467,17 @@ export default function StoriesPage() {
                   className="flex gap-2 sm:gap-3 overflow-x-auto py-3 px-2 no-scrollbar"
                   style={{ scrollBehavior: "smooth" }}
                 >
-                  {MOCK_STORIES.map((story) => {
+                  {stories.map((story) => {
                     const isActive = activeStoryId === story.id;
                     return (
                       <button
                         key={story.id}
                         data-story-id={story.id}
                         onClick={() => setActiveStoryId(story.id)}
-                        className="relative flex-shrink-0 hover:-translate-y-1 transition-transform snap-start"
+                        className="relative shrink-0 hover:-translate-y-1 transition-transform snap-start"
                       >
                         <div
-                          className="w-[56px] h-[56px] sm:w-[66px] sm:h-[66px] md:w-[72px] md:h-[72px] rounded-full flex items-center justify-center transition-all duration-300"
+                          className="w-14 h-14 sm:w-16.5 sm:h-16.5 md:w-18 md:h-18 rounded-full flex items-center justify-center transition-all duration-300"
                           style={{
                             padding: isActive ? "3px" : "0px",
                             background: isActive
@@ -412,7 +488,7 @@ export default function StoriesPage() {
                               : "none",
                           }}
                         >
-                          <div className="w-full h-full rounded-full bg-white p-[2px]">
+                          <div className="w-full h-full rounded-full bg-white p-0.5">
                             <img
                               src={story.thumbnail}
                               alt={story.artisan}
@@ -422,7 +498,7 @@ export default function StoriesPage() {
                         </div>
                         {/* Badge: pink when active, gray when not */}
                         <div
-                          className="absolute -top-1 -right-1 w-[18px] h-[18px] sm:w-[20px] sm:h-[20px] text-white text-[9px] sm:text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-md"
+                          className="absolute -top-1 -right-1 w-4.5 h-4.5 sm:w-5 sm:h-5 text-white text-[9px] sm:text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-md"
                           style={{ background: isActive ? "#E8456A" : "#9ca3af" }}
                         >
                           {story.id}
@@ -436,7 +512,7 @@ export default function StoriesPage() {
                 <button
                   onClick={handleNext}
                   disabled={isLast}
-                  className="flex-shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#E8456A]"
+                  className="shrink-0 w-8 h-8 rounded-full bg-[#E8456A] text-white flex items-center justify-center shadow-md hover:bg-[#c73a5a] transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#E8456A]"
                 >
                   <ChevronRight size={16} strokeWidth={3} />
                 </button>
@@ -463,7 +539,7 @@ export default function StoriesPage() {
 
               {/* Artisan Identifier */}
               <div className="inline-flex items-center gap-3 bg-[#E8456A]/10 border border-[#E8456A]/30 rounded-full py-2 px-4 w-fit shadow-lg shadow-[#E8456A]/5">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#E8456A] text-white flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#E8456A] text-white flex items-center justify-center font-bold text-xs sm:text-sm shrink-0">
                   {activeStory.artisan.split(" ").map(n => n[0]).join("")}
                 </div>
                 <div className="flex flex-col pr-1 sm:pr-2">
@@ -492,7 +568,7 @@ export default function StoriesPage() {
                   <p>{storyData?.story || activeStory.description}</p>
                 )}
 
-                <div className="border-l-[3px] border-[#E8456A] pl-4 md:pl-5 py-2 my-6 md:my-8 bg-gradient-to-r from-[#E8456A]/10 to-transparent rounded-r-xl p-3 md:p-4">
+                <div className="border-l-[3px] border-[#E8456A] pl-4 md:pl-5 py-2 my-6 md:my-8 bg-linear-to-r from-[#E8456A]/10 to-transparent rounded-r-xl p-3 md:p-4">
                   {storyLoading ? (
                     <div className="space-y-2">
                       <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
@@ -517,7 +593,7 @@ export default function StoriesPage() {
               <div className="flex flex-col sm:flex-row gap-4 mt-8 md:mt-12">
                 <button
                   onClick={handleViewDetails}
-                  className="flex-1 sm:max-w-[200px] flex items-center justify-center gap-2 px-6 md:px-8 py-3 md:py-3.5 rounded-full font-bold text-white transition-all hover:scale-105 active:scale-95 text-sm md:text-base"
+                  className="flex-1 sm:max-w-50 flex items-center justify-center gap-2 px-6 md:px-8 py-3 md:py-3.5 rounded-full font-bold text-white transition-all hover:scale-105 active:scale-95 text-sm md:text-base"
                   style={{
                     background: "linear-gradient(135deg, #f472a0 0%, #E8456A 50%, #e05580 100%)",
                     boxShadow: "0 4px 20px rgba(232,69,106,0.4)",
@@ -549,7 +625,7 @@ export default function StoriesPage() {
             {/* Navigation Button Left */}
             <button
               onClick={scrollSimilarLeft}
-              className="flex-shrink-0 w-10 h-10 bg-white shadow-xl rounded-full border border-gray-200 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="shrink-0 w-10 h-10 bg-white shadow-xl rounded-full border border-gray-200 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ boxShadow: "0 4px 15px rgba(0,0,0,0.15)" }}
               aria-label="Scroll left"
               disabled={similarLoading}
@@ -567,7 +643,7 @@ export default function StoriesPage() {
                 [1, 2, 3, 4].map((i) => (
                   <div
                     key={`skeleton-${i}`}
-                    className="flex-shrink-0 w-full md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-1rem)] snap-center"
+                    className="shrink-0 w-full md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-1rem)] snap-center"
                   >
                     <div className="w-full h-64 bg-gray-200 rounded-xl animate-pulse" />
                   </div>
@@ -576,7 +652,7 @@ export default function StoriesPage() {
                 similarProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="flex-shrink-0 w-full md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-1rem)] snap-center"
+                    className="shrink-0 w-full md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-1rem)] snap-center"
                   >
                     <ProductCard
                       product={product}
@@ -594,7 +670,7 @@ export default function StoriesPage() {
             {/* Navigation Button Right */}
             <button
               onClick={scrollSimilarRight}
-              className="flex-shrink-0 w-10 h-10 bg-white shadow-xl rounded-full border border-gray-200 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="shrink-0 w-10 h-10 bg-white shadow-xl rounded-full border border-gray-200 text-gray-800 hover:bg-[#E8456A] hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ boxShadow: "0 4px 15px rgba(0,0,0,0.15)" }}
               aria-label="Scroll right"
               disabled={similarLoading}

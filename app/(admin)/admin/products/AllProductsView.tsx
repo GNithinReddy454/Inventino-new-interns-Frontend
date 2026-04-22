@@ -472,7 +472,7 @@ export default function AllProductsView({
         <div className="flex items-center gap-3">
           <button
             onClick={() => fetchProducts()}
-            className="flex items-center justify-center gap-2 w-[52px] h-[42px] bg-white border border-[#E9DDE3] text-[#6D6776] rounded-[14px] hover:bg-[#FAF6F8] transition shadow-sm shrink-0"
+            className="flex items-center justify-center gap-2 w-13 h-10.5 bg-white border border-[#E9DDE3] text-[#6D6776] rounded-[14px] hover:bg-[#FAF6F8] transition shadow-sm shrink-0"
             title="Refresh products"
           >
             <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
@@ -480,7 +480,7 @@ export default function AllProductsView({
 
           <button
             onClick={onAddProduct}
-            className="flex items-center justify-center gap-2 px-5 h-[42px] bg-[#EB5C8A] text-white text-[14px] font-semibold rounded-[14px] hover:bg-[#E35182] transition shadow-sm shrink-0"
+            className="flex items-center justify-center gap-2 px-5 h-10.5 bg-[#EB5C8A] text-white text-[14px] font-semibold rounded-[14px] hover:bg-[#E35182] transition shadow-sm shrink-0"
           >
             <Package size={16} />
             Add New Product
@@ -516,7 +516,7 @@ export default function AllProductsView({
           ].map((stat, i) => (
             <div
               key={i}
-              className="bg-white p-5 rounded-[18px] border border-[#F0E4E8] shadow-[0_2px_8px_rgba(31,23,40,0.04)] flex flex-col justify-center min-h-[96px]"
+              className="bg-white p-5 rounded-[18px] border border-[#F0E4E8] shadow-[0_2px_8px_rgba(31,23,40,0.04)] flex flex-col justify-center min-h-24"
             >
               <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#7E7786] mb-2">
                 {stat.label}
@@ -541,7 +541,7 @@ export default function AllProductsView({
               placeholder="Search products by name, ID, or SKU..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 h-[44px] bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] placeholder:text-[#9A93A3] focus:outline-none focus:border-[#EB5C8A] transition-all"
+              className="w-full pl-9 pr-4 h-11 bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] placeholder:text-[#9A93A3] focus:outline-none focus:border-[#EB5C8A] transition-all"
             />
           </div>
 
@@ -549,7 +549,7 @@ export default function AllProductsView({
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="appearance-none min-w-[170px] pl-4 pr-10 h-[44px] bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] focus:outline-none focus:border-[#EB5C8A] transition-all cursor-pointer"
+              className="appearance-none min-w-42.5 pl-4 pr-10 h-11 bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] focus:outline-none focus:border-[#EB5C8A] transition-all cursor-pointer"
             >
               {categoryOptions.map((c) => (
                 <option key={c}>{c}</option>
@@ -565,7 +565,7 @@ export default function AllProductsView({
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="appearance-none min-w-[150px] pl-4 pr-10 h-[44px] bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] focus:outline-none focus:border-[#EB5C8A] transition-all cursor-pointer"
+              className="appearance-none min-w-37.5 pl-4 pr-10 h-11 bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] focus:outline-none focus:border-[#EB5C8A] transition-all cursor-pointer"
             >
               {statuses.map((s) => (
                 <option key={s}>{s}</option>
@@ -581,7 +581,7 @@ export default function AllProductsView({
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="appearance-none min-w-[190px] pl-4 pr-10 h-[44px] bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] focus:outline-none focus:border-[#EB5C8A] transition-all cursor-pointer"
+              className="appearance-none min-w-47.5 pl-4 pr-10 h-11 bg-white border border-[#EEE3E8] rounded-[14px] text-[14px] text-[#1F1728] focus:outline-none focus:border-[#EB5C8A] transition-all cursor-pointer"
             >
               {[
                 "Sort: Newest First",
@@ -603,7 +603,7 @@ export default function AllProductsView({
       {isLoading ? (
         <SkeletonTable rows={10} cols={7} />
       ) : (
-        <div className="bg-white border border-[#F0E4E8] rounded-[24px] shadow-[0_4px_14px_rgba(31,23,40,0.04)] overflow-hidden">
+        <div className="bg-white border border-[#F0E4E8] rounded-3xl shadow-[0_4px_14px_rgba(31,23,40,0.04)] overflow-hidden">
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-[#FAF8F9] text-[#7E7786] font-semibold text-[11px] uppercase tracking-[0.06em] hidden md:table-header-group">
