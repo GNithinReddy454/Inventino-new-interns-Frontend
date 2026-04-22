@@ -323,6 +323,7 @@ export default function ProductDetailsPage() {
   const hasFetchedStory = useRef(false);
   const hasFetchedSimilar = useRef(false);
   const hasFetchedProduct = useRef(false);
+  const activeImagesLengthRef = useRef(0);
 
   const hasFetchedReviews = useRef(false);
 
@@ -568,6 +569,14 @@ export default function ProductDetailsPage() {
   }, [selectedColor]);
 
   useEffect(() => {
+    activeImagesLengthRef.current = activeImages.length;
+    setSelectedImage((prev) => {
+      if (activeImages.length === 0) return 0;
+      return Math.min(prev, activeImages.length - 1);
+    });
+  }, [activeImages.length]);
+
+  useEffect(() => {
     if (!product || variants.length === 0) return;
 
     const currentColor = hasColorVariants
@@ -591,16 +600,33 @@ export default function ProductDetailsPage() {
 
   useEffect(() => {
     const container = mainImageScrollRef.current;
-    if (!container) return;
+    if (!container || loading) return;
 
-    const handleScroll = () => {
+    const syncSelectedFromScroll = () => {
       if (window.innerWidth >= 768) return;
-      setSelectedImage(Math.round(container.scrollLeft / container.offsetWidth));
+
+      const imageCount = activeImagesLengthRef.current;
+      if (imageCount === 0) return;
+
+      const width = container.clientWidth || 1;
+      const rawIndex = container.scrollLeft / width;
+      const nextIndex = Math.max(
+        0,
+        Math.min(imageCount - 1, Math.round(rawIndex))
+      );
+
+      setSelectedImage((prev) => (prev === nextIndex ? prev : nextIndex));
     };
 
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, []);
+    syncSelectedFromScroll();
+    container.addEventListener("scroll", syncSelectedFromScroll, { passive: true });
+    window.addEventListener("resize", syncSelectedFromScroll);
+
+    return () => {
+      container.removeEventListener("scroll", syncSelectedFromScroll);
+      window.removeEventListener("resize", syncSelectedFromScroll);
+    };
+  }, [loading]);
 
   const fetchSimilarProducts = useCallback(async (id: string) => {
     if (!id || hasFetchedSimilar.current) return;
