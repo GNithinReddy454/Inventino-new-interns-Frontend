@@ -304,15 +304,11 @@ export default function AddProductPreviewModal({
                       className="rounded-[10px] border border-[#F4E9ED] bg-[#FFFDFE] p-3"
                     >
                       <div className="mb-2 flex items-center gap-2.5">
+                        {/* ✅ Dot removed — plain color circle only */}
                         <div
-                          className="flex h-5 w-5 items-center justify-center rounded-full border border-[#E6E0E5]"
-                          style={{
-                            backgroundColor: colorHex,
-                            color: getReadableTextColor(colorHex),
-                          }}
-                        >
-                          <span className="text-[8px]">●</span>
-                        </div>
+                          className="h-5 w-5 rounded-full border border-[#E6E0E5]"
+                          style={{ backgroundColor: colorHex }}
+                        />
                         <p className="text-[11px] font-semibold text-[#1C1630]">
                           {variant.color}
                         </p>
