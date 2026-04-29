@@ -21,6 +21,7 @@ import {
   updateOrderTracking,
   cancelOrder,
   addOrderNote,
+  downloadOrderInvoice,
   AdminOrderDetail,
 } from "@/services/admin.service";
 import { useToast } from "@/app/components/GlobalToast";
@@ -164,6 +165,7 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUpdatingTracking, setIsUpdatingTracking] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [copiedTxn, setCopiedTxn] = useState(false);
 
   const { showToast } = useToast();
@@ -300,6 +302,30 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
     }
   };
 
+  const handleDownloadInvoice = async () => {
+    if (!resolvedOrderId) {
+      showToast("Error", "Order ID not found", "error");
+      return;
+    }
+
+    try {
+      setIsDownloadingInvoice(true);
+      const blob = await downloadOrderInvoice(resolvedOrderId);
+      if (!blob) {
+        throw new Error("Invoice response invalid");
+      }
+
+      const url = window.URL.createObjectURL(blob as Blob);
+      window.open(url, "_blank");
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Invoice download failed:", err);
+      showToast("Error", "Could not download invoice", "error");
+    } finally {
+      setIsDownloadingInvoice(false);
+    }
+  };
+
   if (loading) return <SkeletonTable rows={6} cols={4} />;
 
   if (!order) {
@@ -345,9 +371,13 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button
+            onClick={handleDownloadInvoice}
+            disabled={isDownloadingInvoice}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
             <Download size={14} />
-            Download Invoice
+            {isDownloadingInvoice ? "Downloading..." : "Download Invoice"}
           </button>
           <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <Bell size={14} />
@@ -641,9 +671,13 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
                   </p>
                 </div>
               </div>
-              <button className="flex items-center gap-1.5 text-sm text-gray-600 border border-gray-200 bg-white rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors">
+              <button
+                onClick={handleDownloadInvoice}
+                disabled={isDownloadingInvoice}
+                className="flex items-center gap-1.5 text-sm text-gray-600 border border-gray-200 bg-white rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
                 <Download size={14} />
-                Download
+                {isDownloadingInvoice ? "Downloading..." : "Download"}
               </button>
             </div>
           )}
