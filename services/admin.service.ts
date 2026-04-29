@@ -34,6 +34,7 @@ export interface AdminOrderDetail {
         price: number;
         total: number;
         image?: string;
+        productId?: string;
     }[];
 
     status: string;
@@ -45,6 +46,8 @@ export interface AdminOrderDetail {
         timestamp: string;
         location?: string;
         note?: string;
+        label?: string;
+        description?: string;
     }[];
 
     notes?: {
@@ -237,6 +240,14 @@ export const getAdminOrderById = (id: string) =>
             orderNumber: o.orderNumber ?? "",
             paymentMethod: payment.method ?? o.paymentMethod ?? "",
             total: toNumber(o.total, NaN) || toNumber(pricing.total, 0),
+            paymentTransactionId: payment.transactionId ?? o.paymentTransactionId ?? "",
+            paymentDate:
+                payment.paidAt ?? o.paymentDate ?? o.payment?.paidAt ?? "",
+            invoiceNumber:
+                o.invoiceNumber ?? o.invoice?.number ?? "",
+            invoiceGeneratedAt:
+                o.invoiceGeneratedAt ?? o.invoice?.generatedAt ?? "",
+            shippingAddress: customer?.shippingAddress ?? o.shippingAddress ?? null,
 
             customer: {
                 name:
@@ -267,17 +278,21 @@ export const getAdminOrderById = (id: string) =>
                 price: toNumber(i.price, 0),
                 total: toNumber(i.total, toNumber(i.price, 0) * toNumber(i.quantity, 1)),
                 image: i.image ?? i.imageUrl ?? "",
+                productId: i.productId ?? i.product?._id ?? i._id ?? undefined,
             })),
 
             status: o.status ?? "created",
             allowedNextStatuses: o.allowedNextStatuses ?? [],
-            trackingNumber: o.trackingNumber ?? "",
+            trackingNumber:
+                o.trackingNumber ?? o.shipping?.trackingNumber ?? "",
 
             trackingUpdates: (o.trackingUpdates ?? []).map((t: any) => ({
                 status: t.status ?? "",
                 timestamp: t.timestamp ?? new Date().toISOString(),
                 location: t.location ?? "",
                 note: t.note ?? "",
+                label: t.label ?? "",
+                description: t.description ?? t.note ?? "",
             })),
 
             notes: (o.notes ?? []).map((n: any) => ({
