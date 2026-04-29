@@ -133,12 +133,13 @@ const TIMELINE_COLORS: Record<string, string> = {
   cancelled: "bg-red-500",
 };
 
-interface OrderDetailExtended extends AdminOrderDetail {
+type OrderDetailExtended = AdminOrderDetail & {
   paymentStatus?: string;
   paymentTransactionId?: string;
   paymentDate?: string;
   invoiceNumber?: string;
   invoiceGeneratedAt?: string;
+  payment: AdminOrderDetail["payment"] & { paidAt?: string };
   shippingAddress?: {
     name?: string;
     line1?: string;
@@ -150,7 +151,7 @@ interface OrderDetailExtended extends AdminOrderDetail {
   customer: AdminOrderDetail["customer"] & {
     userId?: string;
   };
-}
+};
 
 interface OrderDetailViewProps {
   orderId: string;
@@ -213,6 +214,15 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
   const allowedNextStatuses = order?.allowedNextStatuses?.length
     ? order.allowedNextStatuses
     : STATUS_TRANSITIONS[currentStatusKey] ?? [];
+  const deliveryAddress = order
+    ? order.shippingAddress || (order.customer?.shippingAddress as OrderDetailExtended["shippingAddress"] | undefined)
+    : undefined;
+  const displayedTransactionId = order
+    ? order.paymentTransactionId || order.payment?.transactionId || ""
+    : "";
+  const displayedPaymentDate = order
+    ? order.paymentDate || order.payment?.paidAt || ""
+    : "";
 
   const handleStatusUpdate = async () => {
     if (!resolvedOrderId || !pendingStatus || isUpdatingStatus) return;
@@ -295,8 +305,9 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
   };
 
   const handleCopyTxn = () => {
-    if (order?.paymentTransactionId) {
-      navigator.clipboard.writeText(order.paymentTransactionId);
+    const transactionId = order?.paymentTransactionId || order?.payment?.transactionId;
+    if (transactionId) {
+      navigator.clipboard.writeText(transactionId);
       setCopiedTxn(true);
       setTimeout(() => setCopiedTxn(false), 1500);
     }
@@ -547,21 +558,21 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
               )}
             </div>
 
-            {order.shippingAddress && (
+            {deliveryAddress && (
               <div>
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
                   SHIP TO
                 </p>
-                <p className="font-medium text-gray-900 mb-1">{order.shippingAddress.name}</p>
+                <p className="font-medium text-gray-900 mb-1">{deliveryAddress?.name}</p>
                 <p className="text-sm text-gray-500 flex items-center gap-2">
                   <span className="text-gray-400">📍</span>
-                  {order.shippingAddress.line1}
+                  {deliveryAddress?.line1}
                 </p>
                 <p className="text-sm text-gray-500 ml-5">
-                  {order.shippingAddress.city}, {order.shippingAddress.state}
+                  {deliveryAddress?.city}, {deliveryAddress?.state}
                 </p>
                 <p className="text-sm text-gray-500 ml-5">
-                  {order.shippingAddress.pincode}, {order.shippingAddress.country}
+                  {deliveryAddress?.pincode}, {deliveryAddress?.country}
                 </p>
               </div>
             )}
@@ -598,9 +609,9 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
                 <CheckCircle size={14} />
                 Paid
               </p>
-              {order.paymentDate && (
+              {displayedPaymentDate && (
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {new Date(order.paymentDate).toLocaleString("en-IN", {
+                  {new Date(displayedPaymentDate).toLocaleString("en-IN", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",
@@ -620,7 +631,7 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
             </div>
           </div>
 
-          {order.paymentTransactionId && (
+          {displayedTransactionId && (
             <div className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
               <div className="flex items-center gap-3">
                 <FileText size={16} className="text-gray-400" />
@@ -629,7 +640,7 @@ export default function OrderDetailView({ orderId, onBack }: OrderDetailViewProp
                     TRANSACTION ID
                   </p>
                   <p className="font-mono text-sm text-gray-900">
-                    {order.paymentTransactionId}
+                    {displayedTransactionId}
                   </p>
                 </div>
               </div>

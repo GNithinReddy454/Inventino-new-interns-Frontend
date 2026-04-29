@@ -240,6 +240,14 @@ export const getAdminOrderById = (id: string) =>
             orderNumber: o.orderNumber ?? "",
             paymentMethod: payment.method ?? o.paymentMethod ?? "",
             total: toNumber(o.total, NaN) || toNumber(pricing.total, 0),
+            paymentTransactionId: payment.transactionId ?? o.paymentTransactionId ?? "",
+            paymentDate:
+                payment.paidAt ?? o.paymentDate ?? o.payment?.paidAt ?? "",
+            invoiceNumber:
+                o.invoiceNumber ?? o.invoice?.number ?? "",
+            invoiceGeneratedAt:
+                o.invoiceGeneratedAt ?? o.invoice?.generatedAt ?? "",
+            shippingAddress: customer?.shippingAddress ?? o.shippingAddress ?? null,
 
             customer: {
                 name:
@@ -275,7 +283,8 @@ export const getAdminOrderById = (id: string) =>
 
             status: o.status ?? "created",
             allowedNextStatuses: o.allowedNextStatuses ?? [],
-            trackingNumber: o.trackingNumber ?? "",
+            trackingNumber:
+                o.trackingNumber ?? o.shipping?.trackingNumber ?? "",
 
             trackingUpdates: (o.trackingUpdates ?? []).map((t: any) => ({
                 status: t.status ?? "",
