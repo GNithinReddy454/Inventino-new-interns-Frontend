@@ -29,14 +29,15 @@ const nextConfig = {
         pathname: "/uploads/**",
       },
       {
-        protocol: "http",
-        hostname: "3.6.36.33",
+        protocol: "https",
+        hostname: "bracelet-ecommerce-backend-production.up.railway.app",
         pathname: "/uploads/**",
       },
       // ✅ Added: Inventino S3 bucket for product images
-      {
+       {
         protocol: "https",
-        hostname: "inventino-products.s3.ap-south-1.amazonaws.com",
+        hostname: "inventino.s3.ap-south-1.amazonaws.com",
+        pathname: "/**",
       },
       {
         protocol: "https",
