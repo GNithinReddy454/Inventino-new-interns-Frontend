@@ -17,6 +17,16 @@ const nextConfig = {
         protocol: "https",
         hostname: "avatar.iran.liara.run",
       },
+      {
+        protocol: "https",
+        hostname: "inventino.s3.ap-south-1.amazonaws.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "bracelet-ecommerce-backend-production.up.railway.app",
+        pathname: "/uploads/**",
+      },
       // ✅ Added: live backend server for review images
       {
         protocol: "https",
