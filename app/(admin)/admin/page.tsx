@@ -16,6 +16,8 @@ import {
   LayoutTemplate,
   ChevronLeft,
   ChevronRight,
+  Menu,
+  X,
 } from "lucide-react";
 
 import { TOP_PRODUCTS, RECENT_ORDERS, RECENT_ACTIVITY } from "./_data/mockData";
@@ -62,6 +64,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLandingPreview, setShowLandingPreview] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Single state for selected item (order or customer)
   const [selectedItem, setSelectedItem] = useState<{
@@ -113,7 +116,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#FEF8F9] font-sans text-gray-900">
-      <aside className={`${isSidebarCollapsed ? "w-20" : "w-65"} bg-[#FEF8F9] flex flex-col h-screen sticky top-0 transition-all duration-300 z-50 shrink-0 border-r border-[#F3E8EC]`}>
+      <aside className={`hidden md:flex ${isSidebarCollapsed ? "w-20" : "w-65"} bg-[#FEF8F9] flex-col h-screen sticky top-0 transition-all duration-300 z-50 shrink-0 border-r border-[#F3E8EC]`}>
         <div className="h-28 flex items-center justify-center px-6 shrink-0 relative">
           {!isSidebarCollapsed && <Image src="/logo.png" alt="Inventino" width={160} height={60} className="object-contain" priority />}
           {isSidebarCollapsed && <span className="text-2xl font-black italic tracking-tight uppercase text-[#E91E63]">I<span className="text-gray-300">.</span></span>}
@@ -148,6 +151,18 @@ export default function AdminDashboard() {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        {/* Mobile Header Bar */}
+        <div className="flex md:hidden items-center justify-between px-6 py-4 bg-white border-b border-[#F3E8EC] sticky top-0 z-40 shrink-0">
+          <Image src="/logo.png" alt="Inventino" width={100} height={38} className="object-contain" priority />
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 text-gray-500 hover:text-[#E91E63] hover:bg-pink-50 rounded-lg transition-all"
+            aria-label="Toggle Menu"
+          >
+            <Menu size={24} />
+          </button>
+        </div>
+
         <header className="px-6 lg:px-10 pt-8 pb-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 gap-4">
           <div>
             {activeTab === "Dashboard" ? (
@@ -227,6 +242,74 @@ export default function AdminDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Mobile Drawer */}
+      <div
+        className={`fixed inset-0 z-50 md:hidden transition-opacity duration-300 ${
+          isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+
+        {/* Drawer Content */}
+        <div
+          className={`absolute left-0 top-0 h-full w-[280px] bg-[#FEF8F9] border-r border-[#F3E8EC] flex flex-col p-6 shadow-2xl transition-transform duration-300 ease-in-out ${
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="flex justify-between items-center mb-6 pb-2 border-b border-[#F3E8EC]">
+            <Image src="/logo.png" alt="Inventino" width={120} height={45} className="object-contain" priority />
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-1.5 hover:bg-pink-50 text-gray-500 hover:text-[#E91E63] rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto py-2 pb-8 space-y-7 scrollbar-hide">
+            {navigationGroups.map((group, idx) => (
+              <div key={idx} className="space-y-1">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-4 mb-3">{group.title}</p>
+                <div className="space-y-1.5">
+                  {group.items.map((item) => (
+                    <NavItem
+                      key={item.label}
+                      icon={item.icon}
+                      label={item.label}
+                      active={
+                        activeTab === item.label ||
+                        (activeTab === "Landing Page CMS" && item.label === "CMS") ||
+                        (activeTab === "Order Details" && item.label === "Orders") ||
+                        (activeTab === "Customer Profile" && item.label === "Customers")
+                      }
+                      onClick={() => {
+                        handleNavigate(item.label);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      collapsed={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t border-[#F3E8EC] mt-auto">
+            <div className="flex items-center gap-3 p-2 bg-white rounded-2xl border border-pink-50 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.03)]">
+              <div className="w-9 h-9 rounded-full bg-[#E91E63] text-white font-bold flex items-center justify-center shrink-0 text-sm shadow-sm">A</div>
+              <div className="flex flex-col min-w-0">
+                <p className="text-[13px] font-bold text-gray-900 leading-tight truncate">Admin User</p>
+                <p className="text-[11px] text-gray-400 font-medium leading-none mt-0.5">Administrator</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
