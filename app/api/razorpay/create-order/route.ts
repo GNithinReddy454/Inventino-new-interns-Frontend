@@ -1,18 +1,30 @@
 import { NextResponse } from "next/server";
+import Razorpay from "razorpay";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { amount } = body;
 
-    if (!amount) {
+    // Validate amount field presence
+    if (amount === undefined || amount === null) {
       return NextResponse.json(
         { error: "Amount is required" },
         { status: 400 }
       );
     }
 
-    const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    const amountInPaise = Math.round(Number(amount));
+
+    // Razorpay minimum is 100 paise (₹1)
+    if (amountInPaise < 100) {
+      return NextResponse.json(
+        { error: "Amount must be at least 100 paise (₹1)" },
+        { status: 400 }
+      );
+    }
+
+    const key_id = process.env.RAZORPAY_KEY_ID;
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!key_id || !key_secret) {
@@ -22,36 +34,37 @@ export async function POST(request: Request) {
       );
     }
 
-    const auth = Buffer.from(`${key_id}:${key_secret}`).toString("base64");
-
-    const response = await fetch("https://api.razorpay.com/v1/orders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${auth}`,
-      },
-      body: JSON.stringify({
-        amount: Math.round(amount), // amount in paise
-        currency: "INR",
-        receipt: "receipt_" + Date.now(),
-      }),
+    // Use official Razorpay SDK
+    const razorpay = new Razorpay({
+      key_id,
+      key_secret,
     });
 
-    const data = await response.json();
+    const order = await razorpay.orders.create({
+      amount: amountInPaise,
+      currency: "INR",
+      receipt: "receipt_" + Date.now(),
+    });
 
-    if (!response.ok) {
+    return NextResponse.json({
+      order_id: order.id,
+      ...order,
+    });
+  } catch (error: any) {
+    console.error("Error creating Razorpay order:", error);
+
+    // Handle Razorpay API auth failures
+    if (error?.statusCode === 401) {
       return NextResponse.json(
-        { error: data.error?.description || "Failed to create order" },
-        { status: response.status }
+        { error: "Razorpay authentication failed. Check your credentials." },
+        { status: 401 }
       );
     }
 
-    return NextResponse.json(data);
-  } catch (error: any) {
-    console.error("Error creating Razorpay order:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error?.error?.description || "Internal server error" },
       { status: 500 }
     );
   }
 }
+
