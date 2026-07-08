@@ -56,6 +56,7 @@ export default function ReportsAnalyticsView() {
         setIsExporting(true);
         try {
             const blob = await exportAdminOrders({});
+            if (!blob) return;
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
