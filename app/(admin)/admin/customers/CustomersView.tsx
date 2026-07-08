@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   MoreVertical,
   Search,
   Users,
@@ -20,6 +22,7 @@ import { useToast } from "@/app/components/GlobalToast";
 
 interface CustomersViewProps {
   onViewProfile?: (customerId: string) => void;
+  onViewInquiries?: () => void;
 }
 
 interface CustomerStatsState {
@@ -80,7 +83,7 @@ function getInitials(name?: string) {
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
 }
 
-export default function CustomersView({ onViewProfile }: CustomersViewProps) {
+export default function CustomersView({ onViewProfile, onViewInquiries }: CustomersViewProps) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("Newest");
   const [activeTab, setActiveTab] = useState("All Customers");
@@ -97,6 +100,7 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
   const [stats, setStats] = useState<CustomerStatsState>(INITIAL_STATS);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const tabsRef = useRef<HTMLDivElement | null>(null);
   const { showToast } = useToast();
 
   const sortParams = useMemo(() => {
@@ -135,7 +139,7 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
     [stats, customers.length]
   );
 
-  const tabs = ["All Customers", "Returns", "Replacements", "Support Tickets"];
+  const tabs = ["All Customers", "Returns", "Replacements", "Inquiries", "Support Tickets"];
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -303,25 +307,64 @@ export default function CustomersView({ onViewProfile }: CustomersViewProps) {
         </div>
 
         <div className="overflow-hidden rounded-[24px] border border-[#F1E6EA] bg-white shadow-[0_10px_30px_rgba(43,33,46,0.05)]">
-          <div className="border-b border-[#F4E9ED] px-4 md:px-6">
-            <div className="flex min-w-max items-center gap-6 overflow-x-auto">
+          <div className="relative border-b border-[#F4E9ED] px-0 md:px-6">
+            <button
+              onClick={() => {
+                if (tabsRef.current) {
+                  tabsRef.current.scrollBy({ left: -150, behavior: "smooth" });
+                }
+              }}
+              className="absolute left-0 top-0 bottom-0 z-10 flex w-8 items-center justify-center bg-gradient-to-r from-white via-white to-transparent text-[#8F8694] md:hidden"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft size={18} />
+            </button>
+
+            <div
+              ref={tabsRef}
+              className="flex items-center gap-6 overflow-x-auto scrollbar-hide px-8 md:px-0"
+              style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
+            >
               {tabs.map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`relative py-4 text-[13px] font-semibold transition-colors ${
+                  onClick={() => {
+                    if (tab === "Inquiries" && onViewInquiries) {
+                      onViewInquiries();
+                    } else {
+                      setActiveTab(tab);
+                    }
+                  }}
+                  className={`relative whitespace-nowrap py-4 text-[13px] font-semibold transition-colors ${
                     activeTab === tab
                       ? "text-[#E85D8B]"
                       : "text-[#8F8694] hover:text-[#2A1F2F]"
                   }`}
                 >
                   {tab}
+                  {tab === "Inquiries" && (
+                    <span className="absolute -top-1 -right-3.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#E85D8B] text-[9px] font-bold text-white">
+                      9
+                    </span>
+                  )}
                   {activeTab === tab && (
                     <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-[#E85D8B]" />
                   )}
                 </button>
               ))}
             </div>
+
+            <button
+              onClick={() => {
+                if (tabsRef.current) {
+                  tabsRef.current.scrollBy({ left: 150, behavior: "smooth" });
+                }
+              }}
+              className="absolute right-0 top-0 bottom-0 z-10 flex w-8 items-center justify-center bg-gradient-to-l from-white via-white to-transparent text-[#8F8694] md:hidden"
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
 
           <div className="border-b border-[#F4E9ED] p-4 md:p-5">

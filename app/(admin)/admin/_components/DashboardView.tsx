@@ -6,9 +6,10 @@ import {
 } from "recharts";
 import {
     getDashboard,
-    getAnalytics,
+    getSalesOverview,
+    getRecentOrdersAnalytics,
+    getTopProductsAnalytics,
     DashboardData,
-    AnalyticsData,
 } from "@/services/admin.service";
 
 interface StatCardProps {
@@ -24,13 +25,15 @@ function StatCard({ title, value, trend }: StatCardProps) {
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#E91E63]"></div>
             <p className="text-[13px] text-gray-500 font-medium mb-1 pl-2">{title}</p>
             <h3 className="text-[32px] font-bold text-gray-900 mb-2 pl-2 tracking-tight leading-none">{value}</h3>
-            <div className="flex items-center text-[11px] pl-2 font-bold mt-1">
-                <span className={`flex items-center ${isPositive ? "text-[#22C55E]" : "text-red-500"}`}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`mr-1 ${!isPositive ? "rotate-180" : ""}`}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
-                    {Math.abs(trend)}%
-                </span>
-                <span className="text-gray-400 ml-1.5 font-medium">vs last month</span>
-            </div>
+            {trend !== 0 && (
+                <div className="flex items-center text-[11px] pl-2 font-bold mt-1">
+                    <span className={`flex items-center ${isPositive ? "text-[#22C55E]" : "text-red-500"}`}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`mr-1 ${!isPositive ? "rotate-180" : ""}`}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+                        {Math.abs(trend)}%
+                    </span>
+                    <span className="text-gray-400 ml-1.5 font-medium">vs last month</span>
+                </div>
+            )}
         </div>
     );
 }
@@ -65,19 +68,25 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
     const [chartRange, setChartRange] = useState("30 Days");
 
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-    const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+    const [salesOverview, setSalesOverview] = useState<any[]>([]);
+    const [recentOrders, setRecentOrders] = useState<any[]>([]);
+    const [topProducts, setTopProducts] = useState<any[]>([]);
     const [apiError, setApiError] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const [dash, analytics] = await Promise.all([
+                const [dash, sales, orders, products] = await Promise.all([
                     getDashboard(),
-                    getAnalytics(PERIOD_MAP[chartRange] || "30d"),
+                    getSalesOverview(),
+                    getRecentOrdersAnalytics(5),
+                    getTopProductsAnalytics()
                 ]);
                 setDashboardData(dash);
-                setAnalyticsData(analytics);
+                setSalesOverview(sales);
+                setRecentOrders(orders);
+                setTopProducts(products);
                 setApiError(false);
             } catch (err) {
                 console.error("Failed to fetch admin dashboard data:", err);
@@ -89,14 +98,10 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
         fetchData();
     }, [chartRange]);
 
-    const buildChartData = () => {
-        if (!analyticsData) return [];
-        return [
-            { day: chartRange, revenue: analyticsData.revenue.current },
-        ];
-    };
-
-    const activeChartData = buildChartData();
+    const activeChartData = salesOverview.map(s => ({
+        day: s.month || s.day || s.label,
+        revenue: s.sales || s.revenue || 0
+    }));
 
     const formattedRevenue = dashboardData
         ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(dashboardData.totalRevenue)
@@ -187,25 +192,7 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
             </div>
 
             {/* Analytics Summary Row */}
-            {!isLoading && analyticsData && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                        { label: "Revenue", value: `₹${analyticsData.revenue.current.toLocaleString()}`, trend: analyticsData.revenue.trend },
-                        { label: "Orders", value: analyticsData.orders.current.toLocaleString(), trend: analyticsData.orders.trend },
-                        { label: "Conversion Rate", value: `${analyticsData.conversionRate.current}%`, trend: analyticsData.conversionRate.trend },
-                        { label: "Visitors", value: analyticsData.visitors.current.toLocaleString(), trend: analyticsData.visitors.trend },
-                    ].map((item, i) => (
-                        <div key={i} className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-5">
-                            <p className="text-[11px] text-gray-500 font-medium mb-1">{item.label}</p>
-                            <p className="text-[22px] font-bold text-gray-900 tracking-tight">{item.value}</p>
-                            <p className={`text-[11px] font-bold mt-1 flex items-center gap-1 ${item.trend >= 0 ? "text-[#22C55E]" : "text-red-500"}`}>
-                                <TrendingUp size={11} className={item.trend < 0 ? "rotate-180" : ""} />
-                                {item.trend >= 0 ? "+" : ""}{item.trend}% vs last period
-                            </p>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {/* Removed as API doesn't provide these metrics */}
 
             {/* Recent Orders Table */}
             <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8 overflow-visible relative">
@@ -227,38 +214,32 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {[
-                                { id: "#ORD-2024-001", initials: "SM", customer: "Sarah Miller", product: "Rose Gold Bracelet", amount: "$89.99", status: "Completed", date: "Feb 6, 2026" },
-                                { id: "#ORD-2024-002", initials: "JD", customer: "John Davis", product: "Pearl Necklace Set", amount: "$129.99", status: "Processing", date: "Feb 6, 2026" },
-                                { id: "#ORD-2024-003", initials: "EB", customer: "Emily Brown", product: "Boho Beaded Set", amount: "$44.99", status: "Pending", date: "Feb 5, 2026" },
-                                { id: "#ORD-2024-004", initials: "MW", customer: "Michael Wilson", product: "Crochet Pouch", amount: "$39.99", status: "Completed", date: "Feb 5, 2026" },
-                                { id: "#ORD-2024-005", initials: "OJ", customer: "Olivia Johnson", product: "Classic Earrings", amount: "$54.99", status: "Cancelled", date: "Feb 4, 2026" },
-                            ].map((order, i) => (
+                            {recentOrders.map((order: any, i: number) => (
                                 <tr key={i} className="group hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-1 py-4 font-bold text-[13px] text-gray-900">{order.id}</td>
+                                    <td className="px-1 py-4 font-bold text-[13px] text-gray-900">{order.orderId}</td>
                                     <td className="px-4 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-[#E91E63] flex items-center justify-center text-white text-[11px] font-bold shadow-sm">{order.initials}</div>
+                                            <div className="w-8 h-8 rounded-full bg-[#E91E63] flex items-center justify-center text-white text-[11px] font-bold shadow-sm">{order.customer?.charAt(0) || "U"}</div>
                                             <span className="font-bold text-[13px] text-gray-900">{order.customer}</span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-4 text-gray-600 font-medium">{order.product}</td>
-                                    <td className="px-4 py-4 font-bold text-[13px] text-gray-900">{order.amount}</td>
+                                    <td className="px-4 py-4 text-gray-600 font-medium">{order.totalItems} Items</td>
+                                    <td className="px-4 py-4 font-bold text-[13px] text-gray-900">₹{order.totalAmount}</td>
                                     <td className="px-4 py-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${order.status === "Completed" ? "bg-[#F0FDF4] text-[#16A34A]" :
-                                            order.status === "Processing" ? "bg-[#EFF6FF] text-[#2563EB]" :
-                                                order.status === "Pending" ? "bg-[#FFF7ED] text-[#EA580C]" :
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${order.orderStatus === "delivered" ? "bg-[#F0FDF4] text-[#16A34A]" :
+                                            order.orderStatus === "shipped" ? "bg-[#EFF6FF] text-[#2563EB]" :
+                                                order.orderStatus === "created" ? "bg-[#FFF7ED] text-[#EA580C]" :
                                                     "bg-[#FEF2F2] text-[#DC2626]"
                                             }`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${order.status === "Completed" ? "bg-[#22C55E]" :
-                                                order.status === "Processing" ? "bg-[#3B82F6]" :
-                                                    order.status === "Pending" ? "bg-[#F97316]" :
+                                            <span className={`w-1.5 h-1.5 rounded-full ${order.orderStatus === "delivered" ? "bg-[#22C55E]" :
+                                                order.orderStatus === "shipped" ? "bg-[#3B82F6]" :
+                                                    order.orderStatus === "created" ? "bg-[#F97316]" :
                                                         "bg-[#EF4444]"
                                                 }`}></span>
-                                            {order.status}
+                                            {order.orderStatus || "Pending"}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-4 text-gray-600 font-medium">{order.date}</td>
+                                    <td className="px-4 py-4 text-gray-600 font-medium">{new Date(order.orderedAt).toLocaleDateString()}</td>
                                     <td className="px-4 py-4 md:text-right relative">
                                         <button
                                             onClick={() => setOpenDropdownId(openDropdownId === order.id ? null : order.id)}
@@ -294,28 +275,17 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                         <button className="text-[#E91E63] font-bold text-[12px] hover:underline flex items-center gap-1">View All &rarr;</button>
                     </div>
                     <div className="space-y-6">
-                        {[
-                            { name: "Rose Gold Bracelet", category: "Jewelry", sales: "245", color: "bg-[#DBA379]" },
-                            { name: "Pearl Necklace", category: "Jewelry", sales: "198", color: "bg-[#BCC1C4]" },
-                            { name: "Boho Beaded Set", category: "Accessories", sales: "156", color: "bg-[#678F7A]" },
-                            { name: "Crochet Pouch", category: "Accessories", sales: "142", color: "bg-[#F0DA79]" },
-                        ].map((prod: any, i: number) => (
+                        {topProducts.map((prod: any, i: number) => (
                             <div key={i} className="flex items-center gap-4">
-                                <div className={`w-13 h-13 rounded-xl flex shrink-0 overflow-hidden items-center justify-center ${prod.color}`}>
-                                    {prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0] ? (
-                                        <img
-                                            src={prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0]}
-                                            alt={prod.name || "Product"}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : null}
+                                <div className={`w-13 h-13 rounded-xl flex shrink-0 overflow-hidden items-center justify-center bg-gray-100 text-gray-400 font-bold text-xl`}>
+                                    #{i + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-[13px] text-gray-900 truncate mb-0.5">{prod.name}</p>
-                                    <p className="text-[10px] font-medium text-gray-400 tracking-wide uppercase">{prod.category}</p>
+                                    <p className="font-bold text-[13px] text-gray-900 truncate mb-0.5">{prod.productName}</p>
+                                    <p className="text-[10px] font-medium text-gray-400 tracking-wide uppercase">ID: {prod.productId}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-bold text-[15px] text-[#E91E63] leading-none mb-1 tracking-tight">{prod.sales}</p>
+                                    <p className="font-bold text-[15px] text-[#E91E63] leading-none mb-1 tracking-tight">{prod.quantitySold}</p>
                                     <p className="text-[8px] text-gray-400 uppercase tracking-widest font-black">SOLD</p>
                                 </div>
                             </div>

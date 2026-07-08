@@ -33,6 +33,7 @@ import ReviewsView from "./_components/ReviewsView";
 import CustomerProfileView from "./customers/CustomerProfileView";
 import AddProduct from "./products/AddProduct";
 import OrderDetailView from "./orders/OrderDetailView";
+import InquiriesView from "./customers/InquiriesView";
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -227,7 +228,8 @@ export default function AdminDashboard() {
             {activeTab === "Reviews" && <ReviewsView />}
             {activeTab === "Orders" && <OrdersView onViewOrder={handleViewOrder} />}
             {activeTab === "Reports & Analytics" && <ReportsAnalyticsView />}
-            {activeTab === "Customers" && <CustomersView onViewProfile={handleViewCustomer} />}
+            {activeTab === "Customers" && <CustomersView onViewProfile={handleViewCustomer} onViewInquiries={() => setActiveTab("Customer Inquiries")} />}
+            {activeTab === "Customer Inquiries" && <InquiriesView onBack={() => setActiveTab("Customers")} />}
             {activeTab === "Customer Profile" && selectedItem?.type === "customer" && (
               <CustomerProfileView 
                 customerId={selectedItem.id} 

@@ -1,4 +1,4 @@
-﻿import axios from "axios";
+import axios from "axios";
 import { apiMethods } from "@/lib/api";
 
 // ─── Helper: Graceful fetch ───────────────────────────────────────────────────
@@ -352,7 +352,7 @@ export const downloadOrderInvoice = (id: string) =>
 // EXPORT ORDERS
 export const exportAdminOrders = (filters: any) =>
     gracefulFetch(async () => {
-        const payload = {
+        const params = {
             search:
                 typeof filters?.search === "string" && filters.search.trim()
                     ? filters.search.trim()
@@ -366,10 +366,9 @@ export const exportAdminOrders = (filters: any) =>
             to: typeof filters?.to === "string" ? filters.to : undefined,
         };
 
-        const res = await apiMethods.post(
-            "/admin/orders-manage/export",
-            payload,
-            { responseType: "blob" }
+        const res = await apiMethods.get(
+            "/admin/reports/excel",
+            { params, responseType: "blob" }
         );
         return res as Blob;
     });
@@ -583,18 +582,42 @@ function unwrapData<T = any>(raw: any): T {
 
 export const getDashboard = () =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<any>("/admin/dashboard");
+        const res = await apiMethods.get<any>("/admin/analytics/dashboard");
         const data = unwrapData<any>(res) || {};
 
         return {
-            totalRevenue: Number(data.totalRevenue ?? data.revenue ?? 0),
-            revenueTrend: Number(data.revenueTrend ?? 0),
-            totalOrders: Number(data.totalOrders ?? data.orders ?? 0),
-            ordersTrend: Number(data.ordersTrend ?? 0),
-            totalProducts: Number(data.totalProducts ?? data.products ?? 0),
-            activeUsers: Number(data.activeUsers ?? data.users ?? 0),
+            totalRevenue: Number(data.totalRevenue ?? 0),
+            revenueTrend: 0,
+            totalOrders: Number(data.totalOrders ?? 0),
+            ordersTrend: 0,
+            totalProducts: Number(data.totalProducts ?? 0),
+            activeUsers: Number(data.totalUsers ?? 0),
         } as DashboardData;
     }).then((d) => d ?? DEFAULT_DASHBOARD);
+
+export const getSalesOverview = () =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<any>("/admin/analytics/sales-overview");
+        return unwrapData<any>(res) || [];
+    }).then((d) => d ?? []);
+
+export const getTopProductsAnalytics = () =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<any>("/admin/analytics/top-products");
+        return unwrapData<any>(res) || [];
+    }).then((d) => d ?? []);
+
+export const getRecentOrdersAnalytics = (limit = 10) =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<any>("/admin/analytics/recent-orders", { params: { limit } });
+        return unwrapData<any>(res) || [];
+    }).then((d) => d ?? []);
+
+export const getOrderStatusDist = () =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<any>("/admin/analytics/order-status");
+        return unwrapData<any>(res) || [];
+    }).then((d) => d ?? []);
 
 export const getAnalytics = (period = "30d") =>
     gracefulFetch(async () => {
@@ -651,7 +674,7 @@ export const updateCMSData = (payload: any) =>
 
 export const getAdminReviews = () =>
     gracefulFetch(async () => {
-        const res = await apiMethods.get<any>("/reviews", {
+        const res = await apiMethods.get<any>("/admin/reviews", {
             params: { page: 1, limit: 200 },
         });
 
@@ -677,6 +700,51 @@ export const getAdminReviews = () =>
                 : (r?.status ?? ""),
         })) as AdminReview[];
     }).then((d) => d ?? []);
+
+export interface ReviewStatistics {
+    totalReviews: number;
+    averageRating: number;
+    fiveStar: number;
+    fourStar: number;
+    threeStar: number;
+    twoStar: number;
+    oneStar: number;
+    activeReviews: number;
+    inactiveReviews: number;
+}
+
+export const getReviewStatistics = () =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.get<any>("/admin/reviews/statistics");
+        const data = unwrapData<any>(res) || {};
+        return {
+            totalReviews: Number(data.totalReviews ?? 0),
+            averageRating: Number(data.averageRating ?? 0),
+            fiveStar: Number(data.fiveStar ?? 0),
+            fourStar: Number(data.fourStar ?? 0),
+            threeStar: Number(data.threeStar ?? 0),
+            twoStar: Number(data.twoStar ?? 0),
+            oneStar: Number(data.oneStar ?? 0),
+            activeReviews: Number(data.activeReviews ?? 0),
+            inactiveReviews: Number(data.inactiveReviews ?? 0),
+        } as ReviewStatistics;
+    }).then((d) => d ?? {
+        totalReviews: 0, averageRating: 0,
+        fiveStar: 0, fourStar: 0, threeStar: 0, twoStar: 0, oneStar: 0,
+        activeReviews: 0, inactiveReviews: 0,
+    });
+
+export const updateAdminReview = (id: string, body: { rating: number; comment: string }) =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.patch<any>(`/admin/reviews/${id}`, body);
+        return unwrapData<any>(res);
+    });
+
+export const deleteAdminReview = (id: string) =>
+    gracefulFetch(async () => {
+        const res = await apiMethods.delete<any>(`/admin/reviews/${id}`);
+        return unwrapData<any>(res);
+    });
 
 // ─── Banners ─────────────────────────────────────────────────────────────────
 

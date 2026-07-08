@@ -6,7 +6,7 @@ import { exportToCSV } from "./exportUtils";
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-import { getAnalytics, AnalyticsData } from "@/services/admin.service";
+import { getDashboard, getSalesOverview, getTopProductsAnalytics, getOrderStatusDist, exportAdminOrders, DashboardData } from "@/services/admin.service";
 
 const PERIOD_MAP: Record<string, string> = {
     "Today": "7d",
@@ -18,14 +18,26 @@ const PERIOD_MAP: Record<string, string> = {
 export default function ReportsAnalyticsView() {
     const [period, setPeriod] = useState("This Month");
     const [isLoading, setIsLoading] = useState(true);
-    const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+    const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+    const [salesOverview, setSalesOverview] = useState<any[]>([]);
+    const [topProducts, setTopProducts] = useState<any[]>([]);
+    const [orderStatus, setOrderStatus] = useState<any[]>([]);
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         const fetchAnalytics = async () => {
             setIsLoading(true);
             try {
-                const data = await getAnalytics(PERIOD_MAP[period] || "30d");
-                setAnalyticsData(data);
+                const [dash, sales, products, status] = await Promise.all([
+                    getDashboard(),
+                    getSalesOverview(),
+                    getTopProductsAnalytics(),
+                    getOrderStatusDist()
+                ]);
+                setDashboardData(dash);
+                setSalesOverview(sales);
+                setTopProducts(products);
+                setOrderStatus(status);
             } catch (err) {
                 console.error("Failed to fetch analytics:", err);
             } finally {
@@ -35,33 +47,28 @@ export default function ReportsAnalyticsView() {
         fetchAnalytics();
     }, [period]);
 
-    const regions = [
-        { name: "North America", sales: 45, value: "$21,450" },
-        { name: "Europe", sales: 30, value: "$14,300" },
-        { name: "Asia", sales: 15, value: "$7,150" },
-        { name: "Other", sales: 10, value: "$2,380" },
-    ];
+    const activeChartData = salesOverview.map(s => ({
+        label: s.month || s.day || s.label,
+        value: s.sales || s.revenue || 0
+    }));
 
-    const salesChartData: Record<string, { label: string; value: number }[]> = {
-        "Today": [
-            { label: "6am", value: 220 }, { label: "9am", value: 780 }, { label: "12pm", value: 1340 },
-            { label: "3pm", value: 850 }, { label: "6pm", value: 1200 }, { label: "9pm", value: 640 },
-        ],
-        "Last 7 Days": [
-            { label: "Mon", value: 3200 }, { label: "Tue", value: 5100 }, { label: "Wed", value: 2700 },
-            { label: "Thu", value: 6400 }, { label: "Fri", value: 7100 }, { label: "Sat", value: 8200 }, { label: "Sun", value: 5500 },
-        ],
-        "This Month": [
-            { label: "Wk 1", value: 12400 }, { label: "Wk 2", value: 18900 }, { label: "Wk 3", value: 15200 }, { label: "Wk 4", value: 21300 },
-        ],
-        "This Year": [
-            { label: "Jan", value: 32000 }, { label: "Feb", value: 28000 }, { label: "Mar", value: 41000 },
-            { label: "Apr", value: 36000 }, { label: "May", value: 45000 }, { label: "Jun", value: 52000 },
-            { label: "Jul", value: 49000 }, { label: "Aug", value: 58000 }, { label: "Sep", value: 54000 },
-            { label: "Oct", value: 61000 }, { label: "Nov", value: 67000 }, { label: "Dec", value: 72000 },
-        ],
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const blob = await exportAdminOrders({});
+            if (!blob) return;
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "analytics_report.xlsx";
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Failed to export:", error);
+        } finally {
+            setIsExporting(false);
+        }
     };
-    const activeChartData = salesChartData[period] || salesChartData["This Month"];
 
     return (
         <div className="space-y-6 w-full">
@@ -89,11 +96,12 @@ export default function ReportsAnalyticsView() {
                         <option>This Year</option>
                     </select>
                     <button
-                        onClick={() => exportToCSV(analyticsData ? [analyticsData] : [], "analytics_report.csv", [])}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-sm shrink-0"
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-sm shrink-0 disabled:opacity-50"
                     >
                         <Download size={16} />
-                        Export Report
+                        {isExporting ? "Exporting..." : "Export Report"}
                     </button>
                 </div>
             </div>
@@ -108,18 +116,9 @@ export default function ReportsAnalyticsView() {
                                 Sales Report
                             </h3>
                             <p className="text-3xl font-bold text-primary mt-2 flex items-center gap-3">
-                                {analyticsData
-                                    ? `₹${analyticsData.revenue.current.toLocaleString()}`
+                                {dashboardData
+                                    ? `₹${dashboardData.totalRevenue.toLocaleString()}`
                                     : "—"}
-                                {analyticsData && (
-                                    <span className={`text-sm flex items-center px-2 py-1 rounded-lg ${analyticsData.revenue.trend >= 0
-                                            ? "text-green-500 bg-green-50"
-                                            : "text-red-500 bg-red-50"
-                                        }`}>
-                                        <TrendingUp size={14} className="mr-1" />
-                                        {analyticsData.revenue.trend >= 0 ? "+" : ""}{analyticsData.revenue.trend}%
-                                    </span>
-                                )}
                             </p>
                         </div>
                         <div className="flex gap-2">
@@ -193,39 +192,25 @@ export default function ReportsAnalyticsView() {
                                     </div>
                                 ))
                             ) : (
-                                [
-                                    { name: "Rose Gold Bracelet", category: "Jewelry", sales: "245", color: "bg-[#DBA379]" },
-                                    { name: "Pearl Necklace", category: "Jewelry", sales: "198", color: "bg-[#BCC1C4]" },
-                                    { name: "Boho Beaded Set", category: "Accessories", sales: "156", color: "bg-[#678F7A]" },
-                                ].map((prod: any, i: number) => (
+                                topProducts.map((prod: any, i: number) => (
                                     <div key={i} className="flex items-center gap-3">
-                                        <div
-                                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-foreground shrink-0 shadow-sm overflow-hidden ${prod.color}`}
-                                        >
-                                            {prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0] ? (
-                                                <img
-                                                    src={prod.imageUrl || prod.image || prod.images?.[0]?.url || prod.images?.[0]}
-                                                    alt={prod.name || "Product"}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <>#{i + 1}</>
-                                            )}
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-foreground bg-muted shrink-0 shadow-sm overflow-hidden`}>
+                                            #{i + 1}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-sm text-foreground truncate">
-                                                {prod.name}
+                                                {prod.productName}
                                             </p>
                                             <p className="text-[11px] text-muted-foreground">
-                                                {prod.category}
+                                                ID: {prod.productId}
                                             </p>
                                         </div>
                                         <div className="text-right shrink-0">
                                             <p className="font-bold text-sm text-foreground">
-                                                {prod.sales}
+                                                {prod.quantitySold}
                                             </p>
-                                            <p className="text-[10px] text-green-500 flex items-center justify-end">
-                                                <TrendingUp size={10} className="mr-0.5" /> +5%
+                                            <p className="text-[10px] text-muted-foreground flex items-center justify-end">
+                                                SOLD
                                             </p>
                                         </div>
                                     </div>
@@ -234,10 +219,10 @@ export default function ReportsAnalyticsView() {
                         </div>
                     </div>
 
-                    {/* Sales by Region */}
+                    {/* Order Status */}
                     <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
                         <h3 className="text-base font-bold text-foreground mb-5">
-                            Sales by Region
+                            Orders by Status
                         </h3>
                         <div className="space-y-4">
                             {isLoading ? (
@@ -254,101 +239,34 @@ export default function ReportsAnalyticsView() {
                                     </div>
                                 ))
                             ) : (
-                                regions.map((region, i) => (
-                                    <div key={i}>
-                                        <div className="flex justify-between text-xs font-bold text-foreground mb-1.5">
-                                            <span>{region.name}</span>
-                                            <span className="text-muted-foreground">
-                                                {region.sales}%
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-indigo-400 rounded-full"
-                                                    style={{ width: `${region.sales}%` }}
-                                                />
+                                orderStatus.map((status: any, i: number) => {
+                                    const totalOrders = orderStatus.reduce((acc, curr) => acc + (curr.count || 0), 0);
+                                    const percent = totalOrders ? Math.round((status.count / totalOrders) * 100) : 0;
+                                    return (
+                                        <div key={i}>
+                                            <div className="flex justify-between text-xs font-bold text-foreground mb-1.5 capitalize">
+                                                <span>{status._id || "Unknown"}</span>
+                                                <span className="text-muted-foreground">
+                                                    {percent}%
+                                                </span>
                                             </div>
-                                            <span className="text-xs font-bold w-12 text-right">
-                                                {region.value}
-                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-indigo-400 rounded-full"
+                                                        style={{ width: `${percent}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-xs font-bold w-12 text-right">
+                                                    {status.count}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {/* Category Performance */}
-            <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-                <h3 className="text-base font-bold text-foreground mb-6">
-                    Category Performance
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {isLoading ? (
-                        Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i}>
-                                <div className="flex justify-between mb-2">
-                                    <Skeleton className="h-3 w-16" />
-                                    <Skeleton className="h-3 w-8" />
-                                </div>
-                                <Skeleton className="h-2 w-full mb-2" />
-                                <div className="flex justify-between">
-                                    <Skeleton className="h-3 w-20" />
-                                    <Skeleton className="h-3 w-8" />
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <>
-                            <div>
-                                <CategoryProgress
-                                    label="Jewelry"
-                                    percent={65}
-                                    color="bg-primary"
-                                />
-                                <div className="mt-2 text-xs text-muted-foreground flex justify-between">
-                                    <span>320 items sold</span>
-                                    <span className="font-bold text-green-500">+12%</span>
-                                </div>
-                            </div>
-                            <div>
-                                <CategoryProgress
-                                    label="Bags & Purses"
-                                    percent={80}
-                                    color="bg-orange-500"
-                                />
-                                <div className="mt-2 text-xs text-muted-foreground flex justify-between">
-                                    <span>450 items sold</span>
-                                    <span className="font-bold text-green-500">+24%</span>
-                                </div>
-                            </div>
-                            <div>
-                                <CategoryProgress
-                                    label="Home Decor"
-                                    percent={30}
-                                    color="bg-emerald-500"
-                                />
-                                <div className="mt-2 text-xs text-muted-foreground flex justify-between">
-                                    <span>115 items sold</span>
-                                    <span className="font-bold text-red-500">-5%</span>
-                                </div>
-                            </div>
-                            <div>
-                                <CategoryProgress
-                                    label="Accessories"
-                                    percent={45}
-                                    color="bg-blue-500"
-                                />
-                                <div className="mt-2 text-xs text-muted-foreground flex justify-between">
-                                    <span>210 items sold</span>
-                                    <span className="font-bold text-green-500">+8%</span>
-                                </div>
-                            </div>
-                        </>
-                    )}
                 </div>
             </div>
         </div>
