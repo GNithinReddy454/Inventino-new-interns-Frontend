@@ -114,7 +114,13 @@ export function ShippingForm({ onSubmit }: ShippingFormProps) {
     setTouched(allTouched);
 
     if (isFormValid()) {
-      onSubmit(formData);
+      const fullAddress: ShippingAddress = {
+        ...formData,
+        fullName: `${formData.firstName} ${formData.lastName}`.trim(),
+        street: formData.streetAddress,
+        pincode: formData.zipCode,
+      };
+      onSubmit(fullAddress);
     }
   };
 

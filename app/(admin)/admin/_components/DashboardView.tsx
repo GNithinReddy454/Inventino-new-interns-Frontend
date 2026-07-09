@@ -62,7 +62,7 @@ const PERIOD_MAP: Record<string, string> = {
     "1 Year": "1y",
 };
 
-export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
+export default function DashboardView() {
     const [isLoading, setIsLoading] = useState(true);
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [chartRange, setChartRange] = useState("30 Days");
@@ -127,10 +127,9 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                 )}
             </div>
 
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
                 {/* Revenue Overview */}
-                <div className="lg:col-span-2">
+                <div className="w-full">
                     <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8 flex flex-col min-h-100 h-full">
                         <div className="flex justify-between items-center mb-10 w-full relative z-10">
                             <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Revenue Overview</h3>
@@ -164,28 +163,14 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                                         <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: 600 }} axisLine={false} tickLine={false} />
                                         <YAxis tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                                        {/* ✅ Fixed: removed type annotation — let TypeScript infer ValueType, use Number() to safely cast */}
                                         <Tooltip
                                             contentStyle={{ borderRadius: 12, border: "1px solid #f3f4f6", boxShadow: "0 4px 20px rgba(0,0,0,0.08)", fontSize: 12 }}
-                                            formatter={(v) => [`₹${Number(v).toLocaleString()}`, "Revenue"]}
+                                            formatter={(v) => ["₹" + Number(v).toLocaleString(), "Revenue"]}
                                         />
                                         <Area type="monotone" dataKey="revenue" stroke="#E91E63" strokeWidth={2.5} fill="url(#revenueGrad)" dot={{ r: 4, fill: "#E91E63", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#E91E63" }} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Sales by Category */}
-                <div>
-                    <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8 h-full">
-                        <h3 className="text-[18px] font-bold text-gray-900 tracking-tight mb-8">Sales by Category</h3>
-                        <div className="space-y-6">
-                            <CategoryProgress label="Jewelry" percent={45} />
-                            <CategoryProgress label="Accessories" percent={30} />
-                            <CategoryProgress label="Home Decor" percent={15} />
-                            <CategoryProgress label="Art & Crafts" percent={10} />
                         </div>
                     </div>
                 </div>
@@ -226,16 +211,16 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                                     <td className="px-4 py-4 text-gray-600 font-medium">{order.totalItems} Items</td>
                                     <td className="px-4 py-4 font-bold text-[13px] text-gray-900">₹{order.totalAmount}</td>
                                     <td className="px-4 py-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${order.orderStatus === "delivered" ? "bg-[#F0FDF4] text-[#16A34A]" :
+                                        <span className={"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold " + (order.orderStatus === "delivered" ? "bg-[#F0FDF4] text-[#16A34A]" :
                                             order.orderStatus === "shipped" ? "bg-[#EFF6FF] text-[#2563EB]" :
                                                 order.orderStatus === "created" ? "bg-[#FFF7ED] text-[#EA580C]" :
                                                     "bg-[#FEF2F2] text-[#DC2626]"
-                                            }`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${order.orderStatus === "delivered" ? "bg-[#22C55E]" :
+                                            )}>
+                                            <span className={"w-1.5 h-1.5 rounded-full " + (order.orderStatus === "delivered" ? "bg-[#22C55E]" :
                                                 order.orderStatus === "shipped" ? "bg-[#3B82F6]" :
                                                     order.orderStatus === "created" ? "bg-[#F97316]" :
                                                         "bg-[#EF4444]"
-                                                }`}></span>
+                                                )}></span>
                                             {order.orderStatus || "Pending"}
                                         </span>
                                     </td>
@@ -267,7 +252,7 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
                 {/* Top Products */}
                 <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8">
                     <div className="flex justify-between items-center mb-8">
@@ -291,45 +276,6 @@ export default function DashboardView({ TOP_PRODUCTS, RECENT_ACTIVITY }: any) {
                             </div>
                         ))}
                     </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] border border-gray-50 p-6 sm:p-8 overflow-hidden">
-                    <div className="flex justify-between items-center mb-8">
-                        <h3 className="text-[18px] font-bold text-gray-900 tracking-tight">Recent Activity</h3>
-                    </div>
-                    {isLoading ? (
-                        <div className="space-y-4">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                                <div key={i} className="flex gap-4">
-                                    <Skeleton className="h-10 flex-1" />
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="space-y-3.5 text-sm relative">
-                            {[
-                                { text: "New order received", time: "2 minutes ago", icon: <span className="text-[14px]">🎉</span> },
-                                { text: "Order shipped", time: "15 minutes ago", icon: <Check size={14} className="text-white" strokeWidth={4} />, iconBg: "bg-[#22C55E]" },
-                                { text: "New 5-star review", time: "1 hour ago", icon: <Star size={12} className="text-yellow-400 fill-yellow-400" /> },
-                                { text: "New product added", time: "3 hours ago", icon: <span className="text-[14px]">📦</span> },
-                            ].map((act, i) => (
-                                <div key={i} className="flex gap-4 relative justify-start items-center bg-[#FAFAFA] rounded-xl p-4 transition-colors hover:bg-gray-100/50">
-                                    <div className="w-9 h-9 bg-white rounded-full flex shrink-0 items-center justify-center shadow-sm text-center">
-                                        {act.iconBg ? (
-                                            <div className={`${act.iconBg} w-5 h-5 rounded flex items-center justify-center`}>
-                                                {act.icon}
-                                            </div>
-                                        ) : act.icon}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="font-bold text-[13.5px] text-gray-900 leading-tight mb-1">{act.text}</p>
-                                        <p className="text-[11px] text-gray-400 font-medium">{act.time}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
