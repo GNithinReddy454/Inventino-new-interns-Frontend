@@ -314,10 +314,31 @@ export default function AllProductsView({
             .filter(Boolean)
         : [];
 
-      setCategoryOptions(["All Categories", ...Array.from(new Set(names))]);
+      const finalNames = names.length > 0 ? Array.from(new Set(names)) : [
+        "Bracelets",
+        "Necklaces",
+        "Rings",
+        "Earrings",
+        "Pendants",
+        "Bags",
+        "Home Decor",
+        "Textiles"
+      ];
+
+      setCategoryOptions(["All Categories", ...finalNames]);
     } catch (err) {
       console.error("Failed to fetch categories:", err);
-      setCategoryOptions(["All Categories"]);
+      setCategoryOptions([
+        "All Categories",
+        "Bracelets",
+        "Necklaces",
+        "Rings",
+        "Earrings",
+        "Pendants",
+        "Bags",
+        "Home Decor",
+        "Textiles"
+      ]);
     }
   }, []);
 

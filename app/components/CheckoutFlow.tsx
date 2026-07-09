@@ -315,9 +315,9 @@ export default function CheckoutFlow() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-50">
-      <div className="container mx-auto px-4 py-6 md:py-12">
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-50 print:bg-white print:min-h-0">
+      <div className="container mx-auto px-4 py-6 md:py-12 print:py-0 print:px-0 print:mx-0 print:max-w-none">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 max-w-7xl mx-auto print:gap-0">
           {/* Main Content */}
           <div className="flex-1 order-2 lg:order-1">
             {currentStep === "shipping" && (
@@ -346,6 +346,9 @@ export default function CheckoutFlow() {
               <SuccessScreen
                 order={orderResponse}
                 onViewTracking={handleViewTracking}
+                items={itemsToOrder}
+                subtotal={orderSubtotal}
+                discount={currentDiscount}
               />
             )}
             {currentStep === "failed" && orderResponse && (
@@ -361,7 +364,7 @@ export default function CheckoutFlow() {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:w-96 order-1 lg:order-2 lg:mt-8">
+          <div className="lg:w-96 order-1 lg:order-2 lg:mt-8 print:hidden">
             <OrderSidebar
               currentStep={currentStep}
               paymentMethod={paymentMethod}

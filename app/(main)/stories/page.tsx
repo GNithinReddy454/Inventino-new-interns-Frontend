@@ -12,6 +12,7 @@ import Toast from "@/app/components/toast";
 import { productService } from "@/services/product.service";
 import { cartService } from "@/services/cart.service";
 import axios from "axios";
+import { normalize } from "@/utils/products.utils";
 
 // Story interface based on your backend response
 interface ProductStory {
@@ -34,69 +35,7 @@ interface StoryCard {
   productId: string;
 }
 
-// Real product stories from the database
-const MOCK_STORIES: StoryCard[] = [
-  {
-    id: 1,
-    artisan: "Inventino Artisan",
-    role: "Master Craftsperson",
-    title: "Luxury Pearl Bracelet",
-    description: "A premium bracelet crafted with elegant pearls. Each pearl is hand-selected for its lustrous sheen and perfectly round shape. Our artisans string them with precision, creating a piece that exudes sophistication and timeless beauty. This bracelet is designed for those who appreciate the finer things in life — a true statement of refined elegance.",
-    quote: "Every pearl tells a story of patience and nature's artistry. We honour that story by giving it a setting worthy of its beauty.",
-    process: "Each pearl is carefully inspected under natural light, sorted by size, colour, and lustre. The stringing is done by hand using silk thread with knots between each pearl for security and a luxurious drape.",
-    image: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776710093371-12a1743c47351928e1719ac9d7fb601d.jpg",
-    thumbnail: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776710093371-12a1743c47351928e1719ac9d7fb601d.jpg",
-    productId: "69e67009da47f4fc8d76dd82",
-  },
-  {
-    id: 2,
-    artisan: "Inventino Artisan",
-    role: "Pearl Specialist",
-    title: "2 in 1 Pearl Wrap",
-    description: "Wear it as a necklace or bracelet and style it your way with a scarf. Transform your look in seconds. This versatile piece adapts to your mood and outfit, offering two stunning looks in one exquisite design. The delicate pearls catch the light beautifully, adding a touch of glamour to any occasion.",
-    quote: "Versatility meets elegance — one piece, endless possibilities.",
-    process: "The wrap design is carefully engineered to maintain its shape whether worn as a bracelet or a necklace. Each pearl is double-knotted for durability, and the clasp is designed for effortless transitions between styles.",
-    image: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776089766730-8e8c1d1d1f2115696dbef15617ab30e5.jpeg",
-    thumbnail: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776089766730-8e8c1d1d1f2115696dbef15617ab30e5.jpeg",
-    productId: "69dcfaa6f9d9a4f6dbcc521e",
-  },
-  {
-    id: 3,
-    artisan: "Inventino Artisan",
-    role: "Jewellery Designer",
-    title: "Pearl Crystal Wrap — 2 in 1",
-    description: "A statement of refined elegance, this wrap bracelet features luminous pearls paired with faceted multi-coloured crystals. The combination creates a dazzling interplay of light and texture, making it perfect for both everyday wear and special occasions.",
-    quote: "When pearls meet crystals, magic happens — a harmony of nature and artistry.",
-    process: "Faceted crystals are individually selected to complement the natural lustre of each pearl. The alternating pattern is hand-threaded on reinforced wire for a fluid, comfortable wrap that moulds to your wrist.",
-    image: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776089130220-47717ba256554b141d1a4d39bc47a6ee.jpeg",
-    thumbnail: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776089130220-47717ba256554b141d1a4d39bc47a6ee.jpeg",
-    productId: "69dcf829f9d9a4f6dbcc50eb",
-  },
-  {
-    id: 4,
-    artisan: "Inventino Artisan",
-    role: "Accessory Artisan",
-    title: "Elegant Pearl Wrap Bracelet",
-    description: "Delicate, timeless, and effortlessly chic. This pearl wrap bracelet is designed to elevate your everyday look with understated luxury. The minimalist design lets the natural beauty of the pearls take centre stage.",
-    quote: "Simplicity is the ultimate sophistication — let the pearls speak for themselves.",
-    process: "Using only the finest freshwater pearls, this bracelet is assembled with meticulous attention to spacing and symmetry. The flexible wrap design ensures a comfortable fit on any wrist size.",
-    image: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776067965389-978b176690930debcf28ad5bae1dfdbf.jpeg",
-    thumbnail: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776067965389-978b176690930debcf28ad5bae1dfdbf.jpeg",
-    productId: "69dca57d6ce90847b9b81ab7",
-  },
-  {
-    id: 5,
-    artisan: "Inventino Artisan",
-    role: "Gold Specialist",
-    title: "Guruvayoorappan Bracelet",
-    description: "This is a 22k gold locket bracelet inspired by the divine Guruvayoorappan. A sacred piece that blends devotion with fine craftsmanship. The rich gold finish and intricate detailing make it a treasured keepsake for those who carry their faith close to their heart.",
-    quote: "Faith and craftsmanship woven together — a bracelet that carries blessings.",
-    process: "The 22k gold is carefully moulded and hand-finished to bring out the intricate details of the Guruvayoorappan motif. Each piece is individually polished to achieve a mirror-like shine that lasts.",
-    image: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776089766730-8e8c1d1d1f2115696dbef15617ab30e5.jpeg",
-    thumbnail: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776089766730-8e8c1d1d1f2115696dbef15617ab30e5.jpeg",
-    productId: "69d8b42adbcbc3ce34b48c7c",
-  },
-];
+// removed mock stories
 
 const PROCESS_STEPS = [
   {
@@ -116,57 +55,7 @@ const PROCESS_STEPS = [
   }
 ];
 
-// Real fallback similar products from the database
-const FALLBACK_SIMILAR_PRODUCTS: ProductCardProduct[] = [
-  {
-    id: "69e67009da47f4fc8d76dd82",
-    name: "Luxury Pearl Bracelet",
-    price: 3200,
-    category: "BRACELETS",
-    rating: 4.8,
-    reviews: 0,
-    image: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776710093371-12a1743c47351928e1719ac9d7fb601d.jpg",
-    badge: "BESTSELLER",
-    tags: ["Pearl", "Premium"],
-    description: "A premium bracelet crafted with elegant pearls",
-  },
-  {
-    id: "69dcfaa6f9d9a4f6dbcc521e",
-    name: "2 in 1 Pearl Wrap",
-    price: 540,
-    category: "BRACELETS",
-    rating: 4.7,
-    reviews: 0,
-    image: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776089766730-8e8c1d1d1f2115696dbef15617ab30e5.jpeg",
-    badge: "NEW",
-    tags: ["Pearl", "Versatile"],
-    description: "Wear it as a necklace or bracelet and style it your way",
-  },
-  {
-    id: "69dcf829f9d9a4f6dbcc50eb",
-    name: "Pearl Crystal Wrap 2 in 1",
-    price: 500,
-    category: "BRACELETS",
-    rating: 4.6,
-    reviews: 0,
-    image: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776089130220-47717ba256554b141d1a4d39bc47a6ee.jpeg",
-    badge: "NEW",
-    tags: ["Pearl", "Crystal"],
-    description: "Luminous pearls paired with faceted multi-coloured crystals",
-  },
-  {
-    id: "69dca57d6ce90847b9b81ab7",
-    name: "Elegant Pearl Wrap Bracelet",
-    price: 450,
-    category: "BRACELETS",
-    rating: 4.9,
-    reviews: 0,
-    image: "https://inventino-products.s3.ap-south-1.amazonaws.com/products/1776067965389-978b176690930debcf28ad5bae1dfdbf.jpeg",
-    badge: "BESTSELLER",
-    tags: ["Pearl", "Elegant"],
-    description: "Delicate, timeless, and effortlessly chic pearl wrap bracelet",
-  },
-];
+// removed fallback similar products
 
 interface SimilarProduct {
   _id: string;
@@ -197,18 +86,24 @@ function resolveStoryImage(product: any): string {
 function mapApiStories(items: any[]): StoryCard[] {
   return items
     .map((item, index) => {
+      const rawStory = item?.story;
       const storyTitle =
-        item?.story?.title || item?.productName || item?.name || `Story ${index + 1}`;
+        (typeof rawStory === "string" ? rawStory : (rawStory?.title || rawStory?.storyTitle)) ||
+        item?.productName ||
+        item?.name ||
+        `Story ${index + 1}`;
       const storyContent =
-        item?.story?.content || item?.story || item?.description || "";
+        (typeof rawStory === "string" ? rawStory : (rawStory?.content || rawStory?.storyContent || rawStory?.quoteText)) ||
+        item?.description ||
+        "";
       const productId = String(item?.productId || item?._id || "");
 
       if (!productId) return null;
 
       return {
         id: index + 1,
-        artisan: item?.story?.author || item?.story?.artisan || item?.productName || "Inventino Artisan",
-        role: item?.story?.role || "Featured Story",
+        artisan: item?.story?.author || item?.story?.artisan || item?.productName || item?.name || "Inventino Artisan",
+        role: item?.story?.role || "Handcrafted Luxury",
         title: storyTitle,
         description: storyContent || storyTitle,
         quote: item?.story?.quote || storyContent || storyTitle,
@@ -234,12 +129,13 @@ function ProcessStepCard({ step }: { step: typeof PROCESS_STEPS[0] }) {
 }
 
 export default function StoriesPage() {
-  const [stories, setStories] = useState<StoryCard[]>(MOCK_STORIES);
-  const [activeStoryId, setActiveStoryId] = useState(MOCK_STORIES[0].id);
+  const [stories, setStories] = useState<StoryCard[]>([]);
+  const [activeStoryId, setActiveStoryId] = useState<number | null>(null);
+  const [isStoriesLoading, setIsStoriesLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState("");
   const [toastTitle, setToastTitle] = useState("Added to Cart");
   const [toastType, setToastType] = useState<"success" | "error">("success");
-  const [similarProducts, setSimilarProducts] = useState<ProductCardProduct[]>(FALLBACK_SIMILAR_PRODUCTS);
+  const [similarProducts, setSimilarProducts] = useState<ProductCardProduct[]>([]);
   const [similarLoading, setSimilarLoading] = useState(false);
 
   // Story API states
@@ -253,10 +149,10 @@ export default function StoriesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const similarScrollRef = useRef<HTMLDivElement>(null);
 
-  const activeStory = stories.find(s => s.id === activeStoryId) ?? stories[0] ?? MOCK_STORIES[0];
+  const activeStory = stories.find(s => s.id === activeStoryId) ?? stories[0];
   const activeIndex = stories.findIndex(s => s.id === activeStoryId);
-  const isFirst = activeIndex === 0;
-  const isLast = activeIndex === stories.length - 1;
+  const isFirst = activeIndex <= 0;
+  const isLast = activeIndex === stories.length - 1 || stories.length === 0;
 
   // ─── Scroll active circle into view ────────────────────────────────────────
   const scrollActiveCircleIntoView = (storyId: number) => {
@@ -301,67 +197,51 @@ export default function StoriesPage() {
   };
 
   const fetchStoriesList = async () => {
+    setIsStoriesLoading(true);
     try {
-      const response = await productService.getStories(1, 12);
-      const items = response?.data?.data?.items;
+      const response = await productService.getAll({ page: 1, limit: 100 });
+      const rawProducts = response?.data?.data?.items || [];
+      const items = Array.isArray(rawProducts) ? rawProducts : [];
 
-      if (Array.isArray(items) && items.length > 0) {
-        const mappedStories = mapApiStories(items);
+      // Filter out test products
+      const filtered = items.filter((p: any) => {
+        const name = (p?.name || "").toLowerCase();
+        const desc = (p?.description || "").toLowerCase();
+        return !name.includes("test") && !desc.includes("test");
+      });
+
+      // Randomly shuffle products on every reload
+      const shuffled = [...filtered].sort(() => 0.5 - Math.random());
+
+      if (shuffled.length > 0) {
+        const mappedStories = mapApiStories(shuffled);
         if (mappedStories.length > 0) {
           setStories(mappedStories);
           setActiveStoryId((currentId) => {
             const currentExists = mappedStories.some((story) => story.id === currentId);
-            return currentExists ? currentId : mappedStories[0].id;
+            return currentExists && currentId !== null ? currentId : mappedStories[0].id;
           });
         }
+
+        // Map same shuffled products to similarProducts state
+        const transformedSimilar = shuffled.map((p: any) => normalize(p));
+        // Shuffle them again so top and bottom order are different/random
+        const shuffledSimilar = [...transformedSimilar].sort(() => 0.5 - Math.random());
+        setSimilarProducts(shuffledSimilar);
+      } else {
+        setStories([]);
+        setSimilarProducts([]);
       }
     } catch (error) {
       console.error("[Stories] list fetch failed:", error);
+    } finally {
+      setIsStoriesLoading(false);
     }
   };
 
   // ─── API: Similar Products ───────────────────────────────────────────────
   const fetchSimilarProducts = async (productId: string) => {
-    if (!productId) return;
-    
-    // Skip API call for mock IDs to avoid 500 errors on backend
-    const isObjectId = /^[0-9a-fA-F]{24}$/.test(productId);
-    if (!isObjectId) {
-      console.log(`[Similar] Skipping API for mock/invalid ID: ${productId}`);
-      setSimilarProducts(FALLBACK_SIMILAR_PRODUCTS);
-      return;
-    }
-
-    setSimilarLoading(true);
-    try {
-      const response = await productService.getSimilar(productId);
-      const payload = response?.data ?? response;
-      const list: SimilarProduct[] = Array.isArray(payload) ? payload : [];
-      if (list.length > 0) {
-        const transformedProducts = list.map((p) => ({
-          id: p._id,
-          _id: p._id,
-          name: p.name,
-          price: p.price,
-          originalPrice: p.price + 150,
-          category: p.category,
-          image: p.images?.[0]?.url || FALLBACK_IMAGE,
-          images: p.images?.length ? p.images.map((img) => img.url) : [FALLBACK_IMAGE],
-          rating: p.ratingsAverage || 4.5,
-          reviews: p.ratingsCount || 0,
-          description: p.description,
-          slug: p.slug,
-        }));
-        setSimilarProducts(transformedProducts);
-      } else {
-        setSimilarProducts(FALLBACK_SIMILAR_PRODUCTS);
-      }
-    } catch (err) {
-      console.error("[Similar] fetch failed:", err);
-      setSimilarProducts(FALLBACK_SIMILAR_PRODUCTS);
-    } finally {
-      setSimilarLoading(false);
-    }
+    // Similar products are pre-loaded from stories list to fill space and shuffle on refresh
   };
 
   // Fetch story and similar products when active story changes
@@ -425,6 +305,23 @@ export default function StoriesPage() {
       similarScrollRef.current.scrollBy({ left: similarScrollRef.current.offsetWidth, behavior: "smooth" });
     }
   };
+
+  if (isStoriesLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-gray-200 border-t-[#E8456A] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (stories.length === 0 || !activeStory) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
+        <ShoppingBag size={48} className="text-gray-300" />
+        <p className="text-gray-500 text-lg font-medium">No stories available at the moment.</p>
+      </div>
+    );
+  }
 
   // Determine which story content to display (API data or fallback)
   const storyImageSrc = storyData?.storyMedia?.trim()

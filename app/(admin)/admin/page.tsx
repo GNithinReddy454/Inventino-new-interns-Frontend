@@ -20,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 
-import { TOP_PRODUCTS, RECENT_ORDERS, RECENT_ACTIVITY } from "./_data/mockData";
 import DashboardView from "./_components/DashboardView";
 import AllProductsView from "./products/AllProductsView";
 import OrdersView from "./orders/OrdersView";
@@ -221,7 +220,7 @@ export default function AdminDashboard() {
 
         <div className="flex-1 px-6 lg:px-10 pb-10">
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto h-full">
-            {activeTab === "Dashboard" && <DashboardView TOP_PRODUCTS={TOP_PRODUCTS} RECENT_ORDERS={RECENT_ORDERS} RECENT_ACTIVITY={RECENT_ACTIVITY} />}
+            {activeTab === "Dashboard" && <DashboardView />}
             {activeTab === "Landing Page CMS" && <LandingPageCMSView />}
             {activeTab === "All Products" && <AllProductsView onAddProduct={() => setActiveTab("Add Product")} />}
             {activeTab === "Add Product" && <AddProduct />}

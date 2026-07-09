@@ -362,10 +362,30 @@ export default function AddProduct() {
           .map((item: any) => item?.name?.trim())
           .filter(Boolean);
 
-        setCategoryOptions(Array.from(new Set(names)));
+        const finalNames = names.length > 0 ? Array.from(new Set(names)) : [
+          "Bracelets",
+          "Necklaces",
+          "Rings",
+          "Earrings",
+          "Pendants",
+          "Bags",
+          "Home Decor",
+          "Textiles"
+        ];
+
+        setCategoryOptions(finalNames);
       } catch (err) {
         console.error("Failed to load categories:", err);
-        setCategoryOptions([]);
+        setCategoryOptions([
+          "Bracelets",
+          "Necklaces",
+          "Rings",
+          "Earrings",
+          "Pendants",
+          "Bags",
+          "Home Decor",
+          "Textiles"
+        ]);
       }
     };
 
