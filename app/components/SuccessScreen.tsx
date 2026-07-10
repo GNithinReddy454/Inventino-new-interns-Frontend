@@ -2,7 +2,7 @@
 
 import { Button } from "./ui/button";
 import { OrderResponse } from "@/lib/types";
-import { CheckCircle2, Package, MapPin, Truck, Lock } from "lucide-react";
+import { CheckCircle2, Package, MapPin, Truck, Lock, Home } from "lucide-react";
 
 interface SuccessScreenProps {
   order: OrderResponse;
@@ -328,22 +328,35 @@ export function SuccessScreen({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3">
+        {/* Go to Home - Primary CTA */}
         <Button
           onClick={() => (window.location.href = "/")}
-          className="flex-1 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white py-6 text-base font-semibold rounded-lg shadow-lg shadow-pink-500/30"
+          className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white py-6 text-base font-semibold rounded-lg shadow-lg shadow-pink-500/30 flex items-center justify-center gap-2"
         >
-          Continue Shopping
+          <Home className="h-5 w-5" />
+          Go to Home
         </Button>
 
-        <Button
-          variant="outline"
-          onClick={() => window.print()}
-          className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 py-6"
-        >
-          <Package className="mr-2 h-5 w-5" />
-          Print Receipt
-        </Button>
+        {/* Secondary Actions */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            variant="outline"
+            onClick={() => (window.location.href = "/")}
+            className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 py-6"
+          >
+            Continue Shopping
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 py-6"
+          >
+            <Package className="mr-2 h-5 w-5" />
+            Print Receipt
+          </Button>
+        </div>
       </div>
     </div>
 
