@@ -42,7 +42,6 @@ export default function ShopByCategory() {
       try {
         setLoading(true);
 
-        // Step 1: Try /api/categories first
         const catRes = await fetch(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/categories`
         );
@@ -50,7 +49,6 @@ export default function ShopByCategory() {
         const catItems = catData?.data?.items ?? [];
 
         if (catItems.length > 0) {
-          // Use real category data
           const derived: CategoryItem[] = catItems
             .filter((c: any) => c.isActive)
             .sort((a: any, b: any) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
@@ -71,7 +69,6 @@ export default function ShopByCategory() {
           return;
         }
 
-        // Step 2: Fallback — derive from products
         const prodRes = await fetch(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/products?category=all&limit=100`
         );
@@ -79,7 +76,6 @@ export default function ShopByCategory() {
         const prodData = await prodRes.json();
         const products: any[] = prodData?.data?.items ?? [];
 
-        // Group by category name
         const categoryMap: Record<string, { count: number; image: string }> = {};
 
         for (const product of products) {
@@ -89,7 +85,6 @@ export default function ShopByCategory() {
           }
           categoryMap[cat].count += 1;
 
-          // Pick first valid image for this category
           if (!categoryMap[cat].image) {
             const imgObj = product.images?.find(
               (img: any) =>
@@ -168,8 +163,8 @@ export default function ShopByCategory() {
   };
 
   return (
-    <section className="w-full bg-pink-100 px-4 sm:px-8 md:px-12 lg:px-16 py-10 md:py-16">
-      <div className="max-w-[1400px] w-full mx-auto">
+    <section className="w-full bg-pink-100 py-10 md:py-16">
+      <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-8 md:px-12 lg:px-16">
         {/* Heading */}
         <div className="text-center mb-10 md:mb-14">
           <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
@@ -199,56 +194,61 @@ export default function ShopByCategory() {
 
         {/* Scrollable row */}
         {!loading && !error && categories.length > 0 && (
-          <div className="relative group px-12 sm:px-0">
+          <div className="relative">
+            {/* Left arrow */}
             <button
               onClick={() => scroll("left")}
-              className="absolute left-0 sm:-left-3 md:-left-6 lg:-left-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
+              className="absolute -left-4 sm:-left-6 md:-left-8 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
               aria-label="Scroll left"
             >
               ❮
             </button>
 
-            <div
-              ref={scrollRef}
-              className="flex gap-4 sm:gap-6 lg:gap-8 overflow-x-auto scroll-smooth pb-4 px-2 snap-x snap-mandatory items-stretch pt-2"
-              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-            >
-              {categories.map((cat) => (
-                <div
-                  key={cat.slug}
-                  className="snap-center flex-shrink-0 w-full sm:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1.5rem)]"
-                >
-                  <Link
-                    href={`/products?category=${encodeURIComponent(cat.name)}`}
-                    className="group block bg-white rounded-2xl p-5 md:p-6 shadow-sm hover:shadow-md transition-all duration-300 border border-white hover:border-pink-300 hover:-translate-y-1 h-full mx-auto text-center"
+            {/* overflow-hidden clips scroll, inner px-1 lets card shadows show */}
+            <div className="overflow-hidden">
+              <div
+                ref={scrollRef}
+                className="flex gap-4 sm:gap-6 lg:gap-8 overflow-x-auto pb-4 py-2 px-1 snap-x snap-mandatory"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                {categories.map((cat) => (
+                  <div
+                    key={cat.slug}
+                    className="flex-shrink-0 w-full sm:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1.5rem)] snap-start"
                   >
-                    <div className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden mx-auto mb-4 border-2 border-pink-50 group-hover:border-pink-300 transition-colors">
-                      <img
-                        src={cat.image}
-                        alt={cat.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src =
-                            CATEGORY_FALLBACK_IMAGES[cat.name.toLowerCase()] ??
-                            "/images/bracelets-charm.jpg";
-                        }}
-                      />
-                    </div>
-                    <h3 className="font-bold text-gray-900 text-sm md:text-base mb-1 group-hover:text-pink-600 transition-colors">
-                      {cat.name}
-                    </h3>
-                    <p className="text-[11px] md:text-xs text-gray-400">
-                      {cat.count > 0 ? `${cat.count}+ Products` : "Shop Now"}
-                    </p>
-                  </Link>
-                </div>
-              ))}
+                    <Link
+                      href={`/products?category=${encodeURIComponent(cat.name)}`}
+                      className="group block bg-white rounded-2xl p-5 md:p-6 shadow-sm hover:shadow-md transition-all duration-300 border border-white hover:border-pink-300 hover:-translate-y-1 h-full text-center"
+                    >
+                      <div className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden mx-auto mb-4 border-2 border-pink-50 group-hover:border-pink-300 transition-colors">
+                        <img
+                          src={cat.image}
+                          alt={cat.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src =
+                              CATEGORY_FALLBACK_IMAGES[cat.name.toLowerCase()] ??
+                              "/images/bracelets-charm.jpg";
+                          }}
+                        />
+                      </div>
+                      <h3 className="font-bold text-gray-900 text-sm md:text-base mb-1 group-hover:text-pink-600 transition-colors">
+                        {cat.name}
+                      </h3>
+                      <p className="text-[11px] md:text-xs text-gray-400">
+                        {cat.count > 0 ? `${cat.count}+ Products` : "Shop Now"}
+                      </p>
+                    </Link>
+                  </div>
+                ))}
+              </div>
             </div>
 
+            {/* Right arrow */}
             <button
               onClick={() => scroll("right")}
-              className="absolute right-0 sm:-right-3 md:-right-6 lg:-right-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
+              className="absolute -right-4 sm:-right-6 md:-right-8 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
               aria-label="Scroll right"
             >
               ❯

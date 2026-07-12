@@ -11,9 +11,7 @@ import {
   Menu,
   X,
   ChevronRight,
-  Package,
-  MapPin,
-  Settings,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "@/app/(main)/components/authContext";
 import { useRouter, usePathname } from "next/navigation";
@@ -21,27 +19,46 @@ import { useEffect, useState, useRef } from "react";
 import { useAppSelector, useAppDispatch } from "@/redux/store";
 import { fetchCart } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
-import { productService } from "@/services/product.service"; // ✅ API service
+import { productService } from "@/services/product.service";
+// ✅ Same folder — no path change needed
+import NotificationsPanel, { useNotificationCount } from "@/app/(main)/components/NotificationsPanel";
 
-// Types for search results (based on API response)
 interface SearchProduct {
   id: string;
   name: string;
   category: string;
-  price: number;
+  price?: number;
   image: string;
 }
 
 const Navbar = () => {
   const pathname = usePathname();
   const { items: savedItems = [] } = useAppSelector((state: any) => state.wishlist);
-  const { totalItems: reduxBagCount = 0 } = useAppSelector((state: any) => state.cart);
+  const { totalItems: reduxBagCount = 0, error: cartError } = useAppSelector((state: any) => state.cart);
   const { cart: localCart } = useCart();
   const { user, logout } = useAuth();
 
-  const bagCount = user ? reduxBagCount : localCart.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
+  const hasServerCartSession =
+    typeof window !== "undefined" && !!localStorage.getItem("token") && !!user;
+
+  const localBagCount = localCart.reduce(
+    (total: number, item: any) => total + (item.quantity || 1),
+    0
+  );
+  const hasCartAuthError =
+    typeof cartError === "string" &&
+    (cartError.toLowerCase().includes("user not found") ||
+      cartError.toLowerCase().includes("unauthorized"));
+
+  const bagCount = hasServerCartSession
+    ? hasCartAuthError
+      ? localBagCount
+      : Math.max(reduxBagCount, localBagCount)
+    : localBagCount;
+
   const dispatch = useAppDispatch();
   const router = useRouter();
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [announcementHeight, setAnnouncementHeight] = useState(40);
@@ -53,31 +70,64 @@ const Navbar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    dispatch(fetchCart());
-  }, [dispatch, user]);
+  // ── Notifications state ───────────────────────────────────────────────────
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [hasPersistedUserSession, setHasPersistedUserSession] = useState(false);
+  const notifBtnRef = useRef<HTMLButtonElement>(null);
+  const { unreadCount, refetch: refetchCount } = useNotificationCount();
 
-  // ── Search state ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (hasServerCartSession) {
+      dispatch(fetchCart());
+    }
+  }, [dispatch, hasServerCartSession]);
+
+  useEffect(() => {
+    const syncPersistedSession = () => {
+      if (typeof window === "undefined") {
+        setHasPersistedUserSession(false);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("token");
+        const rawUser = localStorage.getItem("inventino_user");
+        if (!token || !rawUser) {
+          setHasPersistedUserSession(false);
+          return;
+        }
+
+        const parsedUser = JSON.parse(rawUser);
+        const isAdminSession = Array.isArray(parsedUser?.permissions);
+        setHasPersistedUserSession(!isAdminSession);
+      } catch {
+        setHasPersistedUserSession(false);
+      }
+    };
+
+    syncPersistedSession();
+    window.addEventListener("storage", syncPersistedSession);
+    return () => window.removeEventListener("storage", syncPersistedSession);
+  }, [user]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Debounced API call
   useEffect(() => {
     const handler = setTimeout(() => {
       if (searchQuery.trim().length > 1) {
         productService
           .searchProducts(searchQuery)
           .then((response) => {
-            // Assuming response.data = { statusCode, message, data: { items } }
             const items = response.data.data.items || [];
             const mapped = items.map((p: any) => ({
               id: p._id,
-              name: p.name,
-              category: p.category,
-              price: p.price,
-              image: p.images?.[0]?.url || "",
+              name: p.name || p.productName || "Untitled Product",
+              category: p.category || "",
+              price: Number(p.price ?? p.pricing?.price ?? 0),
+              image: p.images?.[0]?.url || p.media?.mainImage || p.imageUrl || "",
             }));
             setSearchResults(mapped);
           })
@@ -88,20 +138,14 @@ const Navbar = () => {
       } else {
         setSearchResults([]);
       }
-    }, 300); // 300ms debounce
-
+    }, 300);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // ── Existing effects (unchanged) ──────────────────────────────────────
   useEffect(() => {
     const measureHeights = () => {
-      if (announcementRef.current) {
-        setAnnouncementHeight(announcementRef.current.offsetHeight);
-      }
-      if (navbarRef.current) {
-        setNavbarHeight(navbarRef.current.offsetHeight);
-      }
+      if (announcementRef.current) setAnnouncementHeight(announcementRef.current.offsetHeight);
+      if (navbarRef.current) setNavbarHeight(navbarRef.current.offsetHeight);
     };
     measureHeights();
     window.addEventListener("resize", measureHeights);
@@ -110,8 +154,7 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const progress = Math.min(scrollY / announcementHeight, 1);
+      const progress = Math.min(window.scrollY / announcementHeight, 1);
       setScrollProgress(progress);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -125,10 +168,7 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
       }
     };
@@ -138,45 +178,43 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutsideSearch = (event: MouseEvent) => {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(event.target as Node)
-      ) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutsideSearch);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutsideSearch);
+    return () => document.removeEventListener("mousedown", handleClickOutsideSearch);
   }, []);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      setShowSearchResults(false);
-      router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      router.push("/products");
-    }
+  const navigateToSearch = () => {
+    setShowSearchResults(false);
+    router.push(
+      searchQuery.trim()
+        ? `/products?q=${encodeURIComponent(searchQuery.trim())}`
+        : "/products"
+    );
   };
 
-  // ── UI helpers (unchanged) ────────────────────────────────────────────
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path;
-    return `transition-all duration-300 pb-1 ${isActive
-      ? "text-pink-600 font-bold border-b-2 border-pink-600"
-      : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
-      }`;
+    return `transition-all duration-300 pb-1 ${
+      isActive
+        ? "text-pink-600 font-bold border-b-2 border-pink-600"
+        : "text-gray-700 hover:text-pink-500 hover:border-b-2 hover:border-pink-300"
+    }`;
   };
 
   const getMobileLinkStyle = (path: string) => {
     const isActive = pathname === path;
-    return `text-lg font-bold transition-all duration-300 w-fit ${isActive ? "text-pink-600" : "text-gray-800"
-      }`;
+    return `text-lg font-bold transition-all duration-300 w-fit ${
+      isActive ? "text-pink-600" : "text-gray-800"
+    }`;
   };
 
   const iconCircleStyle =
     "w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white text-gray-800 shadow-sm border border-pink-50 hover:text-pink-500 transition-all relative";
+
+  const shouldShowNotificationBell = Boolean(user) || hasPersistedUserSession;
 
   const navbarTop = announcementHeight - scrollProgress * announcementHeight;
   const spacerHeight = navbarHeight + announcementHeight * (1 - scrollProgress);
@@ -210,6 +248,7 @@ const Navbar = () => {
           ref={navbarRef}
           className="bg-pink-100 px-3 sm:px-6 md:px-12 py-2 sm:py-3 flex justify-between items-center border-b border-pink-200"
         >
+          {/* Logo */}
           <div className="shrink-0">
             <Link href="/">
               <Image
@@ -217,14 +256,15 @@ const Navbar = () => {
                 alt="Inventino"
                 width={120}
                 height={40}
-                className="object-contain w-20 sm:w-24 md:w-[120px] h-auto"
+                className="object-contain w-20 sm:w-24 md:w-30 h-auto"
               />
             </Link>
           </div>
 
+          {/* Search — desktop */}
           <div className="hidden lg:flex flex-1 justify-center max-w-md">
             <div className="relative w-full mx-4" ref={searchContainerRef}>
-              <form onSubmit={handleSearchSubmit}>
+              <form onSubmit={(e) => { e.preventDefault(); navigateToSearch(); }}>
                 <input
                   type="text"
                   value={searchQuery}
@@ -244,7 +284,7 @@ const Navbar = () => {
                 </button>
               </form>
 
-              {/* SEARCH DROPDOWN – API results */}
+              {/* Search dropdown */}
               {showSearchResults && searchQuery.trim().length > 1 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden custom-scrollbar max-h-[80vh] overflow-y-auto">
                   {searchResults.length > 0 ? (
@@ -266,7 +306,7 @@ const Navbar = () => {
                             {p.image && (
                               <Image
                                 src={p.image}
-                                alt={p.name}
+                                alt={p.name || "Product image"}
                                 width={48}
                                 height={48}
                                 className="w-full h-full object-cover"
@@ -282,13 +322,13 @@ const Navbar = () => {
                             </span>
                           </div>
                           <span className="text-sm font-black text-[#E8456A] shrink-0">
-                            ${p.price.toFixed(2)}
+                            ₹{Number(p.price ?? 0).toFixed(2)}
                           </span>
                         </Link>
                       ))}
                       <button
                         suppressHydrationWarning
-                        onClick={handleSearchSubmit}
+                        onClick={navigateToSearch}
                         className="w-full mt-2 py-2.5 text-xs font-bold text-pink-600 bg-pink-50 rounded-xl hover:bg-pink-100 transition-colors flex items-center justify-center gap-1"
                       >
                         View all results <ChevronRight size={14} />
@@ -299,12 +339,9 @@ const Navbar = () => {
                       <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3 text-gray-400">
                         <Search size={20} />
                       </div>
-                      <p className="text-sm font-bold text-gray-800 mb-1">
-                        No products found
-                      </p>
+                      <p className="text-sm font-bold text-gray-800 mb-1">No products found</p>
                       <p className="text-xs text-gray-500">
-                        Try adjusting your keywords (e.g., &quot;rose gold
-                        bracelet&quot;)
+                        Try adjusting your keywords (e.g., &quot;rose gold bracelet&quot;)
                       </p>
                     </div>
                   )}
@@ -313,20 +350,17 @@ const Navbar = () => {
             </div>
           </div>
 
+          {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Desktop nav links */}
             <nav className="hidden lg:flex gap-6 text-sm md:text-base items-center font-bold">
-              <Link href="/products" className={getLinkStyle("/products")}>
-                All Products
-              </Link>
-              <Link href="/stories" className={getLinkStyle("/stories")}>
-                Stories
-              </Link>
-              <Link href="/contact" className={getLinkStyle("/contact")}>
-                Contact
-              </Link>
+              <Link href="/products" className={getLinkStyle("/products")}>All Products</Link>
+              <Link href="/stories" className={getLinkStyle("/stories")}>Stories</Link>
+              <Link href="/contact" className={getLinkStyle("/contact")}>Contact</Link>
             </nav>
 
             <div className="flex items-center gap-1.5 sm:gap-3">
+              {/* Wishlist */}
               <Link href="/wishlist" className={iconCircleStyle}>
                 <Heart size={18} />
                 {savedItems.length > 0 && (
@@ -336,6 +370,7 @@ const Navbar = () => {
                 )}
               </Link>
 
+              {/* Bag */}
               <Link href="/bag" className={iconCircleStyle}>
                 <ShoppingCart size={18} />
                 {bagCount > 0 && (
@@ -345,16 +380,45 @@ const Navbar = () => {
                 )}
               </Link>
 
-              <div
-                className="relative flex items-center gap-2 ml-1"
-                ref={dropdownRef}
-              >
+              {/* ── Bell icon — only for logged-in users ── */}
+              {shouldShowNotificationBell && (
+                <div className="relative">
+                  <button
+                    ref={notifBtnRef}
+                    suppressHydrationWarning
+                    onClick={() => {
+                      setShowNotifications((prev) => !prev);
+                      if (!showNotifications) refetchCount();
+                    }}
+                    className={iconCircleStyle}
+                    aria-label="Notifications"
+                  >
+                    <Bell size={18} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-pink-100 shadow-sm animate-in zoom-in">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Dropdown panel */}
+                  <NotificationsPanel
+                    isOpen={showNotifications}
+                    onClose={() => {
+                      setShowNotifications(false);
+                      refetchCount();
+                    }}
+                    anchorRef={notifBtnRef}
+                  />
+                </div>
+              )}
+
+              {/* User dropdown */}
+              <div className="relative flex items-center gap-2 ml-1" ref={dropdownRef}>
                 <button
                   suppressHydrationWarning
                   onClick={() =>
-                    user
-                      ? setShowDropdown(!showDropdown)
-                      : router.push("/login")
+                    user ? setShowDropdown(!showDropdown) : router.push("/login")
                   }
                   onMouseEnter={() => user && setShowDropdown(true)}
                   className={iconCircleStyle}
@@ -371,87 +435,31 @@ const Navbar = () => {
                       <p className="text-xs font-bold text-pink-600 uppercase tracking-wider">
                         Your Account
                       </p>
-                      <p className="text-sm font-bold text-gray-800 truncate">
-                        {user.name}
-                      </p>
+                      <p className="text-sm font-bold text-gray-800 truncate">{user.name}</p>
                     </div>
 
                     <div className="p-2">
-                      <Link
-                        href="/profile"
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
-                            <User size={16} />
+                      {[
+                        { href: "/profile", icon: <User size={16} />, label: "My Profile" },
+                      ].map(({ href, icon, label }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
+                              {icon}
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">{label}</span>
                           </div>
-                          <span className="text-sm font-medium text-gray-700">
-                            My Profile
-                          </span>
-                        </div>
-                        <ChevronRight
-                          size={14}
-                          className="text-gray-400 group-hover:translate-x-1 transition-transform"
-                        />
-                      </Link>
-
-                      <Link
-                        href="/profile/orders"
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
-                            <Package size={16} />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Orders
-                          </span>
-                        </div>
-                        <ChevronRight
-                          size={14}
-                          className="text-gray-400 group-hover:translate-x-1 transition-transform"
-                        />
-                      </Link>
-
-                      <Link
-                        href="/profile/addresses"
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
-                            <MapPin size={16} />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Addresses
-                          </span>
-                        </div>
-                        <ChevronRight
-                          size={14}
-                          className="text-gray-400 group-hover:translate-x-1 transition-transform"
-                        />
-                      </Link>
-
-                      <Link
-                        href="/profile/settings"
-                        className="flex items-center justify-between p-3 rounded-2xl hover:bg-pink-50 transition-colors group"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700">
-                            <Settings size={16} />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Settings
-                          </span>
-                        </div>
-                        <ChevronRight
-                          size={14}
-                          className="text-gray-400 group-hover:translate-x-1 transition-transform"
-                        />
-                      </Link>
+                          <ChevronRight
+                            size={14}
+                            className="text-gray-400 group-hover:translate-x-1 transition-transform"
+                          />
+                        </Link>
+                      ))}
                     </div>
 
                     <button
@@ -468,6 +476,7 @@ const Navbar = () => {
                 )}
               </div>
 
+              {/* Hamburger */}
               <button
                 suppressHydrationWarning
                 className="lg:hidden w-9 h-9 flex items-center justify-center text-gray-800"
@@ -485,22 +494,22 @@ const Navbar = () => {
 
       {/* MOBILE MENU DRAWER */}
       <div
-        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-          }`}
+        className={`fixed inset-0 z-60 lg:hidden transition-opacity duration-300 ${
+          isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
       >
         <div
           className="absolute inset-0 bg-black/50 backdrop-blur-md"
           onClick={() => setIsMenuOpen(false)}
-        ></div>
+        />
 
         <div
-          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-0" : "translate-x-full"
-            }`}
+          className={`absolute right-0 top-0 h-full w-[70%] sm:w-[50%] bg-white border-l-4 border-pink-300 flex flex-col p-6 transition-transform duration-300 ease-in-out ${
+            isMenuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
         >
           <div className="flex justify-between items-center mb-8 pb-4">
-            <span className="font-bold text-pink-600 text-xl font-serif">
-              Menu
-            </span>
+            <span className="font-bold text-pink-600 text-xl font-serif">Menu</span>
             <button
               suppressHydrationWarning
               onClick={() => setIsMenuOpen(false)}
@@ -511,28 +520,20 @@ const Navbar = () => {
           </div>
 
           <nav className="flex flex-col gap-6">
-            <Link
-              href="/products"
-              className={getMobileLinkStyle("/products")}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              All Products
-            </Link>
-            <Link
-              href="/stories"
-              className={getMobileLinkStyle("/stories")}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Stories
-            </Link>
-            <Link
-              href="/contact"
-              className={getMobileLinkStyle("/contact")}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Contact
-            </Link>
-
+            {[
+              { href: "/products", label: "All Products" },
+              { href: "/stories", label: "Stories" },
+              { href: "/contact", label: "Contact" },
+            ].map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className={getMobileLinkStyle(href)}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {label}
+              </Link>
+            ))}
             {user && (
               <Link
                 href="/profile"
@@ -573,12 +574,8 @@ const Navbar = () => {
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-sm font-bold text-gray-800 truncate">
-                      {user.name}
-                    </span>
-                    <span className="text-xs text-gray-400 truncate">
-                      {user.email}
-                    </span>
+                    <span className="text-sm font-bold text-gray-800 truncate">{user.name}</span>
+                    <span className="text-xs text-gray-400 truncate">{user.email}</span>
                   </div>
                 </Link>
                 <button

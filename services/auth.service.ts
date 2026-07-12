@@ -3,6 +3,16 @@ import { AuthResponse, ApiResponse, User } from "@/lib/types";
 
 export const authService = {
   // Uses User interface for credentials to avoid 'any'
+  async loginAdmin(
+    credentials: Partial<User> & { password?: string },
+  ): Promise<AuthResponse> {
+    const response = await apiClient.post("/admin/loginadmin", credentials);
+    if (response.data?.data?.token) {
+      localStorage.setItem("token", response.data.data.token);
+    }
+    return response.data;
+  },
+
   async loginUser(
     credentials: Partial<User> & { password?: string },
   ): Promise<AuthResponse> {
@@ -27,6 +37,14 @@ export const authService = {
   async logoutUser(): Promise<void> {
     try {
       await apiClient.post("/auth/logout");
+    } catch {
+      // Logic continues even if backend logout fails
+    }
+  },
+
+  async logoutAdmin(): Promise<void> {
+    try {
+      await apiClient.post("/admin/logoutadmin");
     } catch {
       // Logic continues even if backend logout fails
     }

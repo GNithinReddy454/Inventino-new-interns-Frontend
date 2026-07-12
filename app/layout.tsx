@@ -4,8 +4,7 @@ import { StoreProvider } from "@/lib/storeContext";
 import { AuthProvider } from "@/app/(main)/components/authContext";
 import { CartProvider } from "@/lib/cartContext";
 import { ReduxProvider } from "@/redux/provider";
-import { SWRConfig } from "swr";
-import { swrConfig, fetcher } from "@/hooks/useApi";
+import { SWRProvider } from "@/lib/swrProvider";
 import { ToastProvider } from "@/app/components/GlobalToast";
 import "./globals.css";
 
@@ -30,18 +29,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="overflow-x-hidden">
+    <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col overflow-x-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <ReduxProvider>
           <ToastProvider>
             <CartProvider>
               <StoreProvider>
                 <AuthProvider>
-                  <SWRConfig value={{ ...swrConfig, fetcher }}>
+                  <SWRProvider>
                     {children}
-                  </SWRConfig>
+                  </SWRProvider>
                 </AuthProvider>
               </StoreProvider>
             </CartProvider>

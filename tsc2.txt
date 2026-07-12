@@ -1,6 +1,0 @@
-﻿app/(auth)/forgot-password/page.tsx(47,7): error TS2322: Type '{ children: Element; title: string; subtitle: string; }' is not assignable to type 'IntrinsicAttributes & Props'.
-  Property 'subtitle' does not exist on type 'IntrinsicAttributes & Props'.
-app/(auth)/reset-password/page.tsx(69,7): error TS2322: Type '{ children: (false | Element)[]; title: string; subtitle: string; }' is not assignable to type 'IntrinsicAttributes & Props'.
-  Property 'subtitle' does not exist on type 'IntrinsicAttributes & Props'.
-app/(auth)/verify-otp/page.tsx(94,7): error TS2322: Type '{ children: (false | Element)[]; title: string; subtitle: string; }' is not assignable to type 'IntrinsicAttributes & Props'.
-  Property 'subtitle' does not exist on type 'IntrinsicAttributes & Props'.

@@ -192,19 +192,38 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   // Allowed brands as per backend enum
   const allowedBrands = ["VISA", "MASTERCARD", "AMEX", "DISCOVER", "JCB", "DINERS"];
 
-  // Detect card brand from first digits and check if allowed
+  // Detect card brand from first digits
   const detectBrand = (num: string): { brand: string; isValid: boolean } => {
     const cleaned = num.replace(/\s/g, "");
+    if (!cleaned) return { brand: "UNKNOWN", isValid: false };
+
+    // Common card brand detection
     if (cleaned.startsWith("4")) return { brand: "VISA", isValid: true };
-    if (cleaned.startsWith("5")) return { brand: "MASTERCARD", isValid: true };
-    if (cleaned.startsWith("3")) {
-      if (cleaned.startsWith("34") || cleaned.startsWith("37")) return { brand: "AMEX", isValid: true };
-      if (cleaned.startsWith("30") || cleaned.startsWith("36") || cleaned.startsWith("38") || cleaned.startsWith("39"))
-        return { brand: "DINERS", isValid: true };
-    }
-    if (cleaned.startsWith("6")) return { brand: "DISCOVER", isValid: true };
-    if (cleaned.startsWith("35")) return { brand: "JCB", isValid: true };
+    if (/^5[1-5]/.test(cleaned)) return { brand: "MASTERCARD", isValid: true };
+    if (cleaned.startsWith("34") || cleaned.startsWith("37")) return { brand: "AMEX", isValid: true };
+    if (/^3(?:0[0-5]|[68][0-9])/.test(cleaned)) return { brand: "DINERS", isValid: true };
+    if (cleaned.startsWith("6011") || cleaned.startsWith("65") || /^64[4-9]/.test(cleaned) || cleaned.startsWith("622")) return { brand: "DISCOVER", isValid: true };
+    if (/^35(?:2[89]|[3-8][0-9])/.test(cleaned)) return { brand: "JCB", isValid: true };
+    
+    // RuPay detection (Common in India) - starts with 60, 65, 81, 82, 508, 353, 356
+    if (/^(60|65|81|82|508|353|356)/.test(cleaned) || cleaned.startsWith("8")) return { brand: "RUPAY", isValid: true };
+    
+    // Maestro detection
+    if (/^(5018|5020|5038|5893|6304|6759|6761|6762|6763)/.test(cleaned)) return { brand: "MAESTRO", isValid: true };
+
+    // Fallback to a generic "CARD" type for any other number that fits common length patterns
+    // This allows the user to proceed even if the brand isn't specifically identified here
+    if (cleaned.length >= 13) return { brand: "CARD", isValid: true };
+
     return { brand: "UNKNOWN", isValid: false };
+  };
+
+  const handleCardNumberChange = (value: string) => {
+    // Remove non-digits
+    const cleaned = value.replace(/\D/g, "");
+    // Add space every 4 digits
+    const formatted = cleaned.match(/.{1,4}/g)?.join(" ") || cleaned;
+    setCardNumber(formatted.substring(0, 19)); // Max 16 digits + 3 spaces
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -227,7 +246,7 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     // Detect and validate brand
     const { brand, isValid } = detectBrand(cleanedNumber);
     if (!isValid) {
-      setFormError("Card type not supported. Please use Visa, MasterCard, American Express, Discover, JCB, or Diners Club.");
+      setFormError("Please enter a valid card number.");
       return;
     }
 
@@ -320,7 +339,7 @@ function AddCardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
               maxLength={19}
               placeholder="•••• •••• •••• ••••"
               value={cardNumber}
-              onChange={(e) => setCardNumber(e.target.value)}
+              onChange={(e) => handleCardNumberChange(e.target.value)}
               className="w-full h-11 rounded-lg border border-pink-100 bg-pink-50/40 px-3 text-sm outline-none focus:ring-2 focus:ring-pink-200"
             />
           </div>

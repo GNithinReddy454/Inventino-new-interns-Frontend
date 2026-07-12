@@ -10,6 +10,9 @@ import adminReducer from "./adminSlice";
 import contactReducer from "./contactslice";
 import wishlistReducer from "./wishlistslice";
 import cartReducer from "./cartslice";
+import orderReducer from "./orderslice";
+import addressReducer from "./addressslice";
+import buyNowReducer from "./buyNowSlice"; // ← ADD THIS
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +25,9 @@ export const store = configureStore({
     contact: contactReducer,
     wishlist: wishlistReducer,
     cart: cartReducer,
+    order: orderReducer,
+    address: addressReducer,
+    buyNow: buyNowReducer, // ← ADD THIS
   },
 });
 

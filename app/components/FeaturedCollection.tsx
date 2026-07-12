@@ -4,72 +4,97 @@ import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import ClientOnly from "./ClientOnly";
 import ProductCard from "./ProductCard";
+import { productService } from "@/services/product.service";
 
 interface ProductImage {
-  id: string;
-  url: string;
+  id?: string;
+  url?: string;
   _id?: string;
 }
 
 interface Product {
   _id: string;
-  name: string;
+  name?: string;
+  productName?: string;
   slug: string;
   description: string;
-  price: number;
+  price?: number;
   discountPrice?: number;
+  pricing?: {
+    price: number;
+    originalPrice?: number | null;
+  };
   category: string;
   material: string;
   size?: string;
   color?: string;
-  stock: number;
-  images: ProductImage[];
+  stock?: number;
+  totalStock?: number;
+  images?: (ProductImage | string)[];
+  media?: {
+    mainImage?: string | null;
+    galleryImages?: (ProductImage | string)[];
+  };
   isActive: boolean;
   isDeleted: boolean;
   ratingsAverage?: number;
   ratingsCount?: number;
+  rating?: number;
+  reviewCount?: number;
   trendy?: boolean;
   bestSeller?: boolean;
   hashtags?: string[];
   productId?: string;
   createdAt: string;
   updatedAt: string;
+  story?: string | {
+    title?: string;
+    featured?: boolean;
+  };
+  variants?: any[];
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api", "") ?? "";
 
-function resolveUrl(url: string): string {
+function resolveUrl(url?: string): string {
   if (!url || url.includes("undefined")) return "";
   return url.startsWith("http") ? url : `${BASE_URL}${url}`;
 }
 
+function getImageUrl(img?: string | ProductImage): string {
+  if (!img) return "";
+  const url = typeof img === "string" ? img : img.url;
+  return resolveUrl(url);
+}
+
 function normalizeProduct(p: Product) {
-  const resolvedImages = p.images
-    .map((img) => resolveUrl(img.url))
-    .filter(Boolean);
+  const name = p.productName || p.name || (typeof p.story === 'object' ? p.story?.title : undefined) || "Unnamed Product";
+  const mainImage = p.media?.mainImage || (p.images && getImageUrl(p.images[0])) || "";
+  const resolvedImages = (p.media?.galleryImages || p.images || [])
+    .map((img) => getImageUrl(img))
+    .filter(Boolean) as string[];
+  
+  const finalImages = mainImage ? [resolveUrl(mainImage), ...resolvedImages] : resolvedImages;
 
   return {
-    id: p._id,
-    name: p.name,
-    slug: p.slug,
-    description: p.description,
-    price: p.price,
-    originalPrice: p.discountPrice ? p.price : undefined,
-    category: p.category,
-    material: p.material,
+    id: p._id || p.productId || Math.random().toString(36).substr(2, 9),
+    name: name,
+    slug: p.slug || "",
+    description: p.description || "",
+    price: p.pricing?.price ?? p.discountPrice ?? p.price ?? 0,
+    originalPrice: p.pricing?.originalPrice ?? p.price ?? undefined,
+    category: p.category || "General",
+    material: p.material || "",
     size: p.size,
     color: p.color,
-    stock: p.stock,
-    image: resolvedImages[0] ?? "",       // ✅ required single string
-    images: resolvedImages,               // ✅ string[] for slideshow
-    rating: p.ratingsAverage ?? 0,
-    reviews: p.ratingsCount ?? 0,
-    badge: p.trendy
-      ? "TRENDY"
-      : p.bestSeller
-        ? "BEST SELLER"
-        : undefined,
+    stock: p.totalStock ?? p.stock ?? 0,
+    image: finalImages[0] ?? "",
+    images: finalImages,
+    rating: p.rating ?? p.ratingsAverage ?? 0,
+    reviews: p.reviewCount ?? p.ratingsCount ?? 0,
+    badge: p.trendy ? "TRENDY" : (p.bestSeller || (typeof p.story === 'object' && p.story?.featured)) ? "BEST SELLER" : undefined,
     tags: p.hashtags ?? [p.category, "Adjustable"].filter(Boolean),
+    variants: p.variants,
   };
 }
 
@@ -83,17 +108,19 @@ export default function FeaturedCollection() {
     const fetchFeatured = async () => {
       try {
         setLoading(true);
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/products?category=all`
+
+        const response = await productService.getFeatured(1, 8);
+        const allProducts: Product[] = Array.isArray(response?.data?.data?.items)
+          ? response.data.data.items
+          : [];
+
+        const activeProducts = allProducts.filter(
+          (p) => p && p.isActive !== false && p.isDeleted !== true
         );
-        if (!res.ok) throw new Error("Failed to fetch featured products");
-        const data = await res.json();
-        const allProducts: Product[] = data?.data?.items ?? [];
-        const featured = allProducts
-          .filter((p) => p.trendy === true)
-          .slice(0, 8);
-        // Fallback: if none flagged as trendy, show first 8
-        setProducts(featured.length > 0 ? featured : allProducts.slice(0, 8));
+
+        const featured = activeProducts.filter((p) => p.trendy === true).slice(0, 8);
+
+        setProducts(featured.length > 0 ? featured : activeProducts.slice(0, 8));
       } catch (err: any) {
         setError(err.message || "Something went wrong");
       } finally {
@@ -109,9 +136,8 @@ export default function FeaturedCollection() {
 
     const container = scrollRef.current;
     const firstChild = container.children[0] as HTMLElement;
-    const amount =
-      firstChild.clientWidth +
-      parseInt(window.getComputedStyle(container).gap || "0");
+    const gap = parseInt(window.getComputedStyle(container).gap || "0");
+    const amount = firstChild.clientWidth + gap;
 
     container.style.scrollBehavior = "auto";
     container.style.scrollSnapType = "none";
@@ -143,11 +169,10 @@ export default function FeaturedCollection() {
   };
 
   return (
-    <section className="w-full bg-pink-100 px-4 sm:px-8 md:px-12 lg:px-16 py-10 md:py-16">
-      <div className="max-w-[1400px] w-full mx-auto">
-        {/* Heading */}
-        <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
+    <section className="w-full bg-pink-100 px-4 py-10 sm:px-8 md:px-12 md:py-16 lg:px-16">
+      <div className="mx-auto w-full max-w-350">
+        <div className="mb-10 text-center">
+          <h2 className="mb-2 text-2xl font-black text-gray-900 md:text-3xl">
             Featured Collection
           </h2>
           <p className="text-sm text-gray-500">
@@ -155,54 +180,51 @@ export default function FeaturedCollection() {
           </p>
         </div>
 
-        {/* Loading State */}
         {loading && (
-          <div className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-12 overflow-hidden px-2 sm:px-4">
+          <div className="flex gap-4 overflow-hidden">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="flex-shrink-0 w-full sm:w-[calc(50%-1.5rem)] md:w-[calc(33.3333%-2rem)] lg:w-[calc(25%-2.25rem)] h-80 bg-pink-200 rounded-2xl animate-pulse"
+                className="h-80 w-full shrink-0 rounded-2xl bg-pink-200 animate-pulse sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
               />
             ))}
           </div>
         )}
 
-        {/* Error State */}
         {error && !loading && (
-          <p className="text-center text-red-500 text-sm py-8">{error}</p>
+          <p className="py-8 text-center text-sm text-red-500">{error}</p>
         )}
 
-        {/* Scrollable row + arrows */}
         {!loading && !error && products.length > 0 && (
-          <div className="relative group px-12 sm:px-0">
+          <div className="relative">
             <button
               onClick={() => scroll("left")}
-              className="absolute left-0 sm:-left-3 md:-left-6 lg:-left-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
+              className="absolute -left-4 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-md transition-all outline-none hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600 focus:outline-none sm:-left-6 md:-left-8 md:h-10 md:w-10"
               aria-label="Scroll left"
             >
               ❮
             </button>
-
-            <div
-              ref={scrollRef}
-              className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-12 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory items-stretch px-2 sm:px-4"
-              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-            >
-              {products.map((product) => (
-                <div
-                  key={product._id}
-                  className="snap-center flex-shrink-0 w-full sm:w-[calc(50%-1.5rem)] md:w-[calc(33.3333%-2rem)] lg:w-[calc(25%-2.25rem)]"
-                >
-                  <div className="h-full">
+            
+            <div className="overflow-hidden">
+              <div
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto px-1 py-2 pb-4"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                {products.map((product, index) => (
+                  <div
+                    key={product._id || product.productId || index}
+                    className="shrink-0 w-full sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)]"
+                  >
                     <ProductCard product={normalizeProduct(product)} />
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             <button
               onClick={() => scroll("right")}
-              className="absolute right-0 sm:-right-3 md:-right-6 lg:-right-12 top-1/2 -translate-y-1/2 z-10 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 transition-all outline-none focus:outline-none focus:ring-0"
+              className="absolute -right-4 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-md transition-all outline-none hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600 focus:outline-none sm:-right-6 md:-right-8 md:h-10 md:w-10"
               aria-label="Scroll right"
             >
               ❯
@@ -210,19 +232,17 @@ export default function FeaturedCollection() {
           </div>
         )}
 
-        {/* Empty State */}
         {!loading && !error && products.length === 0 && (
-          <p className="text-center text-gray-400 text-sm py-8">
+          <p className="py-8 text-center text-sm text-gray-400">
             No featured products found.
           </p>
         )}
 
-        {/* View All Button */}
-        <div className="text-center mt-10">
+        <div className="mt-10 text-center">
           <ClientOnly>
             <Link
               href="/products"
-              className="inline-block bg-pink-500 hover:bg-pink-600 text-white px-8 py-3 rounded-full font-semibold text-sm transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95"
+              className="inline-block rounded-full bg-pink-500 px-8 py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-pink-600 hover:shadow-lg active:scale-95"
             >
               View All Products
             </Link>

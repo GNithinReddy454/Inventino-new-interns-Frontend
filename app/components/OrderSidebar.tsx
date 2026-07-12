@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { useFetch, useMutate, swrMutate } from "@/hooks/useApi";
-import { cartService } from "@/services/cart.service";
+import { useState, useEffect, useCallback } from "react";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { fetchCart, applyPromoCode as applyPromoAction, addToCart } from "@/redux/cartslice";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { CheckoutStep, PaymentMethod } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2, X } from "lucide-react";
 
 type OrderSidebarProps = {
   currentStep: CheckoutStep;
   paymentMethod: PaymentMethod;
   onPlaceOrder: (method: PaymentMethod) => void;
   isProcessing: boolean;
+  orderResponse?: any | null;
 };
 
 export function OrderSidebar({
@@ -20,26 +21,66 @@ export function OrderSidebar({
   paymentMethod,
   onPlaceOrder,
   isProcessing,
+  orderResponse,
 }: OrderSidebarProps) {
-  // Fetch cart data with SWR caching
-  const { data: cartData, isLoading: cartLoading } = useFetch("/api/cart");
-  const cart = cartData?.items || [];
+  const dispatch = useAppDispatch();
+  const { 
+    items: cart, 
+    totalAmount: cartTotal, 
+    isLoading: cartLoading, 
+    discount: cartDiscount, 
+    promoCode: appliedCode 
+  } = useAppSelector((state) => state.cart);
+  const { product: buyNowProduct } = useAppSelector((state) => state.buyNow);
 
-  // Calculate summary from cart data
+  // Derive active items and totals based on flow
+  const itemsToDisplay = orderResponse?.items 
+    ? orderResponse.items 
+    : (buyNowProduct 
+        ? [{ 
+            productId: buyNowProduct.productId, 
+            quantity: buyNowProduct.quantity, 
+            color: buyNowProduct.color, 
+            size: buyNowProduct.size, 
+            price: Number(buyNowProduct.product?.price || 0),
+            name: buyNowProduct.product?.name || "Product",
+            image: buyNowProduct.product?.image || ""
+          }] 
+        : cart);
+
+  const orderSubtotal = orderResponse?.subtotal 
+    ? Number(orderResponse.subtotal)
+    : Number(itemsToDisplay.reduce((acc: any, item: any) => acc + (Number(item.pricing?.price || item.price || item.product?.price || 0) * Number(item.quantity || 1)), 0));
+  
+  const orderTotal = orderResponse?.totalAmount 
+    ? Number(orderResponse.totalAmount)
+    : (buyNowProduct ? Math.max(0, orderSubtotal - Number(cartDiscount || 0)) : Number(cartTotal || 0));
+  
+  const orderDiscount = orderResponse?.discount 
+    ? Number(orderResponse.discount)
+    : Number(cartDiscount || 0);
+
+  // Calculate summary from active data
   const summary = {
-    subtotal: cart.reduce(
-      (sum: any, item: any) => sum + item.price * item.quantity,
-      0,
-    ),
-    shipping: 0, // Default free shipping
-    discount: cartData?.discount || 0,
-    tax: cartData?.tax || 0,
-    total: cartData?.total || 0,
+    subtotal: orderSubtotal,
+    shipping: orderResponse?.shipping || 0,
+    discount: orderDiscount,
+    tax: orderResponse?.tax || 0,
+    total: orderTotal,
   };
 
   const [promoCode, setPromoCode] = useState("");
   const [applyingPromo, setApplyingPromo] = useState(false);
   const [promoError, setPromoError] = useState("");
+  const [toast, setToast] = useState({ title: "", message: "", show: false });
+
+  const triggerToast = useCallback(
+    (message: string, title: string = "Success!") => {
+      setToast({ title, message, show: true });
+      setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+    },
+    [],
+  );
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -47,11 +88,28 @@ export function OrderSidebar({
     setApplyingPromo(true);
     setPromoError("");
     try {
-      await cartService.applyPromoCode(promoCode);
-      swrMutate("/api/cart"); // Refresh cart data after applying promo
-      setPromoCode("");
+      // If doing Buy Now and cart is empty, we must add item to cart for backend to apply promo
+      if (buyNowProduct && cart.length === 0) {
+        // Ensure item is in cart first
+        await dispatch(addToCart({
+          productId: buyNowProduct.productId,
+          quantity: buyNowProduct.quantity,
+          color: buyNowProduct.color,
+          size: buyNowProduct.size
+        })).unwrap();
+        // Refresh local state to ensure backend session and frontend state are in perfect sync
+        await dispatch(fetchCart()).unwrap();
+      }
+
+      const result = await dispatch(applyPromoAction(promoCode));
+      if (applyPromoAction.rejected.match(result)) {
+        setPromoError(result.payload as string || "Invalid promo code");
+      } else {
+        setPromoCode("");
+        triggerToast("Coupon is Applied Successfully", "Success!");
+      }
     } catch (error) {
-      setPromoError("Invalid promo code");
+      setPromoError("Something went wrong");
     } finally {
       setApplyingPromo(false);
     }
@@ -78,64 +136,97 @@ export function OrderSidebar({
   };
 
   return (
+    <>
     <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-6">
       <h2 className="text-xl font-semibold mb-6">Order Summary</h2>
 
       {/* Cart Items with Product Cards */}
       <div className="space-y-4 mb-6">
-        {cart?.map((item: any, index: any) => (
-          <div
-            key={item.product?._id || index}
-            className="flex gap-3 items-start"
-          >
-            {/* Product Image Box */}
-            <div
-              className={`w-20 h-20 bg-gradient-to-br ${getGradient(item.product?.color)} rounded-xl flex-shrink-0 shadow-sm`}
-            />
+        {itemsToDisplay?.map((item: any, index: any) => {
+          const product = item.product || item;
+          const name = item.productName || item.name || product.name || "Product Name";
+          const selectedColor = item.color || product.color || "Standard";
+          const price = Number(item.pricing?.price || item.price || product.price || 0);
+          const quantity = item.quantity || 1;
+          const id = product._id || product.productId || item.productId || index;
 
-            {/* Product Details */}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-gray-900 mb-1">
-                {item.product?.name}
-              </h3>
-              <p className="text-xs text-gray-500 mb-1">
-                Qty: {item.quantity} • {item.product?.color}
-              </p>
-              <p className="text-sm font-bold text-pink-600">
-                ${item.product?.price.toFixed(2)}
-              </p>
+          return (
+            <div
+              key={id}
+              className="flex gap-3 items-start"
+            >
+              {/* Product Image Box */}
+              <div
+                className={`w-16 h-16 bg-linear-to-br ${getGradient(selectedColor)} rounded-xl shrink-0 shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden`}
+              >
+                  {(product.image || product.images?.[0]?.url) && (
+                      <img src={product.image || product.images?.[0]?.url} alt={name} className="w-full h-full object-cover" />
+                  )}
+              </div>
+
+              {/* Product Details */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm text-gray-900 mb-0.5 truncate">
+                  {name}
+                </h3>
+                <p className="text-[10px] text-gray-500 mb-1">
+                  Qty: {quantity} {item.color ? `• ${item.color}` : ""} {item.size ? `• ${item.size}` : ""}
+                </p>
+                <p className="text-sm font-bold text-pink-600">
+                  ₹{(price || 0).toFixed(2)}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Promo Code */}
       {currentStep !== "success" && currentStep !== "tracking" && (
-        <div className="mb-6">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter promo code"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-              className="text-sm bg-pink-50/50 border-pink-100"
-            />
-            <Button
-              onClick={handleApplyPromo}
-              disabled={applyingPromo || !promoCode.trim()}
-              size="sm"
-              className="bg-pink-500 hover:bg-pink-600 text-white whitespace-nowrap px-6"
-            >
-              {applyingPromo ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Apply"
-              )}
-            </Button>
+        appliedCode ? (
+          <div className="mb-6 bg-linear-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4 transition-all duration-500">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-green-700">Coupon is Applied Successfully!</p>
+                  <p className="text-[10px] text-green-600">Discount applied to your order</p>
+                </div>
+              </div>
+              <span className="bg-green-100 text-green-700 text-[9px] px-2 py-1 rounded-full font-black uppercase tracking-widest border border-green-200">
+                Applied
+              </span>
+            </div>
           </div>
-          {promoError && (
-            <p className="text-xs text-red-500 mt-1">{promoError}</p>
-          )}
-        </div>
+        ) : (
+          <div className="mb-6">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter promo code"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                className="text-sm bg-pink-50/50 border-pink-100"
+              />
+              <Button
+                onClick={handleApplyPromo}
+                disabled={applyingPromo || !promoCode.trim()}
+                size="sm"
+                className="bg-pink-500 hover:bg-pink-600 text-white whitespace-nowrap px-6"
+              >
+                {applyingPromo ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+            </div>
+            {promoError && (
+              <p className="text-xs text-red-500 mt-1">{promoError}</p>
+            )}
+          </div>
+        )
       )}
 
       {/* Pricing Breakdown */}
@@ -143,7 +234,7 @@ export function OrderSidebar({
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Subtotal</span>
           <span className="font-medium">
-            ${summary?.subtotal?.toFixed(2) || "0.00"}
+            ₹{summary?.subtotal?.toFixed(2) || "0.00"}
           </span>
         </div>
         <div className="flex justify-between text-sm">
@@ -151,21 +242,26 @@ export function OrderSidebar({
           <span className="font-semibold text-green-600">
             {summary?.shipping === 0
               ? "FREE"
-              : `$${summary?.shipping?.toFixed(2) || "0.00"}`}
+              : `₹${summary?.shipping?.toFixed(2) || "0.00"}`}
           </span>
         </div>
         {summary?.discount > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Discount</span>
-            <span className="font-medium text-green-600">
-              -${summary?.discount?.toFixed(2)}
+          <div className="flex justify-between text-sm items-start">
+            <div>
+              <span className="text-gray-600">Discount</span>
+              <p className="text-[10px] text-green-600 font-medium">
+                ({summary.subtotal > 0 ? Math.round((summary.discount / summary.subtotal) * 100) : 0}% Applied)
+              </p>
+            </div>
+            <span className="font-bold text-green-600">
+              -₹{(summary?.discount || 0).toFixed(2)}
             </span>
           </div>
         )}
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Tax</span>
           <span className="font-medium">
-            ${summary?.tax?.toFixed(2) || "0.00"}
+            ₹{summary?.tax?.toFixed(2) || "0.00"}
           </span>
         </div>
       </div>
@@ -174,7 +270,7 @@ export function OrderSidebar({
       <div className="flex justify-between items-center pt-4 border-t-2 border-gray-200">
         <span className="text-lg font-semibold">Total</span>
         <span className="text-2xl font-bold text-pink-600">
-          ${summary?.total?.toFixed(2) || "0.00"}
+          ₹{summary?.total?.toFixed(2) || "0.00"}
         </span>
       </div>
 
@@ -184,7 +280,7 @@ export function OrderSidebar({
           <Button
             onClick={() => onPlaceOrder(paymentMethod)}
             disabled={isProcessing}
-            className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-semibold py-6 rounded-xl shadow-md hover:shadow-lg transition-all"
+            className="w-full bg-linear-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-semibold py-6 rounded-xl shadow-md hover:shadow-lg transition-all"
           >
             {isProcessing ? (
               <>
@@ -210,5 +306,33 @@ export function OrderSidebar({
         </div>
       )}
     </div>
+
+    {/* Toast Popup */}
+    <div
+      className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-100 transition-all duration-300 ${
+        toast.show
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 translate-y-4 pointer-events-none"
+      }`}
+    >
+      <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-50 max-w-[88vw]">
+        <div className="bg-green-500 w-7 h-7 rounded-full flex items-center justify-center shrink-0">
+          <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">
+            {toast.title}
+          </p>
+          <p className="text-xs text-gray-400 truncate">{toast.message}</p>
+        </div>
+        <button
+          onClick={() => setToast((prev) => ({ ...prev, show: false }))}
+          className="text-gray-300 hover:text-gray-500 shrink-0 ml-1"
+        >
+          <X size={12} />
+        </button>
+      </div>
+    </div>
+    </>
   );
 }

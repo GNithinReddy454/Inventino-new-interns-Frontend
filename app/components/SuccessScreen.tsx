@@ -2,14 +2,23 @@
 
 import { Button } from "./ui/button";
 import { OrderResponse } from "@/lib/types";
-import { CheckCircle2, Package, MapPin, Truck, Lock } from "lucide-react";
+import { CheckCircle2, Package, MapPin, Truck, Lock, Home } from "lucide-react";
 
 interface SuccessScreenProps {
   order: OrderResponse;
   onViewTracking: () => void;
+  items?: any[];
+  subtotal?: number;
+  discount?: number;
 }
 
-export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
+export function SuccessScreen({
+  order,
+  onViewTracking,
+  items = [],
+  subtotal,
+  discount,
+}: SuccessScreenProps) {
   const isCOD = order.paymentMethod === "cod";
 
   const trackingSteps = [
@@ -36,7 +45,36 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
   ];
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          /* Hide Navbar, Footer, BackToTop and scrollbars */
+          header, footer, nav, button, .no-print, [class*="back-to-top"] {
+            display: none !important;
+          }
+          
+          /* Force body background white and clear margins */
+          body, html {
+            background-color: #ffffff !important;
+            background-image: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+          }
+
+          /* Remove container shadow and border */
+          #printable-invoice {
+            display: block !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+      `}} />
+      <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 print:hidden">
       {/* Progress Steps */}
       <div className="mb-8">
         {/* Header with Secure Checkout */}
@@ -158,7 +196,7 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
             {isCOD ? "Amount (Pay on Delivery)" : "Amount Paid"}
           </span>
           <span className="text-xl font-bold text-pink-600">
-            ${order.totalAmount.toFixed(2)}
+            ₹{(order.totalAmount || 0).toFixed(2)}
           </span>
         </div>
       </div>
@@ -175,8 +213,8 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
               </h3>
               <ul className="text-sm text-amber-800 space-y-1">
                 <li>
-                  • Please keep exact cash ready: $
-                  {order.totalAmount.toFixed(2)}
+                  • Please keep exact cash ready: ₹
+                  {(order.totalAmount || 0).toFixed(2)}
                 </li>
                 <li>• Payment accepted in cash only at the time of delivery</li>
                 <li>• You can inspect the product before payment</li>
@@ -233,11 +271,10 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
                 <div key={index} className="relative flex items-center gap-4">
                   {/* Icon */}
                   <div
-                    className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                      step.completed
+                    className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all ${step.completed
                         ? "bg-pink-500 text-white shadow-lg shadow-pink-500/30"
                         : "bg-gray-200 text-gray-400"
-                    }`}
+                      }`}
                   >
                     <Icon className="h-4 w-4" />
                   </div>
@@ -245,9 +282,8 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
                   {/* Content */}
                   <div className="flex-1">
                     <p
-                      className={`font-semibold text-sm ${
-                        step.completed ? "text-gray-900" : "text-gray-400"
-                      }`}
+                      className={`font-semibold text-sm ${step.completed ? "text-gray-900" : "text-gray-400"
+                        }`}
                     >
                       {step.status}
                     </p>
@@ -279,12 +315,12 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
         </h3>
         <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
           <p className="font-medium text-gray-900">
-            {order.shippingAddress.firstName} {order.shippingAddress.lastName}
+            {order.shippingAddress.fullName || `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`}
           </p>
-          <p className="text-gray-600">{order.shippingAddress.streetAddress}</p>
+          <p className="text-gray-600">{order.shippingAddress.street || order.shippingAddress.streetAddress}</p>
           <p className="text-gray-600">
             {order.shippingAddress.city}, {order.shippingAddress.state}{" "}
-            {order.shippingAddress.zipCode}
+            {order.shippingAddress.pincode || order.shippingAddress.zipCode}
           </p>
           <p className="text-gray-600">{order.shippingAddress.country}</p>
           <p className="text-gray-600">Phone: {order.shippingAddress.phone}</p>
@@ -292,23 +328,171 @@ export function SuccessScreen({ order, onViewTracking }: SuccessScreenProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3">
+        {/* Go to Home - Primary CTA */}
         <Button
           onClick={() => (window.location.href = "/")}
-          className="flex-1 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white py-6 text-base font-semibold rounded-lg shadow-lg shadow-pink-500/30"
+          className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white py-6 text-base font-semibold rounded-lg shadow-lg shadow-pink-500/30 flex items-center justify-center gap-2"
         >
-          Continue Shopping
+          <Home className="h-5 w-5" />
+          Go to Home
         </Button>
 
-        <Button
-          variant="outline"
-          onClick={() => window.print()}
-          className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 py-6"
-        >
-          <Package className="mr-2 h-5 w-5" />
-          Print Receipt
-        </Button>
+        {/* Secondary Actions */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            variant="outline"
+            onClick={() => (window.location.href = "/")}
+            className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 py-6"
+          >
+            Continue Shopping
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 py-6"
+          >
+            <Package className="mr-2 h-5 w-5" />
+            Print Receipt
+          </Button>
+        </div>
       </div>
     </div>
+
+    {/* Printable Invoice */}
+    <div id="printable-invoice" className="hidden print:block p-8 bg-white text-gray-900 font-sans w-full max-w-4xl mx-auto border border-gray-200 rounded-xl">
+      {/* Header */}
+      <div className="flex justify-between items-start border-b border-gray-200 pb-6 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">INVENTINO JEWELS</h1>
+          <p className="text-sm text-gray-500 mt-1">Premium Handcrafted Bracelets & Luxury Jewelry</p>
+          <p className="text-xs text-gray-400 mt-2">Email: hr@ggstinnovations.com</p>
+        </div>
+        <div className="text-right">
+          <h2 className="text-2xl font-bold text-gray-900 uppercase">Invoice</h2>
+          <p className="text-sm text-gray-600 mt-1">Invoice #: {order.orderNumber}</p>
+          <p className="text-sm text-gray-600">Date: {new Date(order.orderDate).toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+          })}</p>
+        </div>
+      </div>
+
+      {/* Info Grid */}
+      <div className="grid grid-cols-2 gap-8 mb-8">
+        <div>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Billed & Shipped To</h3>
+          <p className="text-sm font-semibold text-gray-800">
+            {order.shippingAddress.fullName || `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`}
+          </p>
+          <p className="text-sm text-gray-600 mt-1">
+            {order.shippingAddress.street || order.shippingAddress.streetAddress}
+          </p>
+          <p className="text-sm text-gray-600">
+            {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.pincode || order.shippingAddress.zipCode}
+          </p>
+          <p className="text-sm text-gray-600">{order.shippingAddress.country}</p>
+          <p className="text-sm text-gray-600 mt-2">Phone: {order.shippingAddress.phone}</p>
+          {order.shippingAddress.email && (
+            <p className="text-sm text-gray-600">Email: {order.shippingAddress.email}</p>
+          )}
+        </div>
+        <div>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Details</h3>
+          <p className="text-sm text-gray-800 font-semibold">
+            Payment Method: <span className="capitalize">{isCOD ? "Cash on Delivery" : order.paymentMethod}</span>
+          </p>
+          {order.transactionId && (
+            <p className="text-sm text-gray-600 mt-1 font-mono text-xs">
+              Transaction ID: {order.transactionId}
+            </p>
+          )}
+          {order.trackingNumber && (
+            <p className="text-sm text-gray-600 mt-1">
+              Tracking ID: {order.trackingNumber}
+            </p>
+          )}
+          {order.estimatedDelivery && (
+            <p className="text-sm text-gray-600 mt-1">
+              Estimated Delivery: {order.estimatedDelivery}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Items Table */}
+      <div className="border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Item Description</th>
+              <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Options</th>
+              <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-center">Qty</th>
+              <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">Price</th>
+              <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {items.map((item, idx) => {
+              const name = item.name || item.product?.name || "Product";
+              const price = Number(item.price || item.product?.price || 0);
+              const qty = Number(item.quantity || 1);
+              const variantParts = [];
+              if (item.color) variantParts.push(`Color: ${item.color}`);
+              if (item.size) variantParts.push(`Size: ${item.size}`);
+              const variantDesc = variantParts.join(" | ") || "—";
+
+              return (
+                <tr key={idx} className="text-sm">
+                  <td className="px-4 py-3 font-medium text-gray-900">{name}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{variantDesc}</td>
+                  <td className="px-4 py-3 text-center text-gray-700">{qty}</td>
+                  <td className="px-4 py-3 text-right text-gray-700">₹{price.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-medium text-gray-900">₹{(price * qty).toFixed(2)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Summary */}
+      <div className="flex justify-end mb-8">
+        <div className="w-64 space-y-2.5 text-sm">
+          <div className="flex justify-between text-gray-600">
+            <span>Subtotal</span>
+            <span>₹{(subtotal || order.totalAmount || 0).toFixed(2)}</span>
+          </div>
+          {discount ? (
+            <div className="flex justify-between text-green-600 font-medium">
+              <span>Discount</span>
+              <span>-₹{Number(discount).toFixed(2)}</span>
+            </div>
+          ) : null}
+          <div className="flex justify-between text-gray-600">
+            <span>Shipping</span>
+            <span className="text-green-600 font-medium">FREE</span>
+          </div>
+          <div className="flex justify-between text-gray-600 border-t border-gray-100 pt-2">
+            <span>Tax</span>
+            <span>₹0.00</span>
+          </div>
+          <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2">
+            <span>Total Paid</span>
+            <span>₹{(order.totalAmount || 0).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
+        <p className="font-semibold text-gray-500 mb-1">Thank you for your purchase!</p>
+        <p>This is a computer-generated invoice and does not require a physical signature.</p>
+        <p className="mt-1">For support, please contact us at hr@ggstinnovations.com</p>
+      </div>
+    </div>
+  </>
   );
 }

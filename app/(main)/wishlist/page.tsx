@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { fetchWishlist, removeWishlistItem, clearWishlist, addWishlistItem } from "@/redux/wishlistslice";
-import { addToCart as reduxAddToCart } from "@/redux/cartslice";
+import {
+  fetchWishlist,
+  removeWishlistItem,
+  clearWishlist,
+  removeLocalWishlistItem,
+} from "@/redux/wishlistslice";
+import { addToCart as reduxAddToCart, fetchCart } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { useAuth } from "@/app/(main)/components/authContext";
 import {
   Heart,
-  ShoppingCart,
   Trash2,
   ArrowLeft,
   CheckCircle2,
@@ -17,6 +21,8 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { hasUserSession } from "@/lib/session";
 
 // ── Star Rating ───────────────────────────────────────────────────────────────
 function StarRating({ rating }: { rating: number }) {
@@ -51,8 +57,8 @@ function StarRating({ rating }: { rating: number }) {
                 filled
                   ? "#E8456A"
                   : partial
-                    ? `url(#wl-star-${star}-${Math.round(rating * 10)})`
-                    : "#e5e7eb"
+                  ? `url(#wl-star-${star}-${Math.round(rating * 10)})`
+                  : "#e5e7eb"
               }
             />
           </svg>
@@ -75,11 +81,47 @@ function getBadgeInfo(badge: any): { text: string; color: string } | null {
   return { text, color: "bg-[#E8456A]" };
 }
 
+function resolveColorSwatch(colorValue: string): string {
+  const val = String(colorValue || "").trim();
+  if (!val) return "#d1d5db";
+
+  const lower = val.toLowerCase();
+  const named: Record<string, string> = {
+    turquoise: "#40E0D0",
+    silver: "#B0B0B0",
+    gold: "#FFD700",
+    "rose gold": "#C9956C",
+    rosegold: "#C9956C",
+    pink: "#D94F7A",
+    red: "#E53935",
+    blue: "#1E88E5",
+    green: "#43A047",
+    black: "#212121",
+    white: "#FFFFFF",
+    yellow: "#FDD835",
+    orange: "#FB8C00",
+    purple: "#8E24AA",
+    brown: "#6D4C41",
+    beige: "#D7C5A0",
+    navy: "#1A237E",
+    grey: "#9E9E9E",
+    gray: "#9E9E9E",
+    copper: "#B87333",
+  };
+
+  if (lower.startsWith("#") || lower.startsWith("rgb") || lower.startsWith("hsl")) {
+    return val;
+  }
+
+  return named[lower] || val;
+}
+
 export default function WishlistPage() {
   const dispatch = useAppDispatch();
-  const { items: savedItems, isLoading, error } = useAppSelector((state) => state.wishlist);
+  const { items: savedItems, isLoading } = useAppSelector((state) => state.wishlist);
   const { addToCart } = useCart();
   const { user } = useAuth();
+  const router = useRouter();
 
   const [toast, setToast] = useState<{
     title?: string;
@@ -87,6 +129,9 @@ export default function WishlistPage() {
     show: boolean;
   }>({ title: "Added to cart!", message: "", show: false });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const isAddToCartToast =
+    (toast.title || "").toLowerCase().includes("added to cart") ||
+    (toast.message || "").toLowerCase().includes("added to cart");
 
   useEffect(() => {
     dispatch(fetchWishlist());
@@ -97,104 +142,344 @@ export default function WishlistPage() {
       setToast({ title, message, show: true });
       setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
     },
-    [],
+    []
   );
 
-  const handleAddToCart = useCallback(
-    (item: any) => {
-      const pId = String(item._id || item.id);
-      if (user) {
-        dispatch(reduxAddToCart({ productId: pId, quantity: 1 }));
-      } else {
-        addToCart(item, 1);
-      }
-      dispatch(removeWishlistItem(pId));
-      triggerToast(`${item.name || item.title} added to cart`);
-    },
-    [addToCart, dispatch, triggerToast, user],
-  );
-
-  const handleAddAllToCart = () => {
-    if (!selectedIds.length) return;
-    let count = 0;
-    selectedIds.forEach((id) => {
-      const itemWrapper = savedItems.find((p: any) => p.product?._id === id || p.product?.id === id);
-      if (itemWrapper && itemWrapper.product) {
-        if (user) {
-          dispatch(reduxAddToCart({ productId: String(id), quantity: 1 }));
-        } else {
-          addToCart(itemWrapper.product as any, 1);
-        }
-        dispatch(removeWishlistItem(id));
-        count++;
-      }
-    });
-    triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart`);
-    setSelectedIds([]);
+  const getImageUrl = (imgData: any) => {
+    if (!imgData) return "";
+    if (typeof imgData === "string") return imgData;
+    if (typeof imgData === "object" && imgData.url) return imgData.url;
+    return "";
   };
 
-  const handleRemoveSelected = () => {
+  const hasServerCartSession =
+    hasUserSession();
+
+  const isAuthOrSessionError = (errorMessage: string) => {
+    const msg = (errorMessage || "").toLowerCase();
+    return (
+      msg.includes("user not found") ||
+      msg.includes("unauthorized") ||
+      msg.includes("invalid") ||
+      msg.includes("token") ||
+      msg.includes("session")
+    );
+  };
+
+  // ── Add to cart + remove from wishlist using productId ──
+  const handleAddToCart = useCallback(
+    async (apiItem: any, productId: string) => {
+      try {
+        const item = apiItem.product || apiItem;
+        const color = apiItem.color || "";
+        const size = apiItem.size || "";
+        const quantity = apiItem.quantity || 1;
+
+        // 1. Add to cart
+        if (hasServerCartSession) {
+          await dispatch(
+            reduxAddToCart({ productId, quantity, color, size })
+          ).unwrap();
+          const localItem = {
+            ...item,
+            id: productId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
+        } else {
+          const localItem = {
+            ...item,
+            id: productId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
+        }
+
+        // 2. Remove from wishlist (API + local fallback)
+        try {
+          await dispatch(removeWishlistItem(productId)).unwrap();
+        } catch (removeError) {
+          console.warn("API removal failed, fallback to local", removeError);
+          dispatch(removeLocalWishlistItem(productId));
+        }
+
+        if (hasServerCartSession) {
+          await dispatch(fetchCart());
+        }
+
+        triggerToast(`${item.name || item.title || "Item"} added to cart`);
+      } catch (error: any) {
+        // Fallback for stock/format issues
+        const item = apiItem.product || apiItem;
+        const color = apiItem.color || "";
+        const size = apiItem.size || "";
+        const quantity = apiItem.quantity || 1;
+        const errorMessage = typeof error === "string" ? error : error.message || "";
+
+        if (
+          errorMessage.includes("stock") ||
+          errorMessage.includes("format") ||
+          productId === "7" ||
+          isAuthOrSessionError(errorMessage)
+        ) {
+          const localItem = {
+            ...item,
+            id: productId,
+            name: item.name || item.title || "Untitled Product",
+            price: item.price || 0,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
+          try {
+            await dispatch(removeWishlistItem(productId)).unwrap();
+          } catch {
+            dispatch(removeLocalWishlistItem(productId));
+          }
+          triggerToast(`${item.name || "Item"} added to cart`);
+        } else {
+          triggerToast(`Failed to add: ${errorMessage}`, "Error");
+        }
+      }
+    },
+    [addToCart, dispatch, triggerToast, hasServerCartSession]
+  );
+
+  // ── Bulk add selected items ──
+  const handleAddAllToCart = async () => {
+    const selectedItems = savedItems.filter((item: any) =>
+      selectedIds.includes(item.productId)
+    );
+    if (selectedItems.length === 0) return;
+
+    let count = 0;
+    for (const wishlistItem of selectedItems) {
+      try {
+        const item = wishlistItem.product || wishlistItem;
+        const pId = wishlistItem.productId;
+        const color = wishlistItem.color || "";
+        const size = wishlistItem.size || "";
+        const quantity = wishlistItem.quantity || 1;
+
+        if (hasServerCartSession) {
+          await dispatch(
+            reduxAddToCart({ productId: pId, quantity, color, size })
+          ).unwrap();
+          const localItem = {
+            ...item,
+            id: pId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
+        } else {
+          const localItem = {
+            ...item,
+            id: pId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
+        }
+
+        try {
+          await dispatch(removeWishlistItem(pId)).unwrap();
+        } catch {
+          dispatch(removeLocalWishlistItem(pId));
+        }
+        count++;
+      } catch (error: any) {
+        // fallback logic
+        const item = wishlistItem.product || wishlistItem;
+        const pId = wishlistItem.productId;
+        const errorMessage = typeof error === "string" ? error : error.message || "";
+        if (
+          errorMessage.includes("stock") ||
+          errorMessage.includes("format") ||
+          pId === "7" ||
+          isAuthOrSessionError(errorMessage)
+        ) {
+          const fallbackQuantity = wishlistItem.quantity || 1;
+          const fallbackColor = wishlistItem.color || "";
+          const fallbackSize = wishlistItem.size || "";
+          const localItem = {
+            ...item,
+            id: pId,
+            name: item.name || item.title || "Untitled Product",
+            price: item.price || 0,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, fallbackQuantity, fallbackColor, fallbackSize);
+          try {
+            await dispatch(removeWishlistItem(pId)).unwrap();
+          } catch {
+            dispatch(removeLocalWishlistItem(pId));
+          }
+          count++;
+        }
+      }
+    }
+
+    if (count > 0) {
+      if (hasServerCartSession) {
+        await dispatch(fetchCart());
+      }
+      triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart`);
+      setSelectedIds([]);
+      setTimeout(() => router.push("/bag"), 1000);
+    } else {
+      triggerToast(`Failed to add items to cart`, "Error");
+    }
+  };
+
+  // ── Remove selected (by productId) ──
+  const handleRemoveSelected = async () => {
     if (!selectedIds.length) return;
-    selectedIds.forEach((id) => {
-      dispatch(removeWishlistItem(id));
-    });
+    const idsToRemove = [...selectedIds];
     setSelectedIds([]);
+
+    for (const productId of idsToRemove) {
+      try {
+        await dispatch(removeWishlistItem(productId)).unwrap();
+      } catch {
+        dispatch(removeLocalWishlistItem(productId));
+      }
+    }
+
+    triggerToast(
+      `${idsToRemove.length} item${idsToRemove.length > 1 ? "s" : ""} removed from your wishlist`,
+      "Removed Selected Items"
+    );
   };
 
   const handleRemoveAll = () => {
     dispatch(clearWishlist());
     setSelectedIds([]);
+    triggerToast("Your wishlist has been cleared successfully", "All Items Removed from Wishlist");
   };
 
-  const handleAddEntireWishlistToCart = () => {
+  // ── Add entire wishlist to cart, then clear ──
+  const handleAddEntireWishlistToCart = async () => {
     if (!savedItems.length) return;
+
+    const itemsSnapshot = [...savedItems];
     let count = 0;
-    savedItems.forEach((itemWrapper: any) => {
-      if (itemWrapper.product) {
-        const pId = String(itemWrapper.product._id || itemWrapper.product.id);
-        if (user) {
-          dispatch(reduxAddToCart({ productId: pId, quantity: 1 }));
+
+    for (const wishlistItem of itemsSnapshot) {
+      try {
+        const item = wishlistItem.product || wishlistItem;
+        const pId = wishlistItem.productId;
+        const color = wishlistItem.color || "";
+        const size = wishlistItem.size || "";
+        const quantity = wishlistItem.quantity || 1;
+
+        if (hasServerCartSession) {
+          await dispatch(
+            reduxAddToCart({ productId: pId, quantity, color, size })
+          ).unwrap();
+          const localItem = {
+            ...item,
+            id: pId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
         } else {
-          addToCart(itemWrapper.product as any, 1);
+          const localItem = {
+            ...item,
+            id: pId,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, quantity, color, size);
         }
         count++;
+      } catch (error: any) {
+        const item = wishlistItem.product || wishlistItem;
+        const pId = wishlistItem.productId;
+        const errorMessage = typeof error === "string" ? error : error.message || "";
+        if (
+          errorMessage.includes("stock") ||
+          errorMessage.includes("format") ||
+          pId === "7" ||
+          isAuthOrSessionError(errorMessage)
+        ) {
+          const fallbackQuantity = wishlistItem.quantity || 1;
+          const fallbackColor = wishlistItem.color || "";
+          const fallbackSize = wishlistItem.size || "";
+          const localItem = {
+            ...item,
+            id: pId,
+            name: item.name || item.title || "Untitled Product",
+            price: item.price || 0,
+            image: getImageUrl(item.images?.[0] || item.image),
+          };
+          addToCart(localItem as any, fallbackQuantity, fallbackColor, fallbackSize);
+          count++;
+        }
       }
-    });
-    dispatch(clearWishlist());
-    triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart`);
-    setSelectedIds([]);
+    }
+
+    if (count > 0) {
+      if (hasServerCartSession) {
+        await dispatch(fetchCart());
+      }
+      try {
+        await dispatch(clearWishlist()).unwrap();
+      } catch {
+        // If clear API fails, manually remove each productId from local state
+        itemsSnapshot.forEach((item) => {
+          dispatch(removeLocalWishlistItem(item.productId));
+        });
+      }
+      triggerToast(`${count} item${count > 1 ? "s" : ""} added to cart and wishlist cleared`);
+      setSelectedIds([]);
+      setTimeout(() => router.push("/bag"), 1000);
+    } else {
+      triggerToast(`Failed to add items to cart`, "Error");
+    }
   };
 
-  const toggleSelectAll = () =>
-    setSelectedIds(
-      selectedIds.length === savedItems.length
-        ? []
-        : savedItems.filter((i: any) => i.product).map((i: any) => i.product._id),
-    );
+  // ── Selection helpers (use productId as unique identifier) ──
+  const selectableIds = useMemo(() => {
+    return savedItems.map((item: any) => item.productId).filter(Boolean);
+  }, [savedItems]);
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(selectableIds);
+    }
+  };
 
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
 
   const allSelected =
-    savedItems.length > 0 && selectedIds.length === savedItems.length;
+    selectableIds.length > 0 && selectedIds.length >= selectableIds.length;
 
   return (
     <div className="w-full bg-[#FFF9FD] font-sans min-h-screen">
-      {/* ── Toast ── */}
+      {/* Toast (unchanged) */}
       <div
-        className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${toast.show
-          ? "opacity-100 translate-y-0"
-          : "opacity-0 translate-y-4 pointer-events-none"
-          }`}
+        className={`fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-8 z-[100] transition-all duration-300 ${
+          toast.show
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-4 pointer-events-none"
+        }`}
       >
         <div className="bg-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.13)] border border-gray-100 min-w-[200px] max-w-[88vw]">
-          <div className="bg-[#E8456A] w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0">
+          <div
+            className={`${
+              isAddToCartToast ? "bg-emerald-500" : "bg-[#E8456A]"
+            } w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0`}
+          >
             <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">
+            <p
+              className={`text-sm font-bold leading-none mb-0.5 ${
+                isAddToCartToast ? "text-emerald-700" : "text-gray-900"
+              }`}
+            >
               {toast.title}
             </p>
             <p className="text-xs text-gray-400 truncate">{toast.message}</p>
@@ -209,19 +494,16 @@ export default function WishlistPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-5 pb-16 w-full">
-        {/* ── Back ── */}
+        {/* Back link */}
         <Link
           href="/products"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9E7EA8] hover:text-[#E8456A] transition-colors group mb-4"
         >
-          <ArrowLeft
-            size={14}
-            className="group-hover:-translate-x-0.5 transition-transform"
-          />
+          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
           Back to Shop
         </Link>
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="mb-4">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
             My Wishlist
@@ -231,10 +513,9 @@ export default function WishlistPage() {
           </p>
         </div>
 
-        {/* ── Compact Bulk Action Bar ── */}
+        {/* Bulk Action Bar */}
         {savedItems.length > 0 && (
           <div className="flex items-center gap-3 mb-4 sm:mb-5 flex-wrap">
-            {/* Select All — compact inline style, not full width */}
             <label className="inline-flex items-center gap-2 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-[#E8456A] transition-colors">
               <input
                 type="checkbox"
@@ -250,11 +531,7 @@ export default function WishlistPage() {
                   stroke="currentColor"
                   strokeWidth={3.5}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M5 13l4 4L19 7"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
@@ -262,16 +539,12 @@ export default function WishlistPage() {
               </span>
             </label>
 
-            {/* Remove All Selected / Remove All */}
             {selectedIds.length > 0 ? (
               <button
                 onClick={handleRemoveSelected}
                 className="inline-flex items-center gap-1.5 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-red-300 hover:text-red-500 transition-colors text-xs font-semibold text-gray-700 group whitespace-nowrap"
               >
-                <Trash2
-                  size={14}
-                  className="text-gray-400 group-hover:text-red-500 transition-colors"
-                />
+                <Trash2 size={14} className="text-gray-400 group-hover:text-red-500 transition-colors" />
                 Remove Selected
               </button>
             ) : (
@@ -279,15 +552,11 @@ export default function WishlistPage() {
                 onClick={handleRemoveAll}
                 className="inline-flex items-center gap-1.5 cursor-pointer bg-white border border-[#F3D6EE] rounded-xl px-3 py-2 shadow-sm hover:border-red-300 hover:text-red-500 transition-colors text-xs font-semibold text-gray-700 group whitespace-nowrap"
               >
-                <Trash2
-                  size={14}
-                  className="text-gray-400 group-hover:text-red-500 transition-colors"
-                />
+                <Trash2 size={14} className="text-gray-400 group-hover:text-red-500 transition-colors" />
                 Remove All
               </button>
             )}
 
-            {/* Add All to Cart */}
             <button
               onClick={selectedIds.length > 0 ? handleAddAllToCart : handleAddEntireWishlistToCart}
               className="inline-flex items-center gap-1.5 cursor-pointer bg-[#E8456A] text-white rounded-xl px-3 py-2 shadow-sm hover:bg-[#c73358] transition-colors text-xs font-semibold whitespace-nowrap"
@@ -296,7 +565,6 @@ export default function WishlistPage() {
               {selectedIds.length > 0 ? "Add Selected to Cart" : "Add All to Cart"}
             </button>
 
-            {/* Count badge */}
             {selectedIds.length > 0 && (
               <span className="text-[11px] bg-pink-50 text-[#E8456A] font-bold px-2 py-1 rounded-full border border-pink-100 whitespace-nowrap">
                 {selectedIds.length} selected
@@ -305,29 +573,10 @@ export default function WishlistPage() {
           </div>
         )}
 
-        {/* ── Error / Unauthenticated state ── */}
-        {!isLoading && error ? (
-          <div className="text-center py-16 sm:py-24 bg-white rounded-[28px] border-2 border-dashed border-red-200 px-6">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-              Authentication Required
-            </h3>
-            <p className="text-gray-400 text-sm mb-7 max-w-md mx-auto">
-              {error === "Unauthorized" || error.toLowerCase().includes("unauth") || error.includes("invalid token")
-                ? "Please log in to your account to view and manage your wishlist."
-                : error}
-            </p>
-            <Link
-              href="/login?redirect=/wishlist"
-              className="inline-flex items-center gap-2 bg-[#E8456A] text-white px-8 py-2.5 rounded-2xl font-bold hover:bg-[#c73358] transition-all shadow-md shadow-pink-100 uppercase tracking-widest text-xs"
-            >
-              Log In Now
-            </Link>
-          </div>
-        ) : !isLoading && savedItems.length === 0 ? (
+        {/* States */}
+        {!isLoading && savedItems.length === 0 ? (
           <div className="text-center py-16 sm:py-24 bg-white rounded-[28px] border-2 border-dashed border-[#F3D6EE] px-6">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900">
-              Your wishlist is empty
-            </h3>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900">Your wishlist is empty</h3>
             <p className="text-gray-400 text-sm mt-2 mb-7">
               Save items you love and come back anytime.
             </p>
@@ -343,51 +592,49 @@ export default function WishlistPage() {
             <p className="text-gray-400 text-sm">Loading your wishlist...</p>
           </div>
         ) : (
-          /* ── Product Grid ── */
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
             {savedItems.map((apiItem: any) => {
-              const item = apiItem.product || {};
-              if (!item._id) return null;
+              const productId = apiItem.productId; // e.g., "PRD-002"
+              if (!productId) return null;
 
-              const isSelected = selectedIds.includes(item._id);
-              const name = item.name || item.title || "";
-              const image = item.images?.[0] || item.image || "";
-              const rating =
-                typeof item.rating === "number" ? item.rating : 4.7;
+              const item = apiItem.product || apiItem;
+              const isSelected = selectedIds.includes(productId);
+              const name = item.name || item.title || item.productName || "Untitled Product";
+              const image = getImageUrl(item.images?.[0] || item.image);
+              const rating = typeof item.rating === "number" ? item.rating : 0;
               const badge = getBadgeInfo(item.badge);
-              const hasDiscount =
-                !!item.originalPrice && item.originalPrice > item.price;
+              const hasDiscount = !!item.originalPrice && item.originalPrice > (item.price || 0);
+              const itemColor = apiItem.color || null;
+              const itemSize = apiItem.size || null;
+              const itemQuantity = apiItem.quantity || 1;
 
               return (
                 <div
-                  key={item._id}
-                  className={`relative bg-white rounded-2xl overflow-hidden border flex flex-col shadow-sm transition-all duration-300 hover:shadow-[0_6px_24px_rgba(232,69,106,0.13)] ${isSelected
-                    ? "ring-2 ring-[#E8456A] ring-offset-1 border-transparent"
-                    : "border-gray-100 hover:border-pink-100"
-                    }`}
+                  key={productId + (itemColor || "") + (itemSize || "")}
+                  className={`relative bg-white rounded-2xl overflow-hidden border flex flex-col shadow-sm transition-all duration-300 hover:shadow-[0_6px_24px_rgba(232,69,106,0.13)] ${
+                    isSelected
+                      ? "ring-2 ring-[#E8456A] ring-offset-1 border-transparent"
+                      : "border-gray-100 hover:border-pink-100"
+                  }`}
                 >
-                  {/* ── Image ── */}
+                  {/* Image section */}
                   <div className="relative aspect-square overflow-hidden bg-gray-50">
-                    <Link
-                      href={`/products/${item._id}`}
-                      className="absolute inset-0"
-                    >
-                      {image ? (
+                    <Link href={`/products/${productId}`} className="absolute inset-0">
+                      {image && typeof image === "string" && image.trim() !== "" ? (
                         <img
                           src={image}
                           alt={name}
                           className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center p-2">
                           No Image
                         </div>
                       )}
                     </Link>
 
-                    {/* ── TOP ROW: badge (left) + share (right) — never collide ── */}
+                    {/* Top row: badge + actions */}
                     <div className="absolute top-2 left-2 right-2 flex items-start justify-between z-10 pointer-events-none">
-                      {/* Badge — left side */}
                       <div className="pointer-events-none">
                         {badge ? (
                           <span
@@ -396,35 +643,30 @@ export default function WishlistPage() {
                             {badge.text}
                           </span>
                         ) : (
-                          /* Empty spacer so share stays right-aligned even without badge */
                           <span />
                         )}
                       </div>
-
-                      {/* Actions — right side */}
                       <div className="flex flex-col gap-2 pointer-events-auto">
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            dispatch(removeWishlistItem(item._id));
-                            triggerToast(
-                              `${name} removed from the wishlist`,
-                              "Removed from Wishlist",
-                            );
+                            try {
+                              await dispatch(removeWishlistItem(productId)).unwrap();
+                            } catch {
+                              dispatch(removeLocalWishlistItem(productId));
+                            }
+                            triggerToast(`${name} removed from the wishlist`, "Removed from Wishlist");
                           }}
                           className="w-7 h-7 flex items-center justify-center rounded-full bg-[#E8456A] shadow-md text-white transition-all backdrop-blur-sm hover:bg-[#c73358] active:scale-95"
                         >
-                          <Heart
-                            size={11}
-                            strokeWidth={2}
-                            fill="currentColor"
-                          />
+                          <Heart size={11} strokeWidth={2} fill="currentColor" />
                         </button>
                         <button
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
+                            // share logic if needed
                           }}
                           className="w-7 h-7 flex items-center justify-center rounded-full bg-white/90 shadow-md text-gray-400 hover:text-[#E8456A] hover:bg-white transition-all backdrop-blur-sm"
                         >
@@ -433,42 +675,40 @@ export default function WishlistPage() {
                       </div>
                     </div>
 
-                    {/* ── BOTTOM-LEFT: checkbox — away from badge ── */}
+                    {/* Checkbox */}
                     <div className="absolute bottom-2 left-2 z-20">
                       <label className="cursor-pointer block">
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => toggleSelect(item._id)}
+                          onChange={() => toggleSelect(productId)}
                           className="sr-only peer"
                         />
                         <div
-                          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 shadow transition-all flex items-center justify-center ${isSelected
-                            ? "border-[#E8456A] bg-[#E8456A]"
-                            : "border-white/80 bg-black/10 hover:bg-white/90 hover:border-[#E8456A]"
-                            }`}
+                          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 shadow transition-all flex items-center justify-center ${
+                            isSelected
+                              ? "border-[#E8456A] bg-[#E8456A]"
+                              : "border-white/80 bg-black/10 hover:bg-white/90 hover:border-[#E8456A]"
+                          }`}
                         >
                           <svg
-                            className={`w-2.5 h-2.5 text-white transition-opacity ${isSelected ? "opacity-100" : "opacity-0"}`}
+                            className={`w-2.5 h-2.5 text-white transition-opacity ${
+                              isSelected ? "opacity-100" : "opacity-0"
+                            }`}
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
                             strokeWidth={3}
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M5 13l4 4L19 7"
-                            />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
                         </div>
                       </label>
                     </div>
                   </div>
 
-                  {/* ── Card Body ── */}
+                  {/* Card body */}
                   <div className="flex flex-col flex-1 px-2.5 sm:px-3.5 pb-2.5 sm:pb-3.5 pt-2 sm:pt-2.5">
-                    {/* Category + Stars */}
                     <div className="flex items-center justify-between mb-0.5 gap-1">
                       <span className="text-[9px] sm:text-[10px] text-[#E8456A] font-bold uppercase tracking-widest truncate leading-none">
                         {item.category || "Jewelry"}
@@ -481,15 +721,13 @@ export default function WishlistPage() {
                       </div>
                     </div>
 
-                    {/* Name */}
-                    <Link href={`/products/${item._id}`}>
+                    <Link href={`/products/${productId}`}>
                       <h3 className="font-bold text-gray-900 text-[11px] sm:text-sm leading-snug line-clamp-2 hover:text-[#E8456A] transition-colors mt-1 mb-1.5">
                         {name}
                       </h3>
                     </Link>
 
-                    {/* Price */}
-                    <div className="flex items-center gap-1 mt-auto mb-2">
+                    <div className="flex items-center gap-1 mb-1.5">
                       <span className="text-sm sm:text-base font-black text-[#E8456A]">
                         ₹{item.price?.toFixed(2)}
                       </span>
@@ -500,18 +738,59 @@ export default function WishlistPage() {
                       )}
                     </div>
 
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-1.5">
+                    {(itemColor || itemSize || itemQuantity) && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
+                        {itemColor && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-bold">
+                              Color:
+                            </span>
+                            <span
+                              className="w-3 h-3 rounded-full border border-gray-300 shadow-sm"
+                              style={{ backgroundColor: resolveColorSwatch(itemColor) }}
+                              aria-label={`${itemColor} color`}
+                            />
+                            <span className="text-[10px] sm:text-xs font-bold text-gray-700 capitalize">
+                              {itemColor}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-bold">
+                            Size:
+                          </span>
+                          <span className="text-[10px] sm:text-xs font-bold text-gray-700">
+                            {itemSize || "Free Size"}
+                          </span>
+                        </div>
+                        {itemQuantity && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-bold">
+                              Qty:
+                            </span>
+                            <span className="text-[10px] sm:text-xs font-bold text-gray-700">
+                              {itemQuantity}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-1.5 mt-auto">
                       <button
-                        onClick={() => handleAddToCart(item)}
+                        onClick={() => handleAddToCart(apiItem, productId)}
                         className="flex-1 inline-flex items-center justify-center gap-1 bg-[#E8456A] hover:bg-[#c73358] text-white py-1.5 sm:py-2 rounded-lg text-[9px] sm:text-[11px] font-bold uppercase tracking-wide transition-all active:scale-95 shadow-sm shadow-pink-100"
                       >
                         <ShoppingBag size={10} className="flex-shrink-0" />
                         Add to Cart
                       </button>
                       <button
-                        onClick={() => {
-                          dispatch(removeWishlistItem(item._id));
+                        onClick={async () => {
+                          try {
+                            await dispatch(removeWishlistItem(productId)).unwrap();
+                          } catch {
+                            dispatch(removeLocalWishlistItem(productId));
+                          }
                           triggerToast("Removed from Wishlist", "Removed");
                         }}
                         title="Remove from wishlist"

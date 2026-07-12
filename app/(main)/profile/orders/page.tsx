@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   RotateCcw,
@@ -15,11 +17,11 @@ import {
 } from "lucide-react";
 import { orderService } from "@/services/order.service";
 
-
 type TabType = "all" | "delivered" | "cancelled";
 type OrderStatus = "Delivered" | "Shipped" | "Processing" | "Cancelled";
 
 interface OrderItem {
+  id: string;      // productId for linking
   name: string;
   variant: string;
   price: string;
@@ -27,17 +29,20 @@ interface OrderItem {
 }
 
 interface Order {
-  id: string;        // orderNumber — used for display & links
-  backendId: string; // raw DB id — used for cancel API call
+  id: string;        // orderNumber — used for display only
+  backendId: string; // MongoDB _id — used for ALL API calls & links
   date: string;
-  total: string;
+  totalAmount: number;
+  subtotal: number;
+  discount: number;
+  discountPercent?: number;
+  promoCode?: string;
   status: OrderStatus;
   items: OrderItem[];
+  _raw: any;         // full raw API order — passed to Return/Exchange page
 }
 
-// ── Map every possible API orderStatus → UI OrderStatus ──────────────────────
 const API_STATUS_MAP: Record<string, OrderStatus> = {
-  // common backend values
   delivered: "Delivered",
   shipped: "Shipped",
   processing: "Processing",
@@ -71,52 +76,92 @@ const statusConfig = {
   },
 };
 
-// ── Map a single API order → internal Order ───────────────────────────────────
-// API shape: { orderNumber, status, pricing.total, createdAt, items[{name, imageUrl, price, quantity}] }
 function mapApiOrder(apiOrder: any): Order {
-  // Backend field is "status", NOT "orderStatus"
   const rawStatus = (apiOrder.status ?? "").toLowerCase().trim();
   const mappedStatus: OrderStatus = API_STATUS_MAP[rawStatus] ?? "Processing";
 
-  console.log(
-    `Order ${apiOrder.orderNumber}: API status="${apiOrder.status}" → UI status="${mappedStatus}"`,
+  const localDiscounts = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("order_discounts") || "{}") : {};
+  const localDiscountPercent = localDiscounts[apiOrder.orderNumber] || localDiscounts[apiOrder?._id] || 0;
+
+  const subtotalVal = Number(apiOrder.subtotal ?? apiOrder.pricing?.subtotal ?? 0);
+  const totalVal = Number(apiOrder.total_amount ?? apiOrder.total ?? apiOrder.pricing?.total ?? 0);
+  
+  let discountVal = Number(
+    apiOrder.discount ?? 
+    apiOrder.discountAmount ?? 
+    apiOrder.discount_amount ?? 
+    apiOrder.pricing?.discount ?? 
+    apiOrder.pricing?.discountAmount ?? 
+    apiOrder.pricing?.discount_amount ?? 
+    0
   );
 
+  // Fallback 1: Discrepancy calculation
+  if (discountVal === 0 && subtotalVal > totalVal && subtotalVal > 0) {
+    discountVal = subtotalVal - totalVal;
+  }
+  
+  // Fallback 2: Local Session History (for very recent orders)
+  if (discountVal === 0 && localDiscountPercent > 0 && subtotalVal > 0) {
+    discountVal = subtotalVal * (localDiscountPercent / 100);
+  }
+
+  // Force totalAmount to be discounted if we found a discount
+  const finalTotal = (discountVal > 0 && totalVal === subtotalVal) ? subtotalVal - discountVal : totalVal;
+
   return {
-    id: apiOrder.orderNumber,                          // e.g. "ORD-004"
-    backendId: apiOrder.orderNumber,                   // no top-level _id in response; orderNumber is the cancel key
-    date: new Date(apiOrder.createdAt).toLocaleDateString("en-US", {
+    id: apiOrder.orderNumber,
+    backendId: apiOrder._id ?? apiOrder.id ?? apiOrder.orderNumber,
+    date: new Date(apiOrder.createdAt).toLocaleString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }),
-    // total lives inside pricing.total
-    total: `₹${Number(apiOrder.pricing?.total ?? 0).toFixed(2)}`,
+    totalAmount: finalTotal,
+    subtotal: subtotalVal,
+    discount: discountVal,
+    discountPercent: (subtotalVal > 0 && discountVal > 0) 
+      ? Math.round((discountVal / subtotalVal) * 100) 
+      : (apiOrder.discount_percentage ?? apiOrder.discountPercentage ?? apiOrder.discount_percent ?? apiOrder.pricing?.discountPercentage ?? apiOrder.pricing?.percentage ?? apiOrder.promoCode ?? apiOrder.code ?? apiOrder.promo_code ?? apiOrder.coupon ?? apiOrder.promo?.code) ? 10 : 0,
+    promoCode: 
+      apiOrder.promoCode ?? 
+      apiOrder.code ?? 
+      apiOrder.promo_code ?? 
+      apiOrder.coupon ?? 
+      apiOrder.couponCode ?? 
+      apiOrder.promo?.code ?? 
+      apiOrder.pricing?.promoCode ?? 
+      apiOrder.pricing?.code ?? 
+      apiOrder.pricing?.promo_code ?? 
+      "",
     status: mappedStatus,
     items: (apiOrder.items ?? []).map((item: any) => ({
-      name: item.name ?? "Product",
+      id: item.productId ?? "",
+      name: item.productName ?? item.name ?? "Product",
       variant: `Qty: ${item.quantity ?? 1}`,
       price: `₹${Number(item.price).toFixed(2)}`,
-      image: item.imageUrl ?? "",
+      image: item.imageUrl ?? item.image ?? "",
     })),
+    _raw: apiOrder,
   };
 }
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("all");
-  const [cancellingId, setCancellingId] = useState<string | null>(null); // stores orderNumber
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ── Fetch orders from API ─────────────────────────────────────────────────
   const fetchOrders = async () => {
     try {
       setLoading(true);
       const response = await orderService.getOrders();
       if (response?.data && Array.isArray(response.data)) {
         setOrders(response.data.map(mapApiOrder));
-        console.log("Raw API orders:", response.data);
       }
     } catch (err) {
       console.error("Failed to fetch orders:", err);
@@ -129,7 +174,6 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
-  // Re-fetch when "All Orders" tab is clicked
   const handleTabClick = (tab: TabType) => {
     setActiveTab(tab);
     if (tab === "all") fetchOrders();
@@ -142,14 +186,18 @@ export default function OrdersPage() {
     return true;
   });
 
-  // ── Cancel order via API ──────────────────────────────────────────────────
+  const handleReturnExchange = (order: Order) => {
+    sessionStorage.setItem("returnExchangeOrder", JSON.stringify(order._raw));
+    router.push(`/profile/orders/return/${order.backendId}`);
+  };
+
   const handleCancelOrder = async (orderNumber: string) => {
     const order = orders.find((o) => o.id === orderNumber);
     if (!order) return;
 
     try {
       setCancelLoading(true);
-      await orderService.cancelOrder(order.backendId); // use real DB id
+      await orderService.cancelOrder(order.backendId);
       setOrders((prev) =>
         prev.map((o) =>
           o.id === orderNumber ? { ...o, status: "Cancelled" as OrderStatus } : o,
@@ -280,7 +328,7 @@ export default function OrdersPage() {
               const s = statusConfig[order.status];
               return (
                 <div
-                  key={order.id}
+                  key={order.backendId || order.id}
                   style={{
                     background: "#fff",
                     borderRadius: 16,
@@ -360,8 +408,29 @@ export default function OrdersPage() {
                           color: "#E8456A",
                         }}
                       >
-                        {order.total}
+                        ₹{(order.totalAmount || 0).toFixed(2)}
                       </p>
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: "#9ca3af",
+                          marginBottom: 3,
+                        }}
+                      >
+                        Discount
+                      </p>
+                      {(order.discountPercent || 0) > 0 ? (
+                        <p style={{ fontSize: 13, color: "#10b981", fontWeight: 700 }}>
+                          {order.discountPercent}% OFF
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>0%</p>
+                      )}
                     </div>
                     <div style={{ marginLeft: "auto" }}>
                       <span
@@ -390,73 +459,145 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* Items */}
+                  {/* Items - 2 column: first & last */}
                   <div style={{ padding: "16px 24px" }}>
-                    {order.items.map((item, i) => (
-                      <div
-                        key={i}
-                        style={{ display: "flex", alignItems: "center", gap: 16 }}
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          order.items.length > 1 ? "1fr 1fr" : "1fr",
+                        gap: 12,
+                      }}
+                    >
+                      {[
+                        order.items[0],
+                        order.items.length > 1
+                          ? order.items[order.items.length - 1]
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .map((item, i) => (
+                          <Link
+                            key={i}
+                            href={`/products/${item!.id}`}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                              background: "#fdf8fb",
+                              borderRadius: 10,
+                              padding: "10px 12px",
+                              border: "1px solid #fce7f3",
+                              position: "relative",
+                              textDecoration: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLElement).style.borderColor = "#D94F7A";
+                              (e.currentTarget as HTMLElement).style.background = "#fff";
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLElement).style.borderColor = "#fce7f3";
+                              (e.currentTarget as HTMLElement).style.background = "#fdf8fb";
+                            }}
+                          >
+                            {i === 1 && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: 6,
+                                  right: 8,
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  color: "#D94F7A",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.06em",
+                                  background: "#fce7f3",
+                                  padding: "2px 6px",
+                                  borderRadius: 4,
+                                }}
+                              >
+                                Last
+                              </span>
+                            )}
+                            {item?.image?.trim() ? (
+                              <img
+                                src={item.image.trim()}
+                                alt={item.name}
+                                style={{
+                                  width: 52,
+                                  height: 52,
+                                  borderRadius: 8,
+                                  objectFit: "cover",
+                                  border: "1px solid #fce7f3",
+                                  flexShrink: 0,
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: 52,
+                                  height: 52,
+                                  borderRadius: 8,
+                                  background: "#fdf2f7",
+                                  border: "1px solid #fce7f3",
+                                  flexShrink: 0,
+                                }}
+                              />
+                            )}
+                            <div style={{ minWidth: 0 }}>
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  color: "#111",
+                                  marginBottom: 2,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {item!.name}
+                              </p>
+                              <p
+                                style={{
+                                  fontSize: 11,
+                                  color: "#9ca3af",
+                                  marginBottom: 2,
+                                }}
+                              >
+                                {item!.variant}
+                              </p>
+                              <p
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: "#E8456A",
+                                }}
+                              >
+                                {item!.price}
+                              </p>
+                            </div>
+                          </Link>
+                        ))}
+                    </div>
+
+                    {order.items.length > 2 && (
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "#9ca3af",
+                          marginTop: 8,
+                          fontStyle: "italic",
+                        }}
                       >
-                        {item.image ? (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            style={{
-                              width: 60,
-                              height: 60,
-                              borderRadius: 10,
-                              objectFit: "cover",
-                              border: "1px solid #fce7f3",
-                              flexShrink: 0,
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: 60,
-                              height: 60,
-                              borderRadius: 10,
-                              background: "#fdf2f7",
-                              border: "1px solid #fce7f3",
-                              flexShrink: 0,
-                            }}
-                          />
-                        )}
-                        <div>
-                          <p
-                            style={{
-                              fontSize: 14,
-                              fontWeight: 700,
-                              color: "#111",
-                              marginBottom: 3,
-                            }}
-                          >
-                            {item.name}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 12,
-                              color: "#9ca3af",
-                              marginBottom: 3,
-                            }}
-                          >
-                            {item.variant}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: "#E8456A",
-                            }}
-                          >
-                            {item.price}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                        +{order.items.length - 2} more item
+                        {order.items.length - 2 > 1 ? "s" : ""} in this order
+                      </p>
+                    )}
                   </div>
 
-                  {/* Action buttons — per status, matching file 2 layout */}
+                  {/* Action buttons */}
                   <div
                     style={{
                       borderTop: "1px solid #fef3f7",
@@ -475,7 +616,7 @@ export default function OrdersPage() {
                     {order.status === "Delivered" && (
                       <>
                         <Link
-                          href={`/profile/tracking/${order.id}`}
+                          href={`/profile/orders/${order.backendId}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -490,12 +631,12 @@ export default function OrdersPage() {
                             borderRight: "1px solid #fce7f3",
                           }}
                         >
-                          <Truck size={13} /> View Tracking
+                          <Eye size={13} /> View Details
                         </Link>
                         <button
                           onClick={() =>
                             window.open(
-                              `/profile/orders/invoice/${order.id}`,
+                              `/profile/orders/invoice/${order.backendId}`,
                               "_blank",
                             )
                           }
@@ -517,8 +658,8 @@ export default function OrdersPage() {
                         >
                           <FileText size={13} /> Download Invoice
                         </button>
-                        <Link
-                          href={`/profile/orders/return/${order.id}`}
+                        <button
+                          onClick={() => handleReturnExchange(order)}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -527,15 +668,18 @@ export default function OrdersPage() {
                             padding: "12px 8px",
                             fontSize: 12,
                             fontWeight: 500,
-                            textDecoration: "none",
+                            cursor: "pointer",
+                            background: "#fff",
                             color: "#374151",
+                            border: "none",
                             borderRight: "1px solid #fce7f3",
+                            fontFamily: "inherit",
                           }}
                         >
                           <RotateCcw size={13} /> Return/Exchange
-                        </Link>
+                        </button>
                         <Link
-                          href={`/profile/reviews/write?orderId=${order.id}&productName=${encodeURIComponent(order.items[0]?.name ?? "")}`}
+                          href={`/profile/reviews/write?orderId=${order.backendId}&productName=${encodeURIComponent(order.items[0]?.name ?? "")}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -557,7 +701,7 @@ export default function OrdersPage() {
                     {order.status === "Shipped" && (
                       <>
                         <Link
-                          href={`/profile/tracking/${order.id}`}
+                          href={`/profile/tracking/${order.backendId}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -575,7 +719,7 @@ export default function OrdersPage() {
                           <Truck size={13} /> Track Order
                         </Link>
                         <Link
-                          href={`/profile/orders/${order.id}`}
+                          href={`/profile/orders/${order.backendId}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -592,7 +736,7 @@ export default function OrdersPage() {
                           <Eye size={13} /> View Details
                         </Link>
                         <Link
-                          href="/contact-support"
+                          href="/contact"
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -613,8 +757,8 @@ export default function OrdersPage() {
                     {/* ── Processing ── */}
                     {order.status === "Processing" && (
                       <>
-                        <button
-                          onClick={() => setCancellingId(order.id)}
+                        <Link
+                          href={`/profile/orders/${order.backendId}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -622,19 +766,17 @@ export default function OrdersPage() {
                             gap: 6,
                             padding: "12px 8px",
                             fontSize: 12,
-                            fontWeight: 500,
-                            cursor: "pointer",
-                            background: "#fff",
-                            color: "#374151",
-                            border: "none",
+                            fontWeight: 600,
+                            textDecoration: "none",
+                            background: "#D94F7A",
+                            color: "#fff",
                             borderRight: "1px solid #fce7f3",
-                            fontFamily: "inherit",
                           }}
                         >
-                          <XCircle size={13} /> Cancel Order
-                        </button>
+                          <Eye size={13} /> View Details
+                        </Link>
                         <Link
-                          href="/profile/addresses"
+                          href={`/profile/orders/cancel/${order.id}`}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -644,14 +786,15 @@ export default function OrdersPage() {
                             fontSize: 12,
                             fontWeight: 500,
                             textDecoration: "none",
+                            background: "#fff",
                             color: "#374151",
                             borderRight: "1px solid #fce7f3",
                           }}
                         >
-                          <MapPin size={13} /> Modify Address
+                          <XCircle size={13} /> Cancel Order/Items
                         </Link>
                         <Link
-                          href="/contact-support"
+                          href="/contact"
                           style={{
                             display: "flex",
                             alignItems: "center",

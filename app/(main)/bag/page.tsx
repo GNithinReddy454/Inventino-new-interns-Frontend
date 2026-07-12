@@ -16,10 +16,11 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
-import { addWishlistItem } from "@/redux/wishlistslice";
-import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode } from "@/redux/cartslice";
+import { addWishlistItem, addLocalWishlistItem } from "@/redux/wishlistslice";
+import { fetchCart, removeFromCart, updateCartQuantity, clearCart, applyPromoCode, removeLocalCartItem, updateLocalCartItemQuantity } from "@/redux/cartslice";
 import { useCart } from "@/lib/cartContext";
 import { useAuth } from "@/app/(main)/components/authContext";
+import { hasUserSession } from "@/lib/session";
 
 interface CartItem {
   productId: string;
@@ -28,6 +29,8 @@ interface CartItem {
   image: string;
   quantity?: number;
   originalPrice?: number;
+  color?: string;
+  size?: string;
 }
 
 interface ToastState {
@@ -49,15 +52,47 @@ export default function BagPage() {
   const { user } = useAuth();
   const { cart: localCart, cartTotal: localCartTotal, updateQuantity: updateLocalQuantity, removeFromCart: removeLocalCart, clearCart: clearLocalCart } = useCart();
 
-  const cart = user ? reduxCart : localCart.map((item: any) => ({
+  const getImageUrl = (imgData: any) => {
+    if (!imgData) return "";
+    if (typeof imgData === "string") return imgData;
+    if (typeof imgData === "object" && imgData.url) return imgData.url;
+    return "";
+  };
+
+  const mappedRedux = reduxCart.map((item: any) => ({
+    productId: String(item.productId || item.product?._id || item._id),
+    name: item.productName || item.name || item.product?.name || item.product?.title || "Untitled Product",
+    price: item.pricing?.price ?? item.price ?? item.product?.price ?? 0,
+    image: getImageUrl(item.media?.mainImage || item.media?.images?.[0] || item.image || item.product?.images?.[0] || item.product?.image),
+    quantity: item.quantity || 1,
+    originalPrice: item.pricing?.originalPrice ?? item.originalPrice ?? item.product?.originalPrice,
+    color: item.selectedVariant?.color || item.color,
+    size: item.selectedVariant?.size || item.size,
+    id: item.productId || item.product?._id || item._id, // Backwards compatibility for removal
+  }));
+
+  const mappedLocal = localCart.map((item: any) => ({
     productId: String(item.id),
-    name: item.name,
-    price: item.price,
-    image: item.image,
+    name: item.name || item.title || "Untitled Product",
+    price: item.price || 0,
+    image: getImageUrl(
+      item.image ||
+        item.images?.[0] ||
+        item.product?.images?.[0] ||
+        item.product?.image
+    ),
     quantity: item.quantity || 1,
     originalPrice: item.originalPrice,
+    color: item.color,
+    size: item.size,
+    id: item.id, // Keep original ID for filter
   }));
-  const cartTotal = user ? reduxCartTotal : localCartTotal;
+
+  const cart = user
+    ? [...mappedRedux, ...mappedLocal.filter(l => !mappedRedux.some((r: any) => r.productId === l.productId))]
+    : mappedLocal;
+
+  const cartTotal = cart.reduce((sum: number, item: any) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
 
   useEffect(() => {
     dispatch(fetchCart());
@@ -65,7 +100,6 @@ export default function BagPage() {
 
   const [animatingItem, setAnimatingItem] = useState<AnimatingItem | null>(null);
   const [promoCode, setPromoCode] = useState("");
-  const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
   const [toast, setToast] = useState<ToastState>({
     title: "Moved to Wishlist!",
@@ -81,21 +115,160 @@ export default function BagPage() {
     [],
   );
 
+  const isAuthOrSessionError = (errorMessage: string) => {
+    const msg = (errorMessage || "").toLowerCase();
+    return (
+      msg.includes("user not found") ||
+      msg.includes("unauthorized") ||
+      msg.includes("invalid") ||
+      msg.includes("token") ||
+      msg.includes("session")
+    );
+  };
+
+  const handleQuantityChange = async (item: CartItem, nextQuantity: number) => {
+    const productId = String(item.productId || (item as any)._id || (item as any).id);
+    const color = item.color || "";
+    const size = item.size || "";
+    const requestedQuantity = Number(nextQuantity);
+
+    // If quantity goes to 0 (or below), remove the item from cart.
+    if (requestedQuantity <= 0) {
+      if (!user) {
+        removeLocalCart((item as any).id || productId);
+        dispatch(removeLocalCartItem(productId));
+        return;
+      }
+
+      try {
+        await dispatch(
+          removeFromCart({ productId, color, size })
+        ).unwrap();
+      } catch {
+        dispatch(removeLocalCartItem(productId));
+      }
+
+      removeLocalCart((item as any).id || productId);
+      return;
+    }
+
+    const safeQuantity = Math.max(1, requestedQuantity);
+
+    if (!user) {
+      updateLocalQuantity(item.productId as unknown as number, safeQuantity);
+      return;
+    }
+
+    try {
+      await dispatch(
+        updateCartQuantity({
+          productId,
+          quantity: safeQuantity,
+          color,
+          size,
+        })
+      ).unwrap();
+      updateLocalQuantity(item.productId as unknown as number, safeQuantity);
+    } catch (error: any) {
+      const errorMessage = typeof error === "string" ? error : error?.message || "";
+      if (isAuthOrSessionError(errorMessage)) {
+        updateLocalQuantity(item.productId as unknown as number, safeQuantity);
+        dispatch(updateLocalCartItemQuantity({ productId, quantity: safeQuantity, color, size }));
+      } else {
+        triggerToast("Failed to update quantity", "Error");
+      }
+    }
+  };
+
   const handleAction = (item: CartItem, type: "wishlist" | "remove") => {
     setAnimatingItem({ id: item.productId, type });
-    setTimeout(() => {
-      const itemId = String((item as any)._id || item.productId);
-      if (type === "wishlist") {
-        if (!savedItems.some((si: any) => String(si.product?._id) === itemId || String(si.product?.id) === itemId || si.product?._id === itemId)) {
-          dispatch(addWishlistItem(itemId));
+    setTimeout(async () => {
+      try {
+        const itemId = String(item.productId || (item as any)._id || (item as any).id);
+        if (type === "wishlist") {
+          const exists = savedItems.some((si: any) => 
+            String(si.product?.productId || si.product?._id || si.product?.id || si.productId || si._id || si.id) === itemId
+          );
+          if (!exists) {
+            if (user) {
+              await dispatch(
+                addWishlistItem({
+                  productId: itemId,
+                  name: item.name || "",
+                  price: Number(item.price || 0),
+                  image: item.image || "",
+                  category: (item as any).category || "",
+                  color: item.color || null,
+                  size: item.size || null,
+                  quantity: item.quantity || 1,
+                })
+              ).unwrap();
+            } else {
+              // Now passing full item object for better guest experience
+              dispatch(addWishlistItem(item));
+            }
+          }
+          triggerToast(`${item.name} moved to wishlist`, "Saved!");
+        } else {
+          triggerToast(`${item.name} removed from cart`, "Removed!");
         }
+
+        if (user) {
+          // Robust ID check for backend removal
+          const removeId = String(item.productId || (item as any).id || (item as any)._id);
+          const removeColor = item.color || "";
+          const removeSize = item.size || "";
+          try {
+            await dispatch(
+              removeFromCart({ productId: removeId, color: removeColor, size: removeSize })
+            ).unwrap();
+          } catch (e) {
+            // Fallback for mock/invalid IDs that the server rejects
+            dispatch(removeLocalCartItem(removeId));
+          }
+          removeLocalCart((item as any).id || removeId);
+        } else {
+          // Robust ID check for local removal
+          const removeId = String((item as any).id || item.productId || (item as any)._id);
+          removeLocalCart(removeId);
+        }
+        setAnimatingItem(null);
+      } catch (err: any) {
+        // Fallback for any other unexpected issues to ensure the UI updates
+        const removeId = String(item.productId || (item as any).id || (item as any)._id);
+        
+        if (type === "wishlist" && removeId !== "undefined") {
+          dispatch(addLocalWishlistItem({ _id: removeId, product: item, quantity: 1 }));
+          triggerToast(`${item.name} moved to wishlist`, "Saved!");
+          if (user) {
+            const removeColor = item.color || "";
+            const removeSize = item.size || "";
+            try { 
+              await dispatch(
+                removeFromCart({ productId: removeId, color: removeColor, size: removeSize })
+              ).unwrap(); 
+            } catch (e) {
+              dispatch(removeLocalCartItem(removeId));
+            }
+            removeLocalCart((item as any).id || removeId);
+          } else {
+            removeLocalCart((item as any).id || removeId);
+          }
+        } else {
+          // FORCE removal even on failure to avoid "stuck" items in UI
+          if (type === "remove") {
+             if (user) {
+               dispatch(removeLocalCartItem(removeId));
+               removeLocalCart((item as any).id || removeId);
+             }
+             else removeLocalCart((item as any).id || removeId);
+             triggerToast(`${item.name} removed from cart`, "Removed!");
+          } else {
+             triggerToast(`Failed to ${type === "wishlist" ? "move to wishlist" : "remove item"}`, "Error");
+          }
+        }
+        setAnimatingItem(null);
       }
-      if (user) {
-        dispatch(removeFromCart(item.productId));
-      } else {
-        removeLocalCart(item.productId as unknown as number);
-      }
-      setAnimatingItem(null);
     }, 400);
   };
 
@@ -103,44 +276,88 @@ export default function BagPage() {
     if (promoCode.trim().length > 0) {
       dispatch(applyPromoCode(promoCode.trim())).then((action) => {
         if (applyPromoCode.fulfilled.match(action)) {
-          setPromoApplied(true);
           setPromoError("");
+          triggerToast("Coupon is Applied Successfully", "Success!");
         } else {
-          setPromoApplied(false);
           setPromoError((action.payload as string) || "Invalid promo code");
         }
       });
     }
   };
 
-  const handleAddAllToWishlist = () => {
-    cart.forEach((item: any) => {
-      const itemId = String(item._id || item.productId);
-      if (!savedItems.some((si: any) =>
-        String(si.product?._id) === itemId ||
-        String(si.product?.id) === itemId ||
-        si.product?._id === itemId
-      )) {
-        dispatch(addWishlistItem(itemId));
-      }
-    });
-    if (cart.length > 0) {
-      triggerToast(
-        `${cart.length} item${cart.length > 1 ? "s" : ""} moved to your wishlist`,
-      );
-      if (user) dispatch(clearCart());
-      else clearLocalCart();
-    } else {
+  const handleAddAllToWishlist = async () => {
+    if (cart.length === 0) {
       triggerToast("No items in cart to move", "Cart is empty");
+      return;
+    }
+
+    let successCount = 0;
+    // Process all wishlist additions ensuring they complete before clearing the cart
+    for (const item of cart) {
+      try {
+        const itemId = String(item.productId || (item as any)._id || (item as any).id);
+        if (itemId === "undefined" || !itemId) continue;
+
+        const exists = savedItems.some((si: any) =>
+          String(si.product?.productId || si.product?._id || si.product?.id || si.productId || si._id || si.id) === itemId
+        );
+        if (!exists) {
+          try {
+            if (user) {
+              await dispatch(
+                addWishlistItem({
+                  productId: itemId,
+                  name: item.name || "",
+                  price: Number(item.price || 0),
+                  image: item.image || "",
+                  category: (item as any).category || "",
+                  color: item.color || null,
+                  size: item.size || null,
+                  quantity: item.quantity || 1,
+                })
+              ).unwrap();
+            } else {
+              // Pass full item object
+              dispatch(addWishlistItem(item));
+            }
+          } catch (e) {
+            dispatch(addLocalWishlistItem({ _id: itemId, product: item, quantity: 1 }));
+          }
+        }
+        successCount++;
+      } catch (err) {
+        // Silently skip tracking console.error to avoid React overlays.
+      }
+    }
+
+    if (successCount > 0) {
+      // Clear the entire cart after all items have been moved to wishlist
+      if (user) {
+        try { await dispatch(clearCart()).unwrap(); } catch (e) { }
+      }
+      clearLocalCart();
+
+      triggerToast(
+        `${successCount} item${successCount > 1 ? "s" : ""} moved to your wishlist`,
+        "Moved to Wishlist!"
+      );
+
+      // Automatically redirect to wishlist page
+      router.push("/wishlist");
+    } else {
+      triggerToast("No items could be moved to wishlist", "Error");
     }
   };
 
-  const handleRemoveAllFromCart = () => {
-    if (user) dispatch(clearCart());
-    else clearLocalCart();
+  const handleRemoveAllFromCart = async () => {
+    if (user) {
+      try { await dispatch(clearCart()).unwrap(); } catch (e) { }
+    }
+    clearLocalCart();
+    triggerToast("Cart cleared", "Removed!");
   };
 
-  const discount = promoApplied ? storeDiscount : 0;
+  const discount = storePromoCode ? storeDiscount : 0;
   const discountedTotal = cartTotal - discount;
   const tax = discountedTotal * 0.08;
   const finalTotal = discountedTotal + tax;
@@ -278,7 +495,7 @@ export default function BagPage() {
                         className="block group shrink-0"
                       >
                         <div className="w-28 h-28 md:w-32 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border border-pink-50 transition-transform group-hover:scale-105 duration-500">
-                          {item.image ? (
+                          {typeof item.image === "string" && item.image.trim() !== "" ? (
                             <Image
                               src={item.image}
                               alt={item.name || "Product"}
@@ -298,39 +515,40 @@ export default function BagPage() {
                       {/* Details */}
                       <div className="flex-1 flex flex-col justify-between overflow-hidden">
                         <div className="text-left">
-                          <div className="flex flex-row justify-between gap-2">
+                          <div className="flex flex-col sm:flex-row justify-between items-start gap-2 w-full">
                             <Link
                               href={`/products/${item.productId}`}
-                              className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300"
+                              className="text-gray-900 hover:text-[#E8456A] transition-colors duration-300 sm:max-w-[60%]"
                             >
                               <h3 className="font-bold text-sm md:text-lg leading-tight line-clamp-2">
-                                {item.name}
+                                {item.name || "Untitled Product"}
                               </h3>
                             </Link>
 
                             {/* Actions */}
-                            <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-300 shrink-0">
+                            <div className="flex flex-row items-center justify-between sm:justify-end w-full sm:w-auto gap-4 sm:gap-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 shrink-0 mt-1 sm:mt-0">
                               <button
                                 onClick={() => handleAction(item, "wishlist")}
-                                className="hover:text-[#E8456A] flex items-center gap-1 transition-all"
+                                className="hover:text-[#E8456A] flex items-center gap-1.5 transition-all text-left group"
                               >
                                 <Heart
-                                  size={12}
+                                  size={14}
                                   className={
                                     isAnimating && actionType === "wishlist"
-                                      ? "fill-[#E8456A]"
-                                      : ""
+                                      ? "fill-[#E8456A] text-[#E8456A]"
+                                      : "group-hover:text-[#E8456A]"
                                   }
                                 />
-                                <span className="hidden sm:inline">Save for Later</span>
+                                <span>Save for Later</span>
                               </button>
-                              <span className="h-3 w-px bg-gray-200" />
+                              <span className="hidden sm:block h-3 w-px bg-gray-200" />
                               <button
                                 onClick={() => handleAction(item, "remove")}
-                                className="shrink-0 text-gray-300 hover:text-red-400 transition-colors"
+                                className="flex items-center gap-1.5 shrink-0 hover:text-red-500 transition-colors text-left group"
                                 aria-label="Remove item"
                               >
-                                <X size={16} />
+                                <X size={14} className="group-hover:text-red-500" />
+                                <span>Remove</span>
                               </button>
                             </div>
                           </div>
@@ -347,6 +565,24 @@ export default function BagPage() {
                                 </span>
                               )}
                           </div>
+
+                          {/* Color and Size */}
+                          {(item.color || item.size) && (
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 justify-center md:justify-start">
+                              {item.color && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Color:</span>
+                                  <span className="text-xs font-bold text-gray-700">{item.color}</span>
+                                </div>
+                              )}
+                              {(item.size || true) && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Size:</span>
+                                  <span className="text-xs font-bold text-gray-700">{item.size || "Free Size"}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Quantity */}
@@ -354,15 +590,8 @@ export default function BagPage() {
                           <div className="flex items-center bg-[#FFF1F2] rounded-full p-0.5 border border-pink-50 shadow-sm h-9 md:h-10 w-fit">
                             <button
                               onClick={() => {
-                                const newQ = Math.max(1, (item.quantity || 1) - 1);
-                                if (user) {
-                                  dispatch(updateCartQuantity({
-                                    productId: item.productId,
-                                    quantity: newQ,
-                                  }))
-                                } else {
-                                  updateLocalQuantity(item.productId as unknown as number, newQ);
-                                }
+                                const newQ = (item.quantity || 1) - 1;
+                                handleQuantityChange(item, newQ);
                               }}
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                               aria-label="Decrease quantity"
@@ -375,14 +604,7 @@ export default function BagPage() {
                             <button
                               onClick={() => {
                                 const newQ = (item.quantity || 1) + 1;
-                                if (user) {
-                                  dispatch(updateCartQuantity({
-                                    productId: item.productId,
-                                    quantity: newQ,
-                                  }))
-                                } else {
-                                  updateLocalQuantity(item.productId as unknown as number, newQ);
-                                }
+                                handleQuantityChange(item, newQ);
                               }}
                               className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#D94F7A] shadow-sm hover:scale-110 active:scale-95 transition-all"
                               aria-label="Increase quantity"
@@ -399,44 +621,57 @@ export default function BagPage() {
             </div>
 
             {/* Promo Code */}
-            <div className="bg-white rounded-4xl border border-dashed border-gray-200 shadow-sm p-6 md:p-8">
-              <div className="flex items-center gap-2 mb-4">
-                <Tag size={15} className="text-[#D94F7A]" />
-                <span className="text-sm font-bold text-gray-700 uppercase tracking-widest text-[10px]">
-                  Promo Code
-                </span>
+            {storePromoCode ? (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-4xl border border-green-200 shadow-sm p-6 md:p-8 transition-all duration-500 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircle2 size={20} className="text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-green-700">Coupon is Applied Successfully!</p>
+                      <p className="text-xs text-green-600 mt-0.5">10% discount has been applied to your order</p>
+                    </div>
+                  </div>
+                  <span className="bg-green-100 text-green-700 text-[10px] px-3 py-1.5 rounded-full font-black uppercase tracking-widest border border-green-200">
+                    Applied
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="text"
-                  placeholder="Enter Promo Code"
-                  value={promoCode}
-                  onChange={(e) => {
-                    setPromoCode(e.target.value);
-                    setPromoError("");
-                    setPromoApplied(false);
-                  }}
-                  className="w-full sm:flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
-                  aria-label="Promo code"
-                />
-                <button
-                  onClick={handleApplyPromo}
-                  className="w-full sm:w-auto bg-[#D94F7A] hover:bg-[#b83d63] text-white px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
-                >
-                  Apply Code
-                </button>
+            ) : (
+              <div className="bg-white rounded-4xl border border-dashed border-gray-200 shadow-sm p-6 md:p-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Tag size={15} className="text-[#D94F7A]" />
+                  <span className="text-sm font-bold text-gray-700 uppercase tracking-widest text-[10px]">
+                    Promo Code
+                  </span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    placeholder="Enter Promo Code"
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value);
+                      setPromoError("");
+                    }}
+                    className="w-full sm:flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#D94F7A] transition-colors"
+                    aria-label="Promo code"
+                  />
+                  <button
+                    onClick={handleApplyPromo}
+                    className="w-full sm:w-auto bg-[#D94F7A] hover:bg-[#b83d63] text-white px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
+                  >
+                    Apply Code
+                  </button>
+                </div>
+                {promoError && (
+                  <p className="text-red-400 text-xs font-medium mt-2">
+                    {promoError}
+                  </p>
+                )}
               </div>
-              {promoApplied && (
-                <p className="text-green-500 text-xs font-bold mt-2 flex items-center gap-1">
-                  ✓ Promo applied! 10% discount added.
-                </p>
-              )}
-              {promoError && (
-                <p className="text-red-400 text-xs font-medium mt-2">
-                  {promoError}
-                </p>
-              )}
-            </div>
+            )}
           </div>
 
           {/* RIGHT: Order Summary */}
@@ -452,7 +687,7 @@ export default function BagPage() {
                   ₹{cartTotal.toFixed(2)}
                 </span>
               </div>
-              {promoApplied && (
+              {storePromoCode && (
                 <div className="flex justify-between text-green-500">
                   <span>Discount (10%)</span>
                   <span className="font-bold">-₹{discount.toFixed(2)}</span>
@@ -484,9 +719,7 @@ export default function BagPage() {
             <div className="mb-3">
               <button
                 onClick={() => {
-                  const rawUser = localStorage.getItem("inventino_user");
-                  const token = localStorage.getItem("token");
-                  if (rawUser && token) {
+                  if (hasUserSession()) {
                     router.push("/checkout");
                   } else {
                     router.push("/login?redirect=/checkout");
@@ -499,7 +732,7 @@ export default function BagPage() {
             </div>
 
             <Link href="/products" className="block">
-              <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-pink-50 transition-all active:scale-[0.98] text-sm tracking-widest uppercase">
+              <button className="w-full border border-[#D94F7A] text-[#D94F7A] py-4 rounded-2xl font-bold hover:bg-[#D94F7A] hover:text-white transition-all active:scale-[0.98] text-sm tracking-widest uppercase shadow-sm hover:shadow-md">
                 Continue Shopping
               </button>
             </Link>

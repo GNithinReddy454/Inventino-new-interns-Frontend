@@ -11,7 +11,8 @@ export interface AuthResponse {
   statusCode: number;
   message: string;
   data: {
-    user: User;
+    user?: User;
+    admin?: User;
     token: string;
   };
   error?: string | null;
@@ -42,6 +43,7 @@ export interface Product {
   isActive?: boolean;
   quantity?: number;
   color?: string;
+  size?: string;
 }
 
 export interface ProductResponse {
@@ -82,6 +84,8 @@ export type ShippingAddress = Address;
 export interface CartItem {
   product: Product;
   quantity: number;
+  color?: string;
+  size?: string;
 }
 
 export interface CartResponse {
@@ -112,5 +116,5 @@ export interface OrderResponse {
 }
 
 // --- CHECKOUT ENUMS ---
-export type CheckoutStep = "shipping" | "payment" | "success" | "failed" | "tracking";
+export type CheckoutStep = "shipping" | "payment" | "review" | "success" | "failed" | "tracking";
 export type PaymentMethod = "card" | "cod" | "paypal" | "gpay";

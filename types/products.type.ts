@@ -1,31 +1,63 @@
 export interface ProductImage {
-  id: string;
-  url: string;
+  id?: string;
+  _id?: string;
+  url?: string;
 }
+
+export type ProductImageInput = string | ProductImage;
 
 export interface ApiProduct {
   _id: string;
-  name: string;
-  description: string;
-  price: number;
+  productId?: string;
+  productName?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  originalPrice?: number | null;
   discountPrice?: number;
-  category: string;
-  stock: number;
-  slug: string;
-  images: ProductImage[];
-  isActive: boolean;
-  isDeleted: boolean;
-  bestSeller: boolean;
-  trendy: boolean;
-  ratingsAverage: number;
-  ratingsCount: number;
-  productId: string;
-  hashtags: string[];
+  pricing?: {
+    price: number;
+    originalPrice?: number | null;
+    offerPercentage?: number | null;
+    taxIncluded?: boolean;
+  };
+  category?: string;
+  stock?: number;
+  totalStock?: number;
+  slug?: string;
+  images?: ProductImageInput[];
+  media?: {
+    mainImage?: string | null;
+    galleryImages?: ProductImageInput[];
+  };
+  isActive?: boolean;
+  isDeleted?: boolean;
+  bestSeller?: boolean;
+  trendy?: boolean;
+  ratingsAverage?: number;
+  ratingsCount?: number;
+  rating?: number;
+  reviewCount?: number;
+  hashtags?: string[];
+  imageUrl?: string;
+  mainImage?: string;
   material?: string;
   size?: string;
   color?: string;
-  createdAt: string;
-  updatedAt: string;
+  colors?: any[];
+  sizes?: any[];
+  prices?: any[];
+  createdAt?: string;
+  updatedAt?: string;
+  story?: string | {
+    title?: string;
+    content?: string;
+    isDisplayed?: boolean;
+    featured?: boolean;
+  };
+  sku?: string;
+  variants?: any[];
+  [key: string]: any;
 }
 
 export interface ProductListMeta {
@@ -53,7 +85,7 @@ export interface ProductDetailResponse {
 export interface GetAllProductsParams {
   page?: number;
   limit?: number;
-  sort?: "featured" | "price_asc" | "price_desc" | "newest";
+  sort?: "featured" | "priceAsc" | "priceDesc" | "newest";
   category?: string;
   search?: string;
   minPrice?: number;
@@ -78,4 +110,5 @@ export interface NormalizedProduct {
   tags: string[];
   bestSeller: boolean;
   trendy: boolean;
+  variants?: any[];
 }

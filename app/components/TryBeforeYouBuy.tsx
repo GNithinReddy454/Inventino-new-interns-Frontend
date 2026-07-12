@@ -32,7 +32,11 @@ const features = [
 
 export default function TryBeforeYouBuy() {
   return (
-    <section className="w-full bg-white px-6 md:px-16 py-10 md:py-16">
+    <section
+      id="try-before-you-buy-section"
+      data-cms-features-section="true"
+      className="w-full bg-white px-6 md:px-16 py-10 md:py-16"
+    >
       <div className="max-w-6xl mx-auto">
         {/* Heading */}
         <div className="text-center mb-10">

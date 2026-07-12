@@ -1,8 +1,10 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { Star, ThumbsUp, CheckCircle, ZoomIn, X } from "lucide-react";
 import Toast from "./toast";
+import { reviewService } from "@/services/review"; 
 
 // --- MOCK DATA ---
 const MOCK_REVIEWS = [
@@ -51,58 +53,77 @@ const MOCK_REVIEWS = [
 
 export default function ProductReviews({
   productId,
+  mongoProductId,
   isLoggedIn = false,
   hasPurchased = false,
 }: {
-  productId?: string;
+  productId: string;
+  mongoProductId?: string; // MongoDB _id (ObjectId) — pass this from your product data
   isLoggedIn?: boolean;
   hasPurchased?: boolean;
 }) {
-  const [reviews, setReviews] = useState(MOCK_REVIEWS);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [visibleReviews, setVisibleReviews] = useState(3);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
+  // Calculate statistics from current reviews
+  const totalReviews = reviews.length;
+  const averageRating = totalReviews > 0 
+    ? (reviews.reduce((acc, rev) => acc + rev.rating, 0) / totalReviews).toFixed(1)
+    : "0.0";
+
+  const ratingDistribution = [5, 4, 3, 2, 1].map(star => {
+    const count = reviews.filter(rev => rev.rating === star).length;
+    const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+    return { s: star, w: `${percentage}%`, c: count };
+  });
+
   // --- API INTEGRATION ---
   useEffect(() => {
+    const idToFetch = mongoProductId || productId;
+    if (!idToFetch) return;
+
     const fetchReviews = async () => {
       try {
-        const idToFetch = productId || "69a41f9db184e6fc00ba7f99";
-        const response = await fetch(
-          `http://localhost:8080/api/reviews/product/${idToFetch}`,
-          { cache: "no-store" }
-        );
+        const json = await reviewService.getReviews(idToFetch);
 
-        const json = await response.json();
+        const rawReviews: any[] =
+          (Array.isArray(json?.data?.reviews) ? json.data.reviews : null) ||
+          (Array.isArray(json?.data) ? json.data : null) ||
+          (Array.isArray(json?.reviews) ? json.reviews : null) ||
+          (Array.isArray(json) ? json : null) ||
+          [];
 
-        if (response.ok && json.data?.reviews) {
-          const apiReviews = json.data.reviews.map((rev: any) => ({
-            id: rev._id,
-            author: rev.user?.name || "Verified Buyer",
-            date: new Date(rev.createdAt).toLocaleDateString("en-US", {
+        if (rawReviews.length > 0) {
+          const apiReviews = rawReviews.map((rev: any) => ({
+            id: rev._id || rev.id,
+            author: rev.user?.name || rev.userName || rev.author || "Verified Buyer",
+            date: new Date(rev.createdAt || rev.date || Date.now()).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
             }),
             rating: rev.rating,
-            title: "Customer Review",
-            content: rev.comment,
-            verified: rev.isActive,
-            helpful: 0,
+            title: rev.title || "Customer Review",
+            content: rev.comment || rev.content || rev.body || "",
+            verified: rev.isActive ?? rev.verified ?? true,
+            helpful: rev.helpful || 0,
             images: rev.images || [],
           }));
 
-          setReviews([...MOCK_REVIEWS, ...apiReviews]);
+          setReviews(apiReviews);
         } else {
-          console.error("API Error Details:", json);
+          setReviews([]);
         }
-      } catch (error) {
-        console.error("Fetch Connection Error:", error);
+      } catch (error: any) {
+        console.error("Fetch Connection Error:", error.response?.data || error.message);
+        setReviews([]);
       }
     };
 
     fetchReviews();
-  }, []);
+  }, [productId, mongoProductId]);
 
   return (
     <div className="bg-white py-16 border-t border-gray-100 relative">
@@ -143,32 +164,33 @@ export default function ProductReviews({
             Customer Reviews
           </h2>
           <p className="text-gray-500 text-sm">
-            See what our customers are saying about this product
+            {totalReviews > 0 
+              ? "See what our customers are saying about this product"
+              : "No reviews yet for this product. Be the first to review!"}
           </p>
         </div>
 
         {/* SUMMARY CARD */}
         <div className="bg-pink-50/50 rounded-3xl p-8 mb-12 flex flex-col md:flex-row gap-8 items-center">
           <div className="text-center md:text-left min-w-[200px]">
-            <div className="text-6xl font-bold text-pink-500 mb-2">4.9</div>
+            <div className="text-6xl font-bold text-pink-500 mb-2">{averageRating}</div>
             <div className="flex justify-center md:justify-start gap-1 text-yellow-400 mb-2">
               {[1, 2, 3, 4, 5].map((s) => (
-                <Star key={s} size={20} fill="currentColor" />
+                <Star 
+                  key={s} 
+                  size={20} 
+                  fill={s <= Math.round(Number(averageRating)) ? "currentColor" : "none"} 
+                  className={s <= Math.round(Number(averageRating)) ? "" : "text-gray-300"}
+                />
               ))}
             </div>
             <p className="text-sm text-gray-500">
-              Based on {reviews.length + 125} reviews
+              Based on {totalReviews} reviews
             </p>
           </div>
 
           <div className="flex-1 w-full space-y-2">
-            {[
-              { s: 5, w: "85%", c: 109 },
-              { s: 4, w: "10%", c: 13 },
-              { s: 3, w: "3%", c: 4 },
-              { s: 2, w: "1%", c: 1 },
-              { s: 1, w: "1%", c: 1 },
-            ].map((r) => (
+            {ratingDistribution.map((r) => (
               <div key={r.s} className="flex items-center gap-3 text-xs">
                 <span className="font-bold w-3">{r.s}</span>
                 <div className="flex-1 h-2 bg-white rounded-full overflow-hidden">
@@ -230,7 +252,7 @@ export default function ProductReviews({
               {/* REVIEW IMAGES */}
               {review.images.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {review.images.map((img, i) => (
+                  {review.images.map((img: string, i: number) => (
                     <div
                       key={i}
                       className="relative group w-20 h-20 rounded-2xl overflow-hidden border border-gray-100 cursor-pointer shadow-sm"

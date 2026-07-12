@@ -1,145 +1,139 @@
 import apiClient from "@/lib/api";
-import { Address, OrderResponse, PaymentMethod } from "@/lib/types";
+import { Address, PaymentMethod } from "@/lib/types";
 
 /**
- * Order Service - All order operations
- *
- * Base URL is already: http://localhost:8080/api
- * So all paths here start with /orders (no /api prefix)
+ * Updated Order Service - Supports both MongoDB IDs and custom order IDs (ORD-001)
+ * 
+ * Authorization: Bearer token is handled by apiClient interceptors
  */
 export const orderService = {
   /**
-   * Place a new order
-   * Formats address and handles payment processing
+   * 1. Place a new order
+   * POST /api/orders
+   * 
+   * Backend expects: {
+   *   addressId: string,
+   *   items: Array<{ productId: string, quantity: number, color?: string, size?: string }>,
+   *   payment: { method: string }
+   * }
    */
-  async placeOrder(
-    shippingAddress: Address,
-    paymentMethod: PaymentMethod,
-    cardDetails?: any,
-  ): Promise<OrderResponse> {
-    const formattedAddress = {
-      fullName:
-        shippingAddress.fullName ||
-        `${shippingAddress.firstName} ${shippingAddress.lastName}`,
-      phone: shippingAddress.phone,
-      street: shippingAddress.street || shippingAddress.streetAddress,
-      city: shippingAddress.city,
-      state: shippingAddress.state,
-      pincode: shippingAddress.pincode || shippingAddress.zipCode,
-      country: shippingAddress.country || "India",
-      isDefault: true,
+  async placeOrder(payload: {
+    addressId: string;
+    items: Array<{
+      productId: string;
+      quantity: number;
+      color?: string | null;
+      size?: string;
+    }>;
+    promoCode?: string | null;
+    code?: string | null;
+    promo_code?: string | null;
+    discount?: number;
+    subtotal?: number;
+    total?: number;
+    payment: {
+      method: string;
+      razorpay_order_id?: string;
+      razorpay_payment_id?: string;
+      razorpay_signature?: string;
     };
-
-    try {
-      const response = await apiClient.post("/orders", {
-        shippingAddress: formattedAddress,
-        paymentMethod,
-        cardDetails,
-      });
-
-      return {
-        status: "success",
-        orderId: response.data?.data?._id || "ORD-NEW",
-        orderNumber: response.data?.data?.orderId || "INV-001",
-        orderDate: new Date().toISOString(),
-        totalAmount: response.data?.data?.totalAmount || 0,
-        paymentMethod: paymentMethod,
-        shippingAddress: shippingAddress,
-        estimatedDelivery: "5-7 Days",
-      };
-    } catch (error: any) {
-      console.error("Order placement failed:", error.response?.data);
-      return {
-        status: "failed",
-        orderId: "",
-        orderNumber: "",
-        orderDate: new Date().toISOString(),
-        totalAmount: 0,
-        paymentMethod: paymentMethod,
-        shippingAddress: shippingAddress,
-        errorCode: error.response?.status?.toString() || "500",
-        errorMessage:
-          error.response?.data?.message || "Failed to connect to backend",
-      };
-    }
+  }) {
+    const response = await apiClient.post("/orders", payload);
+    return response.data;
   },
 
-  /**
-   * Get user's order history
-   * GET http://localhost:8080/api/orders
-   */
+  async verifyPayment(payload: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    orderId: string;
+  }) {
+    const response = await apiClient.post("/payments/verify", payload);
+    return response.data;
+  },
+
+  async createRazorpayOrder(orderId: string) {
+    const response = await apiClient.post("/payments/create-order", { orderId });
+    return response.data;
+  },
+
   async getOrders() {
+
     const response = await apiClient.get("/orders");
     return response.data;
   },
 
-  /**
-   * Get single order details
-   * GET http://localhost:8080/api/orders/:id
-   */
-  async getOrderDetails(orderId: string) {
-    const response = await apiClient.get(`/orders/${orderId}`);
+  // 3. Get Order By ID (Custom ORD-072 or Mongo _id)
+  async getOrderById(id: string) {
+    const response = await apiClient.get(`/orders/${id}`);
     return response.data;
   },
 
-  /**
-   * Cancel an order
-   * PATCH http://localhost:8080/api/orders/:id/cancel
-   */
-  async cancelOrder(orderId: string, reason?: string) {
-    const response = await apiClient.post(`/orders/${orderId}/cancel`, {
-      reason,
-    });
+  // 4. Track Order (History / Timeline)
+  async trackOrder(id: string) {
+    const response = await apiClient.get(`/orders/${id}/tracking`);
     return response.data;
   },
 
-  /**
-   * Track order status
-   * GET http://localhost:8080/api/orders/:id/tracking
-   */
-  async trackOrder(orderId: string) {
-    const response = await apiClient.get(`/orders/${orderId}/tracking`);
+  // 5, 6, 7. Cancel Specific Item(s)
+  // PATCH /api/orders/ORD-072/cancel-items
+  async cancelItems(id: string, payload: {
+    items: Array<{ productId: string, action: 'cancel' | 'replace', replacementProductId?: string }>,
+    reason: string
+  }) {
+    const response = await apiClient.patch(`/orders/${id}/cancel-items`, payload);
     return response.data;
   },
 
-  /**
-   * Get order summary (subtotal, tax, shipping, etc.)
-   * GET http://localhost:8080/api/orders/summary
-   */
-  async getOrderSummary() {
-    const response = await apiClient.get("/orders/summary");
+  // 8. Cancel Whole Order (Bulk)
+  // PATCH /api/orders/ORD-075/cancel
+  async cancelOrder(id: string, reason?: string) {
+    const response = await apiClient.patch(`/orders/${id}/cancel`, { reason: reason || "User requested cancellation" });
     return response.data;
   },
 
-  /**
-   * Apply coupon/discount to order
-   * POST http://localhost:8080/api/orders/discount
-   */
-  async applyDiscount(discountCode: string) {
-    const response = await apiClient.post("/orders/discount", {
-      code: discountCode,
-    });
+  // 9. Reorder
+  // POST /api/orders/ORD-072/reorder
+  async reorder(id: string) {
+    const response = await apiClient.post(`/orders/${id}/reorder`);
     return response.data;
   },
 
-  /**
-   * Get return/refund history
-   * GET http://localhost:8080/api/orders/returns
-   */
-  async getReturns() {
-    const response = await apiClient.get("/orders/returns");
+  // 10, 11. Return Item(s)
+  // POST /api/orders/ORD-072/returns
+  async requestReturn(id: string, payload: {
+    items?: Array<{ productId: string, action: 'return' }>,
+    reason: string
+  }) {
+    const response = await apiClient.post(`/orders/${id}/returns`, payload);
     return response.data;
   },
 
-  /**
-   * Request return for order item
-   * POST http://localhost:8080/api/orders/:id/returns
-   */
-  async requestReturn(orderId: string, itemId: string, reason?: string) {
-    const response = await apiClient.post(`/orders/${orderId}/returns`, {
-      itemId,
-      reason,
-    });
+  // 12. Exchange Request
+  // POST /api/orders/ORD-072/exchanges
+  async requestExchange(id: string, payload: {
+    productId: string;
+    quantity: number;
+    reasonForExchange: string;
+    condition: string;
+    exchangeDetails: {
+      newSize?: string | null;
+      newColor?: string | null;
+      newProductId?: string | null;
+    };
+    comments?: string;
+    proofImages?: string[];
+  }) {
+    const response = await apiClient.post(`/orders/${id}/exchanges`, payload);
     return response.data;
   },
+
+  // Helper functions
+  isMongoDBId(id: string): boolean {
+    return /^[0-9a-fA-F]{24}$/.test(id);
+  },
+
+  isCustomOrderId(id: string): boolean {
+    return /^ORD-\d{3}$/i.test(id);
+  }
 };
