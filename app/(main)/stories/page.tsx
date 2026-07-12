@@ -537,7 +537,7 @@ export default function StoriesPage() {
                 [1, 2, 3, 4].map((i) => (
                   <div
                     key={`skeleton-${i}`}
-                    className="shrink-0 w-full md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-1rem)] snap-center"
+                    className="shrink-0 w-full md:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)] snap-center"
                   >
                     <div className="w-full h-64 bg-gray-200 rounded-xl animate-pulse" />
                   </div>
@@ -546,7 +546,7 @@ export default function StoriesPage() {
                 similarProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="shrink-0 w-full md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-1rem)] snap-center"
+                    className="shrink-0 w-full md:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)] snap-center"
                   >
                     <ProductCard
                       product={product}
