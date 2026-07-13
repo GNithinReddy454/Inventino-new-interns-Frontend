@@ -365,8 +365,8 @@ export function SuccessScreen({
       {/* Header */}
       <div className="flex justify-between items-start border-b border-gray-200 pb-6 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">INVENTINO JEWELS</h1>
-          <p className="text-sm text-gray-500 mt-1">Premium Handcrafted Bracelets & Luxury Jewelry</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inventino</h1>
+          <p className="text-sm text-gray-500 mt-1">à la mode handcrafted</p>
           <p className="text-xs text-gray-400 mt-2">Email: hr@ggstinnovations.com</p>
         </div>
         <div className="text-right">
